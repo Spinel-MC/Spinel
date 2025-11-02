@@ -1,0 +1,1 @@
+This is for notes.—and love letters, I suppose.
