@@ -1,0 +1,10 @@
+[package]
+name = "spinel-utils"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+spinel-nbt = { path = "../spinel-nbt" }
+serde_json = "1"
+serde = { version = "1.0.219", features = ["derive"]}
+lazy_static = "1.4.0"

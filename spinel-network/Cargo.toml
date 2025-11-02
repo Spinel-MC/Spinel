@@ -1,0 +1,19 @@
+[package]
+name = "spinel-network"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+spinel-macros = { path = "../spinel-macros" }
+spinel-utils = { path = "../spinel-utils" }
+spinel-nbt = { path = "../spinel-nbt" }
+inventory = "0.3.0"
+uuid = "1.0"
+tokio = { version = "1", features = ["full"] }
+serde_json = "1.0"
+serde = "1.0"
+
+aes = "0.8.4"
+cfb8 = "0.8.1"
+rsa = "0.9"
+rand = "0.9.2"
