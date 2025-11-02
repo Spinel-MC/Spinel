@@ -1,0 +1,8 @@
+[workspace]
+members = [
+    "spinel",
+    "spinel-events", "spinel-nbt",
+    "spinel-network", "spinel-utils",
+    "test_server",
+]
+resolver = "3"

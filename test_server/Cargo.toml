@@ -1,0 +1,11 @@
+[package]
+name = "test_server"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+spinel = { path = "../spinel" }
+inventory = "0.3.0"
+serde_json = "1.0"
+uuid = "1.0"
+tokio = { version = "1", features = ["full"] }
