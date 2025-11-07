@@ -7,99 +7,106 @@ use crate::component::{builder::ComponentBuilder, style::Style, variant::Compone
 
 #[derive(Clone, Debug, Default)]
 pub struct TextComponent {
-        pub component_type: ComponentType,
-        pub style: Style,
-        pub children: Vec<TextComponent>,
+    pub component_type: ComponentType,
+    pub style: Style,
+    pub children: Vec<TextComponent>,
 }
 
 impl TextComponent {
+    pub fn empty() -> TextComponent {
+        Self {
+            component_type: ComponentType::Empty,
+            style: Style::empty(),
+            children: Vec::new(),
+        }
+    }
 
-        pub fn empty() -> TextComponent {
-                Self {
-                    component_type: ComponentType::Empty,
-                    style: Style::empty(),
-                    children: Vec::new(),
-                }
+    pub fn text(content: String) -> ComponentBuilder {
+        ComponentBuilder {
+            component_type: ComponentType::Text(content),
+            style: Style::empty(),
+            children: Vec::new(),
+        }
+    }
+
+    pub fn to_json_string(&self) -> String {
+        serde_json::to_string(self).unwrap_or_else(|_| "{\"text\":\"\"}".to_owned())
+    }
+
+    pub fn to_legacy_string(&self) -> String {
+        let mut builder = String::new();
+        self.write_legacy_string(&mut builder, &Style::empty());
+        builder
+    }
+
+    pub fn to_plain_string(&self) -> String {
+        let mut builder = String::new();
+        self.write_legacy_string(&mut builder, &Style::empty());
+        builder
+    }
+
+    fn write_legacy_string(&self, builder: &mut String, parent_style: &Style) {
+        let current_style = parent_style.merge_with_parent(self);
+        builder.push_str(&current_style.to_legacy_codes());
+        if let ComponentType::Text(text) = &self.component_type {
+            builder.push_str(text);
+        }
+        for child in &self.children {
+            child.write_legacy_string(builder, &current_style);
+        }
+    }
+
+    pub fn to_ansi_string(&self) -> String {
+        let mut ansi = String::new();
+
+        if let Some(color) = &self.style.color {
+            let value = color.value.as_str();
+            let ansi_code = match value {
+                "black" => "\x1b[30m".to_string(),
+                "dark_blue" => "\x1b[34m".to_string(),
+                "dark_green" => "\x1b[32m".to_string(),
+                "dark_aqua" => "\x1b[36m".to_string(),
+                "dark_red" => "\x1b[31m".to_string(),
+                "dark_purple" => "\x1b[35m".to_string(),
+                "gold" => "\x1b[33m".to_string(),
+                "gray" => "\x1b[37m".to_string(),
+                "dark_gray" => "\x1b[90m".to_string(),
+                "blue" => "\x1b[94m".to_string(),
+                "green" => "\x1b[92m".to_string(),
+                "aqua" => "\x1b[96m".to_string(),
+                "red" => "\x1b[91m".to_string(),
+                "light_purple" => "\x1b[95m".to_string(),
+                "yellow" => "\x1b[93m".to_string(),
+                "white" => "\x1b[97m".to_string(),
+                _ => String::new(),
+            };
+            ansi.push_str(&ansi_code);
         }
 
-        pub fn text(content: String) -> ComponentBuilder {
-                ComponentBuilder {
-                        component_type: ComponentType::Text(content),
-                        style: Style::empty(),
-                        children: Vec::new(),
-                }
+        if self.style.bold.unwrap_or(false) {
+            ansi.push_str("\x1b[1m");
+        }
+        if self.style.italic.unwrap_or(false) {
+            ansi.push_str("\x1b[3m");
+        }
+        if self.style.underlined.unwrap_or(false) {
+            ansi.push_str("\x1b[4m");
+        }
+        if self.style.strikethrough.unwrap_or(false) {
+            ansi.push_str("\x1b[9m");
         }
 
-        pub fn to_json_string(&self) -> String {
-                serde_json::to_string(self).unwrap_or_else(|_| "{\"text\":\"\"}".to_owned())
-        }
+        let text_content = if let ComponentType::Text(text) = &self.component_type {
+            text
+        } else {
+            "unimplemented component type"
+        };
+        ansi.push_str(text_content);
 
-        pub fn to_legacy_string(&self) -> String {
-                let mut builder = String::new();
-                self.write_legacy_string(&mut builder, &Style::empty());
-                builder
-        }
+        ansi.push_str("\x1b[0m");
 
-        pub fn to_plain_string(&self) -> String {
-                let mut builder = String::new();
-                self.write_legacy_string(&mut builder, &Style::empty());
-                builder
-        }
-
-        fn write_legacy_string(&self, builder: &mut String, parent_style: &Style) {
-                let current_style = parent_style.merge_with_parent(self);
-                builder.push_str(&current_style.to_legacy_codes());
-                if let ComponentType::Text(text) = &self.component_type {
-                        builder.push_str(text);
-                }
-                for child in &self.children {
-                        child.write_legacy_string(builder, &current_style);
-                }
-        }
-
-        pub fn to_ansi_string(&self) -> String {
-                let mut ansi = String::new();
-
-                if let Some(color) = &self.style.color {
-                let value = color.value.as_str();
-                let ansi_code = match value {
-                        "black"        => "\x1b[30m".to_string(),
-                        "dark_blue"    => "\x1b[34m".to_string(),
-                        "dark_green"   => "\x1b[32m".to_string(),
-                        "dark_aqua"    => "\x1b[36m".to_string(),
-                        "dark_red"     => "\x1b[31m".to_string(),
-                        "dark_purple"  => "\x1b[35m".to_string(),
-                        "gold"         => "\x1b[33m".to_string(),
-                        "gray"         => "\x1b[37m".to_string(),
-                        "dark_gray"    => "\x1b[90m".to_string(),
-                        "blue"         => "\x1b[94m".to_string(),
-                        "green"        => "\x1b[92m".to_string(),
-                        "aqua"         => "\x1b[96m".to_string(),
-                        "red"          => "\x1b[91m".to_string(),
-                        "light_purple" => "\x1b[95m".to_string(),
-                        "yellow"       => "\x1b[93m".to_string(),
-                        "white"        => "\x1b[97m".to_string(),
-                        _ => String::new()
-                };
-                ansi.push_str(&ansi_code);
-                }
-
-                if self.style.bold.unwrap_or(false)         { ansi.push_str("\x1b[1m"); }
-                if self.style.italic.unwrap_or(false)       { ansi.push_str("\x1b[3m"); }
-                if self.style.underlined.unwrap_or(false)   { ansi.push_str("\x1b[4m"); }
-                if self.style.strikethrough.unwrap_or(false){ ansi.push_str("\x1b[9m"); }
-
-                let text_content = if let ComponentType::Text(text) = &self.component_type {
-                text
-                } else {
-                "unimplemented component type"
-                };
-                ansi.push_str(text_content);
-
-                ansi.push_str("\x1b[0m");
-
-                ansi
-        }
+        ansi
+    }
 }
 
 impl Serialize for TextComponent {
@@ -121,7 +128,10 @@ impl Serialize for TextComponent {
                 }
             }
             ComponentType::Score { name, objective } => {
-                map.insert("score".to_string(), json!({ "name": name, "objective": objective }));
+                map.insert(
+                    "score".to_string(),
+                    json!({ "name": name, "objective": objective }),
+                );
             }
             ComponentType::Selector(selector) => {
                 map.insert("selector".to_string(), json!(selector));
@@ -146,7 +156,7 @@ impl Serialize for TextComponent {
         if !self.children.is_empty() {
             map.insert("extra".to_string(), json!(self.children));
         }
-        
+
         if map.is_empty() {
             map.insert("text".to_string(), json!(""));
         }
@@ -185,9 +195,15 @@ impl<'de> Deserialize<'de> for TextComponent {
         let component_type = if let Some(text) = intermediate.text {
             ComponentType::Text(text)
         } else if let Some(key) = intermediate.translate {
-            ComponentType::Translatable { key, args: intermediate.with.unwrap_or_default() }
+            ComponentType::Translatable {
+                key,
+                args: intermediate.with.unwrap_or_default(),
+            }
         } else if let Some(score) = intermediate.score {
-            ComponentType::Score { name: score.name, objective: score.objective }
+            ComponentType::Score {
+                name: score.name,
+                objective: score.objective,
+            }
         } else if let Some(selector) = intermediate.selector {
             ComponentType::Selector(selector)
         } else if let Some(key) = intermediate.keybind {

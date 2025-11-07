@@ -1,9 +1,9 @@
 // File: spinel-macros/src/util.rs
 use proc_macro2::{Ident, TokenStream as TokenStream2};
 use quote::{format_ident, quote};
-use syn::{Type, Expr, Lit, TypePath, PathArguments, GenericArgument};
+use syn::{Expr, GenericArgument, Lit, PathArguments, Type, TypePath};
 
-use crate::parsers::Field; 
+use crate::parsers::Field;
 
 pub fn resolve_id(raw_id: &str, default_namespace: &str) -> String {
     if raw_id.contains(':') {
@@ -13,19 +13,25 @@ pub fn resolve_id(raw_id: &str, default_namespace: &str) -> String {
     }
 }
 
-pub fn resolve_priority_token(priority_expr: Option<Expr>, enum_name: &str, default_variant: &str) -> TokenStream2 {
-    let full_enum_path = format!("spinel::utils::{}", enum_name); 
+pub fn resolve_priority_token(
+    priority_expr: Option<Expr>,
+    enum_name: &str,
+    default_variant: &str,
+) -> TokenStream2 {
+    let full_enum_path = format!("spinel::utils::{}", enum_name);
     match priority_expr {
         Some(expr) => match expr {
             Expr::Lit(expr_lit) => {
                 if let Lit::Str(lit_str) = expr_lit.lit {
                     let path_str = format!("{}::{}", full_enum_path, lit_str.value());
-                    let path: syn::Path = syn::parse_str(&path_str).unwrap_or_else(|e| panic!("Invalid priority string: {} - {}", lit_str.value(), e));
+                    let path: syn::Path = syn::parse_str(&path_str).unwrap_or_else(|e| {
+                        panic!("Invalid priority string: {} - {}", lit_str.value(), e)
+                    });
                     quote! { #path }
                 } else {
                     panic!("`priority` attribute must be a string literal or an enum path");
                 }
-            },
+            }
             Expr::Path(_) => quote! { #expr },
             _ => panic!("`priority` attribute must be a string literal or an enum path"),
         },
@@ -37,30 +43,43 @@ pub fn resolve_priority_token(priority_expr: Option<Expr>, enum_name: &str, defa
     }
 }
 
-pub fn resolve_enum_from_expr(expr: Expr, enum_full_path: &str, _enum_name_for_panic: &str) -> TokenStream2 {
+pub fn resolve_enum_from_expr(
+    expr: Expr,
+    enum_full_path: &str,
+    _enum_name_for_panic: &str,
+) -> TokenStream2 {
     match expr {
         Expr::Lit(expr_lit) => {
             if let Lit::Str(lit_str) = expr_lit.lit {
                 let path_str = format!("{}::{}", enum_full_path, lit_str.value());
-                let path: syn::Path = syn::parse_str(&path_str).unwrap_or_else(|e| panic!("Invalid {} string: {} - {}", _enum_name_for_panic, lit_str.value(), e));
+                let path: syn::Path = syn::parse_str(&path_str).unwrap_or_else(|e| {
+                    panic!(
+                        "Invalid {} string: {} - {}",
+                        _enum_name_for_panic,
+                        lit_str.value(),
+                        e
+                    )
+                });
                 quote! { #path }
             } else {
                 panic!("`state` attribute must be a string literal or an enum path");
             }
-        },
+        }
         Expr::Path(_) => quote! { #expr },
         _ => panic!("`state` attribute must be a string literal or an enum path"),
     }
 }
 
-
-// Maps the Rust Type Path (e.g., i32 or UUID) used in a struct definition 
+// Maps the Rust Type Path (e.g., i32 or UUID) used in a struct definition
 // to the correct `NetworkBuffer` write method and whether it needs a reference.
 pub fn get_write_method_for_type(ty: &Type) -> (Ident, bool) {
     let ty_path = if let Type::Path(path) = ty {
         path
     } else {
-        panic!("Unsupported complex type for packet_dispatcher serialization: {}", quote!{#ty});
+        panic!(
+            "Unsupported complex type for packet_dispatcher serialization: {}",
+            quote! {#ty}
+        );
     };
 
     let segment_ident = ty_path.path.segments.last().unwrap().ident.to_string();
@@ -75,8 +94,8 @@ pub fn get_write_method_for_type(ty: &Type) -> (Ident, bool) {
         "i64" | "Long" => ("write_long", false),
         "f32" | "Float" => ("write_float", false),
         "f64" | "Double" => ("write_double", false),
-        "VarInt" => ("write_varint", false), 
-        "VarLong" => ("write_varlong", false), 
+        "VarInt" => ("write_varint", false),
+        "VarLong" => ("write_varlong", false),
         "String" | "Identifier" => ("write_string", true),
         "Uuid" => ("write_uuid", true),
         "TextComponent" => ("write_json_text_component", true),
@@ -90,8 +109,14 @@ pub fn get_write_method_for_type(ty: &Type) -> (Ident, bool) {
         "Vec" => {
             let is_u8_vec = ty_path.path.segments.last().map_or(false, |s| {
                 if let syn::PathArguments::AngleBracketed(args) = &s.arguments {
-                    if let Some(syn::GenericArgument::Type(Type::Path(inner_path))) = args.args.first() {
-                        return inner_path.path.segments.last().map_or(false, |inner_s| inner_s.ident == "u8");
+                    if let Some(syn::GenericArgument::Type(Type::Path(inner_path))) =
+                        args.args.first()
+                    {
+                        return inner_path
+                            .path
+                            .segments
+                            .last()
+                            .map_or(false, |inner_s| inner_s.ident == "u8");
                     }
                 }
                 false
@@ -104,13 +129,16 @@ pub fn get_write_method_for_type(ty: &Type) -> (Ident, bool) {
             }
         }
         "Option" | "Optional" => {
-             if let Some(inner_ty) = get_inner_type(ty_path) {
+            if let Some(inner_ty) = get_inner_type(ty_path) {
                 return get_write_method_for_type(&inner_ty);
-             } else {
+            } else {
                 panic!("Option/Optional type requires a generic parameter.");
-             }
+            }
         }
-        _ => panic!("Unsupported type for packet_dispatcher serialization: {}", segment_ident),
+        _ => panic!(
+            "Unsupported type for packet_dispatcher serialization: {}",
+            segment_ident
+        ),
     };
     (format_ident!("{}", method_name_str), needs_ref)
 }
@@ -129,25 +157,35 @@ pub fn get_inner_type(ty_path: &TypePath) -> Option<Type> {
 pub fn map_field_to_rust_type(field: &Field) -> TokenStream2 {
     let ty_str = field.ty.to_string();
     if ty_str == "Array" || ty_str == "Vec" {
-        let inner_type = field.generic_param.as_ref()
+        let inner_type = field
+            .generic_param
+            .as_ref()
             .expect("Array/Vec type requires a generic parameter, e.g., Array<Identifier>");
-        
+
         let inner_rust_type = if let Type::Tuple(_) = inner_type {
             quote! { #inner_type }
         } else if let Type::Path(type_path) = inner_type {
-             map_type_to_rust_type(&type_path.path.segments.last().unwrap().ident)
+            map_type_to_rust_type(&type_path.path.segments.last().unwrap().ident)
         } else {
-            panic!("Unsupported generic type for Array/Vec: {}", quote!(#inner_type).to_string())
+            panic!(
+                "Unsupported generic type for Array/Vec: {}",
+                quote!(#inner_type).to_string()
+            )
         };
         return quote! { Vec<#inner_rust_type> };
     }
     if ty_str == "Optional" {
-        let inner_type = field.generic_param.as_ref()
+        let inner_type = field
+            .generic_param
+            .as_ref()
             .expect("Optional type requires a generic parameter");
         let inner_rust_type = if let Type::Path(type_path) = inner_type {
-             map_type_to_rust_type(&type_path.path.segments.last().unwrap().ident)
+            map_type_to_rust_type(&type_path.path.segments.last().unwrap().ident)
         } else {
-             panic!("Unsupported generic type for Optional: {}", quote!(#inner_type).to_string())
+            panic!(
+                "Unsupported generic type for Optional: {}",
+                quote!(#inner_type).to_string()
+            )
         };
         return quote! { Option<#inner_rust_type> };
     }
@@ -171,7 +209,9 @@ pub fn map_type_to_rust_type(ty_ident: &Ident) -> TokenStream2 {
         "VarLong" => quote! { i64 },
         "String" | "Identifier" => quote! { String },
         "UUID" | "Uuid" => quote! { uuid::Uuid },
-        "JsonTextComponent" | "TextComponent" => quote! { spinel::utils::component::text::TextComponent },
+        "JsonTextComponent" | "TextComponent" => {
+            quote! { spinel::utils::component::text::TextComponent }
+        }
         "Position" => quote! { spinel::network::types::Position },
         "ByteArray" => quote! { Vec<u8> },
         "Slot" => quote! { spinel::network::types::Slot },
@@ -186,7 +226,10 @@ pub fn map_syn_type_to_decoder_method(ty: &Type) -> Ident {
             return map_type_to_decoder_method_name(&segment.ident);
         }
     }
-    panic!("Unsupported field type in tuple for #[packet_listener]: {}", quote!(#ty).to_string());
+    panic!(
+        "Unsupported field type in tuple for #[packet_listener]: {}",
+        quote!(#ty).to_string()
+    );
 }
 
 // Maps a simple type identifier to the corresponding `Client` read method name.

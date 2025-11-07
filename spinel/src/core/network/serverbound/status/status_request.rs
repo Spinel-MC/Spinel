@@ -1,23 +1,30 @@
 use spinel_macros::packet_listener;
 use spinel_network::Client;
 
-use crate::{self as spinel, core::{events::server_list_ping::{server_list_ping_type::ServerListPingType, ServerListPingEvent}, network::clientbound::status::status_response::StatusResponsePacket, server::MinecraftServer}};
-
+use crate::{
+    self as spinel,
+    core::{
+        events::server_list_ping::{
+            ServerListPingEvent, server_list_ping_type::ServerListPingType,
+        },
+        network::clientbound::status::status_response::StatusResponsePacket,
+        server::MinecraftServer,
+    },
+};
 
 #[packet_listener(id:0x00, state:"Status", module: "status")]
 fn on_status_request(client: &mut Client, server: &mut MinecraftServer) -> bool {
-        
-        let mut event = ServerListPingEvent::new(ServerListPingType::Modern);
-        
-        event.dispatch(server, client);
+    let mut event = ServerListPingEvent::new(ServerListPingType::Modern);
 
-        if event.cancelled {
-                return true;
-        }
+    event.dispatch(server, client);
 
-        let response_packet = StatusResponsePacket::new(event.response_data, event.hide_players);
+    if event.cancelled {
+        return true;
+    }
 
-        response_packet.dispatch(client);
-        
-        true
+    let response_packet = StatusResponsePacket::new(event.response_data, event.hide_players);
+
+    response_packet.dispatch(client);
+
+    true
 }

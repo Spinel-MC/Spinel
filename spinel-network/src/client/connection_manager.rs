@@ -1,4 +1,7 @@
-use std::{collections::HashMap, net::{SocketAddr, TcpStream}};
+use std::{
+    collections::HashMap,
+    net::{SocketAddr, TcpStream},
+};
 use uuid::Uuid;
 
 use crate::client::instance::Client;
@@ -6,7 +9,7 @@ use crate::client::player::Player;
 
 #[derive(Default)]
 pub struct ConnectionManager {
-    clients: HashMap<SocketAddr, Client>, 
+    clients: HashMap<SocketAddr, Client>,
     players: HashMap<Uuid, Player>,
     addr_to_uuid: HashMap<SocketAddr, Uuid>,
     stream_handles: HashMap<SocketAddr, TcpStream>,
@@ -34,7 +37,7 @@ impl ConnectionManager {
         }
         self.clients.remove(address)
     }
-    
+
     pub fn get_client_mut(&mut self, address: &SocketAddr) -> Option<&mut Client> {
         self.clients.get_mut(address)
     }
@@ -48,21 +51,27 @@ impl ConnectionManager {
     }
 
     pub fn get_player_by_addr(&self, address: &SocketAddr) -> Option<&Player> {
-        self.addr_to_uuid.get(address).and_then(|uuid| self.players.get(uuid))
+        self.addr_to_uuid
+            .get(address)
+            .and_then(|uuid| self.players.get(uuid))
     }
 
     pub fn get_player_by_addr_mut(&mut self, address: &SocketAddr) -> Option<&mut Player> {
-        self.addr_to_uuid.get(address).and_then(|uuid| self.players.get_mut(uuid))
+        self.addr_to_uuid
+            .get(address)
+            .and_then(|uuid| self.players.get_mut(uuid))
     }
 
     pub fn get_client_by_uuid(&mut self, uuid: &Uuid) -> Option<&mut Client> {
-        self.players.get(uuid).and_then(|p| self.clients.get_mut(&p.addr))
+        self.players
+            .get(uuid)
+            .and_then(|p| self.clients.get_mut(&p.addr))
     }
-    
+
     pub fn take_client(&mut self, address: &SocketAddr) -> Option<Client> {
         self.clients.remove(address)
     }
-    
+
     pub fn insert_client(&mut self, address: SocketAddr, client: Client) {
         self.clients.insert(address, client);
     }
@@ -72,9 +81,8 @@ impl ConnectionManager {
     }
 
     pub fn get_all_connected_clients(&mut self) -> Vec<&mut Client> {
-        
         let mut connected_clients = Vec::new();
-        
+
         for client in &mut self.clients {
             connected_clients.push(client.1);
         }

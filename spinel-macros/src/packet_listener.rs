@@ -1,23 +1,35 @@
 use proc_macro::TokenStream;
-use proc_macro2::{TokenStream as TokenStream2};
-use quote::{format_ident, quote, ToTokens};
-use syn::{parse_macro_input, ItemFn, FnArg, PatType, Type};
+use proc_macro2::TokenStream as TokenStream2;
+use quote::{ToTokens, format_ident, quote};
+use syn::{FnArg, ItemFn, PatType, Type, parse_macro_input};
 
 use crate::parsers::AttrsParser;
-use crate::util::{resolve_enum_from_expr, resolve_priority_token, map_field_to_rust_type, map_type_to_decoder_method_name, map_syn_type_to_decoder_method};
+use crate::util::{
+    map_field_to_rust_type, map_syn_type_to_decoder_method, map_type_to_decoder_method_name,
+    resolve_enum_from_expr, resolve_priority_token,
+};
 
 pub fn packet_listener_logic(attr: TokenStream, item: TokenStream) -> TokenStream {
     let mut input_fn = parse_macro_input!(item as ItemFn);
     let packet_attrs = parse_macro_input!(attr as AttrsParser);
     let fn_ident = &input_fn.sig.ident;
 
-    let id = packet_attrs.id.map(|lit| lit.to_token_stream()).unwrap_or_else(|| quote!{-1});
-    let state_expr = packet_attrs.state.expect("Packet listener must have a 'state' attribute.");
+    let id = packet_attrs
+        .id
+        .map(|lit| lit.to_token_stream())
+        .unwrap_or_else(|| quote! {-1});
+    let state_expr = packet_attrs
+        .state
+        .expect("Packet listener must have a 'state' attribute.");
 
     let modules = packet_attrs.modules;
     let modules_slice = quote! { &[#(#modules),*] };
 
-    let state = resolve_enum_from_expr(state_expr, "spinel::network::ConnectionState", "ConnectionState");
+    let state = resolve_enum_from_expr(
+        state_expr,
+        "spinel::network::ConnectionState",
+        "ConnectionState",
+    );
 
     let priority = resolve_priority_token(packet_attrs.priority, "Priority", "Medium");
 
@@ -26,7 +38,9 @@ pub fn packet_listener_logic(attr: TokenStream, item: TokenStream) -> TokenStrea
 
     let wrapper_fn_ident = format_ident!("__wrapper_for_{}", fn_ident);
 
-    let (generated_packet_struct, generated_wrapper_fn) = if let Some(fields_attr) = packet_attrs.fields {
+    let (generated_packet_struct, generated_wrapper_fn) = if let Some(fields_attr) =
+        packet_attrs.fields
+    {
         let fn_name_str = fn_ident.to_string();
         let camel_case_fn_name: String = fn_name_str
             .split('_')
@@ -173,7 +187,6 @@ pub fn packet_listener_logic(attr: TokenStream, item: TokenStream) -> TokenStrea
             }
         };
         (Some(packet_struct), wrapper_fn)
-
     } else {
         let wrapper_fn = quote! {
             #[doc(hidden)]

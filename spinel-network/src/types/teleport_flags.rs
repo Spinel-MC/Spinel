@@ -20,11 +20,21 @@ impl TeleportFlags {
 
     pub fn to_byte(&self) -> i8 {
         let mut byte = 0;
-        if self.x { byte |= 0x01; }
-        if self.y { byte |= 0x02; }
-        if self.z { byte |= 0x04; }
-        if self.y_rot { byte |= 0x08; }
-        if self.x_rot { byte |= 0x10; }
+        if self.x {
+            byte |= 0x01;
+        }
+        if self.y {
+            byte |= 0x02;
+        }
+        if self.z {
+            byte |= 0x04;
+        }
+        if self.y_rot {
+            byte |= 0x08;
+        }
+        if self.x_rot {
+            byte |= 0x10;
+        }
         byte
     }
 }

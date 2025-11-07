@@ -10,15 +10,17 @@ use tokio::{
     task,
 };
 
-
-use crate::client::instance::Client;
 use crate::ServerContext;
+use crate::client::instance::Client;
 
-pub async fn start_tcp_listener<S>(server_arc: Arc<Mutex<S>>, address: &str, port: u16) -> Result<(), Error>
+pub async fn start_tcp_listener<S>(
+    server_arc: Arc<Mutex<S>>,
+    address: &str,
+    port: u16,
+) -> Result<(), Error>
 where
     S: ServerContext + Send + Sync + 'static,
 {
-
     let listener = TcpListener::bind(format!("{}:{}", address, port)).await?;
 
     println!("Listening on {}:{}", address, port);
@@ -37,8 +39,11 @@ where
     }
 }
 
-async fn handle_client_connection<S>(server_arc: Arc<Mutex<S>>, stream: TokioTcpStream, addr: SocketAddr)
-where
+async fn handle_client_connection<S>(
+    server_arc: Arc<Mutex<S>>,
+    stream: TokioTcpStream,
+    addr: SocketAddr,
+) where
     S: ServerContext,
 {
     stream.set_nodelay(true).unwrap_or_else(|_| ());
@@ -49,9 +54,12 @@ where
                 return;
             }
             s
-        },
+        }
         Err(e) => {
-            eprintln!("Failed to convert tokio stream to std stream for {}: {}", addr, e);
+            eprintln!(
+                "Failed to convert tokio stream to std stream for {}: {}",
+                addr, e
+            );
             return;
         }
     };
@@ -66,7 +74,9 @@ where
 
     {
         let mut server_guard = server_arc.lock().await;
-        server_guard.connection_manager_mut().register_connection(addr, stream_for_manager);
+        server_guard
+            .connection_manager_mut()
+            .register_connection(addr, stream_for_manager);
     }
 
     task::spawn_blocking(move || {
@@ -81,7 +91,6 @@ where
         }
         drop(server_guard);
 
-
         let client_addr = client.addr;
 
         let mut first_byte = [0u8; 1];
@@ -95,7 +104,6 @@ where
                     }
                 } else {
                     loop {
-                        
                         let packet_id;
                         let packet_length;
 
@@ -106,12 +114,14 @@ where
                                 break;
                             }
                             Err(e) => {
-                                eprintln!("Error reading packet length from {}: {}", client.addr, e);
+                                eprintln!(
+                                    "Error reading packet length from {}: {}",
+                                    client.addr, e
+                                );
                                 break;
                             }
                         }
-                        
-                        
+
                         match client.read_varint() {
                             Ok(id) => packet_id = id,
                             Err(e) => {
@@ -129,33 +139,41 @@ where
                         let payload_size = (packet_length as usize) - packet_id_size;
                         let mut payload_buffer = vec![0; payload_size];
                         if let Err(e) = client.read_exact(&mut payload_buffer) {
-                            eprintln!("Error reading payload for packet from {}: {}", client.addr, e);
+                            eprintln!(
+                                "Error reading payload for packet from {}: {}",
+                                client.addr, e
+                            );
                             break;
                         }
-                        
+
                         let mut server_guard = server_arc.blocking_lock();
 
                         if server_guard.has_listener_for(packet_id, &client.state) {
                             let initial_client_state = client.state;
                             server_guard.dispatch_packet(packet_id, &mut client, payload_buffer);
 
-                            println!("[{:?}, ID: {:#04X}] Packet handled!", initial_client_state, packet_id);
+                            println!(
+                                "[{:?}, ID: {:#04X}] Packet handled!",
+                                initial_client_state, packet_id
+                            );
                         } else {
-                            println!("[{:?}, ID: {:#04X}] Unhandled packet (no listener).", client.state, packet_id);
+                            println!(
+                                "[{:?}, ID: {:#04X}] Unhandled packet (no listener).",
+                                client.state, packet_id
+                            );
                         }
                     }
                 }
-            },
+            }
             Err(e) if e.kind() == ErrorKind::UnexpectedEof => {
-                 println!("Client {} disconnected before sending data.", client.addr);
-            },
+                println!("Client {} disconnected before sending data.", client.addr);
+            }
             Err(e) => {
                 eprintln!("Error peeking first byte from {}: {}", client.addr, e);
             }
         }
-        
+
         let mut server_guard = server_arc.blocking_lock();
         server_guard.on_disconnect(client_addr);
-        
     });
 }

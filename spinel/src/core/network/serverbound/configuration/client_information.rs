@@ -1,14 +1,13 @@
-use crate::{
-    self as spinel,
-    core::{
-        network::clientbound::configuration::{
-            feature_flags::FeatureFlagsPacket, finish_configuration::FinishConfigurationPacket, known_packs::KnownPacksPacket, registry_data::RegistryDataPacket, update_tags::UpdateTagsPacket
-        },
-        server::MinecraftServer,
+use crate::core::{
+    network::clientbound::configuration::{
+        feature_flags::FeatureFlagsPacket, known_packs::KnownPacksPacket,
     },
+    server::MinecraftServer,
 };
 use spinel_macros::packet_listener;
-use spinel_network::{client::instance::ConnectionState, types::alias::Array, Client};
+use spinel_network::{Client, client::instance::ConnectionState, types::alias::Array};
+
+use crate as spinel;
 
 #[packet_listener(
     id: 0x00,
@@ -26,19 +25,24 @@ use spinel_network::{client::instance::ConnectionState, types::alias::Array, Cli
     ),
     module: "login"
 )]
-fn on_client_information(client: &mut Client, packet: Packet, _server: &mut MinecraftServer) -> bool {
-    println!("Received client info (locale: '{}'). Sending server configuration...", packet.locale);
-    
-    FeatureFlagsPacket { feature_flags: Array(vec!["minecraft:vanilla".to_string()]) }.dispatch(client);
+fn on_client_information(
+    client: &mut Client,
+    packet: Packet,
+    _server: &mut MinecraftServer,
+) -> bool {
+    println!(
+        "Received client info (locale: '{}'). Sending server configuration...",
+        packet.locale
+    );
 
+    FeatureFlagsPacket {
+        feature_flags: Array(vec!["minecraft:vanilla".to_string()]),
+    }
+    .dispatch(client);
 
     //TODO: Known Packs packet
 
-    KnownPacksPacket::new(vec![(
-        "".to_owned(),
-        "".to_owned(),
-        "".to_owned()
-    )]).dispatch(client);
-    
+    KnownPacksPacket::new(vec![("".to_owned(), "".to_owned(), "".to_owned())]).dispatch(client);
+
     true
 }

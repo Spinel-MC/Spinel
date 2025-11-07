@@ -1,6 +1,6 @@
 #[derive(Clone, Debug)]
 pub enum ServerListPingType {
-        Modern,
-        LegacyVersioned,
-        LegacyUnversioned,
+    Modern,
+    LegacyVersioned,
+    LegacyUnversioned,
 }

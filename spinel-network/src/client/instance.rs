@@ -1,8 +1,8 @@
-use std::io::{Cursor, Error, ErrorKind, Read, Write};
-use std::net::{SocketAddr, TcpStream, Shutdown};
-use std::str::FromStr;
 use spinel_nbt::{Nbt, NbtCompound};
 use spinel_utils::component::text::TextComponent;
+use std::io::{Cursor, Error, ErrorKind, Read, Write};
+use std::net::{Shutdown, SocketAddr, TcpStream};
+use std::str::FromStr;
 use uuid::Uuid;
 
 use crate::client::metadata::LoginMetadata;
@@ -16,21 +16,23 @@ use crate::types::position::Position;
 use crate::types::slot::Slot;
 use crate::types::sound::SoundEvent;
 use crate::types::teleport_flags::TeleportFlags;
-use cfb8::{Encryptor, Decryptor};
 use aes::Aes128;
 use cfb8::cipher::{
-    KeyIvInit,
+    BlockDecryptMut, BlockEncryptMut, KeyIvInit,
     generic_array::{GenericArray, typenum::U1},
-    BlockEncryptMut, BlockDecryptMut
 };
+use cfb8::{Decryptor, Encryptor};
 
 type AesEncryptor = Encryptor<Aes128>;
 type AesDecryptor = Decryptor<Aes128>;
 
-
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 pub enum ConnectionState {
-    Handshaking, Status, Login, Configuration, Play
+    Handshaking,
+    Status,
+    Login,
+    Configuration,
+    Play,
 }
 
 impl FromStr for ConnectionState {
@@ -66,7 +68,7 @@ pub struct Client {
     encryptor: Option<AesEncryptor>,
     decryptor: Option<AesDecryptor>,
     pub payload_cursor: Option<Cursor<Vec<u8>>>,
-    pub login_metadata: Option<LoginMetadata>
+    pub login_metadata: Option<LoginMetadata>,
 }
 
 impl Client {
@@ -81,7 +83,7 @@ impl Client {
             login_metadata: None,
         }
     }
-    
+
     pub fn read_varint_from_cursor<R: Read>(reader: &mut R) -> Result<i32, Error> {
         let mut num_read = 0;
         let mut result = 0;
@@ -91,9 +93,13 @@ impl Client {
             let read = buf[0];
             let value = (read & 0x7F) as i32;
             result |= value << (7 * num_read);
-            if (read & 0x80) == 0 { break; }
+            if (read & 0x80) == 0 {
+                break;
+            }
             num_read += 1;
-            if num_read >= 5 { return Err(Error::new(ErrorKind::InvalidData, "VarInt is too big")); }
+            if num_read >= 5 {
+                return Err(Error::new(ErrorKind::InvalidData, "VarInt is too big"));
+            }
         }
         Ok(result)
     }
@@ -101,7 +107,7 @@ impl Client {
     pub fn read_string_from_cursor<R: Read>(reader: &mut R) -> Result<String, Error> {
         let length = Self::read_varint_from_cursor(reader)? as usize;
         if length > 32767 {
-             return Err(Error::new(ErrorKind::InvalidData, "String too long"));
+            return Err(Error::new(ErrorKind::InvalidData, "String too long"));
         }
         let mut buffer = vec![0; length];
         reader.read_exact(&mut buffer)?;
@@ -124,13 +130,19 @@ impl Client {
 
     pub fn shutdown_write(&mut self) {
         if let Err(e) = self.stream.shutdown(Shutdown::Write) {
-            eprintln!("Failed to shutdown stream for client at {}: {}", self.addr, e);
+            eprintln!(
+                "Failed to shutdown stream for client at {}: {}",
+                self.addr, e
+            );
         }
     }
 
     pub fn disconnect(&mut self) {
         if let Err(e) = self.stream.shutdown(Shutdown::Both) {
-            eprintln!("Failed to disconnect stream for client at {}: {}", self.addr, e);
+            eprintln!(
+                "Failed to disconnect stream for client at {}: {}",
+                self.addr, e
+            );
         }
     }
 
@@ -167,7 +179,6 @@ impl Client {
         }
     }
 
-
     pub fn send_raw_bytes(&mut self, bytes: &[u8]) {
         if self.stream.write_all(bytes).is_err() {
             eprintln!("Raw Byte Response Error for client at {}", self.addr);
@@ -195,8 +206,11 @@ impl Client {
         let length = self.read_varint()? as usize;
 
         if length > max_len {
-            let msg = format!("String of length {} exceeded its limit of {}", length, max_len);
-            return Err(Error::new(ErrorKind::InvalidData, msg))
+            let msg = format!(
+                "String of length {} exceeded its limit of {}",
+                length, max_len
+            );
+            return Err(Error::new(ErrorKind::InvalidData, msg));
         }
 
         let mut buffer = vec![0; length];
@@ -316,8 +330,7 @@ impl Client {
 
     pub fn read_json_text_component(&mut self) -> Result<TextComponent, Error> {
         let json_str = self.read_string_with_limit(262144)?;
-        serde_json::from_str(&json_str)
-            .map_err(|e| Error::new(ErrorKind::InvalidData, e))
+        serde_json::from_str(&json_str).map_err(|e| Error::new(ErrorKind::InvalidData, e))
     }
 
     pub fn read_u16(&mut self) -> Result<u16, Error> {
@@ -374,9 +387,14 @@ impl Client {
     pub fn read_slot(&mut self) -> Result<Slot, Error> {
         let is_present = self.read_bool()?;
         if !is_present {
-            return Ok(Slot { is_present: false, item_id: 0, item_count: 0, nbt: None });
+            return Ok(Slot {
+                is_present: false,
+                item_id: 0,
+                item_count: 0,
+                nbt: None,
+            });
         }
-        
+
         let item_id = self.read_varint()?;
         let item_count = self.read_byte()?;
 
@@ -389,14 +407,23 @@ impl Client {
         } else {
             let tag_id = self.read_unsigned_byte()?;
             if tag_id != spinel_nbt::COMPOUND_ID {
-                return Err(Error::new(ErrorKind::InvalidData, "Slot NBT must be a Compound tag"));
+                return Err(Error::new(
+                    ErrorKind::InvalidData,
+                    "Slot NBT must be a Compound tag",
+                ));
             }
             let mut helper = spinel_nbt::deserializer::NbtReadHelper::new(&mut self.stream);
-            let compound = NbtCompound::deserialize_content(&mut helper).map_err(|e| Error::new(ErrorKind::Other, e))?;
+            let compound = NbtCompound::deserialize_content(&mut helper)
+                .map_err(|e| Error::new(ErrorKind::Other, e))?;
             Some(compound)
         };
 
-        Ok(Slot { is_present: true, item_id, item_count, nbt })
+        Ok(Slot {
+            is_present: true,
+            item_id,
+            item_count,
+            nbt,
+        })
     }
 
     pub fn read_entity_metadata(&mut self) -> Result<Vec<MetadataEntry>, Error> {
@@ -423,7 +450,11 @@ impl Client {
                 }
                 7 => MetadataValue::Slot(self.read_slot()?),
                 8 => MetadataValue::Boolean(self.read_bool()?),
-                9 => MetadataValue::Rotation(self.read_float()?, self.read_float()?, self.read_float()?),
+                9 => MetadataValue::Rotation(
+                    self.read_float()?,
+                    self.read_float()?,
+                    self.read_float()?,
+                ),
                 10 => MetadataValue::Position(self.read_position()?),
                 11 => {
                     if self.read_bool()? {
@@ -431,7 +462,7 @@ impl Client {
                     } else {
                         MetadataValue::OptionalPosition(None)
                     }
-                },
+                }
                 12 => MetadataValue::Direction(self.read_varint()?),
                 13 => {
                     if self.read_bool()? {
@@ -439,25 +470,34 @@ impl Client {
                     } else {
                         MetadataValue::OptionalUuid(None)
                     }
-                },
+                }
                 14 => MetadataValue::BlockId(self.read_varint()?),
                 15 => {
-                     if self.read_bool()? {
+                    if self.read_bool()? {
                         MetadataValue::OptionalBlockId(Some(self.read_varint()?))
                     } else {
                         MetadataValue::OptionalBlockId(None)
                     }
-                },
+                }
                 16 => {
                     let tag_id = self.read_unsigned_byte()?;
                     if tag_id != spinel_nbt::COMPOUND_ID {
-                        return Err(Error::new(ErrorKind::InvalidData, "Metadata NBT must be a Compound tag"));
+                        return Err(Error::new(
+                            ErrorKind::InvalidData,
+                            "Metadata NBT must be a Compound tag",
+                        ));
                     }
                     let mut helper = spinel_nbt::deserializer::NbtReadHelper::new(&mut self.stream);
-                    let compound = NbtCompound::deserialize_content(&mut helper).map_err(|e| Error::new(ErrorKind::Other, e))?;
+                    let compound = NbtCompound::deserialize_content(&mut helper)
+                        .map_err(|e| Error::new(ErrorKind::Other, e))?;
                     MetadataValue::Nbt(compound)
                 }
-                _ => return Err(Error::new(ErrorKind::InvalidData, format!("Unknown metadata type ID: {}", type_id))),
+                _ => {
+                    return Err(Error::new(
+                        ErrorKind::InvalidData,
+                        format!("Unknown metadata type ID: {}", type_id),
+                    ));
+                }
             };
             metadata.push(MetadataEntry { index, value });
         }
@@ -477,9 +517,13 @@ impl Client {
             let read = buf[0];
             let value = (read & 0x7F) as i32;
             result |= value << (7 * num_read);
-            if (read & 0x80) == 0 { break; }
+            if (read & 0x80) == 0 {
+                break;
+            }
             num_read += 1;
-            if num_read >= 5 { return Err(Error::new(ErrorKind::InvalidData, "VarInt too big")); }
+            if num_read >= 5 {
+                return Err(Error::new(ErrorKind::InvalidData, "VarInt too big"));
+            }
         }
         Ok(result)
     }
@@ -496,8 +540,9 @@ impl Client {
         Ok(u64::from_be_bytes(buf))
     }
 
-
-    fn read_paletted_container_from_cursor<R: Read>(reader: &mut R) -> Result<PalettedContainer, Error> {
+    fn read_paletted_container_from_cursor<R: Read>(
+        reader: &mut R,
+    ) -> Result<PalettedContainer, Error> {
         let bits_per_entry = {
             let mut buf = [0; 1];
             Self::cursor_read_exact(reader, &mut buf)?;
@@ -524,28 +569,47 @@ impl Client {
             data.push(Self::cursor_read_u64(reader)?);
         }
 
-        Ok(PalettedContainer { bits_per_entry, palette, data })
+        Ok(PalettedContainer {
+            bits_per_entry,
+            palette,
+            data,
+        })
     }
 
     fn read_chunk_section_from_cursor<R: Read>(reader: &mut R) -> Result<ChunkSection, Error> {
         let block_count = Self::cursor_read_short(reader)?;
         let block_states = Self::read_paletted_container_from_cursor(reader)?;
         let biomes = Self::read_paletted_container_from_cursor(reader)?;
-        Ok(ChunkSection { block_count, block_states, biomes })
+        Ok(ChunkSection {
+            block_count,
+            block_states,
+            biomes,
+        })
     }
 
     pub fn read_chunk_data(&mut self) -> Result<ChunkData, Error> {
-        let heightmaps = if let Nbt::Compound(c) = Nbt::read_from_stream(&mut self.stream)?.1 { c } else { return Err(Error::new(ErrorKind::InvalidData, "Expected NBT Compound for Heightmaps")); };
+        let heightmaps = if let Nbt::Compound(c) = Nbt::read_from_stream(&mut self.stream)?.1 {
+            c
+        } else {
+            return Err(Error::new(
+                ErrorKind::InvalidData,
+                "Expected NBT Compound for Heightmaps",
+            ));
+        };
         let data_blob = self.read_byte_array()?;
         let num_block_entities = self.read_varint()? as usize;
         let mut block_entities = Vec::with_capacity(num_block_entities);
         for _ in 0..num_block_entities {
             let tag_id = self.read_unsigned_byte()?;
             if tag_id != spinel_nbt::COMPOUND_ID {
-                 return Err(Error::new(ErrorKind::InvalidData, "Expected NBT Compound for Block Entity"));
+                return Err(Error::new(
+                    ErrorKind::InvalidData,
+                    "Expected NBT Compound for Block Entity",
+                ));
             }
             let mut helper = spinel_nbt::deserializer::NbtReadHelper::new(&mut self.stream);
-            let compound = NbtCompound::deserialize_content(&mut helper).map_err(|e| Error::new(ErrorKind::Other, e))?;
+            let compound = NbtCompound::deserialize_content(&mut helper)
+                .map_err(|e| Error::new(ErrorKind::Other, e))?;
             block_entities.push(compound)
         }
 
@@ -557,7 +621,11 @@ impl Client {
             sections.push(section);
         }
 
-        Ok(ChunkData { heightmaps, sections, block_entities })
+        Ok(ChunkData {
+            heightmaps,
+            sections,
+            block_entities,
+        })
     }
 
     pub fn read_light_data(&mut self) -> Result<LightData, Error> {
@@ -596,8 +664,16 @@ impl Client {
         let type_id = self.read_varint()?;
         let name = self.read_json_text_component()?;
         let has_target = self.read_bool()?;
-        let target = if has_target { Some(self.read_json_text_component()?) } else { None };
-        Ok(ChatType { type_id, name, target })
+        let target = if has_target {
+            Some(self.read_json_text_component()?)
+        } else {
+            None
+        };
+        Ok(ChatType {
+            type_id,
+            name,
+            target,
+        })
     }
 
     pub fn read_sound_event(&mut self) -> Result<SoundEvent, Error> {
@@ -605,7 +681,11 @@ impl Client {
         if id == 0 {
             let name = self.read_string()?;
             let has_fixed_range = self.read_bool()?;
-            let fixed_range = if has_fixed_range { Some(self.read_float()?) } else { None };
+            let fixed_range = if has_fixed_range {
+                Some(self.read_float()?)
+            } else {
+                None
+            };
             Ok(SoundEvent::Named { name, fixed_range })
         } else {
             Ok(SoundEvent::Id(id - 1))

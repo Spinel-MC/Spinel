@@ -16,22 +16,26 @@ impl RngCore for CompatRng {
 impl CryptoRng for CompatRng {}
 struct CompatRng(OsRng);
 
-
-
-
 #[event_listener(event: "intention", module: "login")]
 fn on_intention(event: &mut IntentionEvent, _server: &mut MinecraftServer) {
-
     event.client().login_metadata = Some(LoginMetadata::new(event.protocol_version));
 }
 
-use rsa::{rand_core::{CryptoRng, OsRng, RngCore}, RsaPrivateKey};
-use spinel_macros::{event_listener, packet_listener};
+use crate::core::{
+    events::{intention::IntentionEvent, login::PreLoginEvent},
+    network::clientbound::login::encryption_request::EncryptionRequestPacket,
+    server::MinecraftServer,
+};
 use rsa::pkcs8::EncodePublicKey;
-use spinel_network::{client::{self, metadata::LoginMetadata}, Client, ConnectionState};
+use rsa::{
+    RsaPrivateKey,
+    rand_core::{CryptoRng, OsRng, RngCore},
+};
+use spinel_macros::{event_listener, packet_listener};
+use spinel_network::{Client, ConnectionState, client::metadata::LoginMetadata};
 use spinel_utils::component::Component;
-use crate::{self as spinel, core::{events::{intention::IntentionEvent, login::PreLoginEvent, startup::StartupEvent}, network::clientbound::login::{disconnect::LoginDisconnectPacket, encryption_request::EncryptionRequestPacket}, server::MinecraftServer}};
 
+use crate as spinel;
 
 #[packet_listener(
     id: 0x00,
@@ -40,7 +44,10 @@ use crate::{self as spinel, core::{events::{intention::IntentionEvent, login::Pr
     module: "login"
 )]
 fn on_login_start(client: &mut Client, packet: Packet, server: &mut MinecraftServer) -> bool {
-    println!("Login sequence started for user '{}' ({})", packet.name, packet.uuid);
+    println!(
+        "Login sequence started for user '{}' ({})",
+        packet.name, packet.uuid
+    );
 
     let mut pre_login_event = PreLoginEvent::new(packet.name.clone(), packet.uuid, false);
 
@@ -51,10 +58,8 @@ fn on_login_start(client: &mut Client, packet: Packet, server: &mut MinecraftSer
     }
 
     let mut rng = CompatRng(OsRng);
-    let private_key = RsaPrivateKey::new(&mut rng, 1024)
-        .expect("Failed to generate a private key");
-    let public_key_der = private_key.to_public_key()
-        .to_public_key_der().unwrap();
+    let private_key = RsaPrivateKey::new(&mut rng, 1024).expect("Failed to generate a private key");
+    let public_key_der = private_key.to_public_key().to_public_key_der().unwrap();
 
     let verify_token: [u8; 16] = rand::random();
 
@@ -64,7 +69,10 @@ fn on_login_start(client: &mut Client, packet: Packet, server: &mut MinecraftSer
         metadata.private_key = Some(private_key);
         metadata.verify_token = Some(verify_token.to_vec());
     } else {
-        println!("Error: Client {} sent Login Start Packet without prior Intention Packet.", client.addr);
+        println!(
+            "Error: Client {} sent Login Start Packet without prior Intention Packet.",
+            client.addr
+        );
         server.disconnect(client, Component::text("Invalid login sequence."));
         return true;
     }

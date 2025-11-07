@@ -3,13 +3,13 @@ pub mod encoder;
 pub mod server;
 pub mod types;
 
-pub use client::instance::{Client, ConnectionState};
 pub use client::connection_manager::ConnectionManager;
+pub use client::instance::{Client, ConnectionState};
 pub use client::player::Player;
 
 pub use inventory;
-pub use tokio;
 pub use spinel_utils::Priority;
+pub use tokio;
 
 pub struct PacketListener {
     pub id: i32,
@@ -17,7 +17,7 @@ pub struct PacketListener {
     pub events: &'static [&'static str],
     pub priority: Priority,
     pub handler: fn(&mut Client, server: *mut ()) -> bool,
-    pub modules: &'static [&'static str], 
+    pub modules: &'static [&'static str],
 }
 
 inventory::collect!(&'static PacketListener);

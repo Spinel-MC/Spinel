@@ -1,7 +1,7 @@
 use crate::deserializer::NbtReadHelper;
 use crate::serializer::WriteAdaptor;
 use crate::tag::Nbt;
-use crate::{get_nbt_string, END_ID, Error};
+use crate::{END_ID, Error, get_nbt_string};
 use std::collections::BTreeMap;
 use std::io::{ErrorKind, Read, Write};
 

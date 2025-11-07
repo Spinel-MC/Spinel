@@ -1,9 +1,8 @@
-pub mod handshake;
-pub mod status;
-pub mod play;
 pub mod configuration;
+pub mod handshake;
 pub mod login;
-
+pub mod play;
+pub mod status;
 
 // LOGIN SEQUENCE
 
@@ -15,7 +14,6 @@ pub mod login;
 //D [S2C] Set Compression              | Response to Encryption Response (optional)
 //D [S2C] Login Success                | Response to Login Start (after auth completes)
 //D [C2S] Login Acknowledged           | Response to Login Success
-
 
 // CONFIGURATION PHASE:
 //D [C2S] Plugin Message            | Independent request; sends client brand

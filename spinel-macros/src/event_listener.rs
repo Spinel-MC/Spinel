@@ -1,9 +1,9 @@
+use crate::parsers::EventAttrParser;
+use crate::util::resolve_priority_token;
 use proc_macro::TokenStream;
 use proc_macro2::TokenStream as TokenStream2;
 use quote::{format_ident, quote};
-use syn::{parse_macro_input, FnArg, ItemFn, PatType, Type};
-use crate::parsers::EventAttrParser;
-use crate::util::resolve_priority_token;
+use syn::{FnArg, ItemFn, PatType, Type, parse_macro_input};
 
 pub fn event_listener_logic(attr: TokenStream, item: TokenStream) -> TokenStream {
     let input_fn = parse_macro_input!(item as ItemFn);
@@ -13,25 +13,26 @@ pub fn event_listener_logic(attr: TokenStream, item: TokenStream) -> TokenStream
 
     let event_name_lit = event_attrs.event;
     let dependent_lit = event_attrs.dependent;
-    
+
     let modules = event_attrs.modules;
     let modules_slice = quote! { &[#(#modules),*] };
 
     let priority = resolve_priority_token(event_attrs.priority, "Priority", "Medium");
 
-    let event_struct_full_path = if let Some(FnArg::Typed(PatType { ty, .. })) = input_fn.sig.inputs.first() {
-        if let Type::Reference(type_ref) = &**ty {
-            if let Type::Path(path_ty) = &*type_ref.elem {
-                quote! { #path_ty }
+    let event_struct_full_path =
+        if let Some(FnArg::Typed(PatType { ty, .. })) = input_fn.sig.inputs.first() {
+            if let Type::Reference(type_ref) = &**ty {
+                if let Type::Path(path_ty) = &*type_ref.elem {
+                    quote! { #path_ty }
+                } else {
+                    panic!("#[event_listener] function's event argument must be a path type")
+                }
             } else {
-                panic!("#[event_listener] function's event argument must be a path type")
+                panic!("#[event_listener] function's first argument must be a mutable reference")
             }
         } else {
-            panic!("#[event_listener] function's first argument must be a mutable reference")
-        }
-    } else {
-        panic!("#[event_listener] function must take at least one argument")
-    };
+            panic!("#[event_listener] function must take at least one argument")
+        };
 
     let wrapper_fn = quote! {
         #[doc(hidden)]
@@ -43,7 +44,7 @@ pub fn event_listener_logic(attr: TokenStream, item: TokenStream) -> TokenStream
     };
 
     let static_item_name = format_ident!("__SPINEL_LISTENER_{}", fn_ident);
-    
+
     let mut final_output = TokenStream2::new();
 
     final_output.extend(quote! {
@@ -74,7 +75,6 @@ pub fn event_listener_logic(attr: TokenStream, item: TokenStream) -> TokenStream
             };
         inventory::submit! { &#static_event_reg_name }
     });
-    
-    
+
     final_output.into()
 }
