@@ -1,5 +1,6 @@
-
-use crate::component::{color::TextColor, style::Style, text::TextComponent, variant::ComponentType};
+use crate::component::{
+    color::TextColor, style::Style, text::TextComponent, variant::ComponentType,
+};
 
 #[derive(Clone, Debug, Default)]
 pub struct ComponentBuilder {
@@ -26,7 +27,7 @@ impl ComponentBuilder {
         self.style.bold = Some(val);
         self
     }
-    
+
     pub fn italic(mut self, val: bool) -> Self {
         self.style.italic = Some(val);
         self

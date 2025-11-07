@@ -1,12 +1,11 @@
-use syn::{
-    parse::{Parse, ParseStream, Result},
-    parenthesized,
-    punctuated::Punctuated,
-    Expr, Ident, Lit, LitStr, Token, Type,
-};
+use lazy_static::lazy_static;
 use std::collections::HashSet;
 use std::sync::Mutex;
-use lazy_static::lazy_static;
+use syn::{
+    Expr, Ident, Lit, LitStr, Token, Type, parenthesized,
+    parse::{Parse, ParseStream, Result},
+    punctuated::Punctuated,
+};
 
 lazy_static! {
     static ref CRATE_NAMESPACE: Mutex<Option<String>> = Mutex::new(None);
@@ -25,8 +24,7 @@ pub fn get_crate_namespace() -> String {
         return ns.to_string();
     }
 
-    let pkg_name = std::env::var("CARGO_PKG_NAME")
-        .unwrap_or_else(|_| "unknown_crate".to_string());
+    let pkg_name = std::env::var("CARGO_PKG_NAME").unwrap_or_else(|_| "unknown_crate".to_string());
 
     if pkg_name == "spinel" {
         "minecraft".to_string()
@@ -112,7 +110,10 @@ impl Parse for AttrsParser {
             let key_str = key_ident.to_string();
 
             if !seen_keys.insert(key_str.clone()) {
-                return Err(syn::Error::new_spanned(key_ident, format!("duplicate attribute key: `{}`", key_str)));
+                return Err(syn::Error::new_spanned(
+                    key_ident,
+                    format!("duplicate attribute key: `{}`", key_str),
+                ));
             }
 
             input.parse::<Token![:]>()?;
@@ -123,7 +124,8 @@ impl Parse for AttrsParser {
                 if input.peek(syn::token::Paren) {
                     let content;
                     parenthesized!(content in input);
-                    let parsed: Punctuated<LitStr, Token![,]> = content.parse_terminated(Parse::parse, Token![,])?;
+                    let parsed: Punctuated<LitStr, Token![,]> =
+                        content.parse_terminated(Parse::parse, Token![,])?;
                     events.extend(parsed);
                 } else {
                     events.push(input.parse()?);
@@ -132,7 +134,8 @@ impl Parse for AttrsParser {
                 if input.peek(syn::token::Paren) {
                     let content;
                     parenthesized!(content in input);
-                    let parsed: Punctuated<LitStr, Token![,]> = content.parse_terminated(Parse::parse, Token![,])?;
+                    let parsed: Punctuated<LitStr, Token![,]> =
+                        content.parse_terminated(Parse::parse, Token![,])?;
                     modules.extend(parsed);
                 } else {
                     modules.push(input.parse()?);
@@ -145,7 +148,12 @@ impl Parse for AttrsParser {
                 match key_str.as_str() {
                     "state" => state = Some(value),
                     "priority" => priority = Some(value),
-                    _ => return Err(syn::Error::new_spanned(key_ident, "unsupported attribute key")),
+                    _ => {
+                        return Err(syn::Error::new_spanned(
+                            key_ident,
+                            "unsupported attribute key",
+                        ));
+                    }
                 }
             }
 
@@ -189,7 +197,10 @@ impl Parse for EventAttrParser {
             let key_str = key.to_string();
 
             if !seen_keys.insert(key_str.clone()) {
-                return Err(syn::Error::new_spanned(&key, format!("duplicate attribute key: `{}`", key_str)));
+                return Err(syn::Error::new_spanned(
+                    &key,
+                    format!("duplicate attribute key: `{}`", key_str),
+                ));
             }
 
             input.parse::<Token![:]>()?;
@@ -200,7 +211,8 @@ impl Parse for EventAttrParser {
                 if input.peek(syn::token::Paren) {
                     let content;
                     parenthesized!(content in input);
-                    let parsed: Punctuated<LitStr, Token![,]> = content.parse_terminated(Parse::parse, Token![,])?;
+                    let parsed: Punctuated<LitStr, Token![,]> =
+                        content.parse_terminated(Parse::parse, Token![,])?;
                     modules.extend(parsed);
                 } else {
                     modules.push(input.parse()?);
@@ -212,7 +224,10 @@ impl Parse for EventAttrParser {
                 if let Lit::Bool(b) = value {
                     dependent = b.value;
                 } else {
-                    return Err(syn::Error::new_spanned(value, "expected boolean for `dependent`"));
+                    return Err(syn::Error::new_spanned(
+                        value,
+                        "expected boolean for `dependent`",
+                    ));
                 }
             } else {
                 let value: Lit = input.parse()?;
@@ -221,14 +236,20 @@ impl Parse for EventAttrParser {
                         if let Lit::Bool(b) = value {
                             with_client = b.value;
                         } else {
-                            return Err(syn::Error::new_spanned(value, "expected boolean for `with_client`"));
+                            return Err(syn::Error::new_spanned(
+                                value,
+                                "expected boolean for `with_client`",
+                            ));
                         }
                     }
                     "is_async" => {
                         if let Lit::Bool(b) = value {
                             r#async = b.value;
                         } else {
-                            return Err(syn::Error::new_spanned(value, "expected boolean for `is_async`"));
+                            return Err(syn::Error::new_spanned(
+                                value,
+                                "expected boolean for `is_async`",
+                            ));
                         }
                     }
                     _ => return Err(syn::Error::new_spanned(key, "unexpected attribute key")),
@@ -260,7 +281,10 @@ impl LitExt for Lit {
         if let Lit::Int(lit_int) = self {
             Ok(lit_int)
         } else {
-            Err(syn::Error::new_spanned(self, format!("expected integer literal for `{}`", attr_name)))
+            Err(syn::Error::new_spanned(
+                self,
+                format!("expected integer literal for `{}`", attr_name),
+            ))
         }
     }
 }

@@ -1,4 +1,4 @@
-use std::{error::Error, io::{self, ErrorKind}, net::SocketAddr, str::FromStr};
+use std::net::SocketAddr;
 use uuid::Uuid;
 
 pub struct Player {
@@ -9,7 +9,7 @@ pub struct Player {
 }
 
 impl Player {
-    pub fn new(uuid: Uuid, username: String, protocol_version: i32, addr: SocketAddr) -> Self { 
+    pub fn new(uuid: Uuid, username: String, protocol_version: i32, addr: SocketAddr) -> Self {
         Self {
             uuid,
             username,

@@ -1,9 +1,9 @@
+use crate as spinel;
 use spinel_macros::packet_dispatcher;
 use spinel_network::types::game_profile::GameProfile;
 use uuid::Uuid;
-use crate as spinel;
 
-#[packet_dispatcher(id: 0x02)] 
+#[packet_dispatcher(id: 0x02)]
 pub struct LoginSuccessPacket {
     pub profile: GameProfile,
 }
@@ -15,7 +15,7 @@ impl LoginSuccessPacket {
                 uuid,
                 username,
                 properties: vec![],
-            }
+            },
         }
     }
 }

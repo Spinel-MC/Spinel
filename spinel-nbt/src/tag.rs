@@ -26,10 +26,10 @@ pub trait NbtWritable {
 }
 
 impl NbtWritable for NbtCompound {
-     fn write_unnamed(&self, writer: &mut WriteAdaptor<impl Write>) -> Result<(), Error> {
+    fn write_unnamed(&self, writer: &mut WriteAdaptor<impl Write>) -> Result<(), Error> {
         writer.write_u8_be(COMPOUND_ID)?;
         self.serialize_content(writer)
-     }
+    }
 }
 
 impl Nbt {

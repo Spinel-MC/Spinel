@@ -3,11 +3,11 @@ mod util;
 
 mod event_dispatcher;
 mod event_listener;
+mod import_module;
+mod module_dependency;
+mod namespace;
 mod packet_dispatcher;
 mod packet_listener;
-mod import_module;
-mod namespace;
-mod module_dependency;
 
 use proc_macro::TokenStream;
 

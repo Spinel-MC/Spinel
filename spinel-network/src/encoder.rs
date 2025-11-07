@@ -1,4 +1,4 @@
-use spinel_nbt::{to_bytes_unnamed, Nbt, NbtCompound};
+use spinel_nbt::{Nbt, NbtCompound, to_bytes_unnamed};
 use spinel_utils::component::text::TextComponent;
 use uuid::Uuid;
 
@@ -78,7 +78,7 @@ impl NetworkBuffer {
         self
     }
 
-    pub fn write_varint(&mut self, mut value: i32) -> &mut Self {
+    pub fn write_varint(&mut self, value: i32) -> &mut Self {
         let mut uvalue = value as u32;
         loop {
             if (uvalue & !0x7F) == 0 {
@@ -92,8 +92,7 @@ impl NetworkBuffer {
 
     pub fn write_nbt_compound(&mut self, value: &NbtCompound) -> &mut Self {
         let mut data_buf = Vec::new();
-        to_bytes_unnamed(value, &mut data_buf)
-            .expect("Failed to serialize NBT compound");
+        to_bytes_unnamed(value, &mut data_buf).expect("Failed to serialize NBT compound");
         self.buffer.extend_from_slice(&data_buf);
         self
     }
@@ -113,7 +112,7 @@ impl NetworkBuffer {
         self
     }
 
-    pub fn write_varlong(&mut self, mut value: i64) -> &mut Self {
+    pub fn write_varlong(&mut self, value: i64) -> &mut Self {
         let mut uvalue = value as u64;
         loop {
             if (uvalue & !0x7F) == 0 {

@@ -11,7 +11,7 @@ use crate as spinel;
         module: "login",
         fields:(channel: Identifier, data: ByteArray)
 )]
-fn on_plugin_message(client: &mut Client, packet: Packet, server: &mut MinecraftServer) -> bool {
-        //todo: I have no idea what to do here. I don't think it's important right now.
-        true
+fn on_plugin_message(_client: &mut Client, _packet: Packet, _server: &mut MinecraftServer) -> bool {
+    //todo: I have no idea what to do here. I don't think it's important right now.
+    true
 }

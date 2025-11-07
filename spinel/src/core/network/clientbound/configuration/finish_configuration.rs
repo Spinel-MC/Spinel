@@ -6,7 +6,7 @@ pub struct FinishConfigurationPacket;
 
 impl FinishConfigurationPacket {
     pub fn new() -> Self {
-            Self
+        Self
     }
 }
 

@@ -10,7 +10,7 @@ pub struct ConfigurationDisconnectPacket {
 impl ConfigurationDisconnectPacket {
     pub fn new(reason: impl Into<TextComponent>) -> Self {
         Self {
-            reason: reason.into()
+            reason: reason.into(),
         }
     }
 }

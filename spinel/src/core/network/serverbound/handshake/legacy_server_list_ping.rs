@@ -1,10 +1,12 @@
-use crate::core::events::server_list_ping::{server_list_ping_type::ServerListPingType, ServerListPingEvent};
+use crate as spinel;
+use crate::core::events::server_list_ping::{
+    ServerListPingEvent, server_list_ping_type::ServerListPingType,
+};
 use crate::core::network::clientbound::handshake::legacy_server_list_ping::dispatch_legacy_server_list_ping_response;
 use crate::core::server::MinecraftServer;
-use crate as spinel;
 use spinel_macros::packet_listener;
 use spinel_network::Client;
-use std::io::{Read};
+use std::io::Read;
 
 #[packet_listener(id: 0xFE, state: "Handshaking", module: "legacy_server_list_ping")]
 pub fn handle_legacy_server_list_ping(client: &mut Client, server: &mut MinecraftServer) -> bool {
@@ -29,7 +31,7 @@ pub fn handle_legacy_server_list_ping(client: &mut Client, server: &mut Minecraf
 
     let mut event = ServerListPingEvent::new(ping_type);
     event.dispatch(server, client);
-    
+
     if event.cancelled {
         return true;
     }

@@ -1,3 +1,1 @@
-pub struct PlayerEntity {
-        
-}
+pub struct PlayerEntity {}

@@ -1,11 +1,13 @@
+use crate::parsers::get_crate_namespace;
+use crate::util::resolve_id;
 use proc_macro::TokenStream;
 use quote::{format_ident, quote};
 use syn::{
+    LitStr, Token, parenthesized,
     parse::{Parse, ParseStream, Result},
-    parse_macro_input, punctuated::Punctuated, LitStr, Token, parenthesized
+    parse_macro_input,
+    punctuated::Punctuated,
 };
-use crate::util::resolve_id;
-use crate::parsers::get_crate_namespace;
 
 struct ModuleDependencyParser {
     subject_module: LitStr,
@@ -27,7 +29,11 @@ impl Parse for ModuleDependencyParser {
             dependencies.push(input.parse()?);
         }
 
-        Ok(Self { subject_module, _comma, dependencies })
+        Ok(Self {
+            subject_module,
+            _comma,
+            dependencies,
+        })
     }
 }
 
@@ -36,14 +42,14 @@ pub fn declare_module_dependency_logic(input: TokenStream) -> TokenStream {
     let mut expanded = quote! {};
 
     let subject_module_str = parser.subject_module.value();
-    
+
     let crate_namespace = get_crate_namespace();
     let qualified_subject = resolve_id(&subject_module_str, &crate_namespace);
 
     for (i, dep_lit) in parser.dependencies.iter().enumerate() {
         let dep_str = dep_lit.value();
         let qualified_dependency = resolve_id(&dep_str, &crate_namespace);
-        
+
         let sanitized_subject = qualified_subject.replace(":", "_").to_uppercase();
         let static_name = format_ident!("__SPINEL_MODULE_DEPENDENCY_{}_{}", sanitized_subject, i);
 

@@ -1,8 +1,8 @@
+use crate::parsers::AttrsParser;
+use crate::util::{get_inner_type, get_write_method_for_type};
 use proc_macro::TokenStream;
 use quote::{format_ident, quote};
-use syn::{parse_macro_input, ItemStruct, Type};
-use crate::parsers::AttrsParser;
-use crate::util::{get_write_method_for_type, get_inner_type};
+use syn::{ItemStruct, Type, parse_macro_input};
 
 pub fn packet_dispatcher_logic(attr: TokenStream, item: TokenStream) -> TokenStream {
     let packet_attrs = parse_macro_input!(attr as AttrsParser);
@@ -18,12 +18,17 @@ pub fn packet_dispatcher_logic(attr: TokenStream, item: TokenStream) -> TokenStr
                 let field_name = field.ident.as_ref().unwrap();
                 let field_type = &field.ty;
 
-                let ty_path = if let Type::Path(path) = field_type { path } else { continue; };
+                let ty_path = if let Type::Path(path) = field_type {
+                    path
+                } else {
+                    continue;
+                };
                 let segment_ident = ty_path.path.segments.last().unwrap().ident.clone();
                 let segment_str = segment_ident.to_string();
 
                 if segment_str == "Option" || segment_str == "Optional" {
-                    let inner_type = get_inner_type(ty_path).expect("Option/Optional must have a generic parameter.");
+                    let inner_type = get_inner_type(ty_path)
+                        .expect("Option/Optional must have a generic parameter.");
 
                     if let Type::Tuple(type_tuple) = &inner_type {
                         if type_tuple.elems.len() == 2 {
@@ -37,12 +42,18 @@ pub fn packet_dispatcher_logic(attr: TokenStream, item: TokenStream) -> TokenStr
                             continue;
                         }
                     }
-                    
+
                     let (write_method, is_ref) = get_write_method_for_type(&inner_type);
-                    
-                    let inner_segment_ident = if let Type::Path(p) = &inner_type { p.path.segments.last().unwrap().ident.clone() } else { format_ident!("") };
-                    
-                    let value_expr = if inner_segment_ident == format_ident!("VarInt") || inner_segment_ident == format_ident!("VarLong") {
+
+                    let inner_segment_ident = if let Type::Path(p) = &inner_type {
+                        p.path.segments.last().unwrap().ident.clone()
+                    } else {
+                        format_ident!("")
+                    };
+
+                    let value_expr = if inner_segment_ident == format_ident!("VarInt")
+                        || inner_segment_ident == format_ident!("VarLong")
+                    {
                         quote! { value.0 }
                     } else if is_ref {
                         quote! { value }
@@ -63,8 +74,9 @@ pub fn packet_dispatcher_logic(attr: TokenStream, item: TokenStream) -> TokenStr
                 let write_method_str = write_method.to_string();
 
                 if write_method_str == "write_array_custom" {
-                    let inner_type = get_inner_type(ty_path).expect("Array/Vec must have a generic parameter.");
-                    
+                    let inner_type =
+                        get_inner_type(ty_path).expect("Array/Vec must have a generic parameter.");
+
                     let base_expr = if segment_str == "Array" {
                         quote! { self.#field_name.0 }
                     } else {
@@ -76,40 +88,71 @@ pub fn packet_dispatcher_logic(attr: TokenStream, item: TokenStream) -> TokenStr
                     if let Type::Tuple(type_tuple) = inner_type {
                         for (i, elem_type) in type_tuple.elems.iter().enumerate() {
                             let index = syn::Index::from(i);
-                            
+
                             let is_optional = if let Type::Path(p) = elem_type {
-                                p.path.segments.last().map_or(false, |s| s.ident == "Option" || s.ident == "Optional")
+                                p.path
+                                    .segments
+                                    .last()
+                                    .map_or(false, |s| s.ident == "Option" || s.ident == "Optional")
                             } else {
                                 false
                             };
 
                             if is_optional {
-                                let inner_opt_type = get_inner_type(if let Type::Path(p) = elem_type {p} else {unreachable!()})
+                                let inner_opt_type =
+                                    get_inner_type(if let Type::Path(p) = elem_type {
+                                        p
+                                    } else {
+                                        unreachable!()
+                                    })
                                     .expect("Optional in tuple must have a generic parameter");
-                                let (inner_writer, inner_is_ref) = get_write_method_for_type(&inner_opt_type);
-                                
-                                let value_expr = if inner_is_ref { quote!{ value } } else { quote!{ *value } };
-                                
-                                let inner_segment = if let Type::Path(p) = &inner_opt_type { p.path.segments.last().map(|s| s.ident.clone()) } else { None };
-                                let final_value_expr = if inner_segment.as_ref().map_or(false, |id| id == "VarInt" || id == "VarLong") {
-                                    quote!{ value.0 }
+                                let (inner_writer, inner_is_ref) =
+                                    get_write_method_for_type(&inner_opt_type);
+
+                                let value_expr = if inner_is_ref {
+                                    quote! { value }
+                                } else {
+                                    quote! { *value }
+                                };
+
+                                let inner_segment = if let Type::Path(p) = &inner_opt_type {
+                                    p.path.segments.last().map(|s| s.ident.clone())
+                                } else {
+                                    None
+                                };
+                                let final_value_expr = if inner_segment
+                                    .as_ref()
+                                    .map_or(false, |id| id == "VarInt" || id == "VarLong")
+                                {
+                                    quote! { value.0 }
                                 } else {
                                     value_expr
                                 };
-                                
+
                                 loop_body.extend(quote! {
                                     buffer.write_bool(item.#index.is_some());
                                     if let Some(value) = &item.#index {
                                         buffer.#inner_writer(#final_value_expr);
                                     }
                                 });
-
                             } else {
-                                let (elem_writer, elem_is_ref) = get_write_method_for_type(elem_type);
-                                let access_expr = if elem_is_ref { quote! { &item.#index } } else { quote! { item.#index } };
-                                
-                                let elem_segment_ident = if let Type::Path(p) = elem_type { p.path.segments.last().unwrap().ident.clone() } else { format_ident!("") };
-                                let final_access_expr = if elem_segment_ident == format_ident!("VarInt") || elem_segment_ident == format_ident!("VarLong") {
+                                let (elem_writer, elem_is_ref) =
+                                    get_write_method_for_type(elem_type);
+                                let access_expr = if elem_is_ref {
+                                    quote! { &item.#index }
+                                } else {
+                                    quote! { item.#index }
+                                };
+
+                                let elem_segment_ident = if let Type::Path(p) = elem_type {
+                                    p.path.segments.last().unwrap().ident.clone()
+                                } else {
+                                    format_ident!("")
+                                };
+                                let final_access_expr = if elem_segment_ident
+                                    == format_ident!("VarInt")
+                                    || elem_segment_ident == format_ident!("VarLong")
+                                {
                                     quote! { #access_expr.0 }
                                 } else {
                                     access_expr
@@ -122,10 +165,20 @@ pub fn packet_dispatcher_logic(attr: TokenStream, item: TokenStream) -> TokenStr
                         }
                     } else {
                         let (elem_writer, elem_is_ref) = get_write_method_for_type(&inner_type);
-                        let access_expr = if elem_is_ref { quote! { item } } else { quote! { *item } };
-                        
-                        let elem_segment_ident = if let Type::Path(p) = &inner_type { p.path.segments.last().unwrap().ident.clone() } else { format_ident!("") };
-                        let final_access_expr = if elem_segment_ident == format_ident!("VarInt") || elem_segment_ident == format_ident!("VarLong") {
+                        let access_expr = if elem_is_ref {
+                            quote! { item }
+                        } else {
+                            quote! { *item }
+                        };
+
+                        let elem_segment_ident = if let Type::Path(p) = &inner_type {
+                            p.path.segments.last().unwrap().ident.clone()
+                        } else {
+                            format_ident!("")
+                        };
+                        let final_access_expr = if elem_segment_ident == format_ident!("VarInt")
+                            || elem_segment_ident == format_ident!("VarLong")
+                        {
                             quote! { item.0 }
                         } else {
                             access_expr
@@ -135,14 +188,14 @@ pub fn packet_dispatcher_logic(attr: TokenStream, item: TokenStream) -> TokenStr
                             buffer.#elem_writer(#final_access_expr);
                         });
                     }
-                    
+
                     encode_body.extend(quote! {
                         buffer.write_varint(#base_expr.len() as i32);
                         for item in &#base_expr {
                             #loop_body
                         }
                     });
-                    
+
                     continue;
                 }
 
@@ -156,13 +209,13 @@ pub fn packet_dispatcher_logic(attr: TokenStream, item: TokenStream) -> TokenStr
 
                 encode_body.extend(quote! { buffer.#write_method(#value_expr); });
             }
-        },
-        syn::Fields::Unit => {},
+        }
+        syn::Fields::Unit => {}
         syn::Fields::Unnamed(_) => {
             panic!("packet_dispatcher does not support tuple structs.");
         }
     }
-    
+
     quote! {
         #item_struct
         impl #struct_name {
@@ -178,5 +231,6 @@ pub fn packet_dispatcher_logic(attr: TokenStream, item: TokenStream) -> TokenStr
                 client.send_packet(packet_id, &payload_bytes);
             }
         }
-    }.into()
+    }
+    .into()
 }

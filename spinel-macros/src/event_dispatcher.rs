@@ -1,14 +1,14 @@
+use crate::parsers::EventAttrParser;
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{parse::Parser, parse_macro_input, ItemStruct};
-use crate::parsers::EventAttrParser;
+use syn::{ItemStruct, parse::Parser, parse_macro_input};
 
 pub fn event_dispatcher_logic(attr: TokenStream, item: TokenStream) -> TokenStream {
     let event_attrs = parse_macro_input!(attr as EventAttrParser);
     let mut item_struct = parse_macro_input!(item as ItemStruct);
     let struct_name = &item_struct.ident;
     let (impl_generics, ty_generics, where_clause) = item_struct.generics.split_for_impl();
-    
+
     let event_name_lit = event_attrs.event;
     let client_accessor;
 
@@ -20,17 +20,28 @@ pub fn event_dispatcher_logic(attr: TokenStream, item: TokenStream) -> TokenStre
 
     if event_attrs.with_client {
         let has_client_ptr = if let syn::Fields::Named(ref fields) = item_struct.fields {
-            fields.named.iter().any(|f| f.ident.as_ref().map_or(false, |i| i == "client_ptr"))
-        } else { false };
+            fields
+                .named
+                .iter()
+                .any(|f| f.ident.as_ref().map_or(false, |i| i == "client_ptr"))
+        } else {
+            false
+        };
 
         if !has_client_ptr {
             if let syn::Fields::Named(ref mut fields) = item_struct.fields {
-                fields.named.push(syn::Field::parse_named.parse2(quote! {
-                    #[doc(hidden)]
-                    pub client_ptr: Option<usize>
-                }).unwrap());
+                fields.named.push(
+                    syn::Field::parse_named
+                        .parse2(quote! {
+                            #[doc(hidden)]
+                            pub client_ptr: Option<usize>
+                        })
+                        .unwrap(),
+                );
             } else {
-                panic!("#[event_dispatcher(with_client = true)] can only be used with structs having named fields.");
+                panic!(
+                    "#[event_dispatcher(with_client = true)] can only be used with structs having named fields."
+                );
             }
         }
 
@@ -55,12 +66,13 @@ pub fn event_dispatcher_logic(attr: TokenStream, item: TokenStream) -> TokenStre
     } else {
         quote! {}
     };
-    
-    let dispatch_fn_header = quote! { pub #async_keyword fn dispatch<S>(&mut self, server: &mut S, #client_param) };
-    
+
+    let dispatch_fn_header =
+        quote! { pub #async_keyword fn dispatch<S>(&mut self, server: &mut S, #client_param) };
+
     let dispatch_body = quote! {
         #setup_client_ptr
-        
+
         fn resolve_ambiguous_module(
             unqualified_name: &str,
             all_modules_map: &std::collections::HashMap<String, Vec<String>>,
@@ -130,10 +142,10 @@ pub fn event_dispatcher_logic(attr: TokenStream, item: TokenStream) -> TokenStre
                 }
             }
         }
-        
+
         let has_independent_listener = spinel::internal::inventory::iter::<&'static spinel::internal::RegisteredListener>()
             .any(|l| l.event_name == #event_name_lit && !l.dependent);
-            
+
         let mut listeners: Vec<_> = spinel::internal::inventory::iter::<&'static spinel::internal::RegisteredListener>()
             .filter(|l| {
                 let name_ok = l.event_name == #event_name_lit;
@@ -142,11 +154,11 @@ pub fn event_dispatcher_logic(attr: TokenStream, item: TokenStream) -> TokenStre
                     let resolved_name = resolve_ambiguous_module(unqualified_name, &all_known_modules);
                     resolved_modules.contains(&resolved_name)
                 });
-                
+
                 name_ok && dependency_ok && module_ok
-            }) 
+            })
             .collect();
-                                            
+
         listeners.sort_by_key(|l| std::cmp::Reverse(l.priority.to_order()));
 
         let server_ptr = server as *mut _ as *mut ();

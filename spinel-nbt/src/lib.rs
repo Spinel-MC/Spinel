@@ -1,10 +1,10 @@
+pub use compound::NbtCompound;
+pub use serializer::to_bytes_unnamed;
 use std::{
     error,
     fmt::{self, Display},
     io::{self, Read},
 };
-pub use compound::NbtCompound;
-pub use serializer::to_bytes_unnamed;
 pub use tag::Nbt;
 
 pub mod compound;
@@ -84,7 +84,9 @@ impl serde::de::Error for Error {
     }
 }
 
-pub fn get_nbt_string<R: Read>(bytes: &mut deserializer::NbtReadHelper<R>) -> Result<String, Error> {
+pub fn get_nbt_string<R: Read>(
+    bytes: &mut deserializer::NbtReadHelper<R>,
+) -> Result<String, Error> {
     let len = bytes.get_u16_be()? as usize;
     let string_bytes = bytes.read_boxed_slice(len)?;
     let string = cesu8::from_java_cesu8(&string_bytes).map_err(|_| Error::Cesu8DecodingError)?;

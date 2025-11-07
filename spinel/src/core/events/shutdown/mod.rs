@@ -1,15 +1,13 @@
-use spinel_macros::{event_dispatcher};
 use crate as spinel;
+use spinel_macros::event_dispatcher;
 
 #[event_dispatcher(event: "shutdown")]
-pub struct ShutdownEvent {
-}
+pub struct ShutdownEvent {}
 
 impl ShutdownEvent {
-        pub fn new() -> Self {
-                Self {
-                }
-        }
+    pub fn new() -> Self {
+        Self {}
+    }
 }
 
 impl Default for ShutdownEvent {

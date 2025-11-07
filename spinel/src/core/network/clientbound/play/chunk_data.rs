@@ -1,7 +1,10 @@
 use crate as spinel;
 use spinel_macros::packet_dispatcher;
 use spinel_nbt::{Nbt, NbtCompound};
-use spinel_network::types::{chunk::{ChunkData, ChunkSection, PalettedContainer}, light::LightData};
+use spinel_network::types::{
+    chunk::{ChunkData, ChunkSection, PalettedContainer},
+    light::LightData,
+};
 
 #[packet_dispatcher(id: 0x24)]
 pub struct ChunkDataAndUpdateLightPacket {
@@ -38,11 +41,16 @@ impl ChunkDataAndUpdateLightPacket {
             sections.push(ChunkSection::empty());
         }
 
-
         let mut heightmaps = NbtCompound::new();
         let heightmap_data = vec![0; 37];
-        heightmaps.insert("MOTION_BLOCKING".to_string(), Nbt::LongArray(heightmap_data.clone().into_boxed_slice()));
-        heightmaps.insert("WORLD_SURFACE".to_string(), Nbt::LongArray(heightmap_data.into_boxed_slice()));
+        heightmaps.insert(
+            "MOTION_BLOCKING".to_string(),
+            Nbt::LongArray(heightmap_data.clone().into_boxed_slice()),
+        );
+        heightmaps.insert(
+            "WORLD_SURFACE".to_string(),
+            Nbt::LongArray(heightmap_data.into_boxed_slice()),
+        );
 
         let chunk_data = ChunkData {
             heightmaps,
