@@ -3,3 +3,6 @@
 /other/Spinel/.obsidian
 /other/datagen/
 /not_public
+
+# Mojang assets
+/spinel-registry/build_assets/datapacks/default/

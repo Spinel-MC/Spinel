@@ -4,17 +4,17 @@ use crate::component::{
 
 #[derive(Clone, Debug, Default)]
 pub struct ComponentBuilder {
-    pub component_type: ComponentType,
+    pub content: ComponentType<String>,
     pub style: Style,
-    pub children: Vec<TextComponent>,
+    pub extra: Vec<TextComponent>,
 }
 
 impl ComponentBuilder {
     pub fn new(text: String) -> Self {
         Self {
-            component_type: ComponentType::Text(text),
+            content: ComponentType::Text(text),
             style: Style::empty(),
-            children: Vec::new(),
+            extra: Vec::new(),
         }
     }
 
@@ -49,7 +49,7 @@ impl ComponentBuilder {
     }
 
     pub fn append(mut self, child: TextComponent) -> Self {
-        self.children.push(child);
+        self.extra.push(child);
         self
     }
 
@@ -65,9 +65,9 @@ impl ComponentBuilder {
 impl From<ComponentBuilder> for TextComponent {
     fn from(builder: ComponentBuilder) -> Self {
         TextComponent {
-            component_type: builder.component_type,
+            content: builder.content,
             style: builder.style,
-            children: builder.children,
+            extra: builder.extra,
         }
     }
 }

@@ -8,7 +8,7 @@ pub struct StartupEvent {
 
 impl StartupEvent {
     pub fn new() -> Self {
-        Self { cancelled: true }
+        Self { cancelled: false }
     }
 }
 

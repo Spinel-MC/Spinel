@@ -7,25 +7,67 @@ use crate::component::{builder::ComponentBuilder, style::Style, variant::Compone
 
 #[derive(Clone, Debug, Default)]
 pub struct TextComponent {
-    pub component_type: ComponentType,
+    pub content: ComponentType<String>,
     pub style: Style,
-    pub children: Vec<TextComponent>,
+    pub extra: Vec<TextComponent>,
 }
 
 impl TextComponent {
     pub fn empty() -> TextComponent {
         Self {
-            component_type: ComponentType::Empty,
+            content: ComponentType::Empty,
             style: Style::empty(),
-            children: Vec::new(),
+            extra: Vec::new(),
+        }
+    }
+
+    /// Create a translatable text component
+    pub const fn translatable(key: &'static str) -> Self {
+        TextComponent {
+            content: ComponentType::StaticTranslatable(key),
+            style: Style::empty(),
+            extra: Vec::new(),
+        }
+    }
+
+    /// Create a literal text component
+    pub const fn literal(text: &'static str) -> Self {
+        TextComponent {
+            content: ComponentType::StaticText(text),
+            style: Style::empty(),
+            extra: Vec::new(),
+        }
+    }
+
+    /// Create a literal text component with color
+    pub const fn literal_with_color(
+        text: &'static str,
+        color: crate::component::color::TextColor,
+    ) -> Self {
+        TextComponent {
+            content: ComponentType::StaticText(text),
+            style: Style::const_with_color(color),
+            extra: Vec::new(),
+        }
+    }
+
+    /// Create a translatable component with color
+    pub const fn translatable_with_color(
+        key: &'static str,
+        color: crate::component::color::TextColor,
+    ) -> Self {
+        TextComponent {
+            content: ComponentType::StaticTranslatable(key),
+            style: Style::const_with_color(color),
+            extra: Vec::new(),
         }
     }
 
     pub fn text(content: String) -> ComponentBuilder {
         ComponentBuilder {
-            component_type: ComponentType::Text(content),
+            content: ComponentType::Text(content),
             style: Style::empty(),
-            children: Vec::new(),
+            extra: Vec::new(),
         }
     }
 
@@ -48,10 +90,10 @@ impl TextComponent {
     fn write_legacy_string(&self, builder: &mut String, parent_style: &Style) {
         let current_style = parent_style.merge_with_parent(self);
         builder.push_str(&current_style.to_legacy_codes());
-        if let ComponentType::Text(text) = &self.component_type {
+        if let ComponentType::Text(text) = &self.content {
             builder.push_str(text);
         }
-        for child in &self.children {
+        for child in &self.extra {
             child.write_legacy_string(builder, &current_style);
         }
     }
@@ -60,50 +102,51 @@ impl TextComponent {
         let mut ansi = String::new();
 
         if let Some(color) = &self.style.color {
-            let value = color.value.as_str();
-            let ansi_code = match value {
-                "black" => "\x1b[30m".to_string(),
-                "dark_blue" => "\x1b[34m".to_string(),
-                "dark_green" => "\x1b[32m".to_string(),
-                "dark_aqua" => "\x1b[36m".to_string(),
-                "dark_red" => "\x1b[31m".to_string(),
-                "dark_purple" => "\x1b[35m".to_string(),
-                "gold" => "\x1b[33m".to_string(),
-                "gray" => "\x1b[37m".to_string(),
-                "dark_gray" => "\x1b[90m".to_string(),
-                "blue" => "\x1b[94m".to_string(),
-                "green" => "\x1b[92m".to_string(),
-                "aqua" => "\x1b[96m".to_string(),
-                "red" => "\x1b[91m".to_string(),
-                "light_purple" => "\x1b[95m".to_string(),
-                "yellow" => "\x1b[93m".to_string(),
-                "white" => "\x1b[97m".to_string(),
-                _ => String::new(),
+            let ansi_code = match color {
+                crate::component::color::TextColor::Named(named) => match named {
+                    crate::component::color::NamedTextColor::Black => "\\x1b[30m",
+                    crate::component::color::NamedTextColor::DarkBlue => "\\x1b[34m",
+                    crate::component::color::NamedTextColor::DarkGreen => "\\x1b[32m",
+                    crate::component::color::NamedTextColor::DarkAqua => "\\x1b[36m",
+                    crate::component::color::NamedTextColor::DarkRed => "\\x1b[31m",
+                    crate::component::color::NamedTextColor::DarkPurple => "\\x1b[35m",
+                    crate::component::color::NamedTextColor::Gold => "\\x1b[33m",
+                    crate::component::color::NamedTextColor::Gray => "\\x1b[37m",
+                    crate::component::color::NamedTextColor::DarkGray => "\\x1b[90m",
+                    crate::component::color::NamedTextColor::Blue => "\\x1b[94m",
+                    crate::component::color::NamedTextColor::Green => "\\x1b[92m",
+                    crate::component::color::NamedTextColor::Aqua => "\\x1b[96m",
+                    crate::component::color::NamedTextColor::Red => "\\x1b[91m",
+                    crate::component::color::NamedTextColor::LightPurple => "\\x1b[95m",
+                    crate::component::color::NamedTextColor::Yellow => "\\x1b[93m",
+                    crate::component::color::NamedTextColor::White => "\\x1b[97m",
+                },
+                crate::component::color::TextColor::Hex(_) => "",
             };
-            ansi.push_str(&ansi_code);
+            ansi.push_str(ansi_code);
         }
 
         if self.style.bold.unwrap_or(false) {
-            ansi.push_str("\x1b[1m");
+            ansi.push_str("\\x1b[1m");
         }
         if self.style.italic.unwrap_or(false) {
-            ansi.push_str("\x1b[3m");
+            ansi.push_str("\\x1b[3m");
         }
         if self.style.underlined.unwrap_or(false) {
-            ansi.push_str("\x1b[4m");
+            ansi.push_str("\\x1b[4m");
         }
         if self.style.strikethrough.unwrap_or(false) {
-            ansi.push_str("\x1b[9m");
+            ansi.push_str("\\x1b[9m");
         }
 
-        let text_content = if let ComponentType::Text(text) = &self.component_type {
-            text
-        } else {
-            "unimplemented component type"
+        let text_content = match &self.content {
+            ComponentType::Text(text) => text.as_str(),
+            ComponentType::StaticText(text) => text,
+            _ => "unimplemented component type",
         };
         ansi.push_str(text_content);
 
-        ansi.push_str("\x1b[0m");
+        ansi.push_str("\\x1b[0m");
 
         ansi
     }
@@ -116,9 +159,12 @@ impl Serialize for TextComponent {
     {
         let mut map = BTreeMap::new();
 
-        match &self.component_type {
+        match &self.content {
             ComponentType::Empty => (),
             ComponentType::Text(text) => {
+                map.insert("text".to_string(), json!(text));
+            }
+            ComponentType::StaticText(text) => {
                 map.insert("text".to_string(), json!(text));
             }
             ComponentType::Translatable { key, args } => {
@@ -126,6 +172,9 @@ impl Serialize for TextComponent {
                 if !args.is_empty() {
                     map.insert("with".to_string(), json!(args));
                 }
+            }
+            ComponentType::StaticTranslatable(key) => {
+                map.insert("translate".to_string(), json!(key));
             }
             ComponentType::Score { name, objective } => {
                 map.insert(
@@ -136,7 +185,13 @@ impl Serialize for TextComponent {
             ComponentType::Selector(selector) => {
                 map.insert("selector".to_string(), json!(selector));
             }
+            ComponentType::StaticSelector(selector) => {
+                map.insert("selector".to_string(), json!(selector));
+            }
             ComponentType::Keybind(key) => {
+                map.insert("keybind".to_string(), json!(key));
+            }
+            ComponentType::StaticKeybind(key) => {
                 map.insert("keybind".to_string(), json!(key));
             }
             ComponentType::Nbt { nbt_path, source } => {
@@ -153,8 +208,8 @@ impl Serialize for TextComponent {
             }
         }
 
-        if !self.children.is_empty() {
-            map.insert("extra".to_string(), json!(self.children));
+        if !self.extra.is_empty() {
+            map.insert("extra".to_string(), json!(self.extra));
         }
 
         if map.is_empty() {
@@ -192,7 +247,7 @@ impl<'de> Deserialize<'de> for TextComponent {
 
         let intermediate = Intermediate::deserialize(deserializer)?;
 
-        let component_type = if let Some(text) = intermediate.text {
+        let content = if let Some(text) = intermediate.text {
             ComponentType::Text(text)
         } else if let Some(key) = intermediate.translate {
             ComponentType::Translatable {
@@ -215,9 +270,9 @@ impl<'de> Deserialize<'de> for TextComponent {
         };
 
         Ok(TextComponent {
-            component_type,
+            content,
             style: intermediate.style,
-            children: intermediate.extra.unwrap_or_default(),
+            extra: intermediate.extra.unwrap_or_default(),
         })
     }
 }
