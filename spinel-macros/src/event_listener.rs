@@ -11,14 +11,6 @@ pub fn event_listener_logic(attr: TokenStream, item: TokenStream) -> TokenStream
     let fn_ident = &input_fn.sig.ident;
     let wrapper_fn_ident = format_ident!("__spinel_event_wrapper_{}", fn_ident);
 
-    let event_name_lit = event_attrs.event;
-    let dependent_lit = event_attrs.dependent;
-
-    let modules = event_attrs.modules;
-    let modules_slice = quote! { &[#(#modules),*] };
-
-    let priority = resolve_priority_token(event_attrs.priority, "Priority", "Medium");
-
     let event_struct_full_path =
         if let Some(FnArg::Typed(PatType { ty, .. })) = input_fn.sig.inputs.first() {
             if let Type::Reference(type_ref) = &**ty {
@@ -33,6 +25,17 @@ pub fn event_listener_logic(attr: TokenStream, item: TokenStream) -> TokenStream
         } else {
             panic!("#[event_listener] function must take at least one argument")
         };
+
+    let event_name_lit = if let Some(name) = event_attrs.event {
+        quote! { #name }
+    } else {
+        quote! { <#event_struct_full_path as spinel::events::Event>::NAME }
+    };
+
+    let dependent_lit = event_attrs.dependent;
+    let modules = event_attrs.modules;
+    let modules_slice = quote! { &[#(#modules),*] };
+    let priority = resolve_priority_token(event_attrs.priority, "Priority", "Medium");
 
     let wrapper_fn = quote! {
         #[doc(hidden)]

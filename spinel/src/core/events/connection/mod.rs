@@ -1,7 +1,7 @@
 use crate as spinel;
 use spinel_macros::event_dispatcher;
 
-#[event_dispatcher(event: "connection", with_client: true)]
+#[event_dispatcher(with_client: true)]
 pub struct ConnectionEvent {
     pub cancelled: bool,
 }

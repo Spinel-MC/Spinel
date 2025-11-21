@@ -3,7 +3,7 @@ use std::net::SocketAddr;
 use crate as spinel;
 use spinel_macros::event_dispatcher;
 
-#[event_dispatcher(event: "disconnection")]
+#[event_dispatcher]
 pub struct DisconnectionEvent {
     pub socket_address: SocketAddr,
 }

@@ -9,7 +9,18 @@ pub fn event_dispatcher_logic(attr: TokenStream, item: TokenStream) -> TokenStre
     let struct_name = &item_struct.ident;
     let (impl_generics, ty_generics, where_clause) = item_struct.generics.split_for_impl();
 
-    let event_name_lit = event_attrs.event;
+    let event_name_lit = if let Some(name) = event_attrs.event {
+        name
+    } else {
+        let name_str = struct_name.to_string();
+        let name_stripped = if name_str.ends_with("Event") {
+            &name_str[..name_str.len() - 5]
+        } else {
+            &name_str
+        };
+        let snake_case_name = crate::util::to_snake_case(name_stripped);
+        syn::LitStr::new(&snake_case_name, struct_name.span())
+    };
     let client_accessor;
 
     let async_keyword = if event_attrs.r#async {
@@ -179,9 +190,16 @@ pub fn event_dispatcher_logic(attr: TokenStream, item: TokenStream) -> TokenStre
         }
     };
 
+    let event_impl = quote! {
+        impl spinel::events::Event for #struct_name {
+            const NAME: &'static str = #event_name_lit;
+        }
+    };
+
     let expanded = quote! {
         #item_struct
         #generated_impl
+        #event_impl
     };
 
     expanded.into()

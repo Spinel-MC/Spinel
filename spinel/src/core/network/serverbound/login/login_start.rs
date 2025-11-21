@@ -16,7 +16,7 @@ impl RngCore for CompatRng {
 impl CryptoRng for CompatRng {}
 struct CompatRng(OsRng);
 
-#[event_listener(event: "intention", module: "login")]
+#[event_listener(module: "login")]
 fn on_intention(event: &mut IntentionEvent, _server: &mut MinecraftServer) {
     event.client().login_metadata = Some(LoginMetadata::new(event.protocol_version));
 }
@@ -28,11 +28,11 @@ use crate::core::{
 };
 use rsa::pkcs8::EncodePublicKey;
 use rsa::{
-    RsaPrivateKey,
     rand_core::{CryptoRng, OsRng, RngCore},
+    RsaPrivateKey,
 };
 use spinel_macros::{event_listener, packet_listener};
-use spinel_network::{Client, ConnectionState, client::metadata::LoginMetadata};
+use spinel_network::{client::metadata::LoginMetadata, Client, ConnectionState};
 use spinel_utils::component::Component;
 
 use crate as spinel;

@@ -174,7 +174,7 @@ impl Parse for AttrsParser {
 }
 
 pub struct EventAttrParser {
-    pub event: syn::LitStr,
+    pub event: Option<syn::LitStr>,
     pub with_client: bool,
     pub priority: Option<syn::Expr>,
     pub dependent: bool,
@@ -262,7 +262,7 @@ impl Parse for EventAttrParser {
         }
 
         Ok(EventAttrParser {
-            event: event.ok_or_else(|| input.error("missing required `event` attribute"))?,
+            event,
             with_client,
             priority,
             dependent,
