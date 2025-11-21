@@ -14,17 +14,17 @@ pub struct Component {}
 impl Component {
     pub fn empty() -> TextComponent {
         TextComponent {
-            component_type: ComponentType::Empty,
+            content: ComponentType::Empty,
             style: Style::empty(),
-            children: Vec::new(),
+            extra: Vec::new(),
         }
     }
 
     pub fn text<S: Into<String>>(content: S) -> ComponentBuilder {
         ComponentBuilder {
-            component_type: ComponentType::Text(content.into()),
+            content: ComponentType::Text(content.into()),
             style: Style::empty(),
-            children: Vec::new(),
+            extra: Vec::new(),
         }
     }
 }

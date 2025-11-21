@@ -3,7 +3,7 @@ use crate::{
     core::{events::intention::IntentionEvent, server::MinecraftServer},
 };
 use spinel_macros::packet_listener;
-use spinel_network::{Client, client::instance::ConnectionState};
+use spinel_network::{client::instance::ConnectionState, Client};
 
 #[packet_listener(id: 0x00, state: "Handshaking", module: "intention", fields:(
         protocol_version: VarInt,

@@ -22,10 +22,15 @@ use uuid::Uuid;
 
 mod listeners;
 mod modules;
+pub mod registry_cache;
+
+use registry_cache::RegistryCache;
 
 // Manages the Minecraft server instance.
 pub struct MinecraftServer {
     pub connection_manager: ConnectionManager,
+    pub registry_cache: RegistryCache,
+    pub registry: spinel_registry::Registry,
     assigned_packet_listeners: HashMap<(ConnectionState, i32), Vec<&'static PacketListener>>,
     generic_packet_listeners: HashMap<ConnectionState, Vec<&'static PacketListener>>,
 }
@@ -35,8 +40,16 @@ impl MinecraftServer {
     pub fn new() -> Self {
         let (assigned_packet_listeners, generic_packet_listeners) = get_listeners();
 
+        // Initialize registry
+        let registry = spinel_registry::Registry::new_vanilla();
+
+        // Initialize registry cache at startup (not on player join)
+        let registry_cache = RegistryCache::new(&registry);
+
         MinecraftServer {
             connection_manager: ConnectionManager::new(),
+            registry_cache,
+            registry,
             assigned_packet_listeners,
             generic_packet_listeners,
         }
@@ -50,7 +63,7 @@ impl MinecraftServer {
 
         let mut server_guard = server_arc.lock().await;
         // Check if startup event was cancelled.
-        if !server_guard.on_startup() {
+        if server_guard.on_startup() {
             eprintln!("Server startup event was cancelled.");
             return;
         }

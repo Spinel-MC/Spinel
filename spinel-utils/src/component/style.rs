@@ -20,9 +20,20 @@ pub struct Style {
 }
 
 impl Style {
-    pub fn empty() -> Style {
+    pub const fn empty() -> Self {
         Style {
             color: None,
+            bold: None,
+            italic: None,
+            underlined: None,
+            strikethrough: None,
+            obfuscated: None,
+        }
+    }
+
+    pub const fn const_with_color(color: TextColor) -> Self {
+        Style {
+            color: Some(color),
             bold: None,
             italic: None,
             underlined: None,

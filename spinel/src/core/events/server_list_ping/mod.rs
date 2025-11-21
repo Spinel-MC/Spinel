@@ -7,6 +7,7 @@ use spinel_utils::component::text::TextComponent;
 use crate::core::events::server_list_ping::{
     player_info::PlayerSample, server_list_ping_type::ServerListPingType,
 };
+use crate::util::constants::{PROTOCOL_VERSION, SERVER_BRAND};
 
 pub mod player_info;
 pub mod server_list_ping_type;
@@ -53,8 +54,8 @@ impl ServerListPingEventResponseData {
             online_players: None,
             max_players: None,
             description: None,
-            brand: Some("Spinel".to_owned()),
-            protocol: 772,
+            brand: Some(SERVER_BRAND.to_owned()),
+            protocol: PROTOCOL_VERSION,
             player_sample: Some(vec![]),
             favicon: None,
             enforce_secure_chat: None,

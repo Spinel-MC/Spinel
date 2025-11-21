@@ -5,10 +5,12 @@ use spinel::{
             server_list_ping::{
                 ServerListPingEvent, ServerListPingEventResponseData, player_info::PlayerSample,
             },
+            startup::StartupEvent,
         },
         server::MinecraftServer,
     },
     spinel_macros::{event_listener, import_module},
+    util::constants::{PROTOCOL_VERSION, SERVER_BRAND},
     utils::{
         Priority,
         component::{
@@ -26,8 +28,6 @@ import_module!("minecraft:login");
 
 #[tokio::main]
 async fn main() {
-    println!("server starting on port 25565!");
-
     let server = MinecraftServer::new();
 
     server.start("127.0.0.1", 25565).await;
@@ -58,15 +58,19 @@ fn on_event(event: &mut ServerListPingEvent, _server: &mut MinecraftServer) {
         max_players: Some(-1),
         description: Some(
             Component::text("Minecraft, your way!".to_owned())
-                .color(TextColor {
-                    value: "#ff47d7".to_owned(),
-                })
+                .color(TextColor::from_hex("#ff47d7".to_owned()))
                 .into(),
         ),
-        brand: Some("Spinel".to_owned()),
-        protocol: 772,
+        brand: Some(SERVER_BRAND.to_owned()),
+        protocol: PROTOCOL_VERSION,
         player_sample: Some(sample),
         favicon: None,
         enforce_secure_chat: Some(true),
     };
 }
+//.color(TextColor {
+//     value: "#ff47d7".to_owned(),
+// }
+
+#[event_listener(event: "startup", priority: Priority::High)]
+fn on_startup(event: &mut StartupEvent, _server: &mut MinecraftServer) {}
