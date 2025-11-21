@@ -4,7 +4,7 @@
 
 [![Discord](https://img.shields.io/discord/1395163439202046152.svg?label=&logo=discord&logoColor=ffffff&color=5865F2)](https://discord.gg/VRnRjpzk5Y)
 [![License: MIT](https://img.shields.io/badge/License-Apache%202.0-BB1100.svg)](https://opensource.org/license/apache-2-0)
-![Current version)](https://img.shields.io/badge/current_version-1.21.8-BB1100)
+![Current version)](https://img.shields.io/badge/current_version-1.21.10-BB1100)
 
 </div>
 

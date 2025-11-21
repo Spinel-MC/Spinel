@@ -2,7 +2,7 @@ use crate as spinel;
 use spinel_macros::event_dispatcher;
 use uuid::Uuid;
 
-#[event_dispatcher(event: "login", with_client: true)]
+#[event_dispatcher(with_client: true)]
 pub struct PreLoginEvent {
     pub name: String,
     pub uuid: Uuid,

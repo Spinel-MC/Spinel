@@ -1,5 +1,9 @@
 use spinel_utils::Priority;
 
+pub trait Event {
+    const NAME: &'static str;
+}
+
 pub struct ListenerFn {
     pub call: fn(event: *mut (), server: *mut ()),
 }

@@ -258,3 +258,18 @@ pub fn map_type_to_decoder_method_name(ty_ident: &Ident) -> Ident {
     };
     format_ident!("{}", method_name)
 }
+
+pub fn to_snake_case(s: &str) -> String {
+    let mut result = String::new();
+    for (i, c) in s.chars().enumerate() {
+        if c.is_uppercase() {
+            if i > 0 {
+                result.push('_');
+            }
+            result.push(c.to_lowercase().next().unwrap());
+        } else {
+            result.push(c);
+        }
+    }
+    result
+}

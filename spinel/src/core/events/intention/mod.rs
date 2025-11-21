@@ -1,7 +1,7 @@
 use crate as spinel;
 use spinel_macros::event_dispatcher;
 
-#[event_dispatcher(event: "intention", with_client: true)]
+#[event_dispatcher(with_client: true)]
 pub struct IntentionEvent {
     pub protocol_version: i32,
     pub server_address: String,

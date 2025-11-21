@@ -12,7 +12,7 @@ use crate::util::constants::{PROTOCOL_VERSION, SERVER_BRAND};
 pub mod player_info;
 pub mod server_list_ping_type;
 
-#[event_dispatcher(event: "server_list_ping", with_client: true)]
+#[event_dispatcher(with_client: true)]
 pub struct ServerListPingEvent {
     pub response_data: ServerListPingEventResponseData,
     pub server_list_ping_type: ServerListPingType,

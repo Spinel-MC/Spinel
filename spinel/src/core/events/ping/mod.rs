@@ -1,7 +1,7 @@
 use crate as spinel;
 use spinel_macros::event_dispatcher;
 
-#[event_dispatcher(event: "status", with_client: true)]
+#[event_dispatcher(with_client: true)]
 pub struct PingEvent {
     pub timestamp: i64,
     pub cancelled: bool,
