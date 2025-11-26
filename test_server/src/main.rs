@@ -68,9 +68,6 @@ fn on_event(event: &mut ServerListPingEvent, _server: &mut MinecraftServer) {
         enforce_secure_chat: Some(true),
     };
 }
-//.color(TextColor {
-//     value: "#ff47d7".to_owned(),
-// }
 
 #[event_listener(priority: Priority::High)]
 fn on_startup(event: &mut StartupEvent, _server: &mut MinecraftServer) {}

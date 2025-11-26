@@ -87,7 +87,7 @@ impl Parse for FieldsAttr {
 }
 
 pub struct AttrsParser {
-    pub id: Option<syn::LitInt>,
+    pub id: Option<syn::Lit>,
     pub state: Option<syn::Expr>,
     pub events: Vec<syn::LitStr>,
     pub modules: Vec<syn::LitStr>,
@@ -142,7 +142,7 @@ impl Parse for AttrsParser {
                 }
             } else if key_str == "id" {
                 let value: Lit = input.parse()?;
-                id = Some(value.try_into_int("id")?);
+                id = Some(value);
             } else {
                 let value: Expr = input.parse()?;
                 match key_str.as_str() {

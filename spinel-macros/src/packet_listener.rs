@@ -14,10 +14,17 @@ pub fn packet_listener_logic(attr: TokenStream, item: TokenStream) -> TokenStrea
     let packet_attrs = parse_macro_input!(attr as AttrsParser);
     let fn_ident = &input_fn.sig.ident;
 
-    let id = packet_attrs
-        .id
-        .map(|lit| lit.to_token_stream())
-        .unwrap_or_else(|| quote! {-1});
+    let id = match packet_attrs.id {
+        Some(syn::Lit::Int(lit_int)) => lit_int.to_token_stream(),
+        Some(syn::Lit::Str(lit_str)) => {
+            let id_str = lit_str.value();
+            let resolved_id = resolve_packet_id(&id_str)
+                .expect(&format!("Failed to resolve packet ID: {}", id_str));
+            quote! { #resolved_id }
+        }
+        Some(_) => panic!("Packet ID must be an integer or a string literal."),
+        None => quote! {-1},
+    };
     let state_expr = packet_attrs
         .state
         .expect("Packet listener must have a 'state' attribute.");
@@ -223,4 +230,44 @@ pub fn packet_listener_logic(attr: TokenStream, item: TokenStream) -> TokenStrea
     final_output.extend(inventory_submit);
 
     final_output.into()
+}
+
+#[derive(serde::Deserialize)]
+struct PacketsJson {
+    serverbound: std::collections::HashMap<String, std::collections::HashMap<String, String>>,
+    clientbound: std::collections::HashMap<String, std::collections::HashMap<String, String>>,
+}
+
+fn resolve_packet_id(name: &str) -> Option<i32> {
+    let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();
+    let packets_path =
+        std::path::Path::new(&manifest_dir).join("../spinel-registry/build_assets/packets.json");
+
+    if !packets_path.exists() {
+        // Fallback or error? For now, let's panic with a helpful message
+        panic!(
+            "packets.json not found at {:?}. Please run SteelExtractor.",
+            packets_path
+        );
+    }
+
+    let file = std::fs::File::open(packets_path).expect("Failed to open packets.json");
+    let reader = std::io::BufReader::new(file);
+    let packets: PacketsJson =
+        serde_json::from_reader(reader).expect("Failed to parse packets.json");
+
+    // Search in serverbound first, then clientbound
+    for protocol in packets.serverbound.values() {
+        if let Some(hex_id) = protocol.get(name) {
+            return Some(i32::from_str_radix(hex_id.trim_start_matches("0x"), 16).unwrap());
+        }
+    }
+
+    for protocol in packets.clientbound.values() {
+        if let Some(hex_id) = protocol.get(name) {
+            return Some(i32::from_str_radix(hex_id.trim_start_matches("0x"), 16).unwrap());
+        }
+    }
+
+    None
 }
