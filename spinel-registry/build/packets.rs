@@ -12,11 +12,11 @@ struct Packets {
 
 #[derive(Deserialize)]
 struct Direction {
-    handshake: Option<Vec<String>>,
-    status: Option<Vec<String>>,
-    login: Option<Vec<String>>,
-    config: Option<Vec<String>>,
-    play: Option<Vec<String>>,
+    handshake: Option<std::collections::HashMap<String, String>>,
+    status: Option<std::collections::HashMap<String, String>>,
+    login: Option<std::collections::HashMap<String, String>>,
+    config: Option<std::collections::HashMap<String, String>>,
+    play: Option<std::collections::HashMap<String, String>>,
 }
 
 pub fn build() -> TokenStream {
@@ -64,13 +64,20 @@ fn generate_direction(direction: &Direction) -> TokenStream {
     }
 }
 
-fn generate_state(packets: Option<&Vec<String>>) -> TokenStream {
+fn generate_state(packets: Option<&std::collections::HashMap<String, String>>) -> TokenStream {
     if let Some(packets) = packets {
         let mut constants = TokenStream::new();
-        for (id, name) in packets.iter().enumerate() {
+        // Convert HashMap to sorted Vec to maintain consistent ordering
+        let mut packet_vec: Vec<_> = packets.iter().collect();
+        packet_vec.sort_by_key(|(_, id_str)| {
+            i32::from_str_radix(id_str.trim_start_matches("0x"), 16).unwrap_or(0)
+        });
+
+        for (name, id_str) in packet_vec {
             let const_name =
                 Ident::new(&name.to_shouty_snake_case(), proc_macro2::Span::call_site());
-            let id = id as i32;
+            let id = i32::from_str_radix(id_str.trim_start_matches("0x"), 16)
+                .expect(&format!("Failed to parse hex ID: {}", id_str));
             constants.extend(quote! {
                 pub const #const_name: i32 = #id;
             });

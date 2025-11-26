@@ -2,7 +2,7 @@ use crate as spinel;
 use crate::core::events::server_list_ping::ServerListPingEventResponseData;
 use spinel_macros::packet_dispatcher;
 
-#[packet_dispatcher(id:0x00)]
+#[packet_dispatcher(id: "status_response", state: ConnectionState::Status)]
 pub struct StatusResponsePacket {
     pub json_response: String,
 }

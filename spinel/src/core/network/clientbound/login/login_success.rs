@@ -3,7 +3,7 @@ use spinel_macros::packet_dispatcher;
 use spinel_network::types::game_profile::GameProfile;
 use uuid::Uuid;
 
-#[packet_dispatcher(id: 0x02)]
+#[packet_dispatcher(id: "login_finished", state: ConnectionState::Login)]
 pub struct LoginSuccessPacket {
     pub profile: GameProfile,
 }

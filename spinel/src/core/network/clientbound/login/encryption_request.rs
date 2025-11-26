@@ -1,7 +1,7 @@
 use crate as spinel;
 use spinel_macros::packet_dispatcher;
 
-#[packet_dispatcher(id: 0x01)]
+#[packet_dispatcher(id: "hello", state: ConnectionState::Login)]
 pub struct EncryptionRequestPacket {
     pub server_id: String,
     pub public_key: Vec<u8>,

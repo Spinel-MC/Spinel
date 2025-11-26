@@ -14,20 +14,24 @@ pub fn packet_listener_logic(attr: TokenStream, item: TokenStream) -> TokenStrea
     let packet_attrs = parse_macro_input!(attr as AttrsParser);
     let fn_ident = &input_fn.sig.ident;
 
+    let state_expr = packet_attrs
+        .state
+        .expect("Packet listener must have a 'state' attribute.");
+
     let id = match packet_attrs.id {
         Some(syn::Lit::Int(lit_int)) => lit_int.to_token_stream(),
         Some(syn::Lit::Str(lit_str)) => {
             let id_str = lit_str.value();
-            let resolved_id = resolve_packet_id(&id_str)
-                .expect(&format!("Failed to resolve packet ID: {}", id_str));
+            let state_str = extract_state_string(&Some(state_expr.clone()));
+            let resolved_id = resolve_packet_id(&id_str, state_str.as_deref()).expect(&format!(
+                "Failed to resolve packet ID '{}' for state {:?}",
+                id_str, state_str
+            ));
             quote! { #resolved_id }
         }
         Some(_) => panic!("Packet ID must be an integer or a string literal."),
         None => quote! {-1},
     };
-    let state_expr = packet_attrs
-        .state
-        .expect("Packet listener must have a 'state' attribute.");
 
     let modules = packet_attrs.modules;
     let modules_slice = quote! { &[#(#modules),*] };
@@ -238,13 +242,26 @@ struct PacketsJson {
     clientbound: std::collections::HashMap<String, std::collections::HashMap<String, String>>,
 }
 
-fn resolve_packet_id(name: &str) -> Option<i32> {
+fn extract_state_string(state_expr: &Option<syn::Expr>) -> Option<String> {
+    state_expr.as_ref().and_then(|expr| {
+        if let syn::Expr::Path(expr_path) = expr {
+            expr_path
+                .path
+                .segments
+                .last()
+                .map(|seg| seg.ident.to_string())
+        } else {
+            None
+        }
+    })
+}
+
+fn resolve_packet_id(name: &str, state: Option<&str>) -> Option<i32> {
     let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();
     let packets_path =
         std::path::Path::new(&manifest_dir).join("../spinel-registry/build_assets/packets.json");
 
     if !packets_path.exists() {
-        // Fallback or error? For now, let's panic with a helpful message
         panic!(
             "packets.json not found at {:?}. Please run SteelExtractor.",
             packets_path
@@ -256,14 +273,27 @@ fn resolve_packet_id(name: &str) -> Option<i32> {
     let packets: PacketsJson =
         serde_json::from_reader(reader).expect("Failed to parse packets.json");
 
-    // Search in serverbound first, then clientbound
-    for protocol in packets.serverbound.values() {
-        if let Some(hex_id) = protocol.get(name) {
-            return Some(i32::from_str_radix(hex_id.trim_start_matches("0x"), 16).unwrap());
+    let direction = &packets.serverbound;
+
+    if let Some(state_name) = state {
+        let protocol_key = match state_name {
+            "Handshaking" => "handshake",
+            "Status" => "status",
+            "Login" => "login",
+            "Configuration" => "config",
+            "Play" => "play",
+            _ => return None,
+        };
+
+        if let Some(protocol) = direction.get(protocol_key) {
+            if let Some(hex_id) = protocol.get(name) {
+                return Some(i32::from_str_radix(hex_id.trim_start_matches("0x"), 16).unwrap());
+            }
         }
+        return None;
     }
 
-    for protocol in packets.clientbound.values() {
+    for protocol in direction.values() {
         if let Some(hex_id) = protocol.get(name) {
             return Some(i32::from_str_radix(hex_id.trim_start_matches("0x"), 16).unwrap());
         }

@@ -1,7 +1,7 @@
 use crate as spinel;
 use spinel_macros::packet_dispatcher;
 
-#[packet_dispatcher(id: 0x03, state: ConnectionState::Configuration)]
+#[packet_dispatcher(id: "finish_configuration", state: ConnectionState::Configuration)]
 pub struct FinishConfigurationPacket;
 
 impl FinishConfigurationPacket {

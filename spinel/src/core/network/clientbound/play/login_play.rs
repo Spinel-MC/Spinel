@@ -2,7 +2,7 @@ use crate as spinel;
 use spinel_macros::packet_dispatcher;
 use spinel_network::types::{position::Position, var_int::VarInt};
 
-#[packet_dispatcher(id: 0x2B)]
+#[packet_dispatcher(id: "login", state: ConnectionState::Play)]
 pub struct LoginPlayPacket {
     pub entity_id: i32,
     pub is_hardcore: bool,

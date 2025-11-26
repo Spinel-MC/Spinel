@@ -11,7 +11,7 @@ use crate::{
 use spinel_macros::packet_listener;
 use spinel_network::{client::instance::ConnectionState, Client};
 
-#[packet_listener(id: 0x03, state: ConnectionState::Login, module: "login")]
+#[packet_listener(id: "login_acknowledged", state: ConnectionState::Login, module: "login")]
 fn on_login_acknowledge(client: &mut Client, _server: &mut MinecraftServer) -> bool {
     client.state = ConnectionState::Configuration;
 

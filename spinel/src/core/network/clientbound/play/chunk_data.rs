@@ -6,7 +6,7 @@ use spinel_network::types::{
     light::LightData,
 };
 
-#[packet_dispatcher(id: 0x24)]
+#[packet_dispatcher(id: "level_chunk_with_light", state: ConnectionState::Play)]
 pub struct ChunkDataAndUpdateLightPacket {
     pub chunk_x: i32,
     pub chunk_z: i32,

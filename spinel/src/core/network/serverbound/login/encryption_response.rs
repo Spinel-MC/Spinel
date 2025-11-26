@@ -20,7 +20,7 @@ fn disconnect_with_error(
 }
 
 #[packet_listener(
-    id: 0x01, 
+    id: "key", 
     state: ConnectionState::Login, 
     fields: (shared_secret: ByteArray, verify_token: ByteArray,),
     module: "login"

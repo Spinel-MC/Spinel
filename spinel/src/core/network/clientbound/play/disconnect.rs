@@ -2,7 +2,7 @@ use crate as spinel;
 use spinel_macros::packet_dispatcher;
 use spinel_utils::component::text::TextComponent;
 
-#[packet_dispatcher(id: 0x1C, state: ConnectionState::Play)]
+#[packet_dispatcher(id: "disconnect", state: ConnectionState::Play)]
 pub struct PlayDisconnectPacket {
     reason: TextComponent,
 }

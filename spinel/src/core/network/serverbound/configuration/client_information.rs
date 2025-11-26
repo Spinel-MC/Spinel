@@ -5,7 +5,7 @@ use spinel_network::{client::instance::ConnectionState, Client};
 use crate as spinel;
 
 #[packet_listener(
-    id: 0x00,
+    id: "client_information",
     state: ConnectionState::Configuration,
     fields: (
         locale: String(16),

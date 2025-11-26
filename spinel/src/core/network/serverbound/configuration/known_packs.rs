@@ -9,7 +9,7 @@ use spinel_macros::packet_listener;
 use spinel_network::{Client, ConnectionState};
 
 #[packet_listener(
-    id: 0x07,
+    id: "select_known_packs",
     state: ConnectionState::Configuration,
     fields:(
         known_packs: Vec<(String, String, String)>,
