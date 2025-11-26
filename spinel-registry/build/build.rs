@@ -18,6 +18,7 @@ mod instruments;
 mod item_tags;
 mod items;
 mod jukebox_songs;
+mod packets;
 mod painting_variants;
 mod pig_variants;
 mod trim_materials;
@@ -64,6 +65,7 @@ pub fn main() {
         (trim_patterns::build(), "trim_patterns"),
         (wolf_sound_variants::build(), "wolf_sound_variants"),
         (wolf_variants::build(), "wolf_variants"),
+        (packets::build(), "packets"),
     ];
 
     for (content, file_name) in vanilla_builds {

@@ -1,7 +1,6 @@
-pub mod types;
-pub mod blocks;
 pub mod banner_pattern;
 pub mod biome;
+pub mod blocks;
 pub mod cat_variant;
 pub mod chat_type;
 pub mod chicken_variant;
@@ -17,13 +16,14 @@ pub mod painting_variant;
 pub mod pig_variant;
 pub mod trim_material;
 pub mod trim_pattern;
+pub mod types;
 pub mod wolf_sound_variant;
 pub mod wolf_variant;
 
 pub mod data_components;
 
-pub use types::{Identifier, BlockStateId, Axis};
 pub use data_components::{DataComponentMap, DataComponentRegistry, DataComponentType};
+pub use types::{Axis, BlockStateId, Identifier};
 
 // Generated modules
 #[allow(warnings)]
@@ -136,6 +136,13 @@ pub mod vanilla_wolf_sound_variants;
 #[path = "generated/vanilla_wolf_variants.rs"]
 pub mod vanilla_wolf_variants;
 
+#[allow(warnings)]
+#[rustfmt::skip]
+#[path = "generated/vanilla_packets.rs"]
+pub mod vanilla_packets;
+
+pub use vanilla_packets as packets;
+
 pub trait RegistryExt {
     fn freeze(&mut self);
 }
@@ -159,7 +166,8 @@ pub const PAINTING_VARIANT_REGISTRY: Identifier = Identifier::vanilla_static("pa
 pub const PIG_VARIANT_REGISTRY: Identifier = Identifier::vanilla_static("pig_variant");
 pub const TRIM_MATERIAL_REGISTRY: Identifier = Identifier::vanilla_static("trim_material");
 pub const TRIM_PATTERN_REGISTRY: Identifier = Identifier::vanilla_static("trim_pattern");
-pub const WOLF_SOUND_VARIANT_REGISTRY: Identifier = Identifier::vanilla_static("wolf_sound_variant");
+pub const WOLF_SOUND_VARIANT_REGISTRY: Identifier =
+    Identifier::vanilla_static("wolf_sound_variant");
 pub const WOLF_VARIANT_REGISTRY: Identifier = Identifier::vanilla_static("wolf_variant");
 
 pub struct Registry {
