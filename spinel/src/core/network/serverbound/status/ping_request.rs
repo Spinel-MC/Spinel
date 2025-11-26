@@ -6,9 +6,9 @@ use crate::{
     },
 };
 use spinel_macros::packet_listener;
-use spinel_network::Client;
+use spinel_network::{Client, ConnectionState};
 
-#[packet_listener(id: 0x01, state: "Status", fields:(timestamp: Long), module: "ping")]
+#[packet_listener(id: "ping_request", state: ConnectionState::Status, fields:(timestamp: Long), module: "ping")]
 fn on_ping_request(client: &mut Client, packet: Packet, server: &mut MinecraftServer) -> bool {
     let mut event = PingEvent::new(packet.timestamp);
 

@@ -6,7 +6,7 @@ use crate::core::server::MinecraftServer;
 use crate as spinel;
 
 #[packet_listener(
-        id: 0x02,
+        id: "custom_payload",
         state: ConnectionState::Configuration,
         module: "login",
         fields:(channel: Identifier, data: ByteArray)

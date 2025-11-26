@@ -1,10 +1,19 @@
-use crate::{self as spinel, core::server::MinecraftServer};
-use spinel_macros::packet_listener;
-use spinel_network::{Client, client::instance::ConnectionState};
+use crate::{
+    self as spinel,
+    core::{network::clientbound::play::login_play::LoginPlayPacket, server::MinecraftServer},
+};
 
-#[packet_listener(id: 0x03, state: ConnectionState::Login, module: "login")]
-fn on_login_acknowledge(client: &mut Client, _server: &mut MinecraftServer) -> bool {
-    println!("Client acknowledged login. Transitioning to Configuration state.");
-    client.state = ConnectionState::Configuration;
+use spinel_macros::packet_listener;
+use spinel_network::{client::instance::ConnectionState, Client};
+
+#[packet_listener(id: "finish_configuration", state: ConnectionState::Configuration)]
+fn on_finish_configuration(client: &mut Client, _server: &mut MinecraftServer) -> bool {
+    println!("Client acknowledged finish configuration. Transitioning to Play state.");
+
+    client.state = ConnectionState::Play;
+
+    let login_packet = LoginPlayPacket::new_default(41);
+    login_packet.dispatch(client);
+
     true
 }

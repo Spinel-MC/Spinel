@@ -1,5 +1,5 @@
 use crate as spinel;
-use spinel::network::{Client, encoder::NetworkBuffer};
+use spinel::network::{encoder::NetworkBuffer, Client};
 
 #[derive(Debug, Clone)]
 pub struct Tag {

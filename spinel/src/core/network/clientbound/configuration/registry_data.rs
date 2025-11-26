@@ -3,7 +3,7 @@ use spinel_macros::packet_dispatcher;
 use spinel_nbt::NbtCompound;
 use spinel_network::types::alias::{Array, Identifier, Optional};
 
-#[packet_dispatcher(id: 0x07)]
+#[packet_dispatcher(id: "registry_data", state: ConnectionState::Configuration)]
 #[derive(Clone)]
 pub struct RegistryDataPacket {
     pub registry_id: Identifier,

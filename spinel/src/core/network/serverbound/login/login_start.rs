@@ -38,7 +38,7 @@ use spinel_utils::component::Component;
 use crate as spinel;
 
 #[packet_listener(
-    id: 0x00,
+    id: "hello",
     state: ConnectionState::Login,
     fields: (name: String, uuid: UUID),
     module: "login"

@@ -1,4 +1,3 @@
-// spinel/src/core/network/clientbound/configuration/mod.rs
 pub mod cookie_request;
 pub mod custom_report_details;
 pub mod disconnect;
