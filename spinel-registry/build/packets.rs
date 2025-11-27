@@ -5,6 +5,19 @@ use serde::Deserialize;
 use std::fs;
 
 #[derive(Deserialize)]
+struct PacketField {
+    name: String,
+    #[serde(rename = "type")]
+    field_type: String,
+}
+
+#[derive(Deserialize)]
+struct PacketEntry {
+    id: String,
+    fields: Option<Vec<PacketField>>,
+}
+
+#[derive(Deserialize)]
 struct Packets {
     serverbound: Direction,
     clientbound: Direction,
@@ -12,11 +25,11 @@ struct Packets {
 
 #[derive(Deserialize)]
 struct Direction {
-    handshake: Option<std::collections::HashMap<String, String>>,
-    status: Option<std::collections::HashMap<String, String>>,
-    login: Option<std::collections::HashMap<String, String>>,
-    config: Option<std::collections::HashMap<String, String>>,
-    play: Option<std::collections::HashMap<String, String>>,
+    handshake: Option<std::collections::HashMap<String, PacketEntry>>,
+    status: Option<std::collections::HashMap<String, PacketEntry>>,
+    login: Option<std::collections::HashMap<String, PacketEntry>>,
+    config: Option<std::collections::HashMap<String, PacketEntry>>,
+    play: Option<std::collections::HashMap<String, PacketEntry>>,
 }
 
 pub fn build() -> TokenStream {
@@ -64,20 +77,19 @@ fn generate_direction(direction: &Direction) -> TokenStream {
     }
 }
 
-fn generate_state(packets: Option<&std::collections::HashMap<String, String>>) -> TokenStream {
+fn generate_state(packets: Option<&std::collections::HashMap<String, PacketEntry>>) -> TokenStream {
     if let Some(packets) = packets {
         let mut constants = TokenStream::new();
-        // Convert HashMap to sorted Vec to maintain consistent ordering
         let mut packet_vec: Vec<_> = packets.iter().collect();
-        packet_vec.sort_by_key(|(_, id_str)| {
-            i32::from_str_radix(id_str.trim_start_matches("0x"), 16).unwrap_or(0)
+        packet_vec.sort_by_key(|(_, entry)| {
+            i32::from_str_radix(entry.id.trim_start_matches("0x"), 16).unwrap_or(0)
         });
 
-        for (name, id_str) in packet_vec {
+        for (name, entry) in packet_vec {
             let const_name =
                 Ident::new(&name.to_shouty_snake_case(), proc_macro2::Span::call_site());
-            let id = i32::from_str_radix(id_str.trim_start_matches("0x"), 16)
-                .expect(&format!("Failed to parse hex ID: {}", id_str));
+            let id = i32::from_str_radix(entry.id.trim_start_matches("0x"), 16)
+                .expect(&format!("Failed to parse hex ID: {}", entry.id));
             constants.extend(quote! {
                 pub const #const_name: i32 = #id;
             });

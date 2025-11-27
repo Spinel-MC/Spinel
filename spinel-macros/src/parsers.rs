@@ -93,6 +93,7 @@ pub struct AttrsParser {
     pub modules: Vec<syn::LitStr>,
     pub fields: Option<FieldsAttr>,
     pub priority: Option<syn::Expr>,
+    pub autofill_fields: bool,
 }
 
 impl Parse for AttrsParser {
@@ -103,6 +104,7 @@ impl Parse for AttrsParser {
         let mut modules = Vec::new();
         let mut fields_attr_parsed = None;
         let mut priority = None;
+        let mut autofill_fields = false;
         let mut seen_keys = HashSet::new();
 
         while !input.is_empty() {
@@ -143,6 +145,16 @@ impl Parse for AttrsParser {
             } else if key_str == "id" {
                 let value: Lit = input.parse()?;
                 id = Some(value);
+            } else if key_str == "autofill_fields" {
+                let value: Lit = input.parse()?;
+                if let Lit::Bool(b) = value {
+                    autofill_fields = b.value;
+                } else {
+                    return Err(syn::Error::new_spanned(
+                        value,
+                        "expected boolean for `autofill_fields`",
+                    ));
+                }
             } else {
                 let value: Expr = input.parse()?;
                 match key_str.as_str() {
@@ -169,6 +181,7 @@ impl Parse for AttrsParser {
             modules,
             fields: fields_attr_parsed,
             priority,
+            autofill_fields,
         })
     }
 }
