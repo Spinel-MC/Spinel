@@ -18,19 +18,20 @@ pub fn packet_listener_logic(attr: TokenStream, item: TokenStream) -> TokenStrea
         .state
         .expect("Packet listener must have a 'state' attribute.");
 
-    let id = match packet_attrs.id {
-        Some(syn::Lit::Int(lit_int)) => lit_int.to_token_stream(),
+    let (packet_id_lit, packet_fields) = match packet_attrs.id {
+        Some(syn::Lit::Int(lit_int)) => (lit_int.to_token_stream(), None),
         Some(syn::Lit::Str(lit_str)) => {
             let id_str = lit_str.value();
             let state_str = extract_state_string(&Some(state_expr.clone()));
-            let resolved_id = resolve_packet_id(&id_str, state_str.as_deref()).expect(&format!(
+            let entry = resolve_packet_entry(&id_str, state_str.as_deref()).expect(&format!(
                 "Failed to resolve packet ID '{}' for state {:?}",
                 id_str, state_str
             ));
-            quote! { #resolved_id }
+            let id_val = i32::from_str_radix(entry.id.trim_start_matches("0x"), 16).unwrap();
+            (quote! { #id_val }, entry.fields)
         }
         Some(_) => panic!("Packet ID must be an integer or a string literal."),
-        None => quote! {-1},
+        None => (quote! {-1}, None),
     };
 
     let modules = packet_attrs.modules;
@@ -49,8 +50,38 @@ pub fn packet_listener_logic(attr: TokenStream, item: TokenStream) -> TokenStrea
 
     let wrapper_fn_ident = format_ident!("__wrapper_for_{}", fn_ident);
 
-    let (generated_packet_struct, generated_wrapper_fn) = if let Some(fields_attr) =
+    let fields_attr_opt = if packet_attrs.autofill_fields {
+        if let Some(fields) = packet_fields {
+            let mut new_fields = syn::punctuated::Punctuated::new();
+
+            for field_def in fields {
+                let field_name = format_ident!("{}", field_def.name);
+                let type_str = field_def.field_type;
+
+                let (ty_ident, generic_param) = parse_type_string(&type_str);
+
+                let field = crate::parsers::Field {
+                    name: field_name,
+                    _colon_token: syn::token::Colon::default(),
+                    ty: ty_ident,
+                    len_arg: None,
+                    generic_param,
+                };
+                new_fields.push(field);
+            }
+
+            Some(crate::parsers::FieldsAttr {
+                _paren_token: syn::token::Paren::default(),
+                fields: new_fields,
+            })
+        } else {
+            panic!("autofill_fields is true but no fields found in packets.json");
+        }
+    } else {
         packet_attrs.fields
+    };
+
+    let (generated_packet_struct, generated_wrapper_fn) = if let Some(fields_attr) = fields_attr_opt
     {
         let fn_name_str = fn_ident.to_string();
         let camel_case_fn_name: String = fn_name_str
@@ -96,7 +127,7 @@ pub fn packet_listener_logic(attr: TokenStream, item: TokenStream) -> TokenStrea
             let name = &field.name;
             let ty_str = field.ty.to_string();
 
-            let decoder_logic = if ty_str == "Array" || ty_str == "Vec" { // <-- THIS IS THE FIX!
+            let decoder_logic = if ty_str == "Array" || ty_str == "Vec" {
                 let inner_type = field.generic_param.as_ref().unwrap();
 
                 if let Type::Tuple(tuple_type) = inner_type {
@@ -215,7 +246,7 @@ pub fn packet_listener_logic(attr: TokenStream, item: TokenStream) -> TokenStrea
         #[doc(hidden)]
         #[allow(non_upper_case_globals)]
         static #static_metadata_name: spinel::internal::PacketListener = spinel::internal::PacketListener {
-            id: #id as i32,
+            id: #packet_id_lit as i32,
             state: #state,
             priority: #priority,
             events: #events_slice,
@@ -236,10 +267,36 @@ pub fn packet_listener_logic(attr: TokenStream, item: TokenStream) -> TokenStrea
     final_output.into()
 }
 
+fn parse_type_string(type_str: &str) -> (syn::Ident, Option<Type>) {
+    if let Some(start) = type_str.find('<') {
+        if let Some(end) = type_str.rfind('>') {
+            let outer = &type_str[..start];
+            let inner = &type_str[start + 1..end];
+            let outer_ident = format_ident!("{}", outer);
+            let inner_type: Type = syn::parse_str(inner).expect("Failed to parse generic type");
+            return (outer_ident, Some(inner_type));
+        }
+    }
+    (format_ident!("{}", type_str), None)
+}
+
+#[derive(serde::Deserialize, Clone)]
+struct PacketField {
+    name: String,
+    #[serde(rename = "type")]
+    field_type: String,
+}
+
+#[derive(serde::Deserialize, Clone)]
+struct PacketEntry {
+    id: String,
+    fields: Option<Vec<PacketField>>,
+}
+
 #[derive(serde::Deserialize)]
 struct PacketsJson {
-    serverbound: std::collections::HashMap<String, std::collections::HashMap<String, String>>,
-    clientbound: std::collections::HashMap<String, std::collections::HashMap<String, String>>,
+    serverbound: std::collections::HashMap<String, std::collections::HashMap<String, PacketEntry>>,
+    clientbound: std::collections::HashMap<String, std::collections::HashMap<String, PacketEntry>>,
 }
 
 fn extract_state_string(state_expr: &Option<syn::Expr>) -> Option<String> {
@@ -256,7 +313,7 @@ fn extract_state_string(state_expr: &Option<syn::Expr>) -> Option<String> {
     })
 }
 
-fn resolve_packet_id(name: &str, state: Option<&str>) -> Option<i32> {
+fn resolve_packet_entry(name: &str, state: Option<&str>) -> Option<PacketEntry> {
     let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();
     let packets_path =
         std::path::Path::new(&manifest_dir).join("../spinel-registry/build_assets/packets.json");
@@ -286,16 +343,16 @@ fn resolve_packet_id(name: &str, state: Option<&str>) -> Option<i32> {
         };
 
         if let Some(protocol) = direction.get(protocol_key) {
-            if let Some(hex_id) = protocol.get(name) {
-                return Some(i32::from_str_radix(hex_id.trim_start_matches("0x"), 16).unwrap());
+            if let Some(entry) = protocol.get(name) {
+                return Some(entry.clone());
             }
         }
         return None;
     }
 
     for protocol in direction.values() {
-        if let Some(hex_id) = protocol.get(name) {
-            return Some(i32::from_str_radix(hex_id.trim_start_matches("0x"), 16).unwrap());
+        if let Some(entry) = protocol.get(name) {
+            return Some(entry.clone());
         }
     }
 

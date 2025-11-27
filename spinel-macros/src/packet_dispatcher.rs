@@ -3,27 +3,56 @@ use crate::util::{get_inner_type, get_write_method_for_type};
 use proc_macro::TokenStream;
 use proc_macro2::TokenStream as TokenStream2;
 use quote::{ToTokens, format_ident, quote};
-use syn::{ItemStruct, Type, parse_macro_input};
+use syn::punctuated::Punctuated;
+use syn::{ItemStruct, Type, parse_macro_input, parse_quote};
 
 pub fn packet_dispatcher_logic(attr: TokenStream, item: TokenStream) -> TokenStream {
     let packet_attrs = parse_macro_input!(attr as AttrsParser);
-    let item_struct = parse_macro_input!(item as ItemStruct);
+    let mut item_struct = parse_macro_input!(item as ItemStruct);
     let struct_name = &item_struct.ident;
     let state_expr = packet_attrs.state.clone();
-    let packet_id_lit = match packet_attrs.id {
-        Some(syn::Lit::Int(lit_int)) => lit_int.to_token_stream(),
+
+    let (packet_id_lit, packet_fields) = match packet_attrs.id {
+        Some(syn::Lit::Int(lit_int)) => (lit_int.to_token_stream(), None),
         Some(syn::Lit::Str(lit_str)) => {
             let id_str = lit_str.value();
             let state_str = extract_state_string(&state_expr);
-            let resolved_id = resolve_packet_id(&id_str, state_str.as_deref()).expect(&format!(
+            let entry = resolve_packet_entry(&id_str, state_str.as_deref()).expect(&format!(
                 "Failed to resolve packet ID '{}' for state {:?}",
                 id_str, state_str
             ));
-            quote! { #resolved_id }
+            let id_val = i32::from_str_radix(entry.id.trim_start_matches("0x"), 16).unwrap();
+            (quote! { #id_val }, entry.fields)
         }
         Some(_) => panic!("Packet ID must be an integer or a string literal."),
         None => panic!("Packet dispatcher must have an 'id' attribute."),
     };
+
+    if packet_attrs.autofill_fields {
+        if let Some(fields) = packet_fields {
+            let mut new_fields = syn::FieldsNamed {
+                brace_token: syn::token::Brace::default(),
+                named: Punctuated::new(),
+            };
+
+            for field_def in fields {
+                let field_name = format_ident!("{}", field_def.name);
+                let type_str = field_def.field_type;
+
+                let ty: Type = syn::parse_str(&map_json_type_to_rust(&type_str))
+                    .expect(&format!("Failed to parse type '{}'", type_str));
+
+                let field: syn::Field = syn::parse_quote! {
+                    pub #field_name: #ty
+                };
+                new_fields.named.push(field);
+            }
+
+            item_struct.fields = syn::Fields::Named(new_fields);
+        } else {
+            panic!("autofill_fields is true but no fields found in packets.json");
+        }
+    }
 
     let mut encode_body = quote! {};
 
@@ -61,6 +90,10 @@ pub fn packet_dispatcher_logic(attr: TokenStream, item: TokenStream) -> TokenStr
         }
     }
     .into()
+}
+
+fn map_json_type_to_rust(type_str: &str) -> String {
+    type_str.to_string()
 }
 
 fn generate_serialization_logic(ty: &Type, access_expr: TokenStream2) -> TokenStream2 {
@@ -145,10 +178,23 @@ fn generate_serialization_logic(ty: &Type, access_expr: TokenStream2) -> TokenSt
     quote! { buffer.#write_method(#final_value_expr); }
 }
 
+#[derive(serde::Deserialize, Clone)]
+struct PacketField {
+    name: String,
+    #[serde(rename = "type")]
+    field_type: String,
+}
+
+#[derive(serde::Deserialize, Clone)]
+struct PacketEntry {
+    id: String,
+    fields: Option<Vec<PacketField>>,
+}
+
 #[derive(serde::Deserialize)]
 struct PacketsJson {
-    serverbound: std::collections::HashMap<String, std::collections::HashMap<String, String>>,
-    clientbound: std::collections::HashMap<String, std::collections::HashMap<String, String>>,
+    serverbound: std::collections::HashMap<String, std::collections::HashMap<String, PacketEntry>>,
+    clientbound: std::collections::HashMap<String, std::collections::HashMap<String, PacketEntry>>,
 }
 
 fn extract_state_string(state_expr: &Option<syn::Expr>) -> Option<String> {
@@ -165,7 +211,7 @@ fn extract_state_string(state_expr: &Option<syn::Expr>) -> Option<String> {
     })
 }
 
-fn resolve_packet_id(name: &str, state: Option<&str>) -> Option<i32> {
+fn resolve_packet_entry(name: &str, state: Option<&str>) -> Option<PacketEntry> {
     let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();
     let packets_path =
         std::path::Path::new(&manifest_dir).join("../spinel-registry/build_assets/packets.json");
@@ -195,16 +241,16 @@ fn resolve_packet_id(name: &str, state: Option<&str>) -> Option<i32> {
         };
 
         if let Some(protocol) = direction.get(protocol_key) {
-            if let Some(hex_id) = protocol.get(name) {
-                return Some(i32::from_str_radix(hex_id.trim_start_matches("0x"), 16).unwrap());
+            if let Some(entry) = protocol.get(name) {
+                return Some(entry.clone());
             }
         }
         return None;
     }
 
     for protocol in direction.values() {
-        if let Some(hex_id) = protocol.get(name) {
-            return Some(i32::from_str_radix(hex_id.trim_start_matches("0x"), 16).unwrap());
+        if let Some(entry) = protocol.get(name) {
+            return Some(entry.clone());
         }
     }
 

@@ -152,10 +152,10 @@ async fn handle_client_connection<S>(
                             let initial_client_state = client.state;
                             server_guard.dispatch_packet(packet_id, &mut client, payload_buffer);
 
-                            println!(
-                                "[{:?}, ID: {:#04X}] Packet handled!",
-                                initial_client_state, packet_id
-                            );
+                            // println!(
+                            //     "[{:?}, ID: {:#04X}] Packet handled!",
+                            //     initial_client_state, packet_id
+                            // );
                         } else {
                             println!(
                                 "[{:?}, ID: {:#04X}] Unhandled packet (no listener).",
