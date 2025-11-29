@@ -12,14 +12,15 @@ pub fn packet_dispatcher_logic(attr: TokenStream, item: TokenStream) -> TokenStr
     let struct_name = &item_struct.ident;
     let state_expr = packet_attrs.state.clone();
 
+    let state_str_opt = extract_state_string(&state_expr);
+
     let (packet_id_lit, packet_fields) = match packet_attrs.id {
         Some(syn::Lit::Int(lit_int)) => (lit_int.to_token_stream(), None),
         Some(syn::Lit::Str(lit_str)) => {
             let id_str = lit_str.value();
-            let state_str = extract_state_string(&state_expr);
-            let entry = resolve_packet_entry(&id_str, state_str.as_deref()).expect(&format!(
+            let entry = resolve_packet_entry(&id_str, state_str_opt.as_deref()).expect(&format!(
                 "Failed to resolve packet ID '{}' for state {:?}",
-                id_str, state_str
+                id_str, state_str_opt
             ));
             let id_val = i32::from_str_radix(entry.id.trim_start_matches("0x"), 16).unwrap();
             (quote! { #id_val }, entry.fields)
@@ -63,7 +64,8 @@ pub fn packet_dispatcher_logic(attr: TokenStream, item: TokenStream) -> TokenStr
                 let field_type = &field.ty;
                 let access_expr = quote! { &self.#field_name };
 
-                let logic = generate_serialization_logic(field_type, access_expr);
+                let logic =
+                    generate_serialization_logic(field_type, access_expr, state_str_opt.as_deref());
                 encode_body.extend(logic);
             }
         }
@@ -96,13 +98,18 @@ fn map_json_type_to_rust(type_str: &str) -> String {
     type_str.to_string()
 }
 
-fn generate_serialization_logic(ty: &Type, access_expr: TokenStream2) -> TokenStream2 {
+fn generate_serialization_logic(
+    ty: &Type,
+    access_expr: TokenStream2,
+    state: Option<&str>,
+) -> TokenStream2 {
     if let Type::Path(p) = ty {
         if let Some(segment) = p.path.segments.last() {
             if segment.ident == "Option" || segment.ident == "Optional" {
                 let inner_type = get_inner_type(p).expect("Option/Optional must have generic");
 
-                let inner_logic = generate_serialization_logic(&inner_type, quote! { value });
+                let inner_logic =
+                    generate_serialization_logic(&inner_type, quote! { value }, state);
 
                 return quote! {
                     buffer.write_bool((#access_expr).is_some());
@@ -119,13 +126,26 @@ fn generate_serialization_logic(ty: &Type, access_expr: TokenStream2) -> TokenSt
         for (i, elem_type) in type_tuple.elems.iter().enumerate() {
             let index = syn::Index::from(i);
             let elem_access = quote! { &(#access_expr).#index };
-            tuple_body.extend(generate_serialization_logic(elem_type, elem_access));
+            tuple_body.extend(generate_serialization_logic(elem_type, elem_access, state));
         }
         return tuple_body;
     }
 
     let (write_method, is_ref) = get_write_method_for_type(ty);
     let write_method_str = write_method.to_string();
+
+    if write_method_str == "write_json_text_component" {
+        if let Some(s) = state {
+            if s == "Configuration" || s == "Play" {
+                let value_expr = if is_ref {
+                    quote! { #access_expr }
+                } else {
+                    quote! { (#access_expr).clone() }
+                };
+                return quote! { buffer.write_nbt_text_component(#value_expr); };
+            }
+        }
+    }
 
     if write_method_str == "write_array_custom" {
         let inner_type = get_inner_type(if let Type::Path(p) = ty {
@@ -147,7 +167,7 @@ fn generate_serialization_logic(ty: &Type, access_expr: TokenStream2) -> TokenSt
             quote! { #access_expr }
         };
 
-        let inner_logic = generate_serialization_logic(&inner_type, quote! { item });
+        let inner_logic = generate_serialization_logic(&inner_type, quote! { item }, state);
 
         return quote! {
             buffer.write_varint((#vec_expr).len() as i32);

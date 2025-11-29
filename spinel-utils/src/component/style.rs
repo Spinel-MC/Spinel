@@ -75,4 +75,51 @@ impl Style {
             obfuscated: child.style.obfuscated.or(self.obfuscated),
         }
     }
+
+    pub fn to_nbt(&self) -> spinel_nbt::NbtCompound {
+        let mut compound = spinel_nbt::NbtCompound::new();
+        if let Some(color) = &self.color {
+            match color {
+                TextColor::Named(named) => compound.insert(
+                    "color".to_string(),
+                    spinel_nbt::Nbt::String(named.as_str().to_string()),
+                ),
+                TextColor::Hex(hex) => compound.insert(
+                    "color".to_string(),
+                    spinel_nbt::Nbt::String(hex.to_string()),
+                ),
+            }
+        }
+        if let Some(bold) = self.bold {
+            compound.insert(
+                "bold".to_string(),
+                spinel_nbt::Nbt::Byte(if bold { 1 } else { 0 }),
+            );
+        }
+        if let Some(italic) = self.italic {
+            compound.insert(
+                "italic".to_string(),
+                spinel_nbt::Nbt::Byte(if italic { 1 } else { 0 }),
+            );
+        }
+        if let Some(underlined) = self.underlined {
+            compound.insert(
+                "underlined".to_string(),
+                spinel_nbt::Nbt::Byte(if underlined { 1 } else { 0 }),
+            );
+        }
+        if let Some(strikethrough) = self.strikethrough {
+            compound.insert(
+                "strikethrough".to_string(),
+                spinel_nbt::Nbt::Byte(if strikethrough { 1 } else { 0 }),
+            );
+        }
+        if let Some(obfuscated) = self.obfuscated {
+            compound.insert(
+                "obfuscated".to_string(),
+                spinel_nbt::Nbt::Byte(if obfuscated { 1 } else { 0 }),
+            );
+        }
+        compound
+    }
 }
