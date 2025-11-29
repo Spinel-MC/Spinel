@@ -135,6 +135,11 @@ impl NetworkBuffer {
         self.write_string(&json_string)
     }
 
+    pub fn write_nbt_text_component(&mut self, value: &TextComponent) -> &mut Self {
+        let nbt = value.to_nbt_compound();
+        self.write_nbt_compound(&nbt)
+    }
+
     pub fn write_position(&mut self, value: &Position) -> &mut Self {
         let val = ((value.x as u64 & 0x3FFFFFF) << 38)
             | ((value.z as u64 & 0x3FFFFFF) << 12)

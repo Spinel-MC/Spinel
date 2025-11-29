@@ -150,6 +150,99 @@ impl TextComponent {
 
         ansi
     }
+
+    pub fn to_nbt_compound(&self) -> spinel_nbt::NbtCompound {
+        let mut compound = self.style.to_nbt();
+
+        match &self.content {
+            ComponentType::Empty => {
+                compound.insert("text".to_string(), spinel_nbt::Nbt::String("".to_string()));
+            }
+            ComponentType::Text(text) => {
+                compound.insert("text".to_string(), spinel_nbt::Nbt::String(text.clone()));
+            }
+            ComponentType::StaticText(text) => {
+                compound.insert(
+                    "text".to_string(),
+                    spinel_nbt::Nbt::String(text.to_string()),
+                );
+            }
+            ComponentType::Translatable { key, args } => {
+                compound.insert(
+                    "translate".to_string(),
+                    spinel_nbt::Nbt::String(key.clone()),
+                );
+                if !args.is_empty() {
+                    let mut args_list = Vec::new();
+                    for arg in args {
+                        args_list.push(spinel_nbt::Nbt::Compound(arg.to_nbt_compound()));
+                    }
+                    compound.insert(
+                        "with".to_string(),
+                        spinel_nbt::Nbt::List(args_list.into_boxed_slice()),
+                    );
+                }
+            }
+            ComponentType::StaticTranslatable(key) => {
+                compound.insert(
+                    "translate".to_string(),
+                    spinel_nbt::Nbt::String(key.to_string()),
+                );
+            }
+            ComponentType::Score { name, objective } => {
+                let mut score_compound = spinel_nbt::NbtCompound::new();
+                score_compound.insert("name".to_string(), spinel_nbt::Nbt::String(name.clone()));
+                score_compound.insert(
+                    "objective".to_string(),
+                    spinel_nbt::Nbt::String(objective.clone()),
+                );
+                compound.insert(
+                    "score".to_string(),
+                    spinel_nbt::Nbt::Compound(score_compound),
+                );
+            }
+            ComponentType::Selector(selector) => {
+                compound.insert(
+                    "selector".to_string(),
+                    spinel_nbt::Nbt::String(selector.clone()),
+                );
+            }
+            ComponentType::StaticSelector(selector) => {
+                compound.insert(
+                    "selector".to_string(),
+                    spinel_nbt::Nbt::String(selector.to_string()),
+                );
+            }
+            ComponentType::Keybind(key) => {
+                compound.insert("keybind".to_string(), spinel_nbt::Nbt::String(key.clone()));
+            }
+            ComponentType::StaticKeybind(key) => {
+                compound.insert(
+                    "keybind".to_string(),
+                    spinel_nbt::Nbt::String(key.to_string()),
+                );
+            }
+            ComponentType::Nbt {
+                nbt_path: _,
+                source: _,
+            } => {
+                todo!("NBT component serialization to NBT compound not implemented")
+            }
+        }
+
+        if !self.extra.is_empty() {
+            let mut extra_list = Vec::new();
+            for child in &self.extra {
+                extra_list.push(spinel_nbt::Nbt::Compound(child.to_nbt_compound()));
+            }
+            compound.insert(
+                "extra".to_string(),
+                spinel_nbt::Nbt::List(extra_list.into_boxed_slice()),
+            );
+        }
+
+        compound
+    }
 }
 
 impl Serialize for TextComponent {
@@ -194,9 +287,11 @@ impl Serialize for TextComponent {
             ComponentType::StaticKeybind(key) => {
                 map.insert("keybind".to_string(), json!(key));
             }
-            ComponentType::Nbt { nbt_path, source } => {
-                map.insert("nbt".to_string(), json!(nbt_path));
-                map.insert("source".to_string(), json!(source));
+            ComponentType::Nbt {
+                nbt_path: _,
+                source: _,
+            } => {
+                todo!("NBT component serialization to JSON not implemented")
             }
         }
 
@@ -263,8 +358,8 @@ impl<'de> Deserialize<'de> for TextComponent {
             ComponentType::Selector(selector)
         } else if let Some(key) = intermediate.keybind {
             ComponentType::Keybind(key)
-        } else if let (Some(nbt_path), Some(source)) = (intermediate.nbt, intermediate.source) {
-            ComponentType::Nbt { nbt_path, source }
+        } else if let (Some(_nbt_path), Some(_source)) = (intermediate.nbt, intermediate.source) {
+            todo!("NBT component deserialization not implemented")
         } else {
             ComponentType::Empty
         };

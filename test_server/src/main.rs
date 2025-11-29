@@ -7,9 +7,11 @@ use spinel::{
             },
             startup::StartupEvent,
         },
+        network::clientbound::play::disconnect::PlayDisconnectPacket,
         server::MinecraftServer,
     },
-    spinel_macros::{event_listener, import_module},
+    network::{Client, ConnectionState},
+    spinel_macros::{event_listener, import_module, packet_listener},
     util::constants::{PROTOCOL_VERSION, SERVER_BRAND},
     utils::{
         Priority,
@@ -71,3 +73,10 @@ fn on_event(event: &mut ServerListPingEvent, _server: &mut MinecraftServer) {
 
 #[event_listener(priority: Priority::High)]
 fn on_startup(event: &mut StartupEvent, _server: &mut MinecraftServer) {}
+
+#[packet_listener(id: 0x1D, state: ConnectionState::Play)]
+fn on_login(client: &mut Client, server: &mut MinecraftServer) -> bool {
+    println!("LoginEvent: User {} has logged in.", client.addr);
+    server.disconnect(client, Component::text("You have been disconnected"));
+    true
+}
