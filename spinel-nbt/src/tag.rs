@@ -196,6 +196,18 @@ impl Nbt {
         Ok((name, tag))
     }
 
+    pub fn read_unnamed<R: Read>(reader: &mut R) -> io::Result<Self> {
+        let mut helper = NbtReadHelper::new(reader);
+        let tag_id = helper
+            .get_u8_be()
+            .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+        if tag_id == END_ID {
+            return Ok(Nbt::End);
+        }
+        Self::deserialize_data(&mut helper, tag_id)
+            .map_err(|e| io::Error::new(io::ErrorKind::Other, e))
+    }
+
     pub fn write<W: Write>(&self, name: &str, writer: &mut W) -> io::Result<()> {
         writer.write_all(&[self.get_type_id()])?;
         if self.get_type_id() != END_ID {

@@ -7,7 +7,6 @@ mod blocks;
 mod cat_variants;
 mod chat_types;
 mod chicken_variants;
-mod constants;
 mod cow_variants;
 mod damage_types;
 mod dialogs;
@@ -28,22 +27,49 @@ mod wolf_sound_variants;
 mod wolf_variants;
 
 const FMT: bool = true;
-
 const OUT_DIR: &str = "src/generated";
-
-const BLOCKS: &str = "blocks";
+const DATAPACKS_DIR: &str = "build_assets/datapacks/default";
 
 pub fn main() {
-    // Download minecraft-assets if needed
-    download::ensure_datapacks_downloaded(constants::MINECRAFT_VERSION)
+    let target_version = spinel_utils::constants::MINECRAFT_VERSION;
+    let version_file = format!("{}/spinel.json", DATAPACKS_DIR);
+
+    // Tell Cargo to rerun if the version constant or the asset manifest changes
+    println!("cargo:rerun-if-changed=build/build.rs");
+    println!("cargo:rerun-if-changed={}", version_file);
+
+    // --- FAST PATH CHECK ---
+    let mut needs_build = true;
+    if Path::new(&version_file).exists() && Path::new(OUT_DIR).exists() {
+        if let Ok(content) = fs::read_to_string(&version_file) {
+            if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
+                if json["minecraft_version"] == target_version {
+                    // Assets match version, now check if we have generated files
+                    if fs::read_dir(OUT_DIR)
+                        .map(|mut d| d.next().is_some())
+                        .unwrap_or(false)
+                    {
+                        needs_build = false;
+                    }
+                }
+            }
+        }
+    }
+
+    if !needs_build {
+        return;
+    }
+
+    // --- FULL BUILD START ---
+    download::ensure_datapacks_downloaded(target_version)
         .expect("Failed to download minecraft-assets");
 
     if !Path::new(OUT_DIR).exists() {
-        fs::create_dir(OUT_DIR).unwrap();
+        fs::create_dir_all(OUT_DIR).unwrap();
     }
 
     let vanilla_builds = [
-        (blocks::build(), BLOCKS),
+        (blocks::build(), "blocks"),
         (banner_patterns::build(), "banner_patterns"),
         (biomes::build(), "biomes"),
         (block_tags::build(), "block_tags"),
@@ -69,11 +95,8 @@ pub fn main() {
     ];
 
     for (content, file_name) in vanilla_builds {
-        fs::write(
-            format!("{OUT_DIR}/vanilla_{file_name}.rs"),
-            content.to_string(),
-        )
-        .unwrap();
+        let path = format!("{OUT_DIR}/vanilla_{file_name}.rs");
+        fs::write(&path, content.to_string()).unwrap();
     }
 
     if FMT {

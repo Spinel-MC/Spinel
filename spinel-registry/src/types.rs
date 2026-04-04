@@ -149,4 +149,3 @@ impl Axis {
 /// Placeholder type for unimplemented data component values
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Todo;
-

@@ -14,3 +14,8 @@ lazy_static = "1.4.0"
 spinel-utils = { path = "../spinel-utils" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
+
+[features]
+default = []
+server = []
+client = []

@@ -1,8 +1,8 @@
 [workspace]
 members = [
-    "spinel",
+    "spinel", "spinel-client", "spinel-core",
     "spinel-events", "spinel-macros", "spinel-nbt",
-    "spinel-network", "spinel-registry", "spinel-utils",
+    "spinel-network", "spinel-registry", "spinel-server", "spinel-utils", "test_client",
     "test_server",
 ]
 resolver = "3"

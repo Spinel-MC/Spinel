@@ -1,4 +1,5 @@
 pub mod component;
+pub mod constants;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Priority {

@@ -1,33 +1,58 @@
-pub mod client;
+pub mod decoder;
 pub mod encoder;
-pub mod server;
+pub mod network_buffer;
+pub mod packet_names;
 pub mod types;
 
-pub use client::connection_manager::ConnectionManager;
-pub use client::instance::{Client, ConnectionState};
-pub use client::player::Player;
+pub mod data_type;
+pub mod wrappers;
+
+pub use data_type::DataType;
+pub use types::var_int::VarIntWrapper;
+pub use types::var_long::VarLongWrapper;
+pub use types::{Array, Position, Slot, VarInt, VarLong};
+pub use wrappers::{JsonTextComponent, NbtTextComponent};
+
+pub use decoder::PacketDecoder;
+pub use encoder as encoder_module;
+pub use encoder::PacketEncoder;
 
 pub use inventory;
 pub use spinel_utils::Priority;
 pub use tokio;
 
-pub struct PacketListener {
-    pub id: i32,
-    pub state: ConnectionState,
-    pub events: &'static [&'static str],
-    pub priority: Priority,
-    pub handler: fn(&mut Client, server: *mut ()) -> bool,
-    pub modules: &'static [&'static str],
+pub trait PacketSender {
+    fn send_packet(&mut self, id: i32, payload: &[u8]);
 }
 
-inventory::collect!(&'static PacketListener);
+pub trait PacketStruct: DataType {
+    fn get_id() -> i32;
+    fn get_state() -> ConnectionState;
+}
 
-pub trait ServerContext: Send + Sync + 'static {
-    fn on_startup(&mut self) -> bool;
-    fn on_shutdown(&mut self);
-    fn on_connection(&mut self, client: &mut Client) -> bool;
-    fn on_disconnect(&mut self, addr: std::net::SocketAddr);
-    fn connection_manager_mut(&mut self) -> &mut ConnectionManager;
-    fn dispatch_packet(&mut self, packet_id: i32, client: &mut Client, payload: Vec<u8>) -> bool;
-    fn has_listener_for(&self, packet_id: i32, state: &ConnectionState) -> bool;
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
+pub enum ConnectionState {
+    Handshaking,
+    Status,
+    Login,
+    Configuration,
+    Play,
+}
+
+impl ConnectionState {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            ConnectionState::Handshaking => "Handshaking",
+            ConnectionState::Status => "Status",
+            ConnectionState::Login => "Login",
+            ConnectionState::Configuration => "Configuration",
+            ConnectionState::Play => "Play",
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
+pub enum Recipient {
+    Client,
+    Server,
 }

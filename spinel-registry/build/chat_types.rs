@@ -91,9 +91,7 @@ fn generate_chat_type_decoration(decoration: &ChatTypeDecoration) -> TokenStream
 }
 
 pub(crate) fn build() -> TokenStream {
-    println!(
-        "cargo:rerun-if-changed=build_assets/datapacks/default/data/minecraft/chat_type/"
-    );
+    println!("cargo:rerun-if-changed=build_assets/datapacks/default/data/minecraft/chat_type/");
 
     let chat_type_dir = "build_assets/datapacks/default/data/minecraft/chat_type";
     let mut chat_types = Vec::new();
@@ -104,12 +102,12 @@ pub(crate) fn build() -> TokenStream {
         let path = entry.path();
 
         if path.extension().and_then(|s| s.to_str()) == Some("json") {
-            let chat_type_name = path.file_stem().unwrap().to_str().unwrap().to_string();            
+            let chat_type_name = path.file_stem().unwrap().to_str().unwrap().to_string();
             // Skip metadata files from minecraft-assets (e.g., _all.json, _list.json)
             if chat_type_name.starts_with('_') {
                 continue;
             }
-            
+
             let content = fs::read_to_string(&path).unwrap();
             let chat_type: ChatTypeJson = serde_json::from_str(&content)
                 .unwrap_or_else(|e| panic!("Failed to parse {}: {}", chat_type_name, e));

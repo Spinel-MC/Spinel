@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::fs::{self, File};
-use std::io::{self, Write};
+use std::io::{self};
 use std::path::Path;
 
 #[derive(Serialize, Deserialize)]
@@ -12,22 +12,14 @@ pub fn ensure_datapacks_downloaded(minecraft_version: &str) -> io::Result<()> {
     let datapacks_dir = "build_assets/datapacks/default";
     let version_file = format!("{}/spinel.json", datapacks_dir);
 
-    let needs_download = if Path::new(&version_file).exists() {
-        let content = fs::read_to_string(&version_file)?;
-        match serde_json::from_str::<VersionTracker>(&content) {
-            Ok(tracker) => tracker.minecraft_version != minecraft_version,
-            Err(_) => true,
+    if Path::new(&version_file).exists() {
+        if let Ok(content) = fs::read_to_string(&version_file) {
+            if let Ok(tracker) = serde_json::from_str::<VersionTracker>(&content) {
+                if tracker.minecraft_version == minecraft_version {
+                    return Ok(());
+                }
+            }
         }
-    } else {
-        true
-    };
-
-    if !needs_download {
-        println!(
-            "cargo:warning=Minecraft assets already downloaded for version {}",
-            minecraft_version
-        );
-        return Ok(());
     }
 
     println!(
@@ -44,7 +36,7 @@ pub fn ensure_datapacks_downloaded(minecraft_version: &str) -> io::Result<()> {
         minecraft_version
     );
 
-    let response = reqwest::blocking::get(&url)
+    let mut response = reqwest::blocking::get(&url)
         .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("Failed to download: {}", e)))?;
 
     if !response.status().is_success() {
@@ -57,17 +49,20 @@ pub fn ensure_datapacks_downloaded(minecraft_version: &str) -> io::Result<()> {
         ));
     }
 
-    let bytes = response.bytes().map_err(|e| {
+    let temp_zip = "build_assets/temp_minecraft_assets.zip";
+    let mut dest = File::create(temp_zip)?;
+
+    // Use io::copy to stream response directly to disk.
+    // This avoids response.bytes() which buffers the whole file in memory.
+    io::copy(&mut response, &mut dest).map_err(|e| {
         io::Error::new(
             io::ErrorKind::Other,
-            format!("Failed to read response: {}", e),
+            format!("Failed to stream download to file: {}", e),
         )
     })?;
 
-    let temp_zip = "build_assets/temp_minecraft_assets.zip";
-    let mut file = File::create(temp_zip)?;
-    file.write_all(&bytes)?;
-    drop(file);
+    // Drop file handle before extraction
+    drop(dest);
 
     println!("cargo:warning=Extracting minecraft-assets...");
 
@@ -118,11 +113,6 @@ pub fn ensure_datapacks_downloaded(minecraft_version: &str) -> io::Result<()> {
     };
     let tracker_json = serde_json::to_string_pretty(&tracker)?;
     fs::write(&version_file, tracker_json)?;
-
-    println!(
-        "cargo:warning=Successfully downloaded and extracted minecraft-assets for version {}",
-        minecraft_version
-    );
 
     Ok(())
 }

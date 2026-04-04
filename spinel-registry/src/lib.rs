@@ -169,6 +169,10 @@ pub const TRIM_PATTERN_REGISTRY: Identifier = Identifier::vanilla_static("trim_p
 pub const WOLF_SOUND_VARIANT_REGISTRY: Identifier =
     Identifier::vanilla_static("wolf_sound_variant");
 pub const WOLF_VARIANT_REGISTRY: Identifier = Identifier::vanilla_static("wolf_variant");
+pub const ENCHANTMENT_REGISTRY: Identifier = Identifier::vanilla_static("enchantment");
+pub const TIMELINE_REGISTRY: Identifier = Identifier::vanilla_static("timeline");
+pub const ZOMBIE_NAUTILUS_VARIANT_REGISTRY: Identifier =
+    Identifier::vanilla_static("zombie_nautilus_variant");
 
 pub struct Registry {
     pub blocks: blocks::BlockRegistry,

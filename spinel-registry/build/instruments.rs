@@ -1,10 +1,10 @@
 use std::fs;
 
+use crate::types::Identifier;
 use heck::ToShoutySnakeCase;
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::quote;
 use serde::Deserialize;
-use crate::types::Identifier;
 
 #[derive(Deserialize, Debug)]
 pub struct InstrumentJson {
@@ -33,9 +33,7 @@ fn generate_text_component(component: &TextComponentJson) -> TokenStream {
 }
 
 pub(crate) fn build() -> TokenStream {
-    println!(
-        "cargo:rerun-if-changed=build_assets/datapacks/default/data/minecraft/instrument/"
-    );
+    println!("cargo:rerun-if-changed=build_assets/datapacks/default/data/minecraft/instrument/");
 
     let instrument_dir = "build_assets/datapacks/default/data/minecraft/instrument";
     let mut instruments = Vec::new();
@@ -46,12 +44,12 @@ pub(crate) fn build() -> TokenStream {
         let path = entry.path();
 
         if path.extension().and_then(|s| s.to_str()) == Some("json") {
-            let instrument_name = path.file_stem().unwrap().to_str().unwrap().to_string();            
+            let instrument_name = path.file_stem().unwrap().to_str().unwrap().to_string();
             // Skip metadata files from minecraft-assets (e.g., _all.json, _list.json)
             if instrument_name.starts_with('_') {
                 continue;
             }
-            
+
             let content = fs::read_to_string(&path).unwrap();
             let instrument: InstrumentJson = serde_json::from_str(&content)
                 .unwrap_or_else(|e| panic!("Failed to parse {}: {}", instrument_name, e));

@@ -77,9 +77,7 @@ fn generate_death_message_type(death_message_type: DeathMessageTypeJson) -> Toke
 }
 
 pub(crate) fn build() -> TokenStream {
-    println!(
-        "cargo:rerun-if-changed=build_assets/datapacks/default/data/minecraft/damage_type/"
-    );
+    println!("cargo:rerun-if-changed=build_assets/datapacks/default/data/minecraft/damage_type/");
 
     let damage_type_dir = "build_assets/datapacks/default/data/minecraft/damage_type";
     let mut damage_types = Vec::new();
@@ -90,12 +88,12 @@ pub(crate) fn build() -> TokenStream {
         let path = entry.path();
 
         if path.extension().and_then(|s| s.to_str()) == Some("json") {
-            let damage_type_name = path.file_stem().unwrap().to_str().unwrap().to_string();            
+            let damage_type_name = path.file_stem().unwrap().to_str().unwrap().to_string();
             // Skip metadata files from minecraft-assets (e.g., _all.json, _list.json)
             if damage_type_name.starts_with('_') {
                 continue;
             }
-            
+
             let content = fs::read_to_string(&path).unwrap();
             let damage_type: DamageTypeJson = serde_json::from_str(&content)
                 .unwrap_or_else(|e| panic!("Failed to parse {}: {}", damage_type_name, e));

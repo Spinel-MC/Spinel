@@ -1,10 +1,10 @@
 use std::fs;
 
+use crate::types::Identifier;
 use heck::ToShoutySnakeCase;
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::quote;
 use serde::Deserialize;
-use crate::types::Identifier;
 
 #[derive(Deserialize, Debug)]
 pub struct DimensionTypeJson {
@@ -97,8 +97,7 @@ pub(crate) fn build() -> TokenStream {
         "cargo:rerun-if-changed=build_assets/datapacks/default/data/minecraft/dimension_type/"
     );
 
-    let dimension_type_dir =
-        "build_assets/datapacks/default/data/minecraft/dimension_type";
+    let dimension_type_dir = "build_assets/datapacks/default/data/minecraft/dimension_type";
     let mut dimension_types = Vec::new();
 
     // Read all dimension type JSON files
@@ -107,12 +106,12 @@ pub(crate) fn build() -> TokenStream {
         let path = entry.path();
 
         if path.extension().and_then(|s| s.to_str()) == Some("json") {
-            let dimension_type_name = path.file_stem().unwrap().to_str().unwrap().to_string();            
+            let dimension_type_name = path.file_stem().unwrap().to_str().unwrap().to_string();
             // Skip metadata files from minecraft-assets (e.g., _all.json, _list.json)
             if dimension_type_name.starts_with('_') {
                 continue;
             }
-            
+
             let content = fs::read_to_string(&path).unwrap();
             let dimension_type: DimensionTypeJson = serde_json::from_str(&content)
                 .unwrap_or_else(|e| panic!("Failed to parse {}: {}", dimension_type_name, e));

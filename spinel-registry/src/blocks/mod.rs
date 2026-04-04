@@ -396,6 +396,6 @@ macro_rules! offset {
     }};
 }
 
+use crate::types::{BlockStateId, Identifier};
 /// Re-export for easier access
 pub use offset;
-use crate::types::{BlockStateId, Identifier};

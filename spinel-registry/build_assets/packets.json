@@ -25,7 +25,7 @@
           },
           {
             "name": "profile_id",
-            "type": "Uuid"
+            "type": "UUID"
           }
         ]
       },
@@ -34,11 +34,11 @@
         "fields": [
           {
             "name": "keybytes",
-            "type": "Array<u8>"
+            "type": "Array<byte>"
           },
           {
             "name": "encrypted_challenge",
-            "type": "Array<u8>"
+            "type": "Array<byte>"
           }
         ]
       },
@@ -47,7 +47,7 @@
         "fields": [
           {
             "name": "transaction_id",
-            "type": "VarInt"
+            "type": "int"
           },
           {
             "name": "payload",
@@ -94,7 +94,7 @@
         "fields": [
           {
             "name": "id",
-            "type": "i64"
+            "type": "long"
           }
         ]
       },
@@ -103,7 +103,7 @@
         "fields": [
           {
             "name": "id",
-            "type": "VarInt"
+            "type": "int"
           }
         ]
       },
@@ -112,7 +112,7 @@
         "fields": [
           {
             "name": "id",
-            "type": "Uuid"
+            "type": "UUID"
           },
           {
             "name": "action",
@@ -132,7 +132,7 @@
           },
           {
             "name": "payload",
-            "type": "Option<Tag>"
+            "type": "Optional<Tag>"
           }
         ]
       },
@@ -147,7 +147,7 @@
         "fields": [
           {
             "name": "id",
-            "type": "VarInt"
+            "type": "int"
           }
         ]
       },
@@ -156,7 +156,7 @@
         "fields": [
           {
             "name": "transaction_id",
-            "type": "VarInt"
+            "type": "int"
           },
           {
             "name": "pos",
@@ -190,7 +190,7 @@
         "fields": [
           {
             "name": "offset",
-            "type": "VarInt"
+            "type": "int"
           }
         ]
       },
@@ -216,7 +216,7 @@
           },
           {
             "name": "salt",
-            "type": "i64"
+            "type": "long"
           },
           {
             "name": "argument_signatures",
@@ -241,7 +241,7 @@
           },
           {
             "name": "salt",
-            "type": "i64"
+            "type": "long"
           },
           {
             "name": "signature",
@@ -267,7 +267,7 @@
         "fields": [
           {
             "name": "desired_chunks_per_tick",
-            "type": "f32"
+            "type": "float"
           }
         ]
       },
@@ -298,7 +298,7 @@
         "fields": [
           {
             "name": "id",
-            "type": "VarInt"
+            "type": "int"
           },
           {
             "name": "command",
@@ -315,11 +315,11 @@
         "fields": [
           {
             "name": "container_id",
-            "type": "VarInt"
+            "type": "int"
           },
           {
             "name": "button_id",
-            "type": "VarInt"
+            "type": "int"
           }
         ]
       },
@@ -328,19 +328,19 @@
         "fields": [
           {
             "name": "container_id",
-            "type": "VarInt"
+            "type": "int"
           },
           {
             "name": "state_id",
-            "type": "VarInt"
+            "type": "int"
           },
           {
             "name": "slot_num",
-            "type": "i16"
+            "type": "short"
           },
           {
             "name": "button_num",
-            "type": "u8"
+            "type": "byte"
           },
           {
             "name": "click_type",
@@ -348,7 +348,7 @@
           },
           {
             "name": "changed_slots",
-            "type": "it.unimi.dsi.fastutil.ints.Int2ObjectMap<net.minecraft.network.HashedStack>"
+            "type": "Int2ObjectMap<HashedStack>"
           },
           {
             "name": "carried_item",
@@ -361,7 +361,7 @@
         "fields": [
           {
             "name": "container_id",
-            "type": "VarInt"
+            "type": "int"
           }
         ]
       },
@@ -370,15 +370,15 @@
         "fields": [
           {
             "name": "slot_id",
-            "type": "VarInt"
+            "type": "int"
           },
           {
             "name": "container_id",
-            "type": "VarInt"
+            "type": "int"
           },
           {
             "name": "new_state",
-            "type": "bool"
+            "type": "boolean"
           }
         ]
       },
@@ -399,7 +399,7 @@
         "fields": [
           {
             "name": "subscriptions",
-            "type": "java.util.Set<net.minecraft.util.debug.DebugSubscription<?>>"
+            "type": "Set<DebugSubscription<Object>>"
           }
         ]
       },
@@ -408,15 +408,15 @@
         "fields": [
           {
             "name": "slot",
-            "type": "VarInt"
+            "type": "int"
           },
           {
             "name": "pages",
-            "type": "Vec<String>"
+            "type": "List<String>"
           },
           {
             "name": "title",
-            "type": "Option<String>"
+            "type": "Optional<String>"
           }
         ]
       },
@@ -425,11 +425,11 @@
         "fields": [
           {
             "name": "transaction_id",
-            "type": "VarInt"
+            "type": "int"
           },
           {
             "name": "entity_id",
-            "type": "VarInt"
+            "type": "int"
           }
         ]
       },
@@ -438,7 +438,7 @@
         "fields": [
           {
             "name": "entity_id",
-            "type": "VarInt"
+            "type": "int"
           },
           {
             "name": "action",
@@ -446,7 +446,7 @@
           },
           {
             "name": "using_secondary_action",
-            "type": "bool"
+            "type": "boolean"
           }
         ]
       },
@@ -459,11 +459,11 @@
           },
           {
             "name": "levels",
-            "type": "VarInt"
+            "type": "int"
           },
           {
             "name": "keep_jigsaws",
-            "type": "bool"
+            "type": "boolean"
           }
         ]
       },
@@ -472,7 +472,7 @@
         "fields": [
           {
             "name": "id",
-            "type": "i64"
+            "type": "long"
           }
         ]
       },
@@ -481,7 +481,7 @@
         "fields": [
           {
             "name": "locked",
-            "type": "bool"
+            "type": "boolean"
           }
         ]
       },
@@ -506,15 +506,15 @@
           },
           {
             "name": "y_rot",
-            "type": "f32"
+            "type": "float"
           },
           {
             "name": "x_rot",
-            "type": "f32"
+            "type": "float"
           },
           {
             "name": "on_ground",
-            "type": "bool"
+            "type": "boolean"
           }
         ]
       },
@@ -523,11 +523,11 @@
         "fields": [
           {
             "name": "left",
-            "type": "bool"
+            "type": "boolean"
           },
           {
             "name": "right",
-            "type": "bool"
+            "type": "boolean"
           }
         ]
       },
@@ -540,7 +540,7 @@
           },
           {
             "name": "include_data",
-            "type": "bool"
+            "type": "boolean"
           }
         ]
       },
@@ -549,11 +549,11 @@
         "fields": [
           {
             "name": "id",
-            "type": "VarInt"
+            "type": "int"
           },
           {
             "name": "include_data",
-            "type": "bool"
+            "type": "boolean"
           }
         ]
       },
@@ -565,7 +565,7 @@
         "fields": [
           {
             "name": "container_id",
-            "type": "VarInt"
+            "type": "int"
           },
           {
             "name": "recipe",
@@ -573,7 +573,7 @@
           },
           {
             "name": "use_max_items",
-            "type": "bool"
+            "type": "boolean"
           }
         ]
       },
@@ -582,7 +582,7 @@
         "fields": [
           {
             "name": "is_flying",
-            "type": "bool"
+            "type": "boolean"
           }
         ]
       },
@@ -603,7 +603,7 @@
           },
           {
             "name": "sequence",
-            "type": "VarInt"
+            "type": "int"
           }
         ]
       },
@@ -612,7 +612,7 @@
         "fields": [
           {
             "name": "id",
-            "type": "VarInt"
+            "type": "int"
           },
           {
             "name": "action",
@@ -620,7 +620,7 @@
           },
           {
             "name": "data",
-            "type": "VarInt"
+            "type": "int"
           }
         ]
       },
@@ -642,7 +642,7 @@
         "fields": [
           {
             "name": "id",
-            "type": "VarInt"
+            "type": "int"
           }
         ]
       },
@@ -655,11 +655,11 @@
           },
           {
             "name": "is_open",
-            "type": "bool"
+            "type": "boolean"
           },
           {
             "name": "is_filtering",
-            "type": "bool"
+            "type": "boolean"
           }
         ]
       },
@@ -686,7 +686,7 @@
         "fields": [
           {
             "name": "id",
-            "type": "Uuid"
+            "type": "UUID"
           },
           {
             "name": "action",
@@ -712,7 +712,7 @@
         "fields": [
           {
             "name": "item",
-            "type": "VarInt"
+            "type": "int"
           }
         ]
       },
@@ -721,11 +721,11 @@
         "fields": [
           {
             "name": "primary",
-            "type": "Option<net.minecraft.core.Holder<net.minecraft.world.effect.MobEffect>>"
+            "type": "Optional<Holder<MobEffect>>"
           },
           {
             "name": "secondary",
-            "type": "Option<net.minecraft.core.Holder<net.minecraft.world.effect.MobEffect>>"
+            "type": "Optional<Holder<MobEffect>>"
           }
         ]
       },
@@ -734,7 +734,7 @@
         "fields": [
           {
             "name": "slot",
-            "type": "VarInt"
+            "type": "int"
           }
         ]
       },
@@ -751,15 +751,15 @@
           },
           {
             "name": "track_output",
-            "type": "bool"
+            "type": "boolean"
           },
           {
             "name": "conditional",
-            "type": "bool"
+            "type": "boolean"
           },
           {
             "name": "automatic",
-            "type": "bool"
+            "type": "boolean"
           },
           {
             "name": "mode",
@@ -772,7 +772,7 @@
         "fields": [
           {
             "name": "entity",
-            "type": "VarInt"
+            "type": "int"
           },
           {
             "name": "command",
@@ -780,7 +780,7 @@
           },
           {
             "name": "track_output",
-            "type": "bool"
+            "type": "boolean"
           }
         ]
       },
@@ -789,7 +789,7 @@
         "fields": [
           {
             "name": "slot_num",
-            "type": "i16"
+            "type": "short"
           },
           {
             "name": "item_stack",
@@ -826,11 +826,11 @@
           },
           {
             "name": "selection_priority",
-            "type": "VarInt"
+            "type": "int"
           },
           {
             "name": "placement_priority",
-            "type": "VarInt"
+            "type": "int"
           }
         ]
       },
@@ -875,27 +875,27 @@
           },
           {
             "name": "ignore_entities",
-            "type": "bool"
+            "type": "boolean"
           },
           {
             "name": "strict",
-            "type": "bool"
+            "type": "boolean"
           },
           {
             "name": "show_air",
-            "type": "bool"
+            "type": "boolean"
           },
           {
             "name": "show_bounding_box",
-            "type": "bool"
+            "type": "boolean"
           },
           {
             "name": "integrity",
-            "type": "f32"
+            "type": "float"
           },
           {
             "name": "seed",
-            "type": "i64"
+            "type": "long"
           }
         ]
       },
@@ -929,7 +929,7 @@
           },
           {
             "name": "is_front_text",
-            "type": "bool"
+            "type": "boolean"
           }
         ]
       },
@@ -947,7 +947,7 @@
         "fields": [
           {
             "name": "uuid",
-            "type": "Uuid"
+            "type": "UUID"
           }
         ]
       },
@@ -981,7 +981,7 @@
           },
           {
             "name": "sequence",
-            "type": "VarInt"
+            "type": "int"
           }
         ]
       },
@@ -994,15 +994,15 @@
           },
           {
             "name": "sequence",
-            "type": "VarInt"
+            "type": "int"
           },
           {
             "name": "y_rot",
-            "type": "f32"
+            "type": "float"
           },
           {
             "name": "x_rot",
-            "type": "f32"
+            "type": "float"
           }
         ]
       },
@@ -1015,7 +1015,7 @@
           },
           {
             "name": "payload",
-            "type": "Option<Tag>"
+            "type": "Optional<Tag>"
           }
         ]
       }
@@ -1055,15 +1055,15 @@
           },
           {
             "name": "public_key",
-            "type": "Array<u8>"
+            "type": "Array<byte>"
           },
           {
             "name": "challenge",
-            "type": "Array<u8>"
+            "type": "Array<byte>"
           },
           {
             "name": "should_authenticate",
-            "type": "bool"
+            "type": "boolean"
           }
         ]
       },
@@ -1081,7 +1081,7 @@
         "fields": [
           {
             "name": "compression_threshold",
-            "type": "VarInt"
+            "type": "int"
           }
         ]
       },
@@ -1090,7 +1090,7 @@
         "fields": [
           {
             "name": "transaction_id",
-            "type": "VarInt"
+            "type": "int"
           },
           {
             "name": "payload",
@@ -1133,7 +1133,7 @@
         "fields": [
           {
             "name": "id",
-            "type": "i64"
+            "type": "long"
           }
         ]
       },
@@ -1142,7 +1142,7 @@
         "fields": [
           {
             "name": "id",
-            "type": "VarInt"
+            "type": "int"
           }
         ]
       },
@@ -1155,11 +1155,11 @@
         "fields": [
           {
             "name": "registry",
-            "type": "net.minecraft.resources.ResourceKey<? extends net.minecraft.core.Registry<?>>"
+            "type": "ResourceKey<Registry<Object>>"
           },
           {
             "name": "entries",
-            "type": "Vec<PackedRegistryEntry>"
+            "type": "List<PackedRegistryEntry>"
           }
         ]
       },
@@ -1168,7 +1168,7 @@
         "fields": [
           {
             "name": "id",
-            "type": "Option<Uuid>"
+            "type": "Optional<UUID>"
           }
         ]
       },
@@ -1177,7 +1177,7 @@
         "fields": [
           {
             "name": "id",
-            "type": "Uuid"
+            "type": "UUID"
           },
           {
             "name": "url",
@@ -1189,11 +1189,11 @@
           },
           {
             "name": "required",
-            "type": "bool"
+            "type": "boolean"
           },
           {
             "name": "prompt",
-            "type": "Option<Component>"
+            "type": "Optional<Component>"
           }
         ]
       },
@@ -1206,7 +1206,7 @@
           },
           {
             "name": "payload",
-            "type": "Array<u8>"
+            "type": "Array<byte>"
           }
         ]
       },
@@ -1219,7 +1219,7 @@
           },
           {
             "name": "port",
-            "type": "VarInt"
+            "type": "int"
           }
         ]
       },
@@ -1228,7 +1228,7 @@
         "fields": [
           {
             "name": "features",
-            "type": "java.util.Set<net.minecraft.resources.ResourceLocation>"
+            "type": "Set<ResourceLocation>"
           }
         ]
       },
@@ -1237,7 +1237,7 @@
         "fields": [
           {
             "name": "tags",
-            "type": "java.util.Map<net.minecraft.resources.ResourceKey<? extends net.minecraft.core.Registry<?>>, net.minecraft.tags.TagNetworkSerialization$NetworkPayload>"
+            "type": "Map<ResourceKey<Registry<Object>>, NetworkPayload>"
           }
         ]
       },
@@ -1249,7 +1249,7 @@
         "fields": [
           {
             "name": "details",
-            "type": "java.util.Map<java.lang.String, java.lang.String>"
+            "type": "Map<String, String>"
           }
         ]
       },
@@ -1258,7 +1258,7 @@
         "fields": [
           {
             "name": "links",
-            "type": "Vec<UntrustedEntry>"
+            "type": "List<UntrustedEntry>"
           }
         ]
       },
@@ -1271,7 +1271,7 @@
         "fields": [
           {
             "name": "dialog",
-            "type": "net.minecraft.core.Holder<net.minecraft.server.dialog.Dialog>"
+            "type": "Holder<Dialog>"
           }
         ]
       },
@@ -1295,27 +1295,27 @@
         "fields": [
           {
             "name": "id",
-            "type": "VarInt"
+            "type": "int"
           },
           {
             "name": "uuid",
-            "type": "Uuid"
+            "type": "UUID"
           },
           {
             "name": "type",
-            "type": "net.minecraft.world.entity.EntityType<?>"
+            "type": "EntityType<Object>"
           },
           {
             "name": "x",
-            "type": "f64"
+            "type": "double"
           },
           {
             "name": "y",
-            "type": "f64"
+            "type": "double"
           },
           {
             "name": "z",
-            "type": "f64"
+            "type": "double"
           },
           {
             "name": "movement",
@@ -1323,19 +1323,19 @@
           },
           {
             "name": "x_rot",
-            "type": "u8"
+            "type": "byte"
           },
           {
             "name": "y_rot",
-            "type": "u8"
+            "type": "byte"
           },
           {
             "name": "y_head_rot",
-            "type": "u8"
+            "type": "byte"
           },
           {
             "name": "data",
-            "type": "VarInt"
+            "type": "int"
           }
         ]
       },
@@ -1344,11 +1344,11 @@
         "fields": [
           {
             "name": "id",
-            "type": "VarInt"
+            "type": "int"
           },
           {
             "name": "action",
-            "type": "VarInt"
+            "type": "int"
           }
         ]
       },
@@ -1357,7 +1357,7 @@
         "fields": [
           {
             "name": "stats",
-            "type": "it.unimi.dsi.fastutil.objects.Object2IntMap<net.minecraft.stats.Stat<?>>"
+            "type": "Object2IntMap<Stat<Object>>"
           }
         ]
       },
@@ -1366,7 +1366,7 @@
         "fields": [
           {
             "name": "sequence",
-            "type": "VarInt"
+            "type": "int"
           }
         ]
       },
@@ -1375,7 +1375,7 @@
         "fields": [
           {
             "name": "id",
-            "type": "VarInt"
+            "type": "int"
           },
           {
             "name": "pos",
@@ -1383,7 +1383,7 @@
           },
           {
             "name": "progress",
-            "type": "VarInt"
+            "type": "int"
           }
         ]
       },
@@ -1396,7 +1396,7 @@
           },
           {
             "name": "type",
-            "type": "net.minecraft.world.level.block.entity.BlockEntityType<?>"
+            "type": "BlockEntityType<Object>"
           },
           {
             "name": "tag",
@@ -1413,11 +1413,11 @@
           },
           {
             "name": "b0",
-            "type": "VarInt"
+            "type": "int"
           },
           {
             "name": "b1",
-            "type": "VarInt"
+            "type": "int"
           },
           {
             "name": "block",
@@ -1443,7 +1443,7 @@
         "fields": [
           {
             "name": "id",
-            "type": "Uuid"
+            "type": "UUID"
           },
           {
             "name": "operation",
@@ -1460,7 +1460,7 @@
           },
           {
             "name": "locked",
-            "type": "bool"
+            "type": "boolean"
           }
         ]
       },
@@ -1469,7 +1469,7 @@
         "fields": [
           {
             "name": "batch_size",
-            "type": "VarInt"
+            "type": "int"
           }
         ]
       },
@@ -1482,7 +1482,7 @@
         "fields": [
           {
             "name": "chunk_biome_data",
-            "type": "Vec<ChunkBiomeData>"
+            "type": "List<ChunkBiomeData>"
           }
         ]
       },
@@ -1491,7 +1491,7 @@
         "fields": [
           {
             "name": "reset_times",
-            "type": "bool"
+            "type": "boolean"
           }
         ]
       },
@@ -1500,19 +1500,19 @@
         "fields": [
           {
             "name": "id",
-            "type": "VarInt"
+            "type": "int"
           },
           {
             "name": "start",
-            "type": "VarInt"
+            "type": "int"
           },
           {
             "name": "length",
-            "type": "VarInt"
+            "type": "int"
           },
           {
             "name": "suggestions",
-            "type": "Vec<Entry>"
+            "type": "List<Entry>"
           }
         ]
       },
@@ -1521,11 +1521,11 @@
         "fields": [
           {
             "name": "root_index",
-            "type": "VarInt"
+            "type": "int"
           },
           {
             "name": "entries",
-            "type": "Vec<Entry>"
+            "type": "List<Entry>"
           }
         ]
       },
@@ -1534,7 +1534,7 @@
         "fields": [
           {
             "name": "container_id",
-            "type": "VarInt"
+            "type": "int"
           }
         ]
       },
@@ -1543,15 +1543,15 @@
         "fields": [
           {
             "name": "container_id",
-            "type": "VarInt"
+            "type": "int"
           },
           {
             "name": "state_id",
-            "type": "VarInt"
+            "type": "int"
           },
           {
             "name": "items",
-            "type": "Vec<ItemStack>"
+            "type": "List<ItemStack>"
           },
           {
             "name": "carried_item",
@@ -1564,15 +1564,15 @@
         "fields": [
           {
             "name": "container_id",
-            "type": "VarInt"
+            "type": "int"
           },
           {
             "name": "id",
-            "type": "VarInt"
+            "type": "int"
           },
           {
             "name": "value",
-            "type": "VarInt"
+            "type": "int"
           }
         ]
       },
@@ -1581,15 +1581,15 @@
         "fields": [
           {
             "name": "container_id",
-            "type": "VarInt"
+            "type": "int"
           },
           {
             "name": "state_id",
-            "type": "VarInt"
+            "type": "int"
           },
           {
             "name": "slot",
-            "type": "VarInt"
+            "type": "int"
           },
           {
             "name": "item_stack",
@@ -1609,7 +1609,7 @@
           },
           {
             "name": "duration",
-            "type": "VarInt"
+            "type": "int"
           }
         ]
       },
@@ -1622,7 +1622,7 @@
           },
           {
             "name": "entries",
-            "type": "Vec<String>"
+            "type": "List<String>"
           }
         ]
       },
@@ -1640,23 +1640,23 @@
         "fields": [
           {
             "name": "entity_id",
-            "type": "VarInt"
+            "type": "int"
           },
           {
             "name": "source_type",
-            "type": "net.minecraft.core.Holder<net.minecraft.world.damagesource.DamageType>"
+            "type": "Holder<DamageType>"
           },
           {
             "name": "source_cause_id",
-            "type": "VarInt"
+            "type": "int"
           },
           {
             "name": "source_direct_id",
-            "type": "VarInt"
+            "type": "int"
           },
           {
             "name": "source_position",
-            "type": "Option<Vec3>"
+            "type": "Optional<Vec3>"
           }
         ]
       },
@@ -1677,7 +1677,7 @@
         "fields": [
           {
             "name": "sample",
-            "type": "Array<i64>"
+            "type": "Array<long>"
           },
           {
             "name": "debug_sample_type",
@@ -1721,11 +1721,11 @@
         "fields": [
           {
             "name": "entity_id",
-            "type": "VarInt"
+            "type": "int"
           },
           {
             "name": "event_id",
-            "type": "u8"
+            "type": "byte"
           }
         ]
       },
@@ -1734,7 +1734,7 @@
         "fields": [
           {
             "name": "id",
-            "type": "VarInt"
+            "type": "int"
           },
           {
             "name": "values",
@@ -1742,7 +1742,7 @@
           },
           {
             "name": "on_ground",
-            "type": "bool"
+            "type": "boolean"
           }
         ]
       },
@@ -1755,15 +1755,15 @@
           },
           {
             "name": "radius",
-            "type": "f32"
+            "type": "float"
           },
           {
             "name": "block_count",
-            "type": "VarInt"
+            "type": "i32"
           },
           {
             "name": "player_knockback",
-            "type": "Option<Vec3>"
+            "type": "Optional<Vec3>"
           },
           {
             "name": "explosion_particle",
@@ -1771,11 +1771,11 @@
           },
           {
             "name": "explosion_sound",
-            "type": "net.minecraft.core.Holder<net.minecraft.sounds.SoundEvent>"
+            "type": "Holder<SoundEvent>"
           },
           {
             "name": "block_particles",
-            "type": "net.minecraft.util.random.WeightedList<net.minecraft.core.particles.ExplosionParticleInfo>"
+            "type": "WeightedList<ExplosionParticleInfo>"
           }
         ]
       },
@@ -1797,7 +1797,7 @@
           },
           {
             "name": "param",
-            "type": "f32"
+            "type": "float"
           }
         ]
       },
@@ -1819,15 +1819,15 @@
         "fields": [
           {
             "name": "container_id",
-            "type": "VarInt"
+            "type": "int"
           },
           {
             "name": "inventory_columns",
-            "type": "VarInt"
+            "type": "int"
           },
           {
             "name": "entity_id",
-            "type": "VarInt"
+            "type": "int"
           }
         ]
       },
@@ -1836,11 +1836,11 @@
         "fields": [
           {
             "name": "id",
-            "type": "VarInt"
+            "type": "int"
           },
           {
             "name": "yaw",
-            "type": "f32"
+            "type": "float"
           }
         ]
       },
@@ -1849,35 +1849,35 @@
         "fields": [
           {
             "name": "new_center_x",
-            "type": "f64"
+            "type": "double"
           },
           {
             "name": "new_center_z",
-            "type": "f64"
+            "type": "double"
           },
           {
             "name": "old_size",
-            "type": "f64"
+            "type": "double"
           },
           {
             "name": "new_size",
-            "type": "f64"
+            "type": "double"
           },
           {
             "name": "lerp_time",
-            "type": "i64"
+            "type": "long"
           },
           {
             "name": "new_absolute_max_size",
-            "type": "VarInt"
+            "type": "int"
           },
           {
             "name": "warning_blocks",
-            "type": "VarInt"
+            "type": "int"
           },
           {
             "name": "warning_time",
-            "type": "VarInt"
+            "type": "int"
           }
         ]
       },
@@ -1886,7 +1886,7 @@
         "fields": [
           {
             "name": "id",
-            "type": "i64"
+            "type": "long"
           }
         ]
       },
@@ -1895,11 +1895,11 @@
         "fields": [
           {
             "name": "x",
-            "type": "VarInt"
+            "type": "int"
           },
           {
             "name": "z",
-            "type": "VarInt"
+            "type": "int"
           },
           {
             "name": "chunk_data",
@@ -1916,7 +1916,7 @@
         "fields": [
           {
             "name": "type",
-            "type": "VarInt"
+            "type": "int"
           },
           {
             "name": "pos",
@@ -1924,11 +1924,11 @@
           },
           {
             "name": "data",
-            "type": "VarInt"
+            "type": "int"
           },
           {
             "name": "global_event",
-            "type": "bool"
+            "type": "boolean"
           }
         ]
       },
@@ -1937,43 +1937,43 @@
         "fields": [
           {
             "name": "x",
-            "type": "f64"
+            "type": "double"
           },
           {
             "name": "y",
-            "type": "f64"
+            "type": "double"
           },
           {
             "name": "z",
-            "type": "f64"
+            "type": "double"
           },
           {
             "name": "x_dist",
-            "type": "f32"
+            "type": "float"
           },
           {
             "name": "y_dist",
-            "type": "f32"
+            "type": "float"
           },
           {
             "name": "z_dist",
-            "type": "f32"
+            "type": "float"
           },
           {
             "name": "max_speed",
-            "type": "f32"
+            "type": "float"
           },
           {
             "name": "count",
-            "type": "VarInt"
+            "type": "int"
           },
           {
             "name": "override_limiter",
-            "type": "bool"
+            "type": "boolean"
           },
           {
             "name": "always_show",
-            "type": "bool"
+            "type": "boolean"
           },
           {
             "name": "particle",
@@ -1986,11 +1986,11 @@
         "fields": [
           {
             "name": "x",
-            "type": "VarInt"
+            "type": "int"
           },
           {
             "name": "z",
-            "type": "VarInt"
+            "type": "int"
           },
           {
             "name": "light_data",
@@ -2003,39 +2003,39 @@
         "fields": [
           {
             "name": "player_id",
-            "type": "VarInt"
+            "type": "i32"
           },
           {
             "name": "hardcore",
-            "type": "bool"
+            "type": "boolean"
           },
           {
             "name": "levels",
-            "type": "java.util.Set<net.minecraft.resources.ResourceKey<net.minecraft.world.level.Level>>"
+            "type": "Set<ResourceKey<Level>>"
           },
           {
             "name": "max_players",
-            "type": "VarInt"
+            "type": "int"
           },
           {
             "name": "chunk_radius",
-            "type": "VarInt"
+            "type": "int"
           },
           {
             "name": "simulation_distance",
-            "type": "VarInt"
+            "type": "int"
           },
           {
             "name": "reduced_debug_info",
-            "type": "bool"
+            "type": "boolean"
           },
           {
             "name": "show_death_screen",
-            "type": "bool"
+            "type": "boolean"
           },
           {
             "name": "do_limited_crafting",
-            "type": "bool"
+            "type": "boolean"
           },
           {
             "name": "common_player_spawn_info",
@@ -2043,7 +2043,7 @@
           },
           {
             "name": "enforces_secure_chat",
-            "type": "bool"
+            "type": "boolean"
           }
         ]
       },
@@ -2056,19 +2056,19 @@
           },
           {
             "name": "scale",
-            "type": "u8"
+            "type": "byte"
           },
           {
             "name": "locked",
-            "type": "bool"
+            "type": "boolean"
           },
           {
             "name": "decorations",
-            "type": "Option<Vec<MapDecoration>>"
+            "type": "Optional<List<MapDecoration>>"
           },
           {
             "name": "color_patch",
-            "type": "Option<MapPatch>"
+            "type": "Optional<MapPatch>"
           }
         ]
       },
@@ -2077,7 +2077,7 @@
         "fields": [
           {
             "name": "container_id",
-            "type": "VarInt"
+            "type": "int"
           },
           {
             "name": "offers",
@@ -2085,19 +2085,19 @@
           },
           {
             "name": "villager_level",
-            "type": "VarInt"
+            "type": "int"
           },
           {
             "name": "villager_xp",
-            "type": "VarInt"
+            "type": "int"
           },
           {
             "name": "show_progress",
-            "type": "bool"
+            "type": "boolean"
           },
           {
             "name": "can_restock",
-            "type": "bool"
+            "type": "boolean"
           }
         ]
       },
@@ -2122,11 +2122,11 @@
           },
           {
             "name": "y_rot",
-            "type": "f32"
+            "type": "float"
           },
           {
             "name": "x_rot",
-            "type": "f32"
+            "type": "float"
           }
         ]
       },
@@ -2144,11 +2144,11 @@
         "fields": [
           {
             "name": "container_id",
-            "type": "VarInt"
+            "type": "int"
           },
           {
             "name": "type",
-            "type": "net.minecraft.world.inventory.MenuType<?>"
+            "type": "MenuType<Object>"
           },
           {
             "name": "title",
@@ -2165,7 +2165,7 @@
           },
           {
             "name": "is_front_text",
-            "type": "bool"
+            "type": "boolean"
           }
         ]
       },
@@ -2174,7 +2174,7 @@
         "fields": [
           {
             "name": "id",
-            "type": "VarInt"
+            "type": "i32"
           }
         ]
       },
@@ -2186,7 +2186,7 @@
         "fields": [
           {
             "name": "container_id",
-            "type": "VarInt"
+            "type": "int"
           },
           {
             "name": "recipe_display",
@@ -2199,27 +2199,27 @@
         "fields": [
           {
             "name": "invulnerable",
-            "type": "bool"
+            "type": "boolean"
           },
           {
             "name": "is_flying",
-            "type": "bool"
+            "type": "boolean"
           },
           {
             "name": "can_fly",
-            "type": "bool"
+            "type": "boolean"
           },
           {
             "name": "instabuild",
-            "type": "bool"
+            "type": "boolean"
           },
           {
             "name": "flying_speed",
-            "type": "f32"
+            "type": "float"
           },
           {
             "name": "walking_speed",
-            "type": "f32"
+            "type": "float"
           }
         ]
       },
@@ -2228,15 +2228,15 @@
         "fields": [
           {
             "name": "global_index",
-            "type": "VarInt"
+            "type": "int"
           },
           {
             "name": "sender",
-            "type": "Uuid"
+            "type": "UUID"
           },
           {
             "name": "index",
-            "type": "VarInt"
+            "type": "int"
           },
           {
             "name": "signature",
@@ -2265,7 +2265,7 @@
         "fields": [
           {
             "name": "duration",
-            "type": "VarInt"
+            "type": "int"
           }
         ]
       },
@@ -2278,7 +2278,7 @@
         "fields": [
           {
             "name": "player_id",
-            "type": "VarInt"
+            "type": "int"
           },
           {
             "name": "message",
@@ -2291,7 +2291,7 @@
         "fields": [
           {
             "name": "profile_ids",
-            "type": "Vec<Uuid>"
+            "type": "List<UUID>"
           }
         ]
       },
@@ -2300,11 +2300,11 @@
         "fields": [
           {
             "name": "actions",
-            "type": "java.util.EnumSet<net.minecraft.network.protocol.game.ClientboundPlayerInfoUpdatePacket$Action>"
+            "type": "EnumSet<Action>"
           },
           {
             "name": "entries",
-            "type": "Vec<Entry>"
+            "type": "List<Entry>"
           }
         ]
       },
@@ -2313,19 +2313,19 @@
         "fields": [
           {
             "name": "x",
-            "type": "f64"
+            "type": "double"
           },
           {
             "name": "y",
-            "type": "f64"
+            "type": "double"
           },
           {
             "name": "z",
-            "type": "f64"
+            "type": "double"
           },
           {
             "name": "entity",
-            "type": "VarInt"
+            "type": "int"
           },
           {
             "name": "from_anchor",
@@ -2337,7 +2337,7 @@
           },
           {
             "name": "at_entity",
-            "type": "bool"
+            "type": "boolean"
           }
         ]
       },
@@ -2346,7 +2346,7 @@
         "fields": [
           {
             "name": "id",
-            "type": "VarInt"
+            "type": "int"
           },
           {
             "name": "change",
@@ -2354,7 +2354,7 @@
           },
           {
             "name": "relatives",
-            "type": "java.util.Set<net.minecraft.world.entity.Relative>"
+            "type": "Set<Relative>"
           }
         ]
       },
@@ -2363,19 +2363,19 @@
         "fields": [
           {
             "name": "y_rot",
-            "type": "f32"
+            "type": "float"
           },
           {
             "name": "relative_y",
-            "type": "bool"
+            "type": "boolean"
           },
           {
             "name": "x_rot",
-            "type": "f32"
+            "type": "float"
           },
           {
             "name": "relative_x",
-            "type": "bool"
+            "type": "boolean"
           }
         ]
       },
@@ -2384,11 +2384,11 @@
         "fields": [
           {
             "name": "entries",
-            "type": "Vec<Entry>"
+            "type": "List<Entry>"
           },
           {
             "name": "replace",
-            "type": "bool"
+            "type": "boolean"
           }
         ]
       },
@@ -2397,7 +2397,7 @@
         "fields": [
           {
             "name": "recipes",
-            "type": "Vec<RecipeDisplayId>"
+            "type": "List<RecipeDisplayId>"
           }
         ]
       },
@@ -2424,11 +2424,11 @@
         "fields": [
           {
             "name": "entity_id",
-            "type": "VarInt"
+            "type": "int"
           },
           {
             "name": "effect",
-            "type": "net.minecraft.core.Holder<net.minecraft.world.effect.MobEffect>"
+            "type": "Holder<MobEffect>"
           }
         ]
       },
@@ -2450,7 +2450,7 @@
         "fields": [
           {
             "name": "id",
-            "type": "Option<Uuid>"
+            "type": "Optional<UUID>"
           }
         ]
       },
@@ -2459,7 +2459,7 @@
         "fields": [
           {
             "name": "id",
-            "type": "Uuid"
+            "type": "UUID"
           },
           {
             "name": "url",
@@ -2471,11 +2471,11 @@
           },
           {
             "name": "required",
-            "type": "bool"
+            "type": "boolean"
           },
           {
             "name": "prompt",
-            "type": "Option<Component>"
+            "type": "Optional<Component>"
           }
         ]
       },
@@ -2488,7 +2488,7 @@
           },
           {
             "name": "data_to_keep",
-            "type": "u8"
+            "type": "byte"
           }
         ]
       },
@@ -2497,11 +2497,11 @@
         "fields": [
           {
             "name": "entity_id",
-            "type": "VarInt"
+            "type": "int"
           },
           {
             "name": "y_head_rot",
-            "type": "u8"
+            "type": "byte"
           }
         ]
       },
@@ -2514,7 +2514,7 @@
           },
           {
             "name": "positions",
-            "type": "Array<i16>"
+            "type": "Array<short>"
           },
           {
             "name": "states",
@@ -2540,7 +2540,7 @@
           },
           {
             "name": "icon_bytes",
-            "type": "Option<Array<u8>>"
+            "type": "Optional<Array<byte>>"
           }
         ]
       },
@@ -2558,11 +2558,11 @@
         "fields": [
           {
             "name": "new_center_x",
-            "type": "f64"
+            "type": "double"
           },
           {
             "name": "new_center_z",
-            "type": "f64"
+            "type": "double"
           }
         ]
       },
@@ -2571,15 +2571,15 @@
         "fields": [
           {
             "name": "old_size",
-            "type": "f64"
+            "type": "double"
           },
           {
             "name": "new_size",
-            "type": "f64"
+            "type": "double"
           },
           {
             "name": "lerp_time",
-            "type": "i64"
+            "type": "long"
           }
         ]
       },
@@ -2588,7 +2588,7 @@
         "fields": [
           {
             "name": "size",
-            "type": "f64"
+            "type": "double"
           }
         ]
       },
@@ -2597,7 +2597,7 @@
         "fields": [
           {
             "name": "warning_delay",
-            "type": "VarInt"
+            "type": "int"
           }
         ]
       },
@@ -2606,7 +2606,7 @@
         "fields": [
           {
             "name": "warning_blocks",
-            "type": "VarInt"
+            "type": "int"
           }
         ]
       },
@@ -2615,7 +2615,7 @@
         "fields": [
           {
             "name": "camera_id",
-            "type": "VarInt"
+            "type": "int"
           }
         ]
       },
@@ -2624,11 +2624,11 @@
         "fields": [
           {
             "name": "x",
-            "type": "VarInt"
+            "type": "int"
           },
           {
             "name": "z",
-            "type": "VarInt"
+            "type": "int"
           }
         ]
       },
@@ -2637,7 +2637,7 @@
         "fields": [
           {
             "name": "radius",
-            "type": "VarInt"
+            "type": "int"
           }
         ]
       },
@@ -2677,11 +2677,11 @@
         "fields": [
           {
             "name": "id",
-            "type": "VarInt"
+            "type": "int"
           },
           {
             "name": "packed_items",
-            "type": "Vec<net.minecraft.network.syncher.SynchedEntityData$DataValue<?>>"
+            "type": "List<DataValue<Object>>"
           }
         ]
       },
@@ -2690,11 +2690,11 @@
         "fields": [
           {
             "name": "source_id",
-            "type": "VarInt"
+            "type": "int"
           },
           {
             "name": "dest_id",
-            "type": "VarInt"
+            "type": "int"
           }
         ]
       },
@@ -2703,7 +2703,7 @@
         "fields": [
           {
             "name": "id",
-            "type": "VarInt"
+            "type": "int"
           },
           {
             "name": "movement",
@@ -2716,11 +2716,11 @@
         "fields": [
           {
             "name": "entity",
-            "type": "VarInt"
+            "type": "int"
           },
           {
             "name": "slots",
-            "type": "Vec<com.mojang.datafixers.util.Pair<net.minecraft.world.entity.EquipmentSlot, net.minecraft.world.item.ItemStack>>"
+            "type": "List<Pair<EquipmentSlot, ItemStack>>"
           }
         ]
       },
@@ -2729,15 +2729,15 @@
         "fields": [
           {
             "name": "experience_progress",
-            "type": "f32"
+            "type": "float"
           },
           {
             "name": "total_experience",
-            "type": "VarInt"
+            "type": "int"
           },
           {
             "name": "experience_level",
-            "type": "VarInt"
+            "type": "int"
           }
         ]
       },
@@ -2746,15 +2746,15 @@
         "fields": [
           {
             "name": "health",
-            "type": "f32"
+            "type": "float"
           },
           {
             "name": "food",
-            "type": "VarInt"
+            "type": "int"
           },
           {
             "name": "saturation",
-            "type": "f32"
+            "type": "float"
           }
         ]
       },
@@ -2763,7 +2763,7 @@
         "fields": [
           {
             "name": "slot",
-            "type": "VarInt"
+            "type": "int"
           }
         ]
       },
@@ -2784,11 +2784,11 @@
           },
           {
             "name": "number_format",
-            "type": "Option<NumberFormat>"
+            "type": "Optional<NumberFormat>"
           },
           {
             "name": "method",
-            "type": "VarInt"
+            "type": "int"
           }
         ]
       },
@@ -2797,11 +2797,11 @@
         "fields": [
           {
             "name": "vehicle",
-            "type": "VarInt"
+            "type": "int"
           },
           {
             "name": "passengers",
-            "type": "Array<VarInt>"
+            "type": "Array<int>"
           }
         ]
       },
@@ -2810,7 +2810,7 @@
         "fields": [
           {
             "name": "slot",
-            "type": "VarInt"
+            "type": "int"
           },
           {
             "name": "contents",
@@ -2823,7 +2823,7 @@
         "fields": [
           {
             "name": "method",
-            "type": "VarInt"
+            "type": "int"
           },
           {
             "name": "name",
@@ -2831,11 +2831,11 @@
           },
           {
             "name": "players",
-            "type": "java.util.Collection<java.lang.String>"
+            "type": "Collection<String>"
           },
           {
             "name": "parameters",
-            "type": "Option<Parameters>"
+            "type": "Optional<Parameters>"
           }
         ]
       },
@@ -2852,15 +2852,15 @@
           },
           {
             "name": "score",
-            "type": "VarInt"
+            "type": "int"
           },
           {
             "name": "display",
-            "type": "Option<Component>"
+            "type": "Optional<Component>"
           },
           {
             "name": "number_format",
-            "type": "Option<NumberFormat>"
+            "type": "Optional<NumberFormat>"
           }
         ]
       },
@@ -2869,7 +2869,7 @@
         "fields": [
           {
             "name": "simulation_distance",
-            "type": "VarInt"
+            "type": "int"
           }
         ]
       },
@@ -2887,15 +2887,15 @@
         "fields": [
           {
             "name": "game_time",
-            "type": "i64"
+            "type": "long"
           },
           {
             "name": "day_time",
-            "type": "i64"
+            "type": "long"
           },
           {
             "name": "tick_day_time",
-            "type": "bool"
+            "type": "boolean"
           }
         ]
       },
@@ -2913,15 +2913,15 @@
         "fields": [
           {
             "name": "fade_in",
-            "type": "VarInt"
+            "type": "int"
           },
           {
             "name": "stay",
-            "type": "VarInt"
+            "type": "int"
           },
           {
             "name": "fade_out",
-            "type": "VarInt"
+            "type": "int"
           }
         ]
       },
@@ -2930,7 +2930,7 @@
         "fields": [
           {
             "name": "sound",
-            "type": "net.minecraft.core.Holder<net.minecraft.sounds.SoundEvent>"
+            "type": "Holder<SoundEvent>"
           },
           {
             "name": "source",
@@ -2938,19 +2938,19 @@
           },
           {
             "name": "id",
-            "type": "VarInt"
+            "type": "int"
           },
           {
             "name": "volume",
-            "type": "f32"
+            "type": "float"
           },
           {
             "name": "pitch",
-            "type": "f32"
+            "type": "float"
           },
           {
             "name": "seed",
-            "type": "i64"
+            "type": "long"
           }
         ]
       },
@@ -2959,7 +2959,7 @@
         "fields": [
           {
             "name": "sound",
-            "type": "net.minecraft.core.Holder<net.minecraft.sounds.SoundEvent>"
+            "type": "Holder<SoundEvent>"
           },
           {
             "name": "source",
@@ -2967,27 +2967,27 @@
           },
           {
             "name": "x",
-            "type": "VarInt"
+            "type": "int"
           },
           {
             "name": "y",
-            "type": "VarInt"
+            "type": "int"
           },
           {
             "name": "z",
-            "type": "VarInt"
+            "type": "int"
           },
           {
             "name": "volume",
-            "type": "f32"
+            "type": "float"
           },
           {
             "name": "pitch",
-            "type": "f32"
+            "type": "float"
           },
           {
             "name": "seed",
-            "type": "i64"
+            "type": "long"
           }
         ]
       },
@@ -3017,7 +3017,7 @@
           },
           {
             "name": "payload",
-            "type": "Array<u8>"
+            "type": "Array<byte>"
           }
         ]
       },
@@ -3030,7 +3030,7 @@
           },
           {
             "name": "overlay",
-            "type": "bool"
+            "type": "boolean"
           }
         ]
       },
@@ -3052,7 +3052,7 @@
         "fields": [
           {
             "name": "transaction_id",
-            "type": "VarInt"
+            "type": "int"
           },
           {
             "name": "tag",
@@ -3065,15 +3065,15 @@
         "fields": [
           {
             "name": "item_id",
-            "type": "VarInt"
+            "type": "int"
           },
           {
             "name": "player_id",
-            "type": "VarInt"
+            "type": "int"
           },
           {
             "name": "amount",
-            "type": "VarInt"
+            "type": "int"
           }
         ]
       },
@@ -3082,7 +3082,7 @@
         "fields": [
           {
             "name": "id",
-            "type": "VarInt"
+            "type": "int"
           },
           {
             "name": "change",
@@ -3090,11 +3090,11 @@
           },
           {
             "name": "relatives",
-            "type": "java.util.Set<net.minecraft.world.entity.Relative>"
+            "type": "Set<Relative>"
           },
           {
             "name": "on_ground",
-            "type": "bool"
+            "type": "boolean"
           }
         ]
       },
@@ -3106,11 +3106,11 @@
         "fields": [
           {
             "name": "tick_rate",
-            "type": "f32"
+            "type": "float"
           },
           {
             "name": "is_frozen",
-            "type": "bool"
+            "type": "boolean"
           }
         ]
       },
@@ -3119,7 +3119,7 @@
         "fields": [
           {
             "name": "tick_steps",
-            "type": "VarInt"
+            "type": "int"
           }
         ]
       },
@@ -3132,7 +3132,7 @@
           },
           {
             "name": "port",
-            "type": "VarInt"
+            "type": "int"
           }
         ]
       },
@@ -3141,23 +3141,23 @@
         "fields": [
           {
             "name": "reset",
-            "type": "bool"
+            "type": "boolean"
           },
           {
             "name": "added",
-            "type": "Vec<AdvancementHolder>"
+            "type": "List<AdvancementHolder>"
           },
           {
             "name": "removed",
-            "type": "java.util.Set<net.minecraft.resources.ResourceLocation>"
+            "type": "Set<ResourceLocation>"
           },
           {
             "name": "progress",
-            "type": "java.util.Map<net.minecraft.resources.ResourceLocation, net.minecraft.advancements.AdvancementProgress>"
+            "type": "Map<ResourceLocation, AdvancementProgress>"
           },
           {
             "name": "show_advancements",
-            "type": "bool"
+            "type": "boolean"
           }
         ]
       },
@@ -3166,11 +3166,11 @@
         "fields": [
           {
             "name": "entity_id",
-            "type": "VarInt"
+            "type": "int"
           },
           {
             "name": "attributes",
-            "type": "Vec<AttributeSnapshot>"
+            "type": "List<AttributeSnapshot>"
           }
         ]
       },
@@ -3179,23 +3179,23 @@
         "fields": [
           {
             "name": "entity_id",
-            "type": "VarInt"
+            "type": "int"
           },
           {
             "name": "effect",
-            "type": "net.minecraft.core.Holder<net.minecraft.world.effect.MobEffect>"
+            "type": "Holder<MobEffect>"
           },
           {
             "name": "effect_amplifier",
-            "type": "VarInt"
+            "type": "int"
           },
           {
             "name": "effect_duration_ticks",
-            "type": "VarInt"
+            "type": "int"
           },
           {
             "name": "flags",
-            "type": "u8"
+            "type": "byte"
           }
         ]
       },
@@ -3204,11 +3204,11 @@
         "fields": [
           {
             "name": "item_sets",
-            "type": "java.util.Map<net.minecraft.resources.ResourceKey<net.minecraft.world.item.crafting.RecipePropertySet>, net.minecraft.world.item.crafting.RecipePropertySet>"
+            "type": "Map<ResourceKey<RecipePropertySet>, RecipePropertySet>"
           },
           {
             "name": "stonecutter_recipes",
-            "type": "net.minecraft.world.item.crafting.SelectableRecipe$SingleInputSet<net.minecraft.world.item.crafting.StonecutterRecipe>"
+            "type": "SingleInputSet<StonecutterRecipe>"
           }
         ]
       },
@@ -3217,7 +3217,7 @@
         "fields": [
           {
             "name": "tags",
-            "type": "java.util.Map<net.minecraft.resources.ResourceKey<? extends net.minecraft.core.Registry<?>>, net.minecraft.tags.TagNetworkSerialization$NetworkPayload>"
+            "type": "Map<ResourceKey<Registry<Object>>, NetworkPayload>"
           }
         ]
       },
@@ -3226,11 +3226,11 @@
         "fields": [
           {
             "name": "id",
-            "type": "VarInt"
+            "type": "int"
           },
           {
             "name": "acceleration_power",
-            "type": "f64"
+            "type": "double"
           }
         ]
       },
@@ -3239,7 +3239,7 @@
         "fields": [
           {
             "name": "details",
-            "type": "java.util.Map<java.lang.String, java.lang.String>"
+            "type": "Map<String, String>"
           }
         ]
       },
@@ -3248,7 +3248,7 @@
         "fields": [
           {
             "name": "links",
-            "type": "Vec<UntrustedEntry>"
+            "type": "List<UntrustedEntry>"
           }
         ]
       },
@@ -3264,7 +3264,7 @@
         "fields": [
           {
             "name": "dialog",
-            "type": "net.minecraft.core.Holder<net.minecraft.server.dialog.Dialog>"
+            "type": "Holder<Dialog>"
           }
         ]
       }

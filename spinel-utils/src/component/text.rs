@@ -21,7 +21,6 @@ impl TextComponent {
         }
     }
 
-    /// Create a translatable text component
     pub const fn translatable(key: &'static str) -> Self {
         TextComponent {
             content: ComponentType::StaticTranslatable(key),
@@ -30,7 +29,6 @@ impl TextComponent {
         }
     }
 
-    /// Create a literal text component
     pub const fn literal(text: &'static str) -> Self {
         TextComponent {
             content: ComponentType::StaticText(text),
@@ -39,7 +37,6 @@ impl TextComponent {
         }
     }
 
-    /// Create a literal text component with color
     pub const fn literal_with_color(
         text: &'static str,
         color: crate::component::color::TextColor,
@@ -51,7 +48,6 @@ impl TextComponent {
         }
     }
 
-    /// Create a translatable component with color
     pub const fn translatable_with_color(
         key: &'static str,
         color: crate::component::color::TextColor,
