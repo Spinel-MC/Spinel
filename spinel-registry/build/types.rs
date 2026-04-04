@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 
 /// An identifier used by Minecraft.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[allow(dead_code)]
 pub struct Identifier {
     /// The namespace of the identifier.
     pub namespace: Cow<'static, str>,
@@ -15,6 +16,7 @@ pub struct Identifier {
     pub path: Cow<'static, str>,
 }
 
+#[allow(dead_code)]
 impl Identifier {
     /// The vanilla namespace.
     pub const VANILLA_NAMESPACE: &'static str = "minecraft";
@@ -121,10 +123,12 @@ impl<'de> Deserialize<'de> for Identifier {
 
 /// A raw block state id. Using the registry this id can be derived into a block and its current properties.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+#[allow(dead_code)]
 pub struct BlockStateId(pub u16);
 
 /// An axis in 3D space.
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[allow(dead_code)]
 pub enum Axis {
     /// X axis
     X,
@@ -134,6 +138,7 @@ pub enum Axis {
     Z,
 }
 
+#[allow(dead_code)]
 impl Axis {
     /// Returns the axis as a string.
     #[must_use]

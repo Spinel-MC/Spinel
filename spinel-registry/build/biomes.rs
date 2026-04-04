@@ -1,10 +1,10 @@
 use std::{collections::HashMap, fs};
 
+use crate::types::Identifier;
 use heck::ToShoutySnakeCase;
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::quote;
 use serde::{Deserialize, Serialize};
-use crate::types::Identifier;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(untagged)]
@@ -367,12 +367,12 @@ pub(crate) fn build() -> TokenStream {
         let path = entry.path();
 
         if path.extension().and_then(|s| s.to_str()) == Some("json") {
-            let biome_name = path.file_stem().unwrap().to_str().unwrap().to_string();            
+            let biome_name = path.file_stem().unwrap().to_str().unwrap().to_string();
             // Skip metadata files from minecraft-assets (e.g., _all.json, _list.json)
             if biome_name.starts_with('_') {
                 continue;
             }
-            
+
             let content = fs::read_to_string(&path).unwrap();
             let biome: BiomeJson = serde_json::from_str(&content)
                 .unwrap_or_else(|e| panic!("Failed to parse {}: {}", biome_name, e));

@@ -1,0 +1,9 @@
+[package]
+name = "test_client"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+spinel = { path = "../spinel", features = ["client"] }
+tokio = { version = "1", features = ["full"] }
+env_logger = "0.11"

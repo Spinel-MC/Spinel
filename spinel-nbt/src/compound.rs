@@ -40,9 +40,7 @@ impl NbtCompound {
                 break;
             }
 
-            let len = reader.get_u16_be()?;
-            reader.skip_bytes(u64::from(len))?;
-
+            let _name = get_nbt_string(reader)?;
             Nbt::skip_data(reader, tag_id)?;
         }
         Ok(())
@@ -54,16 +52,7 @@ impl NbtCompound {
     {
         let mut compound = Self::new();
         loop {
-            let tag_id = match reader.get_u8_be() {
-                Ok(id) => id,
-                Err(err) => match err {
-                    Error::Incomplete(err) => match err.kind() {
-                        ErrorKind::UnexpectedEof => break,
-                        _ => return Err(Error::Incomplete(err)),
-                    },
-                    _ => return Err(err),
-                },
-            };
+            let tag_id = reader.get_u8_be()?;
             if tag_id == END_ID {
                 break;
             }

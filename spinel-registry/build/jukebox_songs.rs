@@ -1,10 +1,10 @@
 use std::fs;
 
+use crate::types::Identifier;
 use heck::ToShoutySnakeCase;
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::quote;
 use serde::Deserialize;
-use crate::types::Identifier;
 
 #[derive(Deserialize, Debug)]
 pub struct JukeboxSongJson {
@@ -33,9 +33,7 @@ fn generate_text_component(component: &TextComponentJson) -> TokenStream {
 }
 
 pub(crate) fn build() -> TokenStream {
-    println!(
-        "cargo:rerun-if-changed=build_assets/datapacks/default/data/minecraft/jukebox_song/"
-    );
+    println!("cargo:rerun-if-changed=build_assets/datapacks/default/data/minecraft/jukebox_song/");
 
     let jukebox_song_dir = "build_assets/datapacks/default/data/minecraft/jukebox_song";
     let mut jukebox_songs = Vec::new();
@@ -46,12 +44,12 @@ pub(crate) fn build() -> TokenStream {
         let path = entry.path();
 
         if path.extension().and_then(|s| s.to_str()) == Some("json") {
-            let jukebox_song_name = path.file_stem().unwrap().to_str().unwrap().to_string();            
+            let jukebox_song_name = path.file_stem().unwrap().to_str().unwrap().to_string();
             // Skip metadata files from minecraft-assets (e.g., _all.json, _list.json)
             if jukebox_song_name.starts_with('_') {
                 continue;
             }
-            
+
             let content = fs::read_to_string(&path).unwrap();
             let jukebox_song: JukeboxSongJson = serde_json::from_str(&content)
                 .unwrap_or_else(|e| panic!("Failed to parse {}: {}", jukebox_song_name, e));

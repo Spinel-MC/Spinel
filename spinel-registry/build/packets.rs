@@ -4,6 +4,7 @@ use quote::quote;
 use serde::Deserialize;
 use std::fs;
 
+#[allow(dead_code)]
 #[derive(Deserialize)]
 struct PacketField {
     name: String,
@@ -11,6 +12,7 @@ struct PacketField {
     field_type: String,
 }
 
+#[allow(dead_code)]
 #[derive(Deserialize)]
 struct PacketEntry {
     id: String,

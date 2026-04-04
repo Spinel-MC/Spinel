@@ -1,4 +1,3 @@
-// File: spinel-nbt/src/serializer.rs
 use std::io::Write;
 
 use crate::Error;

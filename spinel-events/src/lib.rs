@@ -1,5 +1,7 @@
 use spinel_utils::Priority;
 
+pub use inventory;
+
 pub trait Event {
     const NAME: &'static str;
 }
@@ -14,6 +16,14 @@ pub struct RegisteredEvent {
 }
 
 pub struct RegisteredModule {
+    pub name: &'static str,
+}
+
+pub struct RegisteredServerModule {
+    pub name: &'static str,
+}
+
+pub struct RegisteredClientModule {
     pub name: &'static str,
 }
 
@@ -32,5 +42,7 @@ pub struct RegisteredListener {
 
 inventory::collect!(&'static RegisteredEvent);
 inventory::collect!(&'static RegisteredModule);
+inventory::collect!(&'static RegisteredServerModule);
+inventory::collect!(&'static RegisteredClientModule);
 inventory::collect!(&'static RegisteredModuleDependency);
 inventory::collect!(&'static RegisteredListener);

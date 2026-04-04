@@ -1,10 +1,10 @@
 use std::{collections::HashMap, fs};
 
+use crate::types::Identifier;
 use heck::ToShoutySnakeCase;
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::quote;
 use serde::Deserialize;
-use crate::types::Identifier;
 
 #[derive(Deserialize, Debug)]
 pub struct TrimMaterialJson {
@@ -52,9 +52,7 @@ fn generate_hashmap_resource_string(map: &HashMap<Identifier, String>) -> TokenS
 }
 
 pub(crate) fn build() -> TokenStream {
-    println!(
-        "cargo:rerun-if-changed=build_assets/datapacks/default/data/minecraft/trim_material/"
-    );
+    println!("cargo:rerun-if-changed=build_assets/datapacks/default/data/minecraft/trim_material/");
 
     let trim_material_dir = "build_assets/datapacks/default/data/minecraft/trim_material";
     let mut trim_materials = Vec::new();
@@ -65,12 +63,12 @@ pub(crate) fn build() -> TokenStream {
         let path = entry.path();
 
         if path.extension().and_then(|s| s.to_str()) == Some("json") {
-            let trim_material_name = path.file_stem().unwrap().to_str().unwrap().to_string();            
+            let trim_material_name = path.file_stem().unwrap().to_str().unwrap().to_string();
             // Skip metadata files from minecraft-assets (e.g., _all.json, _list.json)
             if trim_material_name.starts_with('_') {
                 continue;
             }
-            
+
             let content = fs::read_to_string(&path).unwrap();
             let trim_material: TrimMaterialJson = serde_json::from_str(&content)
                 .unwrap_or_else(|e| panic!("Failed to parse {}: {}", trim_material_name, e));

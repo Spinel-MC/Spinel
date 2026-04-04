@@ -11,9 +11,15 @@ inventory = "0.3.0"
 uuid = "1.0"
 tokio = { version = "1", features = ["full"] }
 serde_json = "1.0"
-serde = "1.0"
+serde = { version = "1.0", features = ["derive"] }
 
 aes = "0.8.4"
 cfb8 = "0.8.1"
 rsa = "0.9"
 rand = "0.9.2"
+flate2 = "1.0"
+
+[features]
+default = ["server"]
+server = []
+client = []

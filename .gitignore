@@ -3,6 +3,11 @@
 /other/Spinel/.obsidian
 /other/datagen/
 /not_public
+/spinel-client/tests
+/spinel-server/tests
 
 # Mojang assets
 /spinel-registry/build_assets/datapacks/default/
+
+
+

@@ -124,21 +124,6 @@ pub static BADLANDS: LazyLock<Biome> = LazyLock::new(|| Biome {
                 },
             ],
         ),
-        ("misc".to_string(), vec![]),
-        ("water_ambient".to_string(), vec![]),
-        (
-            "underground_water_creature".to_string(),
-            vec![SpawnerData {
-                entity_type: Identifier {
-                    namespace: Cow::Borrowed("minecraft"),
-                    path: Cow::Borrowed("glow_squid"),
-                },
-                weight: 10i32,
-                min_count: 4i32,
-                max_count: 6i32,
-            }],
-        ),
-        ("axolotls".to_string(), vec![]),
         (
             "ambient".to_string(),
             vec![SpawnerData {
@@ -151,6 +136,20 @@ pub static BADLANDS: LazyLock<Biome> = LazyLock::new(|| Biome {
                 max_count: 8i32,
             }],
         ),
+        ("axolotls".to_string(), vec![]),
+        (
+            "underground_water_creature".to_string(),
+            vec![SpawnerData {
+                entity_type: Identifier {
+                    namespace: Cow::Borrowed("minecraft"),
+                    path: Cow::Borrowed("glow_squid"),
+                },
+                weight: 10i32,
+                min_count: 4i32,
+                max_count: 6i32,
+            }],
+        ),
+        ("water_ambient".to_string(), vec![]),
         ("water_creature".to_string(), vec![]),
         (
             "creature".to_string(),
@@ -202,6 +201,7 @@ pub static BADLANDS: LazyLock<Biome> = LazyLock::new(|| Biome {
                 },
             ],
         ),
+        ("misc".to_string(), vec![]),
     ]),
     spawn_costs: HashMap::from([]),
     carvers: vec![
@@ -468,8 +468,6 @@ pub static BAMBOO_JUNGLE: LazyLock<Biome> = LazyLock::new(|| Biome {
     },
     creature_spawn_probability: 0f32,
     spawners: HashMap::from([
-        ("water_creature".to_string(), vec![]),
-        ("misc".to_string(), vec![]),
         (
             "underground_water_creature".to_string(),
             vec![SpawnerData {
@@ -482,18 +480,7 @@ pub static BAMBOO_JUNGLE: LazyLock<Biome> = LazyLock::new(|| Biome {
                 max_count: 6i32,
             }],
         ),
-        (
-            "ambient".to_string(),
-            vec![SpawnerData {
-                entity_type: Identifier {
-                    namespace: Cow::Borrowed("minecraft"),
-                    path: Cow::Borrowed("bat"),
-                },
-                weight: 10i32,
-                min_count: 8i32,
-                max_count: 8i32,
-            }],
-        ),
+        ("misc".to_string(), vec![]),
         (
             "creature".to_string(),
             vec![
@@ -562,7 +549,7 @@ pub static BAMBOO_JUNGLE: LazyLock<Biome> = LazyLock::new(|| Biome {
                 },
             ],
         ),
-        ("water_ambient".to_string(), vec![]),
+        ("axolotls".to_string(), vec![]),
         (
             "monster".to_string(),
             vec![
@@ -649,7 +636,20 @@ pub static BAMBOO_JUNGLE: LazyLock<Biome> = LazyLock::new(|| Biome {
                 },
             ],
         ),
-        ("axolotls".to_string(), vec![]),
+        (
+            "ambient".to_string(),
+            vec![SpawnerData {
+                entity_type: Identifier {
+                    namespace: Cow::Borrowed("minecraft"),
+                    path: Cow::Borrowed("bat"),
+                },
+                weight: 10i32,
+                min_count: 8i32,
+                max_count: 8i32,
+            }],
+        ),
+        ("water_ambient".to_string(), vec![]),
+        ("water_creature".to_string(), vec![]),
     ]),
     spawn_costs: HashMap::from([]),
     carvers: vec![
@@ -937,22 +937,10 @@ pub static BASALT_DELTAS: LazyLock<Biome> = LazyLock::new(|| Biome {
     },
     creature_spawn_probability: 0f32,
     spawners: HashMap::from([
-        ("misc".to_string(), vec![]),
-        ("water_ambient".to_string(), vec![]),
         ("ambient".to_string(), vec![]),
         ("axolotls".to_string(), vec![]),
-        (
-            "creature".to_string(),
-            vec![SpawnerData {
-                entity_type: Identifier {
-                    namespace: Cow::Borrowed("minecraft"),
-                    path: Cow::Borrowed("strider"),
-                },
-                weight: 60i32,
-                min_count: 1i32,
-                max_count: 2i32,
-            }],
-        ),
+        ("underground_water_creature".to_string(), vec![]),
+        ("water_creature".to_string(), vec![]),
         (
             "monster".to_string(),
             vec![
@@ -976,8 +964,20 @@ pub static BASALT_DELTAS: LazyLock<Biome> = LazyLock::new(|| Biome {
                 },
             ],
         ),
-        ("underground_water_creature".to_string(), vec![]),
-        ("water_creature".to_string(), vec![]),
+        ("water_ambient".to_string(), vec![]),
+        (
+            "creature".to_string(),
+            vec![SpawnerData {
+                entity_type: Identifier {
+                    namespace: Cow::Borrowed("minecraft"),
+                    path: Cow::Borrowed("strider"),
+                },
+                weight: 60i32,
+                min_count: 1i32,
+                max_count: 2i32,
+            }],
+        ),
+        ("misc".to_string(), vec![]),
     ]),
     spawn_costs: HashMap::from([]),
     carvers: vec![Identifier {
@@ -1100,31 +1100,6 @@ pub static BEACH: LazyLock<Biome> = LazyLock::new(|| Biome {
     creature_spawn_probability: 0f32,
     spawners: HashMap::from([
         (
-            "underground_water_creature".to_string(),
-            vec![SpawnerData {
-                entity_type: Identifier {
-                    namespace: Cow::Borrowed("minecraft"),
-                    path: Cow::Borrowed("glow_squid"),
-                },
-                weight: 10i32,
-                min_count: 4i32,
-                max_count: 6i32,
-            }],
-        ),
-        (
-            "creature".to_string(),
-            vec![SpawnerData {
-                entity_type: Identifier {
-                    namespace: Cow::Borrowed("minecraft"),
-                    path: Cow::Borrowed("turtle"),
-                },
-                weight: 5i32,
-                min_count: 2i32,
-                max_count: 5i32,
-            }],
-        ),
-        ("axolotls".to_string(), vec![]),
-        (
             "monster".to_string(),
             vec![
                 SpawnerData {
@@ -1202,6 +1177,20 @@ pub static BEACH: LazyLock<Biome> = LazyLock::new(|| Biome {
             ],
         ),
         ("water_ambient".to_string(), vec![]),
+        ("axolotls".to_string(), vec![]),
+        (
+            "underground_water_creature".to_string(),
+            vec![SpawnerData {
+                entity_type: Identifier {
+                    namespace: Cow::Borrowed("minecraft"),
+                    path: Cow::Borrowed("glow_squid"),
+                },
+                weight: 10i32,
+                min_count: 4i32,
+                max_count: 6i32,
+            }],
+        ),
+        ("water_creature".to_string(), vec![]),
         (
             "ambient".to_string(),
             vec![SpawnerData {
@@ -1214,8 +1203,19 @@ pub static BEACH: LazyLock<Biome> = LazyLock::new(|| Biome {
                 max_count: 8i32,
             }],
         ),
+        (
+            "creature".to_string(),
+            vec![SpawnerData {
+                entity_type: Identifier {
+                    namespace: Cow::Borrowed("minecraft"),
+                    path: Cow::Borrowed("turtle"),
+                },
+                weight: 5i32,
+                min_count: 2i32,
+                max_count: 5i32,
+            }],
+        ),
         ("misc".to_string(), vec![]),
-        ("water_creature".to_string(), vec![]),
     ]),
     spawn_costs: HashMap::from([]),
     carvers: vec![
@@ -1470,7 +1470,6 @@ pub static BIRCH_FOREST: LazyLock<Biome> = LazyLock::new(|| Biome {
     },
     creature_spawn_probability: 0f32,
     spawners: HashMap::from([
-        ("axolotls".to_string(), vec![]),
         (
             "monster".to_string(),
             vec![
@@ -1548,7 +1547,32 @@ pub static BIRCH_FOREST: LazyLock<Biome> = LazyLock::new(|| Biome {
                 },
             ],
         ),
-        ("water_ambient".to_string(), vec![]),
+        (
+            "ambient".to_string(),
+            vec![SpawnerData {
+                entity_type: Identifier {
+                    namespace: Cow::Borrowed("minecraft"),
+                    path: Cow::Borrowed("bat"),
+                },
+                weight: 10i32,
+                min_count: 8i32,
+                max_count: 8i32,
+            }],
+        ),
+        ("axolotls".to_string(), vec![]),
+        ("misc".to_string(), vec![]),
+        (
+            "underground_water_creature".to_string(),
+            vec![SpawnerData {
+                entity_type: Identifier {
+                    namespace: Cow::Borrowed("minecraft"),
+                    path: Cow::Borrowed("glow_squid"),
+                },
+                weight: 10i32,
+                min_count: 4i32,
+                max_count: 6i32,
+            }],
+        ),
         (
             "creature".to_string(),
             vec![
@@ -1590,32 +1614,8 @@ pub static BIRCH_FOREST: LazyLock<Biome> = LazyLock::new(|| Biome {
                 },
             ],
         ),
-        (
-            "underground_water_creature".to_string(),
-            vec![SpawnerData {
-                entity_type: Identifier {
-                    namespace: Cow::Borrowed("minecraft"),
-                    path: Cow::Borrowed("glow_squid"),
-                },
-                weight: 10i32,
-                min_count: 4i32,
-                max_count: 6i32,
-            }],
-        ),
+        ("water_ambient".to_string(), vec![]),
         ("water_creature".to_string(), vec![]),
-        (
-            "ambient".to_string(),
-            vec![SpawnerData {
-                entity_type: Identifier {
-                    namespace: Cow::Borrowed("minecraft"),
-                    path: Cow::Borrowed("bat"),
-                },
-                weight: 10i32,
-                min_count: 8i32,
-                max_count: 8i32,
-            }],
-        ),
-        ("misc".to_string(), vec![]),
     ]),
     spawn_costs: HashMap::from([]),
     carvers: vec![
@@ -1886,7 +1886,7 @@ pub static CHERRY_GROVE: LazyLock<Biome> = LazyLock::new(|| Biome {
     },
     creature_spawn_probability: 0f32,
     spawners: HashMap::from([
-        ("axolotls".to_string(), vec![]),
+        ("water_creature".to_string(), vec![]),
         (
             "creature".to_string(),
             vec![
@@ -1918,30 +1918,6 @@ pub static CHERRY_GROVE: LazyLock<Biome> = LazyLock::new(|| Biome {
                     max_count: 4i32,
                 },
             ],
-        ),
-        (
-            "ambient".to_string(),
-            vec![SpawnerData {
-                entity_type: Identifier {
-                    namespace: Cow::Borrowed("minecraft"),
-                    path: Cow::Borrowed("bat"),
-                },
-                weight: 10i32,
-                min_count: 8i32,
-                max_count: 8i32,
-            }],
-        ),
-        (
-            "underground_water_creature".to_string(),
-            vec![SpawnerData {
-                entity_type: Identifier {
-                    namespace: Cow::Borrowed("minecraft"),
-                    path: Cow::Borrowed("glow_squid"),
-                },
-                weight: 10i32,
-                min_count: 4i32,
-                max_count: 6i32,
-            }],
         ),
         (
             "monster".to_string(),
@@ -2020,9 +1996,33 @@ pub static CHERRY_GROVE: LazyLock<Biome> = LazyLock::new(|| Biome {
                 },
             ],
         ),
-        ("misc".to_string(), vec![]),
         ("water_ambient".to_string(), vec![]),
-        ("water_creature".to_string(), vec![]),
+        (
+            "ambient".to_string(),
+            vec![SpawnerData {
+                entity_type: Identifier {
+                    namespace: Cow::Borrowed("minecraft"),
+                    path: Cow::Borrowed("bat"),
+                },
+                weight: 10i32,
+                min_count: 8i32,
+                max_count: 8i32,
+            }],
+        ),
+        ("axolotls".to_string(), vec![]),
+        (
+            "underground_water_creature".to_string(),
+            vec![SpawnerData {
+                entity_type: Identifier {
+                    namespace: Cow::Borrowed("minecraft"),
+                    path: Cow::Borrowed("glow_squid"),
+                },
+                weight: 10i32,
+                min_count: 4i32,
+                max_count: 6i32,
+            }],
+        ),
+        ("misc".to_string(), vec![]),
     ]),
     spawn_costs: HashMap::from([]),
     carvers: vec![
@@ -2262,17 +2262,18 @@ pub static COLD_OCEAN: LazyLock<Biome> = LazyLock::new(|| Biome {
     creature_spawn_probability: 0f32,
     spawners: HashMap::from([
         (
-            "ambient".to_string(),
+            "water_creature".to_string(),
             vec![SpawnerData {
                 entity_type: Identifier {
                     namespace: Cow::Borrowed("minecraft"),
-                    path: Cow::Borrowed("bat"),
+                    path: Cow::Borrowed("squid"),
                 },
-                weight: 10i32,
-                min_count: 8i32,
-                max_count: 8i32,
+                weight: 3i32,
+                min_count: 1i32,
+                max_count: 4i32,
             }],
         ),
+        ("axolotls".to_string(), vec![]),
         (
             "water_ambient".to_string(),
             vec![
@@ -2296,20 +2297,19 @@ pub static COLD_OCEAN: LazyLock<Biome> = LazyLock::new(|| Biome {
                 },
             ],
         ),
+        ("creature".to_string(), vec![]),
         (
-            "water_creature".to_string(),
+            "ambient".to_string(),
             vec![SpawnerData {
                 entity_type: Identifier {
                     namespace: Cow::Borrowed("minecraft"),
-                    path: Cow::Borrowed("squid"),
+                    path: Cow::Borrowed("bat"),
                 },
-                weight: 3i32,
-                min_count: 1i32,
-                max_count: 4i32,
+                weight: 10i32,
+                min_count: 8i32,
+                max_count: 8i32,
             }],
         ),
-        ("creature".to_string(), vec![]),
-        ("axolotls".to_string(), vec![]),
         (
             "underground_water_creature".to_string(),
             vec![SpawnerData {
@@ -2693,20 +2693,9 @@ pub static CRIMSON_FOREST: LazyLock<Biome> = LazyLock::new(|| Biome {
     creature_spawn_probability: 0f32,
     spawners: HashMap::from([
         ("ambient".to_string(), vec![]),
-        ("axolotls".to_string(), vec![]),
-        (
-            "creature".to_string(),
-            vec![SpawnerData {
-                entity_type: Identifier {
-                    namespace: Cow::Borrowed("minecraft"),
-                    path: Cow::Borrowed("strider"),
-                },
-                weight: 60i32,
-                min_count: 1i32,
-                max_count: 2i32,
-            }],
-        ),
         ("water_creature".to_string(), vec![]),
+        ("underground_water_creature".to_string(), vec![]),
+        ("axolotls".to_string(), vec![]),
         (
             "monster".to_string(),
             vec![
@@ -2739,9 +2728,20 @@ pub static CRIMSON_FOREST: LazyLock<Biome> = LazyLock::new(|| Biome {
                 },
             ],
         ),
-        ("underground_water_creature".to_string(), vec![]),
-        ("misc".to_string(), vec![]),
         ("water_ambient".to_string(), vec![]),
+        (
+            "creature".to_string(),
+            vec![SpawnerData {
+                entity_type: Identifier {
+                    namespace: Cow::Borrowed("minecraft"),
+                    path: Cow::Borrowed("strider"),
+                },
+                weight: 60i32,
+                min_count: 1i32,
+                max_count: 2i32,
+            }],
+        ),
+        ("misc".to_string(), vec![]),
     ]),
     spawn_costs: HashMap::from([]),
     carvers: vec![Identifier {
@@ -2876,61 +2876,6 @@ pub static DARK_FOREST: LazyLock<Biome> = LazyLock::new(|| Biome {
     },
     creature_spawn_probability: 0f32,
     spawners: HashMap::from([
-        ("water_ambient".to_string(), vec![]),
-        (
-            "creature".to_string(),
-            vec![
-                SpawnerData {
-                    entity_type: Identifier {
-                        namespace: Cow::Borrowed("minecraft"),
-                        path: Cow::Borrowed("sheep"),
-                    },
-                    weight: 12i32,
-                    min_count: 4i32,
-                    max_count: 4i32,
-                },
-                SpawnerData {
-                    entity_type: Identifier {
-                        namespace: Cow::Borrowed("minecraft"),
-                        path: Cow::Borrowed("pig"),
-                    },
-                    weight: 10i32,
-                    min_count: 4i32,
-                    max_count: 4i32,
-                },
-                SpawnerData {
-                    entity_type: Identifier {
-                        namespace: Cow::Borrowed("minecraft"),
-                        path: Cow::Borrowed("chicken"),
-                    },
-                    weight: 10i32,
-                    min_count: 4i32,
-                    max_count: 4i32,
-                },
-                SpawnerData {
-                    entity_type: Identifier {
-                        namespace: Cow::Borrowed("minecraft"),
-                        path: Cow::Borrowed("cow"),
-                    },
-                    weight: 8i32,
-                    min_count: 4i32,
-                    max_count: 4i32,
-                },
-            ],
-        ),
-        (
-            "ambient".to_string(),
-            vec![SpawnerData {
-                entity_type: Identifier {
-                    namespace: Cow::Borrowed("minecraft"),
-                    path: Cow::Borrowed("bat"),
-                },
-                weight: 10i32,
-                min_count: 8i32,
-                max_count: 8i32,
-            }],
-        ),
-        ("axolotls".to_string(), vec![]),
         ("misc".to_string(), vec![]),
         (
             "monster".to_string(),
@@ -3010,6 +2955,61 @@ pub static DARK_FOREST: LazyLock<Biome> = LazyLock::new(|| Biome {
             ],
         ),
         (
+            "ambient".to_string(),
+            vec![SpawnerData {
+                entity_type: Identifier {
+                    namespace: Cow::Borrowed("minecraft"),
+                    path: Cow::Borrowed("bat"),
+                },
+                weight: 10i32,
+                min_count: 8i32,
+                max_count: 8i32,
+            }],
+        ),
+        ("water_creature".to_string(), vec![]),
+        (
+            "creature".to_string(),
+            vec![
+                SpawnerData {
+                    entity_type: Identifier {
+                        namespace: Cow::Borrowed("minecraft"),
+                        path: Cow::Borrowed("sheep"),
+                    },
+                    weight: 12i32,
+                    min_count: 4i32,
+                    max_count: 4i32,
+                },
+                SpawnerData {
+                    entity_type: Identifier {
+                        namespace: Cow::Borrowed("minecraft"),
+                        path: Cow::Borrowed("pig"),
+                    },
+                    weight: 10i32,
+                    min_count: 4i32,
+                    max_count: 4i32,
+                },
+                SpawnerData {
+                    entity_type: Identifier {
+                        namespace: Cow::Borrowed("minecraft"),
+                        path: Cow::Borrowed("chicken"),
+                    },
+                    weight: 10i32,
+                    min_count: 4i32,
+                    max_count: 4i32,
+                },
+                SpawnerData {
+                    entity_type: Identifier {
+                        namespace: Cow::Borrowed("minecraft"),
+                        path: Cow::Borrowed("cow"),
+                    },
+                    weight: 8i32,
+                    min_count: 4i32,
+                    max_count: 4i32,
+                },
+            ],
+        ),
+        ("axolotls".to_string(), vec![]),
+        (
             "underground_water_creature".to_string(),
             vec![SpawnerData {
                 entity_type: Identifier {
@@ -3021,7 +3021,7 @@ pub static DARK_FOREST: LazyLock<Biome> = LazyLock::new(|| Biome {
                 max_count: 6i32,
             }],
         ),
-        ("water_creature".to_string(), vec![]),
+        ("water_ambient".to_string(), vec![]),
     ]),
     spawn_costs: HashMap::from([]),
     carvers: vec![
@@ -3277,7 +3277,21 @@ pub static DEEP_COLD_OCEAN: LazyLock<Biome> = LazyLock::new(|| Biome {
     },
     creature_spawn_probability: 0f32,
     spawners: HashMap::from([
+        ("misc".to_string(), vec![]),
+        ("creature".to_string(), vec![]),
         ("axolotls".to_string(), vec![]),
+        (
+            "water_creature".to_string(),
+            vec![SpawnerData {
+                entity_type: Identifier {
+                    namespace: Cow::Borrowed("minecraft"),
+                    path: Cow::Borrowed("squid"),
+                },
+                weight: 3i32,
+                min_count: 1i32,
+                max_count: 4i32,
+            }],
+        ),
         (
             "monster".to_string(),
             vec![
@@ -3365,31 +3379,6 @@ pub static DEEP_COLD_OCEAN: LazyLock<Biome> = LazyLock::new(|| Biome {
             ],
         ),
         (
-            "underground_water_creature".to_string(),
-            vec![SpawnerData {
-                entity_type: Identifier {
-                    namespace: Cow::Borrowed("minecraft"),
-                    path: Cow::Borrowed("glow_squid"),
-                },
-                weight: 10i32,
-                min_count: 4i32,
-                max_count: 6i32,
-            }],
-        ),
-        ("misc".to_string(), vec![]),
-        (
-            "water_creature".to_string(),
-            vec![SpawnerData {
-                entity_type: Identifier {
-                    namespace: Cow::Borrowed("minecraft"),
-                    path: Cow::Borrowed("squid"),
-                },
-                weight: 3i32,
-                min_count: 1i32,
-                max_count: 4i32,
-            }],
-        ),
-        (
             "water_ambient".to_string(),
             vec![
                 SpawnerData {
@@ -3424,7 +3413,18 @@ pub static DEEP_COLD_OCEAN: LazyLock<Biome> = LazyLock::new(|| Biome {
                 max_count: 8i32,
             }],
         ),
-        ("creature".to_string(), vec![]),
+        (
+            "underground_water_creature".to_string(),
+            vec![SpawnerData {
+                entity_type: Identifier {
+                    namespace: Cow::Borrowed("minecraft"),
+                    path: Cow::Borrowed("glow_squid"),
+                },
+                weight: 10i32,
+                min_count: 4i32,
+                max_count: 6i32,
+            }],
+        ),
     ]),
     spawn_costs: HashMap::from([]),
     carvers: vec![
@@ -3691,13 +3691,13 @@ pub static DEEP_DARK: LazyLock<Biome> = LazyLock::new(|| Biome {
     },
     creature_spawn_probability: 0f32,
     spawners: HashMap::from([
-        ("water_creature".to_string(), vec![]),
+        ("axolotls".to_string(), vec![]),
         ("underground_water_creature".to_string(), vec![]),
         ("misc".to_string(), vec![]),
-        ("water_ambient".to_string(), vec![]),
-        ("axolotls".to_string(), vec![]),
-        ("creature".to_string(), vec![]),
         ("monster".to_string(), vec![]),
+        ("water_creature".to_string(), vec![]),
+        ("water_ambient".to_string(), vec![]),
+        ("creature".to_string(), vec![]),
         ("ambient".to_string(), vec![]),
     ]),
     spawn_costs: HashMap::from([]),
@@ -3945,31 +3945,6 @@ pub static DEEP_FROZEN_OCEAN: LazyLock<Biome> = LazyLock::new(|| Biome {
                 max_count: 4i32,
             }],
         ),
-        ("misc".to_string(), vec![]),
-        (
-            "creature".to_string(),
-            vec![SpawnerData {
-                entity_type: Identifier {
-                    namespace: Cow::Borrowed("minecraft"),
-                    path: Cow::Borrowed("polar_bear"),
-                },
-                weight: 1i32,
-                min_count: 1i32,
-                max_count: 2i32,
-            }],
-        ),
-        (
-            "water_ambient".to_string(),
-            vec![SpawnerData {
-                entity_type: Identifier {
-                    namespace: Cow::Borrowed("minecraft"),
-                    path: Cow::Borrowed("salmon"),
-                },
-                weight: 15i32,
-                min_count: 1i32,
-                max_count: 5i32,
-            }],
-        ),
         (
             "monster".to_string(),
             vec![
@@ -4056,6 +4031,19 @@ pub static DEEP_FROZEN_OCEAN: LazyLock<Biome> = LazyLock::new(|| Biome {
                 },
             ],
         ),
+        ("axolotls".to_string(), vec![]),
+        (
+            "underground_water_creature".to_string(),
+            vec![SpawnerData {
+                entity_type: Identifier {
+                    namespace: Cow::Borrowed("minecraft"),
+                    path: Cow::Borrowed("glow_squid"),
+                },
+                weight: 10i32,
+                min_count: 4i32,
+                max_count: 6i32,
+            }],
+        ),
         (
             "ambient".to_string(),
             vec![SpawnerData {
@@ -4069,18 +4057,30 @@ pub static DEEP_FROZEN_OCEAN: LazyLock<Biome> = LazyLock::new(|| Biome {
             }],
         ),
         (
-            "underground_water_creature".to_string(),
+            "creature".to_string(),
             vec![SpawnerData {
                 entity_type: Identifier {
                     namespace: Cow::Borrowed("minecraft"),
-                    path: Cow::Borrowed("glow_squid"),
+                    path: Cow::Borrowed("polar_bear"),
                 },
-                weight: 10i32,
-                min_count: 4i32,
-                max_count: 6i32,
+                weight: 1i32,
+                min_count: 1i32,
+                max_count: 2i32,
             }],
         ),
-        ("axolotls".to_string(), vec![]),
+        (
+            "water_ambient".to_string(),
+            vec![SpawnerData {
+                entity_type: Identifier {
+                    namespace: Cow::Borrowed("minecraft"),
+                    path: Cow::Borrowed("salmon"),
+                },
+                weight: 15i32,
+                min_count: 1i32,
+                max_count: 5i32,
+            }],
+        ),
+        ("misc".to_string(), vec![]),
     ]),
     spawn_costs: HashMap::from([]),
     carvers: vec![
@@ -4343,39 +4343,6 @@ pub static DEEP_LUKEWARM_OCEAN: LazyLock<Biome> = LazyLock::new(|| Biome {
     spawners: HashMap::from([
         ("creature".to_string(), vec![]),
         (
-            "water_ambient".to_string(),
-            vec![
-                SpawnerData {
-                    entity_type: Identifier {
-                        namespace: Cow::Borrowed("minecraft"),
-                        path: Cow::Borrowed("cod"),
-                    },
-                    weight: 8i32,
-                    min_count: 3i32,
-                    max_count: 6i32,
-                },
-                SpawnerData {
-                    entity_type: Identifier {
-                        namespace: Cow::Borrowed("minecraft"),
-                        path: Cow::Borrowed("pufferfish"),
-                    },
-                    weight: 5i32,
-                    min_count: 1i32,
-                    max_count: 3i32,
-                },
-                SpawnerData {
-                    entity_type: Identifier {
-                        namespace: Cow::Borrowed("minecraft"),
-                        path: Cow::Borrowed("tropical_fish"),
-                    },
-                    weight: 25i32,
-                    min_count: 8i32,
-                    max_count: 8i32,
-                },
-            ],
-        ),
-        ("axolotls".to_string(), vec![]),
-        (
             "monster".to_string(),
             vec![
                 SpawnerData {
@@ -4461,7 +4428,6 @@ pub static DEEP_LUKEWARM_OCEAN: LazyLock<Biome> = LazyLock::new(|| Biome {
                 },
             ],
         ),
-        ("misc".to_string(), vec![]),
         (
             "ambient".to_string(),
             vec![SpawnerData {
@@ -4473,6 +4439,52 @@ pub static DEEP_LUKEWARM_OCEAN: LazyLock<Biome> = LazyLock::new(|| Biome {
                 min_count: 8i32,
                 max_count: 8i32,
             }],
+        ),
+        ("misc".to_string(), vec![]),
+        ("axolotls".to_string(), vec![]),
+        (
+            "underground_water_creature".to_string(),
+            vec![SpawnerData {
+                entity_type: Identifier {
+                    namespace: Cow::Borrowed("minecraft"),
+                    path: Cow::Borrowed("glow_squid"),
+                },
+                weight: 10i32,
+                min_count: 4i32,
+                max_count: 6i32,
+            }],
+        ),
+        (
+            "water_ambient".to_string(),
+            vec![
+                SpawnerData {
+                    entity_type: Identifier {
+                        namespace: Cow::Borrowed("minecraft"),
+                        path: Cow::Borrowed("cod"),
+                    },
+                    weight: 8i32,
+                    min_count: 3i32,
+                    max_count: 6i32,
+                },
+                SpawnerData {
+                    entity_type: Identifier {
+                        namespace: Cow::Borrowed("minecraft"),
+                        path: Cow::Borrowed("pufferfish"),
+                    },
+                    weight: 5i32,
+                    min_count: 1i32,
+                    max_count: 3i32,
+                },
+                SpawnerData {
+                    entity_type: Identifier {
+                        namespace: Cow::Borrowed("minecraft"),
+                        path: Cow::Borrowed("tropical_fish"),
+                    },
+                    weight: 25i32,
+                    min_count: 8i32,
+                    max_count: 8i32,
+                },
+            ],
         ),
         (
             "water_creature".to_string(),
@@ -4496,18 +4508,6 @@ pub static DEEP_LUKEWARM_OCEAN: LazyLock<Biome> = LazyLock::new(|| Biome {
                     max_count: 2i32,
                 },
             ],
-        ),
-        (
-            "underground_water_creature".to_string(),
-            vec![SpawnerData {
-                entity_type: Identifier {
-                    namespace: Cow::Borrowed("minecraft"),
-                    path: Cow::Borrowed("glow_squid"),
-                },
-                weight: 10i32,
-                min_count: 4i32,
-                max_count: 6i32,
-            }],
         ),
     ]),
     spawn_costs: HashMap::from([]),
@@ -4765,8 +4765,6 @@ pub static DEEP_OCEAN: LazyLock<Biome> = LazyLock::new(|| Biome {
     creature_spawn_probability: 0f32,
     spawners: HashMap::from([
         ("misc".to_string(), vec![]),
-        ("axolotls".to_string(), vec![]),
-        ("creature".to_string(), vec![]),
         (
             "underground_water_creature".to_string(),
             vec![SpawnerData {
@@ -4789,18 +4787,6 @@ pub static DEEP_OCEAN: LazyLock<Biome> = LazyLock::new(|| Biome {
                 weight: 10i32,
                 min_count: 3i32,
                 max_count: 6i32,
-            }],
-        ),
-        (
-            "ambient".to_string(),
-            vec![SpawnerData {
-                entity_type: Identifier {
-                    namespace: Cow::Borrowed("minecraft"),
-                    path: Cow::Borrowed("bat"),
-                },
-                weight: 10i32,
-                min_count: 8i32,
-                max_count: 8i32,
             }],
         ),
         (
@@ -4889,6 +4875,8 @@ pub static DEEP_OCEAN: LazyLock<Biome> = LazyLock::new(|| Biome {
                 },
             ],
         ),
+        ("creature".to_string(), vec![]),
+        ("axolotls".to_string(), vec![]),
         (
             "water_creature".to_string(),
             vec![
@@ -4911,6 +4899,18 @@ pub static DEEP_OCEAN: LazyLock<Biome> = LazyLock::new(|| Biome {
                     max_count: 2i32,
                 },
             ],
+        ),
+        (
+            "ambient".to_string(),
+            vec![SpawnerData {
+                entity_type: Identifier {
+                    namespace: Cow::Borrowed("minecraft"),
+                    path: Cow::Borrowed("bat"),
+                },
+                weight: 10i32,
+                min_count: 8i32,
+                max_count: 8i32,
+            }],
         ),
     ]),
     spawn_costs: HashMap::from([]),
@@ -5178,6 +5178,43 @@ pub static DESERT: LazyLock<Biome> = LazyLock::new(|| Biome {
     },
     creature_spawn_probability: 0f32,
     spawners: HashMap::from([
+        ("axolotls".to_string(), vec![]),
+        (
+            "ambient".to_string(),
+            vec![SpawnerData {
+                entity_type: Identifier {
+                    namespace: Cow::Borrowed("minecraft"),
+                    path: Cow::Borrowed("bat"),
+                },
+                weight: 10i32,
+                min_count: 8i32,
+                max_count: 8i32,
+            }],
+        ),
+        ("water_creature".to_string(), vec![]),
+        (
+            "creature".to_string(),
+            vec![
+                SpawnerData {
+                    entity_type: Identifier {
+                        namespace: Cow::Borrowed("minecraft"),
+                        path: Cow::Borrowed("rabbit"),
+                    },
+                    weight: 12i32,
+                    min_count: 2i32,
+                    max_count: 3i32,
+                },
+                SpawnerData {
+                    entity_type: Identifier {
+                        namespace: Cow::Borrowed("minecraft"),
+                        path: Cow::Borrowed("camel"),
+                    },
+                    weight: 1i32,
+                    min_count: 1i32,
+                    max_count: 1i32,
+                },
+            ],
+        ),
         ("misc".to_string(), vec![]),
         (
             "monster".to_string(),
@@ -5265,20 +5302,6 @@ pub static DESERT: LazyLock<Biome> = LazyLock::new(|| Biome {
                 },
             ],
         ),
-        ("water_ambient".to_string(), vec![]),
-        (
-            "ambient".to_string(),
-            vec![SpawnerData {
-                entity_type: Identifier {
-                    namespace: Cow::Borrowed("minecraft"),
-                    path: Cow::Borrowed("bat"),
-                },
-                weight: 10i32,
-                min_count: 8i32,
-                max_count: 8i32,
-            }],
-        ),
-        ("axolotls".to_string(), vec![]),
         (
             "underground_water_creature".to_string(),
             vec![SpawnerData {
@@ -5291,30 +5314,7 @@ pub static DESERT: LazyLock<Biome> = LazyLock::new(|| Biome {
                 max_count: 6i32,
             }],
         ),
-        ("water_creature".to_string(), vec![]),
-        (
-            "creature".to_string(),
-            vec![
-                SpawnerData {
-                    entity_type: Identifier {
-                        namespace: Cow::Borrowed("minecraft"),
-                        path: Cow::Borrowed("rabbit"),
-                    },
-                    weight: 12i32,
-                    min_count: 2i32,
-                    max_count: 3i32,
-                },
-                SpawnerData {
-                    entity_type: Identifier {
-                        namespace: Cow::Borrowed("minecraft"),
-                        path: Cow::Borrowed("camel"),
-                    },
-                    weight: 1i32,
-                    min_count: 1i32,
-                    max_count: 1i32,
-                },
-            ],
-        ),
+        ("water_ambient".to_string(), vec![]),
     ]),
     spawn_costs: HashMap::from([]),
     carvers: vec![
@@ -5588,10 +5588,7 @@ pub static DRIPSTONE_CAVES: LazyLock<Biome> = LazyLock::new(|| Biome {
     },
     creature_spawn_probability: 0f32,
     spawners: HashMap::from([
-        ("axolotls".to_string(), vec![]),
-        ("water_ambient".to_string(), vec![]),
         ("water_creature".to_string(), vec![]),
-        ("creature".to_string(), vec![]),
         (
             "ambient".to_string(),
             vec![SpawnerData {
@@ -5604,6 +5601,8 @@ pub static DRIPSTONE_CAVES: LazyLock<Biome> = LazyLock::new(|| Biome {
                 max_count: 8i32,
             }],
         ),
+        ("axolotls".to_string(), vec![]),
+        ("misc".to_string(), vec![]),
         (
             "monster".to_string(),
             vec![
@@ -5690,6 +5689,7 @@ pub static DRIPSTONE_CAVES: LazyLock<Biome> = LazyLock::new(|| Biome {
                 },
             ],
         ),
+        ("water_ambient".to_string(), vec![]),
         (
             "underground_water_creature".to_string(),
             vec![SpawnerData {
@@ -5702,7 +5702,7 @@ pub static DRIPSTONE_CAVES: LazyLock<Biome> = LazyLock::new(|| Biome {
                 max_count: 6i32,
             }],
         ),
-        ("misc".to_string(), vec![]),
+        ("creature".to_string(), vec![]),
     ]),
     spawn_costs: HashMap::from([]),
     carvers: vec![
@@ -5961,10 +5961,12 @@ pub static END_BARRENS: LazyLock<Biome> = LazyLock::new(|| Biome {
     },
     creature_spawn_probability: 0f32,
     spawners: HashMap::from([
-        ("creature".to_string(), vec![]),
-        ("water_ambient".to_string(), vec![]),
+        ("axolotls".to_string(), vec![]),
+        ("misc".to_string(), vec![]),
         ("ambient".to_string(), vec![]),
         ("water_creature".to_string(), vec![]),
+        ("water_ambient".to_string(), vec![]),
+        ("underground_water_creature".to_string(), vec![]),
         (
             "monster".to_string(),
             vec![SpawnerData {
@@ -5977,9 +5979,7 @@ pub static END_BARRENS: LazyLock<Biome> = LazyLock::new(|| Biome {
                 max_count: 4i32,
             }],
         ),
-        ("underground_water_creature".to_string(), vec![]),
-        ("misc".to_string(), vec![]),
-        ("axolotls".to_string(), vec![]),
+        ("creature".to_string(), vec![]),
     ]),
     spawn_costs: HashMap::from([]),
     carvers: vec![],
@@ -6015,9 +6015,11 @@ pub static END_HIGHLANDS: LazyLock<Biome> = LazyLock::new(|| Biome {
     },
     creature_spawn_probability: 0f32,
     spawners: HashMap::from([
-        ("axolotls".to_string(), vec![]),
         ("creature".to_string(), vec![]),
+        ("axolotls".to_string(), vec![]),
         ("misc".to_string(), vec![]),
+        ("water_creature".to_string(), vec![]),
+        ("underground_water_creature".to_string(), vec![]),
         ("ambient".to_string(), vec![]),
         (
             "monster".to_string(),
@@ -6031,8 +6033,6 @@ pub static END_HIGHLANDS: LazyLock<Biome> = LazyLock::new(|| Biome {
                 max_count: 4i32,
             }],
         ),
-        ("underground_water_creature".to_string(), vec![]),
-        ("water_creature".to_string(), vec![]),
         ("water_ambient".to_string(), vec![]),
     ]),
     spawn_costs: HashMap::from([]),
@@ -6087,8 +6087,7 @@ pub static END_MIDLANDS: LazyLock<Biome> = LazyLock::new(|| Biome {
     creature_spawn_probability: 0f32,
     spawners: HashMap::from([
         ("axolotls".to_string(), vec![]),
-        ("water_ambient".to_string(), vec![]),
-        ("creature".to_string(), vec![]),
+        ("water_creature".to_string(), vec![]),
         ("ambient".to_string(), vec![]),
         (
             "monster".to_string(),
@@ -6102,9 +6101,10 @@ pub static END_MIDLANDS: LazyLock<Biome> = LazyLock::new(|| Biome {
                 max_count: 4i32,
             }],
         ),
-        ("underground_water_creature".to_string(), vec![]),
         ("misc".to_string(), vec![]),
-        ("water_creature".to_string(), vec![]),
+        ("water_ambient".to_string(), vec![]),
+        ("creature".to_string(), vec![]),
+        ("underground_water_creature".to_string(), vec![]),
     ]),
     spawn_costs: HashMap::from([]),
     carvers: vec![],
@@ -6151,71 +6151,6 @@ pub static ERODED_BADLANDS: LazyLock<Biome> = LazyLock::new(|| Biome {
     },
     creature_spawn_probability: 0.03f32,
     spawners: HashMap::from([
-        ("water_creature".to_string(), vec![]),
-        (
-            "underground_water_creature".to_string(),
-            vec![SpawnerData {
-                entity_type: Identifier {
-                    namespace: Cow::Borrowed("minecraft"),
-                    path: Cow::Borrowed("glow_squid"),
-                },
-                weight: 10i32,
-                min_count: 4i32,
-                max_count: 6i32,
-            }],
-        ),
-        ("axolotls".to_string(), vec![]),
-        (
-            "creature".to_string(),
-            vec![
-                SpawnerData {
-                    entity_type: Identifier {
-                        namespace: Cow::Borrowed("minecraft"),
-                        path: Cow::Borrowed("sheep"),
-                    },
-                    weight: 12i32,
-                    min_count: 4i32,
-                    max_count: 4i32,
-                },
-                SpawnerData {
-                    entity_type: Identifier {
-                        namespace: Cow::Borrowed("minecraft"),
-                        path: Cow::Borrowed("pig"),
-                    },
-                    weight: 10i32,
-                    min_count: 4i32,
-                    max_count: 4i32,
-                },
-                SpawnerData {
-                    entity_type: Identifier {
-                        namespace: Cow::Borrowed("minecraft"),
-                        path: Cow::Borrowed("chicken"),
-                    },
-                    weight: 10i32,
-                    min_count: 4i32,
-                    max_count: 4i32,
-                },
-                SpawnerData {
-                    entity_type: Identifier {
-                        namespace: Cow::Borrowed("minecraft"),
-                        path: Cow::Borrowed("cow"),
-                    },
-                    weight: 8i32,
-                    min_count: 4i32,
-                    max_count: 4i32,
-                },
-                SpawnerData {
-                    entity_type: Identifier {
-                        namespace: Cow::Borrowed("minecraft"),
-                        path: Cow::Borrowed("armadillo"),
-                    },
-                    weight: 6i32,
-                    min_count: 1i32,
-                    max_count: 2i32,
-                },
-            ],
-        ),
-        ("water_ambient".to_string(), vec![]),
         (
             "monster".to_string(),
             vec![
@@ -6293,7 +6228,7 @@ pub static ERODED_BADLANDS: LazyLock<Biome> = LazyLock::new(|| Biome {
                 },
             ],
         ),
-        ("misc".to_string(), vec![]),
+        ("water_creature".to_string(), vec![]),
         (
             "ambient".to_string(),
             vec![SpawnerData {
@@ -6306,6 +6241,71 @@ pub static ERODED_BADLANDS: LazyLock<Biome> = LazyLock::new(|| Biome {
                 max_count: 8i32,
             }],
         ),
+        (
+            "creature".to_string(),
+            vec![
+                SpawnerData {
+                    entity_type: Identifier {
+                        namespace: Cow::Borrowed("minecraft"),
+                        path: Cow::Borrowed("sheep"),
+                    },
+                    weight: 12i32,
+                    min_count: 4i32,
+                    max_count: 4i32,
+                },
+                SpawnerData {
+                    entity_type: Identifier {
+                        namespace: Cow::Borrowed("minecraft"),
+                        path: Cow::Borrowed("pig"),
+                    },
+                    weight: 10i32,
+                    min_count: 4i32,
+                    max_count: 4i32,
+                },
+                SpawnerData {
+                    entity_type: Identifier {
+                        namespace: Cow::Borrowed("minecraft"),
+                        path: Cow::Borrowed("chicken"),
+                    },
+                    weight: 10i32,
+                    min_count: 4i32,
+                    max_count: 4i32,
+                },
+                SpawnerData {
+                    entity_type: Identifier {
+                        namespace: Cow::Borrowed("minecraft"),
+                        path: Cow::Borrowed("cow"),
+                    },
+                    weight: 8i32,
+                    min_count: 4i32,
+                    max_count: 4i32,
+                },
+                SpawnerData {
+                    entity_type: Identifier {
+                        namespace: Cow::Borrowed("minecraft"),
+                        path: Cow::Borrowed("armadillo"),
+                    },
+                    weight: 6i32,
+                    min_count: 1i32,
+                    max_count: 2i32,
+                },
+            ],
+        ),
+        ("misc".to_string(), vec![]),
+        ("axolotls".to_string(), vec![]),
+        (
+            "underground_water_creature".to_string(),
+            vec![SpawnerData {
+                entity_type: Identifier {
+                    namespace: Cow::Borrowed("minecraft"),
+                    path: Cow::Borrowed("glow_squid"),
+                },
+                weight: 10i32,
+                min_count: 4i32,
+                max_count: 6i32,
+            }],
+        ),
+        ("water_ambient".to_string(), vec![]),
     ]),
     spawn_costs: HashMap::from([]),
     carvers: vec![
@@ -6573,6 +6573,82 @@ pub static FLOWER_FOREST: LazyLock<Biome> = LazyLock::new(|| Biome {
     creature_spawn_probability: 0f32,
     spawners: HashMap::from([
         (
+            "creature".to_string(),
+            vec![
+                SpawnerData {
+                    entity_type: Identifier {
+                        namespace: Cow::Borrowed("minecraft"),
+                        path: Cow::Borrowed("sheep"),
+                    },
+                    weight: 12i32,
+                    min_count: 4i32,
+                    max_count: 4i32,
+                },
+                SpawnerData {
+                    entity_type: Identifier {
+                        namespace: Cow::Borrowed("minecraft"),
+                        path: Cow::Borrowed("pig"),
+                    },
+                    weight: 10i32,
+                    min_count: 4i32,
+                    max_count: 4i32,
+                },
+                SpawnerData {
+                    entity_type: Identifier {
+                        namespace: Cow::Borrowed("minecraft"),
+                        path: Cow::Borrowed("chicken"),
+                    },
+                    weight: 10i32,
+                    min_count: 4i32,
+                    max_count: 4i32,
+                },
+                SpawnerData {
+                    entity_type: Identifier {
+                        namespace: Cow::Borrowed("minecraft"),
+                        path: Cow::Borrowed("cow"),
+                    },
+                    weight: 8i32,
+                    min_count: 4i32,
+                    max_count: 4i32,
+                },
+                SpawnerData {
+                    entity_type: Identifier {
+                        namespace: Cow::Borrowed("minecraft"),
+                        path: Cow::Borrowed("rabbit"),
+                    },
+                    weight: 4i32,
+                    min_count: 2i32,
+                    max_count: 3i32,
+                },
+            ],
+        ),
+        (
+            "ambient".to_string(),
+            vec![SpawnerData {
+                entity_type: Identifier {
+                    namespace: Cow::Borrowed("minecraft"),
+                    path: Cow::Borrowed("bat"),
+                },
+                weight: 10i32,
+                min_count: 8i32,
+                max_count: 8i32,
+            }],
+        ),
+        ("water_ambient".to_string(), vec![]),
+        (
+            "underground_water_creature".to_string(),
+            vec![SpawnerData {
+                entity_type: Identifier {
+                    namespace: Cow::Borrowed("minecraft"),
+                    path: Cow::Borrowed("glow_squid"),
+                },
+                weight: 10i32,
+                min_count: 4i32,
+                max_count: 6i32,
+            }],
+        ),
+        ("water_creature".to_string(), vec![]),
+        (
             "monster".to_string(),
             vec![
                 SpawnerData {
@@ -6649,84 +6725,8 @@ pub static FLOWER_FOREST: LazyLock<Biome> = LazyLock::new(|| Biome {
                 },
             ],
         ),
-        (
-            "underground_water_creature".to_string(),
-            vec![SpawnerData {
-                entity_type: Identifier {
-                    namespace: Cow::Borrowed("minecraft"),
-                    path: Cow::Borrowed("glow_squid"),
-                },
-                weight: 10i32,
-                min_count: 4i32,
-                max_count: 6i32,
-            }],
-        ),
-        ("water_ambient".to_string(), vec![]),
-        (
-            "ambient".to_string(),
-            vec![SpawnerData {
-                entity_type: Identifier {
-                    namespace: Cow::Borrowed("minecraft"),
-                    path: Cow::Borrowed("bat"),
-                },
-                weight: 10i32,
-                min_count: 8i32,
-                max_count: 8i32,
-            }],
-        ),
-        (
-            "creature".to_string(),
-            vec![
-                SpawnerData {
-                    entity_type: Identifier {
-                        namespace: Cow::Borrowed("minecraft"),
-                        path: Cow::Borrowed("sheep"),
-                    },
-                    weight: 12i32,
-                    min_count: 4i32,
-                    max_count: 4i32,
-                },
-                SpawnerData {
-                    entity_type: Identifier {
-                        namespace: Cow::Borrowed("minecraft"),
-                        path: Cow::Borrowed("pig"),
-                    },
-                    weight: 10i32,
-                    min_count: 4i32,
-                    max_count: 4i32,
-                },
-                SpawnerData {
-                    entity_type: Identifier {
-                        namespace: Cow::Borrowed("minecraft"),
-                        path: Cow::Borrowed("chicken"),
-                    },
-                    weight: 10i32,
-                    min_count: 4i32,
-                    max_count: 4i32,
-                },
-                SpawnerData {
-                    entity_type: Identifier {
-                        namespace: Cow::Borrowed("minecraft"),
-                        path: Cow::Borrowed("cow"),
-                    },
-                    weight: 8i32,
-                    min_count: 4i32,
-                    max_count: 4i32,
-                },
-                SpawnerData {
-                    entity_type: Identifier {
-                        namespace: Cow::Borrowed("minecraft"),
-                        path: Cow::Borrowed("rabbit"),
-                    },
-                    weight: 4i32,
-                    min_count: 2i32,
-                    max_count: 3i32,
-                },
-            ],
-        ),
-        ("misc".to_string(), vec![]),
-        ("water_creature".to_string(), vec![]),
         ("axolotls".to_string(), vec![]),
+        ("misc".to_string(), vec![]),
     ]),
     spawn_costs: HashMap::from([]),
     carvers: vec![
@@ -6989,6 +6989,19 @@ pub static FOREST: LazyLock<Biome> = LazyLock::new(|| Biome {
     },
     creature_spawn_probability: 0f32,
     spawners: HashMap::from([
+        ("water_ambient".to_string(), vec![]),
+        (
+            "underground_water_creature".to_string(),
+            vec![SpawnerData {
+                entity_type: Identifier {
+                    namespace: Cow::Borrowed("minecraft"),
+                    path: Cow::Borrowed("glow_squid"),
+                },
+                weight: 10i32,
+                min_count: 4i32,
+                max_count: 6i32,
+            }],
+        ),
         ("misc".to_string(), vec![]),
         (
             "monster".to_string(),
@@ -7067,19 +7080,8 @@ pub static FOREST: LazyLock<Biome> = LazyLock::new(|| Biome {
                 },
             ],
         ),
-        (
-            "underground_water_creature".to_string(),
-            vec![SpawnerData {
-                entity_type: Identifier {
-                    namespace: Cow::Borrowed("minecraft"),
-                    path: Cow::Borrowed("glow_squid"),
-                },
-                weight: 10i32,
-                min_count: 4i32,
-                max_count: 6i32,
-            }],
-        ),
         ("water_creature".to_string(), vec![]),
+        ("axolotls".to_string(), vec![]),
         (
             "ambient".to_string(),
             vec![SpawnerData {
@@ -7142,8 +7144,6 @@ pub static FOREST: LazyLock<Biome> = LazyLock::new(|| Biome {
                 },
             ],
         ),
-        ("axolotls".to_string(), vec![]),
-        ("water_ambient".to_string(), vec![]),
     ]),
     spawn_costs: HashMap::from([]),
     carvers: vec![
@@ -7400,43 +7400,6 @@ pub static FROZEN_OCEAN: LazyLock<Biome> = LazyLock::new(|| Biome {
     creature_spawn_probability: 0f32,
     spawners: HashMap::from([
         (
-            "water_creature".to_string(),
-            vec![SpawnerData {
-                entity_type: Identifier {
-                    namespace: Cow::Borrowed("minecraft"),
-                    path: Cow::Borrowed("squid"),
-                },
-                weight: 1i32,
-                min_count: 1i32,
-                max_count: 4i32,
-            }],
-        ),
-        (
-            "water_ambient".to_string(),
-            vec![SpawnerData {
-                entity_type: Identifier {
-                    namespace: Cow::Borrowed("minecraft"),
-                    path: Cow::Borrowed("salmon"),
-                },
-                weight: 15i32,
-                min_count: 1i32,
-                max_count: 5i32,
-            }],
-        ),
-        (
-            "creature".to_string(),
-            vec![SpawnerData {
-                entity_type: Identifier {
-                    namespace: Cow::Borrowed("minecraft"),
-                    path: Cow::Borrowed("polar_bear"),
-                },
-                weight: 1i32,
-                min_count: 1i32,
-                max_count: 2i32,
-            }],
-        ),
-        ("axolotls".to_string(), vec![]),
-        (
             "ambient".to_string(),
             vec![SpawnerData {
                 entity_type: Identifier {
@@ -7448,19 +7411,6 @@ pub static FROZEN_OCEAN: LazyLock<Biome> = LazyLock::new(|| Biome {
                 max_count: 8i32,
             }],
         ),
-        (
-            "underground_water_creature".to_string(),
-            vec![SpawnerData {
-                entity_type: Identifier {
-                    namespace: Cow::Borrowed("minecraft"),
-                    path: Cow::Borrowed("glow_squid"),
-                },
-                weight: 10i32,
-                min_count: 4i32,
-                max_count: 6i32,
-            }],
-        ),
-        ("misc".to_string(), vec![]),
         (
             "monster".to_string(),
             vec![
@@ -7546,6 +7496,56 @@ pub static FROZEN_OCEAN: LazyLock<Biome> = LazyLock::new(|| Biome {
                     max_count: 1i32,
                 },
             ],
+        ),
+        ("misc".to_string(), vec![]),
+        (
+            "creature".to_string(),
+            vec![SpawnerData {
+                entity_type: Identifier {
+                    namespace: Cow::Borrowed("minecraft"),
+                    path: Cow::Borrowed("polar_bear"),
+                },
+                weight: 1i32,
+                min_count: 1i32,
+                max_count: 2i32,
+            }],
+        ),
+        ("axolotls".to_string(), vec![]),
+        (
+            "underground_water_creature".to_string(),
+            vec![SpawnerData {
+                entity_type: Identifier {
+                    namespace: Cow::Borrowed("minecraft"),
+                    path: Cow::Borrowed("glow_squid"),
+                },
+                weight: 10i32,
+                min_count: 4i32,
+                max_count: 6i32,
+            }],
+        ),
+        (
+            "water_ambient".to_string(),
+            vec![SpawnerData {
+                entity_type: Identifier {
+                    namespace: Cow::Borrowed("minecraft"),
+                    path: Cow::Borrowed("salmon"),
+                },
+                weight: 15i32,
+                min_count: 1i32,
+                max_count: 5i32,
+            }],
+        ),
+        (
+            "water_creature".to_string(),
+            vec![SpawnerData {
+                entity_type: Identifier {
+                    namespace: Cow::Borrowed("minecraft"),
+                    path: Cow::Borrowed("squid"),
+                },
+                weight: 1i32,
+                min_count: 1i32,
+                max_count: 4i32,
+            }],
         ),
     ]),
     spawn_costs: HashMap::from([]),
@@ -7819,18 +7819,18 @@ pub static FROZEN_PEAKS: LazyLock<Biome> = LazyLock::new(|| Biome {
     creature_spawn_probability: 0f32,
     spawners: HashMap::from([
         (
-            "underground_water_creature".to_string(),
+            "creature".to_string(),
             vec![SpawnerData {
                 entity_type: Identifier {
                     namespace: Cow::Borrowed("minecraft"),
-                    path: Cow::Borrowed("glow_squid"),
+                    path: Cow::Borrowed("goat"),
                 },
-                weight: 10i32,
-                min_count: 4i32,
-                max_count: 6i32,
+                weight: 5i32,
+                min_count: 1i32,
+                max_count: 3i32,
             }],
         ),
-        ("axolotls".to_string(), vec![]),
+        ("water_ambient".to_string(), vec![]),
         (
             "monster".to_string(),
             vec![
@@ -7908,20 +7908,21 @@ pub static FROZEN_PEAKS: LazyLock<Biome> = LazyLock::new(|| Biome {
                 },
             ],
         ),
-        ("water_creature".to_string(), vec![]),
         ("misc".to_string(), vec![]),
+        ("water_creature".to_string(), vec![]),
         (
-            "creature".to_string(),
+            "underground_water_creature".to_string(),
             vec![SpawnerData {
                 entity_type: Identifier {
                     namespace: Cow::Borrowed("minecraft"),
-                    path: Cow::Borrowed("goat"),
+                    path: Cow::Borrowed("glow_squid"),
                 },
-                weight: 5i32,
-                min_count: 1i32,
-                max_count: 3i32,
+                weight: 10i32,
+                min_count: 4i32,
+                max_count: 6i32,
             }],
         ),
+        ("axolotls".to_string(), vec![]),
         (
             "ambient".to_string(),
             vec![SpawnerData {
@@ -7934,7 +7935,6 @@ pub static FROZEN_PEAKS: LazyLock<Biome> = LazyLock::new(|| Biome {
                 max_count: 8i32,
             }],
         ),
-        ("water_ambient".to_string(), vec![]),
     ]),
     spawn_costs: HashMap::from([]),
     carvers: vec![
@@ -8159,19 +8159,7 @@ pub static FROZEN_RIVER: LazyLock<Biome> = LazyLock::new(|| Biome {
     },
     creature_spawn_probability: 0f32,
     spawners: HashMap::from([
-        ("misc".to_string(), vec![]),
-        (
-            "underground_water_creature".to_string(),
-            vec![SpawnerData {
-                entity_type: Identifier {
-                    namespace: Cow::Borrowed("minecraft"),
-                    path: Cow::Borrowed("glow_squid"),
-                },
-                weight: 10i32,
-                min_count: 4i32,
-                max_count: 6i32,
-            }],
-        ),
+        ("creature".to_string(), vec![]),
         (
             "water_ambient".to_string(),
             vec![SpawnerData {
@@ -8185,20 +8173,6 @@ pub static FROZEN_RIVER: LazyLock<Biome> = LazyLock::new(|| Biome {
             }],
         ),
         (
-            "water_creature".to_string(),
-            vec![SpawnerData {
-                entity_type: Identifier {
-                    namespace: Cow::Borrowed("minecraft"),
-                    path: Cow::Borrowed("squid"),
-                },
-                weight: 2i32,
-                min_count: 1i32,
-                max_count: 4i32,
-            }],
-        ),
-        ("creature".to_string(), vec![]),
-        ("axolotls".to_string(), vec![]),
-        (
             "ambient".to_string(),
             vec![SpawnerData {
                 entity_type: Identifier {
@@ -8210,6 +8184,20 @@ pub static FROZEN_RIVER: LazyLock<Biome> = LazyLock::new(|| Biome {
                 max_count: 8i32,
             }],
         ),
+        ("axolotls".to_string(), vec![]),
+        (
+            "water_creature".to_string(),
+            vec![SpawnerData {
+                entity_type: Identifier {
+                    namespace: Cow::Borrowed("minecraft"),
+                    path: Cow::Borrowed("squid"),
+                },
+                weight: 2i32,
+                min_count: 1i32,
+                max_count: 4i32,
+            }],
+        ),
+        ("misc".to_string(), vec![]),
         (
             "monster".to_string(),
             vec![
@@ -8295,6 +8283,18 @@ pub static FROZEN_RIVER: LazyLock<Biome> = LazyLock::new(|| Biome {
                     max_count: 1i32,
                 },
             ],
+        ),
+        (
+            "underground_water_creature".to_string(),
+            vec![SpawnerData {
+                entity_type: Identifier {
+                    namespace: Cow::Borrowed("minecraft"),
+                    path: Cow::Borrowed("glow_squid"),
+                },
+                weight: 10i32,
+                min_count: 4i32,
+                max_count: 6i32,
+            }],
         ),
     ]),
     spawn_costs: HashMap::from([]),
@@ -8558,6 +8558,8 @@ pub static GROVE: LazyLock<Biome> = LazyLock::new(|| Biome {
     },
     creature_spawn_probability: 0f32,
     spawners: HashMap::from([
+        ("water_creature".to_string(), vec![]),
+        ("axolotls".to_string(), vec![]),
         (
             "ambient".to_string(),
             vec![SpawnerData {
@@ -8570,53 +8572,6 @@ pub static GROVE: LazyLock<Biome> = LazyLock::new(|| Biome {
                 max_count: 8i32,
             }],
         ),
-        (
-            "underground_water_creature".to_string(),
-            vec![SpawnerData {
-                entity_type: Identifier {
-                    namespace: Cow::Borrowed("minecraft"),
-                    path: Cow::Borrowed("glow_squid"),
-                },
-                weight: 10i32,
-                min_count: 4i32,
-                max_count: 6i32,
-            }],
-        ),
-        (
-            "creature".to_string(),
-            vec![
-                SpawnerData {
-                    entity_type: Identifier {
-                        namespace: Cow::Borrowed("minecraft"),
-                        path: Cow::Borrowed("wolf"),
-                    },
-                    weight: 1i32,
-                    min_count: 1i32,
-                    max_count: 1i32,
-                },
-                SpawnerData {
-                    entity_type: Identifier {
-                        namespace: Cow::Borrowed("minecraft"),
-                        path: Cow::Borrowed("rabbit"),
-                    },
-                    weight: 8i32,
-                    min_count: 2i32,
-                    max_count: 3i32,
-                },
-                SpawnerData {
-                    entity_type: Identifier {
-                        namespace: Cow::Borrowed("minecraft"),
-                        path: Cow::Borrowed("fox"),
-                    },
-                    weight: 4i32,
-                    min_count: 2i32,
-                    max_count: 4i32,
-                },
-            ],
-        ),
-        ("axolotls".to_string(), vec![]),
-        ("water_ambient".to_string(), vec![]),
-        ("misc".to_string(), vec![]),
         (
             "monster".to_string(),
             vec![
@@ -8694,7 +8649,52 @@ pub static GROVE: LazyLock<Biome> = LazyLock::new(|| Biome {
                 },
             ],
         ),
-        ("water_creature".to_string(), vec![]),
+        ("water_ambient".to_string(), vec![]),
+        (
+            "creature".to_string(),
+            vec![
+                SpawnerData {
+                    entity_type: Identifier {
+                        namespace: Cow::Borrowed("minecraft"),
+                        path: Cow::Borrowed("wolf"),
+                    },
+                    weight: 1i32,
+                    min_count: 1i32,
+                    max_count: 1i32,
+                },
+                SpawnerData {
+                    entity_type: Identifier {
+                        namespace: Cow::Borrowed("minecraft"),
+                        path: Cow::Borrowed("rabbit"),
+                    },
+                    weight: 8i32,
+                    min_count: 2i32,
+                    max_count: 3i32,
+                },
+                SpawnerData {
+                    entity_type: Identifier {
+                        namespace: Cow::Borrowed("minecraft"),
+                        path: Cow::Borrowed("fox"),
+                    },
+                    weight: 4i32,
+                    min_count: 2i32,
+                    max_count: 4i32,
+                },
+            ],
+        ),
+        (
+            "underground_water_creature".to_string(),
+            vec![SpawnerData {
+                entity_type: Identifier {
+                    namespace: Cow::Borrowed("minecraft"),
+                    path: Cow::Borrowed("glow_squid"),
+                },
+                weight: 10i32,
+                min_count: 4i32,
+                max_count: 6i32,
+            }],
+        ),
+        ("misc".to_string(), vec![]),
     ]),
     spawn_costs: HashMap::from([]),
     carvers: vec![
@@ -8929,6 +8929,21 @@ pub static ICE_SPIKES: LazyLock<Biome> = LazyLock::new(|| Biome {
     },
     creature_spawn_probability: 0.07f32,
     spawners: HashMap::from([
+        ("water_creature".to_string(), vec![]),
+        ("misc".to_string(), vec![]),
+        ("water_ambient".to_string(), vec![]),
+        (
+            "underground_water_creature".to_string(),
+            vec![SpawnerData {
+                entity_type: Identifier {
+                    namespace: Cow::Borrowed("minecraft"),
+                    path: Cow::Borrowed("glow_squid"),
+                },
+                weight: 10i32,
+                min_count: 4i32,
+                max_count: 6i32,
+            }],
+        ),
         (
             "ambient".to_string(),
             vec![SpawnerData {
@@ -8941,6 +8956,7 @@ pub static ICE_SPIKES: LazyLock<Biome> = LazyLock::new(|| Biome {
                 max_count: 8i32,
             }],
         ),
+        ("axolotls".to_string(), vec![]),
         (
             "creature".to_string(),
             vec![
@@ -8964,9 +8980,6 @@ pub static ICE_SPIKES: LazyLock<Biome> = LazyLock::new(|| Biome {
                 },
             ],
         ),
-        ("misc".to_string(), vec![]),
-        ("water_creature".to_string(), vec![]),
-        ("water_ambient".to_string(), vec![]),
         (
             "monster".to_string(),
             vec![
@@ -9052,19 +9065,6 @@ pub static ICE_SPIKES: LazyLock<Biome> = LazyLock::new(|| Biome {
                     max_count: 4i32,
                 },
             ],
-        ),
-        ("axolotls".to_string(), vec![]),
-        (
-            "underground_water_creature".to_string(),
-            vec![SpawnerData {
-                entity_type: Identifier {
-                    namespace: Cow::Borrowed("minecraft"),
-                    path: Cow::Borrowed("glow_squid"),
-                },
-                weight: 10i32,
-                min_count: 4i32,
-                max_count: 6i32,
-            }],
         ),
     ]),
     spawn_costs: HashMap::from([]),
@@ -9334,20 +9334,17 @@ pub static JAGGED_PEAKS: LazyLock<Biome> = LazyLock::new(|| Biome {
     creature_spawn_probability: 0f32,
     spawners: HashMap::from([
         (
-            "creature".to_string(),
+            "ambient".to_string(),
             vec![SpawnerData {
                 entity_type: Identifier {
                     namespace: Cow::Borrowed("minecraft"),
-                    path: Cow::Borrowed("goat"),
+                    path: Cow::Borrowed("bat"),
                 },
-                weight: 5i32,
-                min_count: 1i32,
-                max_count: 3i32,
+                weight: 10i32,
+                min_count: 8i32,
+                max_count: 8i32,
             }],
         ),
-        ("water_ambient".to_string(), vec![]),
-        ("axolotls".to_string(), vec![]),
-        ("misc".to_string(), vec![]),
         (
             "monster".to_string(),
             vec![
@@ -9426,19 +9423,6 @@ pub static JAGGED_PEAKS: LazyLock<Biome> = LazyLock::new(|| Biome {
             ],
         ),
         (
-            "ambient".to_string(),
-            vec![SpawnerData {
-                entity_type: Identifier {
-                    namespace: Cow::Borrowed("minecraft"),
-                    path: Cow::Borrowed("bat"),
-                },
-                weight: 10i32,
-                min_count: 8i32,
-                max_count: 8i32,
-            }],
-        ),
-        ("water_creature".to_string(), vec![]),
-        (
             "underground_water_creature".to_string(),
             vec![SpawnerData {
                 entity_type: Identifier {
@@ -9450,6 +9434,22 @@ pub static JAGGED_PEAKS: LazyLock<Biome> = LazyLock::new(|| Biome {
                 max_count: 6i32,
             }],
         ),
+        ("water_creature".to_string(), vec![]),
+        ("axolotls".to_string(), vec![]),
+        ("misc".to_string(), vec![]),
+        (
+            "creature".to_string(),
+            vec![SpawnerData {
+                entity_type: Identifier {
+                    namespace: Cow::Borrowed("minecraft"),
+                    path: Cow::Borrowed("goat"),
+                },
+                weight: 5i32,
+                min_count: 1i32,
+                max_count: 3i32,
+            }],
+        ),
+        ("water_ambient".to_string(), vec![]),
     ]),
     spawn_costs: HashMap::from([]),
     carvers: vec![
@@ -9685,6 +9685,77 @@ pub static JUNGLE: LazyLock<Biome> = LazyLock::new(|| Biome {
     },
     creature_spawn_probability: 0f32,
     spawners: HashMap::from([
+        ("water_ambient".to_string(), vec![]),
+        ("misc".to_string(), vec![]),
+        (
+            "creature".to_string(),
+            vec![
+                SpawnerData {
+                    entity_type: Identifier {
+                        namespace: Cow::Borrowed("minecraft"),
+                        path: Cow::Borrowed("sheep"),
+                    },
+                    weight: 12i32,
+                    min_count: 4i32,
+                    max_count: 4i32,
+                },
+                SpawnerData {
+                    entity_type: Identifier {
+                        namespace: Cow::Borrowed("minecraft"),
+                        path: Cow::Borrowed("pig"),
+                    },
+                    weight: 10i32,
+                    min_count: 4i32,
+                    max_count: 4i32,
+                },
+                SpawnerData {
+                    entity_type: Identifier {
+                        namespace: Cow::Borrowed("minecraft"),
+                        path: Cow::Borrowed("chicken"),
+                    },
+                    weight: 10i32,
+                    min_count: 4i32,
+                    max_count: 4i32,
+                },
+                SpawnerData {
+                    entity_type: Identifier {
+                        namespace: Cow::Borrowed("minecraft"),
+                        path: Cow::Borrowed("cow"),
+                    },
+                    weight: 8i32,
+                    min_count: 4i32,
+                    max_count: 4i32,
+                },
+                SpawnerData {
+                    entity_type: Identifier {
+                        namespace: Cow::Borrowed("minecraft"),
+                        path: Cow::Borrowed("chicken"),
+                    },
+                    weight: 10i32,
+                    min_count: 4i32,
+                    max_count: 4i32,
+                },
+                SpawnerData {
+                    entity_type: Identifier {
+                        namespace: Cow::Borrowed("minecraft"),
+                        path: Cow::Borrowed("parrot"),
+                    },
+                    weight: 40i32,
+                    min_count: 1i32,
+                    max_count: 2i32,
+                },
+                SpawnerData {
+                    entity_type: Identifier {
+                        namespace: Cow::Borrowed("minecraft"),
+                        path: Cow::Borrowed("panda"),
+                    },
+                    weight: 1i32,
+                    min_count: 1i32,
+                    max_count: 2i32,
+                },
+            ],
+        ),
+        ("axolotls".to_string(), vec![]),
         (
             "monster".to_string(),
             vec![
@@ -9771,6 +9842,7 @@ pub static JUNGLE: LazyLock<Biome> = LazyLock::new(|| Biome {
                 },
             ],
         ),
+        ("water_creature".to_string(), vec![]),
         (
             "underground_water_creature".to_string(),
             vec![SpawnerData {
@@ -9783,7 +9855,6 @@ pub static JUNGLE: LazyLock<Biome> = LazyLock::new(|| Biome {
                 max_count: 6i32,
             }],
         ),
-        ("misc".to_string(), vec![]),
         (
             "ambient".to_string(),
             vec![SpawnerData {
@@ -9795,77 +9866,6 @@ pub static JUNGLE: LazyLock<Biome> = LazyLock::new(|| Biome {
                 min_count: 8i32,
                 max_count: 8i32,
             }],
-        ),
-        ("axolotls".to_string(), vec![]),
-        ("water_ambient".to_string(), vec![]),
-        ("water_creature".to_string(), vec![]),
-        (
-            "creature".to_string(),
-            vec![
-                SpawnerData {
-                    entity_type: Identifier {
-                        namespace: Cow::Borrowed("minecraft"),
-                        path: Cow::Borrowed("sheep"),
-                    },
-                    weight: 12i32,
-                    min_count: 4i32,
-                    max_count: 4i32,
-                },
-                SpawnerData {
-                    entity_type: Identifier {
-                        namespace: Cow::Borrowed("minecraft"),
-                        path: Cow::Borrowed("pig"),
-                    },
-                    weight: 10i32,
-                    min_count: 4i32,
-                    max_count: 4i32,
-                },
-                SpawnerData {
-                    entity_type: Identifier {
-                        namespace: Cow::Borrowed("minecraft"),
-                        path: Cow::Borrowed("chicken"),
-                    },
-                    weight: 10i32,
-                    min_count: 4i32,
-                    max_count: 4i32,
-                },
-                SpawnerData {
-                    entity_type: Identifier {
-                        namespace: Cow::Borrowed("minecraft"),
-                        path: Cow::Borrowed("cow"),
-                    },
-                    weight: 8i32,
-                    min_count: 4i32,
-                    max_count: 4i32,
-                },
-                SpawnerData {
-                    entity_type: Identifier {
-                        namespace: Cow::Borrowed("minecraft"),
-                        path: Cow::Borrowed("chicken"),
-                    },
-                    weight: 10i32,
-                    min_count: 4i32,
-                    max_count: 4i32,
-                },
-                SpawnerData {
-                    entity_type: Identifier {
-                        namespace: Cow::Borrowed("minecraft"),
-                        path: Cow::Borrowed("parrot"),
-                    },
-                    weight: 40i32,
-                    min_count: 1i32,
-                    max_count: 2i32,
-                },
-                SpawnerData {
-                    entity_type: Identifier {
-                        namespace: Cow::Borrowed("minecraft"),
-                        path: Cow::Borrowed("panda"),
-                    },
-                    weight: 1i32,
-                    min_count: 1i32,
-                    max_count: 2i32,
-                },
-            ],
         ),
     ]),
     spawn_costs: HashMap::from([]),
@@ -10126,54 +10126,39 @@ pub static LUKEWARM_OCEAN: LazyLock<Biome> = LazyLock::new(|| Biome {
     },
     creature_spawn_probability: 0f32,
     spawners: HashMap::from([
-        ("misc".to_string(), vec![]),
         (
-            "underground_water_creature".to_string(),
-            vec![SpawnerData {
-                entity_type: Identifier {
-                    namespace: Cow::Borrowed("minecraft"),
-                    path: Cow::Borrowed("glow_squid"),
-                },
-                weight: 10i32,
-                min_count: 4i32,
-                max_count: 6i32,
-            }],
-        ),
-        (
-            "ambient".to_string(),
-            vec![SpawnerData {
-                entity_type: Identifier {
-                    namespace: Cow::Borrowed("minecraft"),
-                    path: Cow::Borrowed("bat"),
-                },
-                weight: 10i32,
-                min_count: 8i32,
-                max_count: 8i32,
-            }],
-        ),
-        (
-            "water_creature".to_string(),
+            "water_ambient".to_string(),
             vec![
                 SpawnerData {
                     entity_type: Identifier {
                         namespace: Cow::Borrowed("minecraft"),
-                        path: Cow::Borrowed("squid"),
+                        path: Cow::Borrowed("cod"),
                     },
-                    weight: 10i32,
-                    min_count: 1i32,
-                    max_count: 2i32,
+                    weight: 15i32,
+                    min_count: 3i32,
+                    max_count: 6i32,
                 },
                 SpawnerData {
                     entity_type: Identifier {
                         namespace: Cow::Borrowed("minecraft"),
-                        path: Cow::Borrowed("dolphin"),
+                        path: Cow::Borrowed("pufferfish"),
                     },
-                    weight: 2i32,
+                    weight: 5i32,
                     min_count: 1i32,
-                    max_count: 2i32,
+                    max_count: 3i32,
+                },
+                SpawnerData {
+                    entity_type: Identifier {
+                        namespace: Cow::Borrowed("minecraft"),
+                        path: Cow::Borrowed("tropical_fish"),
+                    },
+                    weight: 25i32,
+                    min_count: 8i32,
+                    max_count: 8i32,
                 },
             ],
         ),
+        ("misc".to_string(), vec![]),
         (
             "monster".to_string(),
             vec![
@@ -10261,36 +10246,51 @@ pub static LUKEWARM_OCEAN: LazyLock<Biome> = LazyLock::new(|| Biome {
             ],
         ),
         (
-            "water_ambient".to_string(),
+            "ambient".to_string(),
+            vec![SpawnerData {
+                entity_type: Identifier {
+                    namespace: Cow::Borrowed("minecraft"),
+                    path: Cow::Borrowed("bat"),
+                },
+                weight: 10i32,
+                min_count: 8i32,
+                max_count: 8i32,
+            }],
+        ),
+        (
+            "water_creature".to_string(),
             vec![
                 SpawnerData {
                     entity_type: Identifier {
                         namespace: Cow::Borrowed("minecraft"),
-                        path: Cow::Borrowed("cod"),
+                        path: Cow::Borrowed("squid"),
                     },
-                    weight: 15i32,
-                    min_count: 3i32,
-                    max_count: 6i32,
-                },
-                SpawnerData {
-                    entity_type: Identifier {
-                        namespace: Cow::Borrowed("minecraft"),
-                        path: Cow::Borrowed("pufferfish"),
-                    },
-                    weight: 5i32,
+                    weight: 10i32,
                     min_count: 1i32,
-                    max_count: 3i32,
+                    max_count: 2i32,
                 },
                 SpawnerData {
                     entity_type: Identifier {
                         namespace: Cow::Borrowed("minecraft"),
-                        path: Cow::Borrowed("tropical_fish"),
+                        path: Cow::Borrowed("dolphin"),
                     },
-                    weight: 25i32,
-                    min_count: 8i32,
-                    max_count: 8i32,
+                    weight: 2i32,
+                    min_count: 1i32,
+                    max_count: 2i32,
                 },
             ],
+        ),
+        (
+            "underground_water_creature".to_string(),
+            vec![SpawnerData {
+                entity_type: Identifier {
+                    namespace: Cow::Borrowed("minecraft"),
+                    path: Cow::Borrowed("glow_squid"),
+                },
+                weight: 10i32,
+                min_count: 4i32,
+                max_count: 6i32,
+            }],
         ),
         ("creature".to_string(), vec![]),
         ("axolotls".to_string(), vec![]),
@@ -10560,29 +10560,17 @@ pub static LUSH_CAVES: LazyLock<Biome> = LazyLock::new(|| Biome {
     },
     creature_spawn_probability: 0f32,
     spawners: HashMap::from([
+        ("water_creature".to_string(), vec![]),
         (
-            "axolotls".to_string(),
+            "underground_water_creature".to_string(),
             vec![SpawnerData {
                 entity_type: Identifier {
                     namespace: Cow::Borrowed("minecraft"),
-                    path: Cow::Borrowed("axolotl"),
+                    path: Cow::Borrowed("glow_squid"),
                 },
                 weight: 10i32,
                 min_count: 4i32,
                 max_count: 6i32,
-            }],
-        ),
-        ("creature".to_string(), vec![]),
-        (
-            "water_ambient".to_string(),
-            vec![SpawnerData {
-                entity_type: Identifier {
-                    namespace: Cow::Borrowed("minecraft"),
-                    path: Cow::Borrowed("tropical_fish"),
-                },
-                weight: 25i32,
-                min_count: 8i32,
-                max_count: 8i32,
             }],
         ),
         (
@@ -10662,20 +10650,7 @@ pub static LUSH_CAVES: LazyLock<Biome> = LazyLock::new(|| Biome {
                 },
             ],
         ),
-        ("misc".to_string(), vec![]),
-        ("water_creature".to_string(), vec![]),
-        (
-            "underground_water_creature".to_string(),
-            vec![SpawnerData {
-                entity_type: Identifier {
-                    namespace: Cow::Borrowed("minecraft"),
-                    path: Cow::Borrowed("glow_squid"),
-                },
-                weight: 10i32,
-                min_count: 4i32,
-                max_count: 6i32,
-            }],
-        ),
+        ("creature".to_string(), vec![]),
         (
             "ambient".to_string(),
             vec![SpawnerData {
@@ -10684,6 +10659,31 @@ pub static LUSH_CAVES: LazyLock<Biome> = LazyLock::new(|| Biome {
                     path: Cow::Borrowed("bat"),
                 },
                 weight: 10i32,
+                min_count: 8i32,
+                max_count: 8i32,
+            }],
+        ),
+        (
+            "axolotls".to_string(),
+            vec![SpawnerData {
+                entity_type: Identifier {
+                    namespace: Cow::Borrowed("minecraft"),
+                    path: Cow::Borrowed("axolotl"),
+                },
+                weight: 10i32,
+                min_count: 4i32,
+                max_count: 6i32,
+            }],
+        ),
+        ("misc".to_string(), vec![]),
+        (
+            "water_ambient".to_string(),
+            vec![SpawnerData {
+                entity_type: Identifier {
+                    namespace: Cow::Borrowed("minecraft"),
+                    path: Cow::Borrowed("tropical_fish"),
+                },
+                weight: 25i32,
                 min_count: 8i32,
                 max_count: 8i32,
             }],
@@ -10950,7 +10950,19 @@ pub static MANGROVE_SWAMP: LazyLock<Biome> = LazyLock::new(|| Biome {
     },
     creature_spawn_probability: 0f32,
     spawners: HashMap::from([
-        ("axolotls".to_string(), vec![]),
+        (
+            "creature".to_string(),
+            vec![SpawnerData {
+                entity_type: Identifier {
+                    namespace: Cow::Borrowed("minecraft"),
+                    path: Cow::Borrowed("frog"),
+                },
+                weight: 10i32,
+                min_count: 2i32,
+                max_count: 5i32,
+            }],
+        ),
+        ("misc".to_string(), vec![]),
         (
             "ambient".to_string(),
             vec![SpawnerData {
@@ -11071,19 +11083,7 @@ pub static MANGROVE_SWAMP: LazyLock<Biome> = LazyLock::new(|| Biome {
                 },
             ],
         ),
-        (
-            "creature".to_string(),
-            vec![SpawnerData {
-                entity_type: Identifier {
-                    namespace: Cow::Borrowed("minecraft"),
-                    path: Cow::Borrowed("frog"),
-                },
-                weight: 10i32,
-                min_count: 2i32,
-                max_count: 5i32,
-            }],
-        ),
-        ("misc".to_string(), vec![]),
+        ("axolotls".to_string(), vec![]),
         (
             "water_ambient".to_string(),
             vec![SpawnerData {
@@ -11352,6 +11352,18 @@ pub static MEADOW: LazyLock<Biome> = LazyLock::new(|| Biome {
     spawners: HashMap::from([
         ("misc".to_string(), vec![]),
         (
+            "ambient".to_string(),
+            vec![SpawnerData {
+                entity_type: Identifier {
+                    namespace: Cow::Borrowed("minecraft"),
+                    path: Cow::Borrowed("bat"),
+                },
+                weight: 10i32,
+                min_count: 8i32,
+                max_count: 8i32,
+            }],
+        ),
+        (
             "creature".to_string(),
             vec![
                 SpawnerData {
@@ -11384,17 +11396,20 @@ pub static MEADOW: LazyLock<Biome> = LazyLock::new(|| Biome {
             ],
         ),
         (
-            "ambient".to_string(),
+            "underground_water_creature".to_string(),
             vec![SpawnerData {
                 entity_type: Identifier {
                     namespace: Cow::Borrowed("minecraft"),
-                    path: Cow::Borrowed("bat"),
+                    path: Cow::Borrowed("glow_squid"),
                 },
                 weight: 10i32,
-                min_count: 8i32,
-                max_count: 8i32,
+                min_count: 4i32,
+                max_count: 6i32,
             }],
         ),
+        ("water_creature".to_string(), vec![]),
+        ("water_ambient".to_string(), vec![]),
+        ("axolotls".to_string(), vec![]),
         (
             "monster".to_string(),
             vec![
@@ -11472,21 +11487,6 @@ pub static MEADOW: LazyLock<Biome> = LazyLock::new(|| Biome {
                 },
             ],
         ),
-        (
-            "underground_water_creature".to_string(),
-            vec![SpawnerData {
-                entity_type: Identifier {
-                    namespace: Cow::Borrowed("minecraft"),
-                    path: Cow::Borrowed("glow_squid"),
-                },
-                weight: 10i32,
-                min_count: 4i32,
-                max_count: 6i32,
-            }],
-        ),
-        ("water_creature".to_string(), vec![]),
-        ("axolotls".to_string(), vec![]),
-        ("water_ambient".to_string(), vec![]),
     ]),
     spawn_costs: HashMap::from([]),
     carvers: vec![
@@ -11729,23 +11729,20 @@ pub static MUSHROOM_FIELDS: LazyLock<Biome> = LazyLock::new(|| Biome {
     },
     creature_spawn_probability: 0f32,
     spawners: HashMap::from([
+        ("axolotls".to_string(), vec![]),
+        ("monster".to_string(), vec![]),
         (
-            "underground_water_creature".to_string(),
+            "creature".to_string(),
             vec![SpawnerData {
                 entity_type: Identifier {
                     namespace: Cow::Borrowed("minecraft"),
-                    path: Cow::Borrowed("glow_squid"),
+                    path: Cow::Borrowed("mooshroom"),
                 },
-                weight: 10i32,
+                weight: 8i32,
                 min_count: 4i32,
-                max_count: 6i32,
+                max_count: 8i32,
             }],
         ),
-        ("water_creature".to_string(), vec![]),
-        ("misc".to_string(), vec![]),
-        ("monster".to_string(), vec![]),
-        ("axolotls".to_string(), vec![]),
-        ("water_ambient".to_string(), vec![]),
         (
             "ambient".to_string(),
             vec![SpawnerData {
@@ -11759,17 +11756,20 @@ pub static MUSHROOM_FIELDS: LazyLock<Biome> = LazyLock::new(|| Biome {
             }],
         ),
         (
-            "creature".to_string(),
+            "underground_water_creature".to_string(),
             vec![SpawnerData {
                 entity_type: Identifier {
                     namespace: Cow::Borrowed("minecraft"),
-                    path: Cow::Borrowed("mooshroom"),
+                    path: Cow::Borrowed("glow_squid"),
                 },
-                weight: 8i32,
+                weight: 10i32,
                 min_count: 4i32,
-                max_count: 8i32,
+                max_count: 6i32,
             }],
         ),
+        ("misc".to_string(), vec![]),
+        ("water_ambient".to_string(), vec![]),
+        ("water_creature".to_string(), vec![]),
     ]),
     spawn_costs: HashMap::from([]),
     carvers: vec![
@@ -12076,8 +12076,7 @@ pub static NETHER_WASTES: LazyLock<Biome> = LazyLock::new(|| Biome {
                 },
             ],
         ),
-        ("ambient".to_string(), vec![]),
-        ("axolotls".to_string(), vec![]),
+        ("misc".to_string(), vec![]),
         (
             "creature".to_string(),
             vec![SpawnerData {
@@ -12090,8 +12089,9 @@ pub static NETHER_WASTES: LazyLock<Biome> = LazyLock::new(|| Biome {
                 max_count: 2i32,
             }],
         ),
-        ("misc".to_string(), vec![]),
         ("underground_water_creature".to_string(), vec![]),
+        ("ambient".to_string(), vec![]),
+        ("axolotls".to_string(), vec![]),
         ("water_ambient".to_string(), vec![]),
     ]),
     spawn_costs: HashMap::from([]),
@@ -12216,67 +12216,8 @@ pub static OCEAN: LazyLock<Biome> = LazyLock::new(|| Biome {
     },
     creature_spawn_probability: 0f32,
     spawners: HashMap::from([
-        (
-            "underground_water_creature".to_string(),
-            vec![SpawnerData {
-                entity_type: Identifier {
-                    namespace: Cow::Borrowed("minecraft"),
-                    path: Cow::Borrowed("glow_squid"),
-                },
-                weight: 10i32,
-                min_count: 4i32,
-                max_count: 6i32,
-            }],
-        ),
         ("creature".to_string(), vec![]),
-        (
-            "ambient".to_string(),
-            vec![SpawnerData {
-                entity_type: Identifier {
-                    namespace: Cow::Borrowed("minecraft"),
-                    path: Cow::Borrowed("bat"),
-                },
-                weight: 10i32,
-                min_count: 8i32,
-                max_count: 8i32,
-            }],
-        ),
-        (
-            "water_creature".to_string(),
-            vec![
-                SpawnerData {
-                    entity_type: Identifier {
-                        namespace: Cow::Borrowed("minecraft"),
-                        path: Cow::Borrowed("squid"),
-                    },
-                    weight: 1i32,
-                    min_count: 1i32,
-                    max_count: 4i32,
-                },
-                SpawnerData {
-                    entity_type: Identifier {
-                        namespace: Cow::Borrowed("minecraft"),
-                        path: Cow::Borrowed("dolphin"),
-                    },
-                    weight: 1i32,
-                    min_count: 1i32,
-                    max_count: 2i32,
-                },
-            ],
-        ),
         ("misc".to_string(), vec![]),
-        (
-            "water_ambient".to_string(),
-            vec![SpawnerData {
-                entity_type: Identifier {
-                    namespace: Cow::Borrowed("minecraft"),
-                    path: Cow::Borrowed("cod"),
-                },
-                weight: 10i32,
-                min_count: 3i32,
-                max_count: 6i32,
-            }],
-        ),
         (
             "monster".to_string(),
             vec![
@@ -12363,7 +12304,66 @@ pub static OCEAN: LazyLock<Biome> = LazyLock::new(|| Biome {
                 },
             ],
         ),
+        (
+            "water_ambient".to_string(),
+            vec![SpawnerData {
+                entity_type: Identifier {
+                    namespace: Cow::Borrowed("minecraft"),
+                    path: Cow::Borrowed("cod"),
+                },
+                weight: 10i32,
+                min_count: 3i32,
+                max_count: 6i32,
+            }],
+        ),
+        (
+            "water_creature".to_string(),
+            vec![
+                SpawnerData {
+                    entity_type: Identifier {
+                        namespace: Cow::Borrowed("minecraft"),
+                        path: Cow::Borrowed("squid"),
+                    },
+                    weight: 1i32,
+                    min_count: 1i32,
+                    max_count: 4i32,
+                },
+                SpawnerData {
+                    entity_type: Identifier {
+                        namespace: Cow::Borrowed("minecraft"),
+                        path: Cow::Borrowed("dolphin"),
+                    },
+                    weight: 1i32,
+                    min_count: 1i32,
+                    max_count: 2i32,
+                },
+            ],
+        ),
+        (
+            "ambient".to_string(),
+            vec![SpawnerData {
+                entity_type: Identifier {
+                    namespace: Cow::Borrowed("minecraft"),
+                    path: Cow::Borrowed("bat"),
+                },
+                weight: 10i32,
+                min_count: 8i32,
+                max_count: 8i32,
+            }],
+        ),
         ("axolotls".to_string(), vec![]),
+        (
+            "underground_water_creature".to_string(),
+            vec![SpawnerData {
+                entity_type: Identifier {
+                    namespace: Cow::Borrowed("minecraft"),
+                    path: Cow::Borrowed("glow_squid"),
+                },
+                weight: 10i32,
+                min_count: 4i32,
+                max_count: 6i32,
+            }],
+        ),
     ]),
     spawn_costs: HashMap::from([]),
     carvers: vec![
@@ -12630,9 +12630,18 @@ pub static OLD_GROWTH_BIRCH_FOREST: LazyLock<Biome> = LazyLock::new(|| Biome {
     },
     creature_spawn_probability: 0f32,
     spawners: HashMap::from([
-        ("water_ambient".to_string(), vec![]),
-        ("water_creature".to_string(), vec![]),
-        ("axolotls".to_string(), vec![]),
+        (
+            "underground_water_creature".to_string(),
+            vec![SpawnerData {
+                entity_type: Identifier {
+                    namespace: Cow::Borrowed("minecraft"),
+                    path: Cow::Borrowed("glow_squid"),
+                },
+                weight: 10i32,
+                min_count: 4i32,
+                max_count: 6i32,
+            }],
+        ),
         (
             "creature".to_string(),
             vec![
@@ -12673,6 +12682,21 @@ pub static OLD_GROWTH_BIRCH_FOREST: LazyLock<Biome> = LazyLock::new(|| Biome {
                     max_count: 4i32,
                 },
             ],
+        ),
+        ("misc".to_string(), vec![]),
+        ("axolotls".to_string(), vec![]),
+        ("water_creature".to_string(), vec![]),
+        (
+            "ambient".to_string(),
+            vec![SpawnerData {
+                entity_type: Identifier {
+                    namespace: Cow::Borrowed("minecraft"),
+                    path: Cow::Borrowed("bat"),
+                },
+                weight: 10i32,
+                min_count: 8i32,
+                max_count: 8i32,
+            }],
         ),
         (
             "monster".to_string(),
@@ -12751,31 +12775,7 @@ pub static OLD_GROWTH_BIRCH_FOREST: LazyLock<Biome> = LazyLock::new(|| Biome {
                 },
             ],
         ),
-        ("misc".to_string(), vec![]),
-        (
-            "ambient".to_string(),
-            vec![SpawnerData {
-                entity_type: Identifier {
-                    namespace: Cow::Borrowed("minecraft"),
-                    path: Cow::Borrowed("bat"),
-                },
-                weight: 10i32,
-                min_count: 8i32,
-                max_count: 8i32,
-            }],
-        ),
-        (
-            "underground_water_creature".to_string(),
-            vec![SpawnerData {
-                entity_type: Identifier {
-                    namespace: Cow::Borrowed("minecraft"),
-                    path: Cow::Borrowed("glow_squid"),
-                },
-                weight: 10i32,
-                min_count: 4i32,
-                max_count: 6i32,
-            }],
-        ),
+        ("water_ambient".to_string(), vec![]),
     ]),
     spawn_costs: HashMap::from([]),
     carvers: vec![
@@ -13047,30 +13047,6 @@ pub static OLD_GROWTH_PINE_TAIGA: LazyLock<Biome> = LazyLock::new(|| Biome {
     creature_spawn_probability: 0f32,
     spawners: HashMap::from([
         (
-            "ambient".to_string(),
-            vec![SpawnerData {
-                entity_type: Identifier {
-                    namespace: Cow::Borrowed("minecraft"),
-                    path: Cow::Borrowed("bat"),
-                },
-                weight: 10i32,
-                min_count: 8i32,
-                max_count: 8i32,
-            }],
-        ),
-        (
-            "underground_water_creature".to_string(),
-            vec![SpawnerData {
-                entity_type: Identifier {
-                    namespace: Cow::Borrowed("minecraft"),
-                    path: Cow::Borrowed("glow_squid"),
-                },
-                weight: 10i32,
-                min_count: 4i32,
-                max_count: 6i32,
-            }],
-        ),
-        (
             "creature".to_string(),
             vec![
                 SpawnerData {
@@ -13138,9 +13114,32 @@ pub static OLD_GROWTH_PINE_TAIGA: LazyLock<Biome> = LazyLock::new(|| Biome {
                 },
             ],
         ),
-        ("axolotls".to_string(), vec![]),
+        ("water_creature".to_string(), vec![]),
+        (
+            "underground_water_creature".to_string(),
+            vec![SpawnerData {
+                entity_type: Identifier {
+                    namespace: Cow::Borrowed("minecraft"),
+                    path: Cow::Borrowed("glow_squid"),
+                },
+                weight: 10i32,
+                min_count: 4i32,
+                max_count: 6i32,
+            }],
+        ),
+        (
+            "ambient".to_string(),
+            vec![SpawnerData {
+                entity_type: Identifier {
+                    namespace: Cow::Borrowed("minecraft"),
+                    path: Cow::Borrowed("bat"),
+                },
+                weight: 10i32,
+                min_count: 8i32,
+                max_count: 8i32,
+            }],
+        ),
         ("water_ambient".to_string(), vec![]),
-        ("misc".to_string(), vec![]),
         (
             "monster".to_string(),
             vec![
@@ -13218,7 +13217,8 @@ pub static OLD_GROWTH_PINE_TAIGA: LazyLock<Biome> = LazyLock::new(|| Biome {
                 },
             ],
         ),
-        ("water_creature".to_string(), vec![]),
+        ("axolotls".to_string(), vec![]),
+        ("misc".to_string(), vec![]),
     ]),
     spawn_costs: HashMap::from([]),
     carvers: vec![
@@ -13503,18 +13503,7 @@ pub static OLD_GROWTH_SPRUCE_TAIGA: LazyLock<Biome> = LazyLock::new(|| Biome {
     },
     creature_spawn_probability: 0f32,
     spawners: HashMap::from([
-        (
-            "underground_water_creature".to_string(),
-            vec![SpawnerData {
-                entity_type: Identifier {
-                    namespace: Cow::Borrowed("minecraft"),
-                    path: Cow::Borrowed("glow_squid"),
-                },
-                weight: 10i32,
-                min_count: 4i32,
-                max_count: 6i32,
-            }],
-        ),
+        ("axolotls".to_string(), vec![]),
         (
             "creature".to_string(),
             vec![
@@ -13584,17 +13573,19 @@ pub static OLD_GROWTH_SPRUCE_TAIGA: LazyLock<Biome> = LazyLock::new(|| Biome {
             ],
         ),
         (
-            "ambient".to_string(),
+            "underground_water_creature".to_string(),
             vec![SpawnerData {
                 entity_type: Identifier {
                     namespace: Cow::Borrowed("minecraft"),
-                    path: Cow::Borrowed("bat"),
+                    path: Cow::Borrowed("glow_squid"),
                 },
                 weight: 10i32,
-                min_count: 8i32,
-                max_count: 8i32,
+                min_count: 4i32,
+                max_count: 6i32,
             }],
         ),
+        ("misc".to_string(), vec![]),
+        ("water_creature".to_string(), vec![]),
         (
             "monster".to_string(),
             vec![
@@ -13673,9 +13664,18 @@ pub static OLD_GROWTH_SPRUCE_TAIGA: LazyLock<Biome> = LazyLock::new(|| Biome {
             ],
         ),
         ("water_ambient".to_string(), vec![]),
-        ("water_creature".to_string(), vec![]),
-        ("axolotls".to_string(), vec![]),
-        ("misc".to_string(), vec![]),
+        (
+            "ambient".to_string(),
+            vec![SpawnerData {
+                entity_type: Identifier {
+                    namespace: Cow::Borrowed("minecraft"),
+                    path: Cow::Borrowed("bat"),
+                },
+                weight: 10i32,
+                min_count: 8i32,
+                max_count: 8i32,
+            }],
+        ),
     ]),
     spawn_costs: HashMap::from([]),
     carvers: vec![
@@ -13949,7 +13949,11 @@ pub static PALE_GARDEN: LazyLock<Biome> = LazyLock::new(|| Biome {
     },
     creature_spawn_probability: 0f32,
     spawners: HashMap::from([
+        ("misc".to_string(), vec![]),
         ("water_ambient".to_string(), vec![]),
+        ("creature".to_string(), vec![]),
+        ("water_creature".to_string(), vec![]),
+        ("axolotls".to_string(), vec![]),
         (
             "monster".to_string(),
             vec![
@@ -14027,9 +14031,6 @@ pub static PALE_GARDEN: LazyLock<Biome> = LazyLock::new(|| Biome {
                 },
             ],
         ),
-        ("water_creature".to_string(), vec![]),
-        ("axolotls".to_string(), vec![]),
-        ("misc".to_string(), vec![]),
         (
             "underground_water_creature".to_string(),
             vec![SpawnerData {
@@ -14042,7 +14043,6 @@ pub static PALE_GARDEN: LazyLock<Biome> = LazyLock::new(|| Biome {
                 max_count: 6i32,
             }],
         ),
-        ("creature".to_string(), vec![]),
         (
             "ambient".to_string(),
             vec![SpawnerData {
@@ -14303,6 +14303,31 @@ pub static PLAINS: LazyLock<Biome> = LazyLock::new(|| Biome {
     creature_spawn_probability: 0f32,
     spawners: HashMap::from([
         (
+            "underground_water_creature".to_string(),
+            vec![SpawnerData {
+                entity_type: Identifier {
+                    namespace: Cow::Borrowed("minecraft"),
+                    path: Cow::Borrowed("glow_squid"),
+                },
+                weight: 10i32,
+                min_count: 4i32,
+                max_count: 6i32,
+            }],
+        ),
+        (
+            "ambient".to_string(),
+            vec![SpawnerData {
+                entity_type: Identifier {
+                    namespace: Cow::Borrowed("minecraft"),
+                    path: Cow::Borrowed("bat"),
+                },
+                weight: 10i32,
+                min_count: 8i32,
+                max_count: 8i32,
+            }],
+        ),
+        ("misc".to_string(), vec![]),
+        (
             "monster".to_string(),
             vec![
                 SpawnerData {
@@ -14379,7 +14404,6 @@ pub static PLAINS: LazyLock<Biome> = LazyLock::new(|| Biome {
                 },
             ],
         ),
-        ("axolotls".to_string(), vec![]),
         ("water_creature".to_string(), vec![]),
         (
             "creature".to_string(),
@@ -14440,32 +14464,8 @@ pub static PLAINS: LazyLock<Biome> = LazyLock::new(|| Biome {
                 },
             ],
         ),
-        (
-            "underground_water_creature".to_string(),
-            vec![SpawnerData {
-                entity_type: Identifier {
-                    namespace: Cow::Borrowed("minecraft"),
-                    path: Cow::Borrowed("glow_squid"),
-                },
-                weight: 10i32,
-                min_count: 4i32,
-                max_count: 6i32,
-            }],
-        ),
+        ("axolotls".to_string(), vec![]),
         ("water_ambient".to_string(), vec![]),
-        (
-            "ambient".to_string(),
-            vec![SpawnerData {
-                entity_type: Identifier {
-                    namespace: Cow::Borrowed("minecraft"),
-                    path: Cow::Borrowed("bat"),
-                },
-                weight: 10i32,
-                min_count: 8i32,
-                max_count: 8i32,
-            }],
-        ),
-        ("misc".to_string(), vec![]),
     ]),
     spawn_costs: HashMap::from([]),
     carvers: vec![
@@ -14721,30 +14721,18 @@ pub static RIVER: LazyLock<Biome> = LazyLock::new(|| Biome {
     },
     creature_spawn_probability: 0f32,
     spawners: HashMap::from([
+        ("axolotls".to_string(), vec![]),
         ("creature".to_string(), vec![]),
         (
-            "underground_water_creature".to_string(),
+            "water_creature".to_string(),
             vec![SpawnerData {
                 entity_type: Identifier {
                     namespace: Cow::Borrowed("minecraft"),
-                    path: Cow::Borrowed("glow_squid"),
+                    path: Cow::Borrowed("squid"),
                 },
-                weight: 10i32,
-                min_count: 4i32,
-                max_count: 6i32,
-            }],
-        ),
-        ("axolotls".to_string(), vec![]),
-        (
-            "water_ambient".to_string(),
-            vec![SpawnerData {
-                entity_type: Identifier {
-                    namespace: Cow::Borrowed("minecraft"),
-                    path: Cow::Borrowed("salmon"),
-                },
-                weight: 5i32,
+                weight: 2i32,
                 min_count: 1i32,
-                max_count: 5i32,
+                max_count: 4i32,
             }],
         ),
         (
@@ -14759,7 +14747,18 @@ pub static RIVER: LazyLock<Biome> = LazyLock::new(|| Biome {
                 max_count: 8i32,
             }],
         ),
-        ("misc".to_string(), vec![]),
+        (
+            "water_ambient".to_string(),
+            vec![SpawnerData {
+                entity_type: Identifier {
+                    namespace: Cow::Borrowed("minecraft"),
+                    path: Cow::Borrowed("salmon"),
+                },
+                weight: 5i32,
+                min_count: 1i32,
+                max_count: 5i32,
+            }],
+        ),
         (
             "monster".to_string(),
             vec![
@@ -14847,17 +14846,18 @@ pub static RIVER: LazyLock<Biome> = LazyLock::new(|| Biome {
             ],
         ),
         (
-            "water_creature".to_string(),
+            "underground_water_creature".to_string(),
             vec![SpawnerData {
                 entity_type: Identifier {
                     namespace: Cow::Borrowed("minecraft"),
-                    path: Cow::Borrowed("squid"),
+                    path: Cow::Borrowed("glow_squid"),
                 },
-                weight: 2i32,
-                min_count: 1i32,
-                max_count: 4i32,
+                weight: 10i32,
+                min_count: 4i32,
+                max_count: 6i32,
             }],
         ),
+        ("misc".to_string(), vec![]),
     ]),
     spawn_costs: HashMap::from([]),
     carvers: vec![
@@ -15113,102 +15113,7 @@ pub static SAVANNA: LazyLock<Biome> = LazyLock::new(|| Biome {
     },
     creature_spawn_probability: 0f32,
     spawners: HashMap::from([
-        ("water_creature".to_string(), vec![]),
-        ("axolotls".to_string(), vec![]),
-        (
-            "underground_water_creature".to_string(),
-            vec![SpawnerData {
-                entity_type: Identifier {
-                    namespace: Cow::Borrowed("minecraft"),
-                    path: Cow::Borrowed("glow_squid"),
-                },
-                weight: 10i32,
-                min_count: 4i32,
-                max_count: 6i32,
-            }],
-        ),
-        (
-            "ambient".to_string(),
-            vec![SpawnerData {
-                entity_type: Identifier {
-                    namespace: Cow::Borrowed("minecraft"),
-                    path: Cow::Borrowed("bat"),
-                },
-                weight: 10i32,
-                min_count: 8i32,
-                max_count: 8i32,
-            }],
-        ),
-        (
-            "creature".to_string(),
-            vec![
-                SpawnerData {
-                    entity_type: Identifier {
-                        namespace: Cow::Borrowed("minecraft"),
-                        path: Cow::Borrowed("sheep"),
-                    },
-                    weight: 12i32,
-                    min_count: 4i32,
-                    max_count: 4i32,
-                },
-                SpawnerData {
-                    entity_type: Identifier {
-                        namespace: Cow::Borrowed("minecraft"),
-                        path: Cow::Borrowed("pig"),
-                    },
-                    weight: 10i32,
-                    min_count: 4i32,
-                    max_count: 4i32,
-                },
-                SpawnerData {
-                    entity_type: Identifier {
-                        namespace: Cow::Borrowed("minecraft"),
-                        path: Cow::Borrowed("chicken"),
-                    },
-                    weight: 10i32,
-                    min_count: 4i32,
-                    max_count: 4i32,
-                },
-                SpawnerData {
-                    entity_type: Identifier {
-                        namespace: Cow::Borrowed("minecraft"),
-                        path: Cow::Borrowed("cow"),
-                    },
-                    weight: 8i32,
-                    min_count: 4i32,
-                    max_count: 4i32,
-                },
-                SpawnerData {
-                    entity_type: Identifier {
-                        namespace: Cow::Borrowed("minecraft"),
-                        path: Cow::Borrowed("horse"),
-                    },
-                    weight: 1i32,
-                    min_count: 2i32,
-                    max_count: 6i32,
-                },
-                SpawnerData {
-                    entity_type: Identifier {
-                        namespace: Cow::Borrowed("minecraft"),
-                        path: Cow::Borrowed("donkey"),
-                    },
-                    weight: 1i32,
-                    min_count: 1i32,
-                    max_count: 1i32,
-                },
-                SpawnerData {
-                    entity_type: Identifier {
-                        namespace: Cow::Borrowed("minecraft"),
-                        path: Cow::Borrowed("armadillo"),
-                    },
-                    weight: 10i32,
-                    min_count: 2i32,
-                    max_count: 3i32,
-                },
-            ],
-        ),
         ("water_ambient".to_string(), vec![]),
-        ("misc".to_string(), vec![]),
         (
             "monster".to_string(),
             vec![
@@ -15286,6 +15191,101 @@ pub static SAVANNA: LazyLock<Biome> = LazyLock::new(|| Biome {
                 },
             ],
         ),
+        (
+            "underground_water_creature".to_string(),
+            vec![SpawnerData {
+                entity_type: Identifier {
+                    namespace: Cow::Borrowed("minecraft"),
+                    path: Cow::Borrowed("glow_squid"),
+                },
+                weight: 10i32,
+                min_count: 4i32,
+                max_count: 6i32,
+            }],
+        ),
+        ("water_creature".to_string(), vec![]),
+        (
+            "creature".to_string(),
+            vec![
+                SpawnerData {
+                    entity_type: Identifier {
+                        namespace: Cow::Borrowed("minecraft"),
+                        path: Cow::Borrowed("sheep"),
+                    },
+                    weight: 12i32,
+                    min_count: 4i32,
+                    max_count: 4i32,
+                },
+                SpawnerData {
+                    entity_type: Identifier {
+                        namespace: Cow::Borrowed("minecraft"),
+                        path: Cow::Borrowed("pig"),
+                    },
+                    weight: 10i32,
+                    min_count: 4i32,
+                    max_count: 4i32,
+                },
+                SpawnerData {
+                    entity_type: Identifier {
+                        namespace: Cow::Borrowed("minecraft"),
+                        path: Cow::Borrowed("chicken"),
+                    },
+                    weight: 10i32,
+                    min_count: 4i32,
+                    max_count: 4i32,
+                },
+                SpawnerData {
+                    entity_type: Identifier {
+                        namespace: Cow::Borrowed("minecraft"),
+                        path: Cow::Borrowed("cow"),
+                    },
+                    weight: 8i32,
+                    min_count: 4i32,
+                    max_count: 4i32,
+                },
+                SpawnerData {
+                    entity_type: Identifier {
+                        namespace: Cow::Borrowed("minecraft"),
+                        path: Cow::Borrowed("horse"),
+                    },
+                    weight: 1i32,
+                    min_count: 2i32,
+                    max_count: 6i32,
+                },
+                SpawnerData {
+                    entity_type: Identifier {
+                        namespace: Cow::Borrowed("minecraft"),
+                        path: Cow::Borrowed("donkey"),
+                    },
+                    weight: 1i32,
+                    min_count: 1i32,
+                    max_count: 1i32,
+                },
+                SpawnerData {
+                    entity_type: Identifier {
+                        namespace: Cow::Borrowed("minecraft"),
+                        path: Cow::Borrowed("armadillo"),
+                    },
+                    weight: 10i32,
+                    min_count: 2i32,
+                    max_count: 3i32,
+                },
+            ],
+        ),
+        (
+            "ambient".to_string(),
+            vec![SpawnerData {
+                entity_type: Identifier {
+                    namespace: Cow::Borrowed("minecraft"),
+                    path: Cow::Borrowed("bat"),
+                },
+                weight: 10i32,
+                min_count: 8i32,
+                max_count: 8i32,
+            }],
+        ),
+        ("misc".to_string(), vec![]),
+        ("axolotls".to_string(), vec![]),
     ]),
     spawn_costs: HashMap::from([]),
     carvers: vec![
@@ -15538,6 +15538,96 @@ pub static SAVANNA_PLATEAU: LazyLock<Biome> = LazyLock::new(|| Biome {
     creature_spawn_probability: 0f32,
     spawners: HashMap::from([
         (
+            "monster".to_string(),
+            vec![
+                SpawnerData {
+                    entity_type: Identifier {
+                        namespace: Cow::Borrowed("minecraft"),
+                        path: Cow::Borrowed("spider"),
+                    },
+                    weight: 100i32,
+                    min_count: 4i32,
+                    max_count: 4i32,
+                },
+                SpawnerData {
+                    entity_type: Identifier {
+                        namespace: Cow::Borrowed("minecraft"),
+                        path: Cow::Borrowed("zombie"),
+                    },
+                    weight: 95i32,
+                    min_count: 4i32,
+                    max_count: 4i32,
+                },
+                SpawnerData {
+                    entity_type: Identifier {
+                        namespace: Cow::Borrowed("minecraft"),
+                        path: Cow::Borrowed("zombie_villager"),
+                    },
+                    weight: 5i32,
+                    min_count: 1i32,
+                    max_count: 1i32,
+                },
+                SpawnerData {
+                    entity_type: Identifier {
+                        namespace: Cow::Borrowed("minecraft"),
+                        path: Cow::Borrowed("skeleton"),
+                    },
+                    weight: 100i32,
+                    min_count: 4i32,
+                    max_count: 4i32,
+                },
+                SpawnerData {
+                    entity_type: Identifier {
+                        namespace: Cow::Borrowed("minecraft"),
+                        path: Cow::Borrowed("creeper"),
+                    },
+                    weight: 100i32,
+                    min_count: 4i32,
+                    max_count: 4i32,
+                },
+                SpawnerData {
+                    entity_type: Identifier {
+                        namespace: Cow::Borrowed("minecraft"),
+                        path: Cow::Borrowed("slime"),
+                    },
+                    weight: 100i32,
+                    min_count: 4i32,
+                    max_count: 4i32,
+                },
+                SpawnerData {
+                    entity_type: Identifier {
+                        namespace: Cow::Borrowed("minecraft"),
+                        path: Cow::Borrowed("enderman"),
+                    },
+                    weight: 10i32,
+                    min_count: 1i32,
+                    max_count: 4i32,
+                },
+                SpawnerData {
+                    entity_type: Identifier {
+                        namespace: Cow::Borrowed("minecraft"),
+                        path: Cow::Borrowed("witch"),
+                    },
+                    weight: 5i32,
+                    min_count: 1i32,
+                    max_count: 1i32,
+                },
+            ],
+        ),
+        (
+            "underground_water_creature".to_string(),
+            vec![SpawnerData {
+                entity_type: Identifier {
+                    namespace: Cow::Borrowed("minecraft"),
+                    path: Cow::Borrowed("glow_squid"),
+                },
+                weight: 10i32,
+                min_count: 4i32,
+                max_count: 6i32,
+            }],
+        ),
+        ("water_creature".to_string(), vec![]),
+        (
             "creature".to_string(),
             vec![
                 SpawnerData {
@@ -15623,7 +15713,9 @@ pub static SAVANNA_PLATEAU: LazyLock<Biome> = LazyLock::new(|| Biome {
                 },
             ],
         ),
-        ("water_creature".to_string(), vec![]),
+        ("axolotls".to_string(), vec![]),
+        ("misc".to_string(), vec![]),
+        ("water_ambient".to_string(), vec![]),
         (
             "ambient".to_string(),
             vec![SpawnerData {
@@ -15634,98 +15726,6 @@ pub static SAVANNA_PLATEAU: LazyLock<Biome> = LazyLock::new(|| Biome {
                 weight: 10i32,
                 min_count: 8i32,
                 max_count: 8i32,
-            }],
-        ),
-        (
-            "monster".to_string(),
-            vec![
-                SpawnerData {
-                    entity_type: Identifier {
-                        namespace: Cow::Borrowed("minecraft"),
-                        path: Cow::Borrowed("spider"),
-                    },
-                    weight: 100i32,
-                    min_count: 4i32,
-                    max_count: 4i32,
-                },
-                SpawnerData {
-                    entity_type: Identifier {
-                        namespace: Cow::Borrowed("minecraft"),
-                        path: Cow::Borrowed("zombie"),
-                    },
-                    weight: 95i32,
-                    min_count: 4i32,
-                    max_count: 4i32,
-                },
-                SpawnerData {
-                    entity_type: Identifier {
-                        namespace: Cow::Borrowed("minecraft"),
-                        path: Cow::Borrowed("zombie_villager"),
-                    },
-                    weight: 5i32,
-                    min_count: 1i32,
-                    max_count: 1i32,
-                },
-                SpawnerData {
-                    entity_type: Identifier {
-                        namespace: Cow::Borrowed("minecraft"),
-                        path: Cow::Borrowed("skeleton"),
-                    },
-                    weight: 100i32,
-                    min_count: 4i32,
-                    max_count: 4i32,
-                },
-                SpawnerData {
-                    entity_type: Identifier {
-                        namespace: Cow::Borrowed("minecraft"),
-                        path: Cow::Borrowed("creeper"),
-                    },
-                    weight: 100i32,
-                    min_count: 4i32,
-                    max_count: 4i32,
-                },
-                SpawnerData {
-                    entity_type: Identifier {
-                        namespace: Cow::Borrowed("minecraft"),
-                        path: Cow::Borrowed("slime"),
-                    },
-                    weight: 100i32,
-                    min_count: 4i32,
-                    max_count: 4i32,
-                },
-                SpawnerData {
-                    entity_type: Identifier {
-                        namespace: Cow::Borrowed("minecraft"),
-                        path: Cow::Borrowed("enderman"),
-                    },
-                    weight: 10i32,
-                    min_count: 1i32,
-                    max_count: 4i32,
-                },
-                SpawnerData {
-                    entity_type: Identifier {
-                        namespace: Cow::Borrowed("minecraft"),
-                        path: Cow::Borrowed("witch"),
-                    },
-                    weight: 5i32,
-                    min_count: 1i32,
-                    max_count: 1i32,
-                },
-            ],
-        ),
-        ("axolotls".to_string(), vec![]),
-        ("water_ambient".to_string(), vec![]),
-        ("misc".to_string(), vec![]),
-        (
-            "underground_water_creature".to_string(),
-            vec![SpawnerData {
-                entity_type: Identifier {
-                    namespace: Cow::Borrowed("minecraft"),
-                    path: Cow::Borrowed("glow_squid"),
-                },
-                weight: 10i32,
-                min_count: 4i32,
-                max_count: 6i32,
             }],
         ),
     ]),
@@ -15979,12 +15979,11 @@ pub static SMALL_END_ISLANDS: LazyLock<Biome> = LazyLock::new(|| Biome {
     },
     creature_spawn_probability: 0f32,
     spawners: HashMap::from([
-        ("misc".to_string(), vec![]),
-        ("creature".to_string(), vec![]),
         ("axolotls".to_string(), vec![]),
-        ("underground_water_creature".to_string(), vec![]),
         ("water_creature".to_string(), vec![]),
-        ("water_ambient".to_string(), vec![]),
+        ("creature".to_string(), vec![]),
+        ("misc".to_string(), vec![]),
+        ("ambient".to_string(), vec![]),
         (
             "monster".to_string(),
             vec![SpawnerData {
@@ -15997,7 +15996,8 @@ pub static SMALL_END_ISLANDS: LazyLock<Biome> = LazyLock::new(|| Biome {
                 max_count: 4i32,
             }],
         ),
-        ("ambient".to_string(), vec![]),
+        ("water_ambient".to_string(), vec![]),
+        ("underground_water_creature".to_string(), vec![]),
     ]),
     spawn_costs: HashMap::from([]),
     carvers: vec![],
@@ -16036,6 +16036,9 @@ pub static SNOWY_BEACH: LazyLock<Biome> = LazyLock::new(|| Biome {
     },
     creature_spawn_probability: 0f32,
     spawners: HashMap::from([
+        ("creature".to_string(), vec![]),
+        ("water_ambient".to_string(), vec![]),
+        ("water_creature".to_string(), vec![]),
         (
             "ambient".to_string(),
             vec![SpawnerData {
@@ -16048,7 +16051,7 @@ pub static SNOWY_BEACH: LazyLock<Biome> = LazyLock::new(|| Biome {
                 max_count: 8i32,
             }],
         ),
-        ("creature".to_string(), vec![]),
+        ("axolotls".to_string(), vec![]),
         (
             "underground_water_creature".to_string(),
             vec![SpawnerData {
@@ -16062,9 +16065,6 @@ pub static SNOWY_BEACH: LazyLock<Biome> = LazyLock::new(|| Biome {
             }],
         ),
         ("misc".to_string(), vec![]),
-        ("axolotls".to_string(), vec![]),
-        ("water_ambient".to_string(), vec![]),
-        ("water_creature".to_string(), vec![]),
         (
             "monster".to_string(),
             vec![
@@ -16385,6 +16385,57 @@ pub static SNOWY_PLAINS: LazyLock<Biome> = LazyLock::new(|| Biome {
     },
     creature_spawn_probability: 0.07f32,
     spawners: HashMap::from([
+        ("axolotls".to_string(), vec![]),
+        ("water_ambient".to_string(), vec![]),
+        (
+            "ambient".to_string(),
+            vec![SpawnerData {
+                entity_type: Identifier {
+                    namespace: Cow::Borrowed("minecraft"),
+                    path: Cow::Borrowed("bat"),
+                },
+                weight: 10i32,
+                min_count: 8i32,
+                max_count: 8i32,
+            }],
+        ),
+        (
+            "creature".to_string(),
+            vec![
+                SpawnerData {
+                    entity_type: Identifier {
+                        namespace: Cow::Borrowed("minecraft"),
+                        path: Cow::Borrowed("rabbit"),
+                    },
+                    weight: 10i32,
+                    min_count: 2i32,
+                    max_count: 3i32,
+                },
+                SpawnerData {
+                    entity_type: Identifier {
+                        namespace: Cow::Borrowed("minecraft"),
+                        path: Cow::Borrowed("polar_bear"),
+                    },
+                    weight: 1i32,
+                    min_count: 1i32,
+                    max_count: 2i32,
+                },
+            ],
+        ),
+        (
+            "underground_water_creature".to_string(),
+            vec![SpawnerData {
+                entity_type: Identifier {
+                    namespace: Cow::Borrowed("minecraft"),
+                    path: Cow::Borrowed("glow_squid"),
+                },
+                weight: 10i32,
+                min_count: 4i32,
+                max_count: 6i32,
+            }],
+        ),
+        ("misc".to_string(), vec![]),
+        ("water_creature".to_string(), vec![]),
         (
             "monster".to_string(),
             vec![
@@ -16470,57 +16521,6 @@ pub static SNOWY_PLAINS: LazyLock<Biome> = LazyLock::new(|| Biome {
                     max_count: 4i32,
                 },
             ],
-        ),
-        ("axolotls".to_string(), vec![]),
-        ("misc".to_string(), vec![]),
-        ("water_ambient".to_string(), vec![]),
-        (
-            "ambient".to_string(),
-            vec![SpawnerData {
-                entity_type: Identifier {
-                    namespace: Cow::Borrowed("minecraft"),
-                    path: Cow::Borrowed("bat"),
-                },
-                weight: 10i32,
-                min_count: 8i32,
-                max_count: 8i32,
-            }],
-        ),
-        (
-            "creature".to_string(),
-            vec![
-                SpawnerData {
-                    entity_type: Identifier {
-                        namespace: Cow::Borrowed("minecraft"),
-                        path: Cow::Borrowed("rabbit"),
-                    },
-                    weight: 10i32,
-                    min_count: 2i32,
-                    max_count: 3i32,
-                },
-                SpawnerData {
-                    entity_type: Identifier {
-                        namespace: Cow::Borrowed("minecraft"),
-                        path: Cow::Borrowed("polar_bear"),
-                    },
-                    weight: 1i32,
-                    min_count: 1i32,
-                    max_count: 2i32,
-                },
-            ],
-        ),
-        ("water_creature".to_string(), vec![]),
-        (
-            "underground_water_creature".to_string(),
-            vec![SpawnerData {
-                entity_type: Identifier {
-                    namespace: Cow::Borrowed("minecraft"),
-                    path: Cow::Borrowed("glow_squid"),
-                },
-                weight: 10i32,
-                min_count: 4i32,
-                max_count: 6i32,
-            }],
         ),
     ]),
     spawn_costs: HashMap::from([]),
@@ -16780,6 +16780,57 @@ pub static SNOWY_SLOPES: LazyLock<Biome> = LazyLock::new(|| Biome {
     },
     creature_spawn_probability: 0f32,
     spawners: HashMap::from([
+        ("axolotls".to_string(), vec![]),
+        ("water_creature".to_string(), vec![]),
+        (
+            "creature".to_string(),
+            vec![
+                SpawnerData {
+                    entity_type: Identifier {
+                        namespace: Cow::Borrowed("minecraft"),
+                        path: Cow::Borrowed("rabbit"),
+                    },
+                    weight: 4i32,
+                    min_count: 2i32,
+                    max_count: 3i32,
+                },
+                SpawnerData {
+                    entity_type: Identifier {
+                        namespace: Cow::Borrowed("minecraft"),
+                        path: Cow::Borrowed("goat"),
+                    },
+                    weight: 5i32,
+                    min_count: 1i32,
+                    max_count: 3i32,
+                },
+            ],
+        ),
+        (
+            "underground_water_creature".to_string(),
+            vec![SpawnerData {
+                entity_type: Identifier {
+                    namespace: Cow::Borrowed("minecraft"),
+                    path: Cow::Borrowed("glow_squid"),
+                },
+                weight: 10i32,
+                min_count: 4i32,
+                max_count: 6i32,
+            }],
+        ),
+        ("water_ambient".to_string(), vec![]),
+        (
+            "ambient".to_string(),
+            vec![SpawnerData {
+                entity_type: Identifier {
+                    namespace: Cow::Borrowed("minecraft"),
+                    path: Cow::Borrowed("bat"),
+                },
+                weight: 10i32,
+                min_count: 8i32,
+                max_count: 8i32,
+            }],
+        ),
+        ("misc".to_string(), vec![]),
         (
             "monster".to_string(),
             vec![
@@ -16854,57 +16905,6 @@ pub static SNOWY_SLOPES: LazyLock<Biome> = LazyLock::new(|| Biome {
                     weight: 5i32,
                     min_count: 1i32,
                     max_count: 1i32,
-                },
-            ],
-        ),
-        ("water_creature".to_string(), vec![]),
-        ("axolotls".to_string(), vec![]),
-        ("misc".to_string(), vec![]),
-        (
-            "underground_water_creature".to_string(),
-            vec![SpawnerData {
-                entity_type: Identifier {
-                    namespace: Cow::Borrowed("minecraft"),
-                    path: Cow::Borrowed("glow_squid"),
-                },
-                weight: 10i32,
-                min_count: 4i32,
-                max_count: 6i32,
-            }],
-        ),
-        (
-            "ambient".to_string(),
-            vec![SpawnerData {
-                entity_type: Identifier {
-                    namespace: Cow::Borrowed("minecraft"),
-                    path: Cow::Borrowed("bat"),
-                },
-                weight: 10i32,
-                min_count: 8i32,
-                max_count: 8i32,
-            }],
-        ),
-        ("water_ambient".to_string(), vec![]),
-        (
-            "creature".to_string(),
-            vec![
-                SpawnerData {
-                    entity_type: Identifier {
-                        namespace: Cow::Borrowed("minecraft"),
-                        path: Cow::Borrowed("rabbit"),
-                    },
-                    weight: 4i32,
-                    min_count: 2i32,
-                    max_count: 3i32,
-                },
-                SpawnerData {
-                    entity_type: Identifier {
-                        namespace: Cow::Borrowed("minecraft"),
-                        path: Cow::Borrowed("goat"),
-                    },
-                    weight: 5i32,
-                    min_count: 1i32,
-                    max_count: 3i32,
                 },
             ],
         ),
@@ -17139,6 +17139,101 @@ pub static SNOWY_TAIGA: LazyLock<Biome> = LazyLock::new(|| Biome {
     creature_spawn_probability: 0f32,
     spawners: HashMap::from([
         (
+            "underground_water_creature".to_string(),
+            vec![SpawnerData {
+                entity_type: Identifier {
+                    namespace: Cow::Borrowed("minecraft"),
+                    path: Cow::Borrowed("glow_squid"),
+                },
+                weight: 10i32,
+                min_count: 4i32,
+                max_count: 6i32,
+            }],
+        ),
+        (
+            "ambient".to_string(),
+            vec![SpawnerData {
+                entity_type: Identifier {
+                    namespace: Cow::Borrowed("minecraft"),
+                    path: Cow::Borrowed("bat"),
+                },
+                weight: 10i32,
+                min_count: 8i32,
+                max_count: 8i32,
+            }],
+        ),
+        (
+            "creature".to_string(),
+            vec![
+                SpawnerData {
+                    entity_type: Identifier {
+                        namespace: Cow::Borrowed("minecraft"),
+                        path: Cow::Borrowed("sheep"),
+                    },
+                    weight: 12i32,
+                    min_count: 4i32,
+                    max_count: 4i32,
+                },
+                SpawnerData {
+                    entity_type: Identifier {
+                        namespace: Cow::Borrowed("minecraft"),
+                        path: Cow::Borrowed("pig"),
+                    },
+                    weight: 10i32,
+                    min_count: 4i32,
+                    max_count: 4i32,
+                },
+                SpawnerData {
+                    entity_type: Identifier {
+                        namespace: Cow::Borrowed("minecraft"),
+                        path: Cow::Borrowed("chicken"),
+                    },
+                    weight: 10i32,
+                    min_count: 4i32,
+                    max_count: 4i32,
+                },
+                SpawnerData {
+                    entity_type: Identifier {
+                        namespace: Cow::Borrowed("minecraft"),
+                        path: Cow::Borrowed("cow"),
+                    },
+                    weight: 8i32,
+                    min_count: 4i32,
+                    max_count: 4i32,
+                },
+                SpawnerData {
+                    entity_type: Identifier {
+                        namespace: Cow::Borrowed("minecraft"),
+                        path: Cow::Borrowed("wolf"),
+                    },
+                    weight: 8i32,
+                    min_count: 4i32,
+                    max_count: 4i32,
+                },
+                SpawnerData {
+                    entity_type: Identifier {
+                        namespace: Cow::Borrowed("minecraft"),
+                        path: Cow::Borrowed("rabbit"),
+                    },
+                    weight: 4i32,
+                    min_count: 2i32,
+                    max_count: 3i32,
+                },
+                SpawnerData {
+                    entity_type: Identifier {
+                        namespace: Cow::Borrowed("minecraft"),
+                        path: Cow::Borrowed("fox"),
+                    },
+                    weight: 8i32,
+                    min_count: 2i32,
+                    max_count: 4i32,
+                },
+            ],
+        ),
+        ("misc".to_string(), vec![]),
+        ("water_ambient".to_string(), vec![]),
+        ("axolotls".to_string(), vec![]),
+        (
             "monster".to_string(),
             vec![
                 SpawnerData {
@@ -17215,101 +17310,6 @@ pub static SNOWY_TAIGA: LazyLock<Biome> = LazyLock::new(|| Biome {
                 },
             ],
         ),
-        (
-            "ambient".to_string(),
-            vec![SpawnerData {
-                entity_type: Identifier {
-                    namespace: Cow::Borrowed("minecraft"),
-                    path: Cow::Borrowed("bat"),
-                },
-                weight: 10i32,
-                min_count: 8i32,
-                max_count: 8i32,
-            }],
-        ),
-        ("misc".to_string(), vec![]),
-        (
-            "underground_water_creature".to_string(),
-            vec![SpawnerData {
-                entity_type: Identifier {
-                    namespace: Cow::Borrowed("minecraft"),
-                    path: Cow::Borrowed("glow_squid"),
-                },
-                weight: 10i32,
-                min_count: 4i32,
-                max_count: 6i32,
-            }],
-        ),
-        ("water_ambient".to_string(), vec![]),
-        (
-            "creature".to_string(),
-            vec![
-                SpawnerData {
-                    entity_type: Identifier {
-                        namespace: Cow::Borrowed("minecraft"),
-                        path: Cow::Borrowed("sheep"),
-                    },
-                    weight: 12i32,
-                    min_count: 4i32,
-                    max_count: 4i32,
-                },
-                SpawnerData {
-                    entity_type: Identifier {
-                        namespace: Cow::Borrowed("minecraft"),
-                        path: Cow::Borrowed("pig"),
-                    },
-                    weight: 10i32,
-                    min_count: 4i32,
-                    max_count: 4i32,
-                },
-                SpawnerData {
-                    entity_type: Identifier {
-                        namespace: Cow::Borrowed("minecraft"),
-                        path: Cow::Borrowed("chicken"),
-                    },
-                    weight: 10i32,
-                    min_count: 4i32,
-                    max_count: 4i32,
-                },
-                SpawnerData {
-                    entity_type: Identifier {
-                        namespace: Cow::Borrowed("minecraft"),
-                        path: Cow::Borrowed("cow"),
-                    },
-                    weight: 8i32,
-                    min_count: 4i32,
-                    max_count: 4i32,
-                },
-                SpawnerData {
-                    entity_type: Identifier {
-                        namespace: Cow::Borrowed("minecraft"),
-                        path: Cow::Borrowed("wolf"),
-                    },
-                    weight: 8i32,
-                    min_count: 4i32,
-                    max_count: 4i32,
-                },
-                SpawnerData {
-                    entity_type: Identifier {
-                        namespace: Cow::Borrowed("minecraft"),
-                        path: Cow::Borrowed("rabbit"),
-                    },
-                    weight: 4i32,
-                    min_count: 2i32,
-                    max_count: 3i32,
-                },
-                SpawnerData {
-                    entity_type: Identifier {
-                        namespace: Cow::Borrowed("minecraft"),
-                        path: Cow::Borrowed("fox"),
-                    },
-                    weight: 8i32,
-                    min_count: 2i32,
-                    max_count: 4i32,
-                },
-            ],
-        ),
-        ("axolotls".to_string(), vec![]),
         ("water_creature".to_string(), vec![]),
     ]),
     spawn_costs: HashMap::from([]),
@@ -17595,6 +17595,19 @@ pub static SOUL_SAND_VALLEY: LazyLock<Biome> = LazyLock::new(|| Biome {
     creature_spawn_probability: 0f32,
     spawners: HashMap::from([
         (
+            "creature".to_string(),
+            vec![SpawnerData {
+                entity_type: Identifier {
+                    namespace: Cow::Borrowed("minecraft"),
+                    path: Cow::Borrowed("strider"),
+                },
+                weight: 60i32,
+                min_count: 1i32,
+                max_count: 2i32,
+            }],
+        ),
+        ("water_creature".to_string(), vec![]),
+        (
             "monster".to_string(),
             vec![
                 SpawnerData {
@@ -17626,46 +17639,13 @@ pub static SOUL_SAND_VALLEY: LazyLock<Biome> = LazyLock::new(|| Biome {
                 },
             ],
         ),
-        ("misc".to_string(), vec![]),
-        ("water_ambient".to_string(), vec![]),
-        (
-            "creature".to_string(),
-            vec![SpawnerData {
-                entity_type: Identifier {
-                    namespace: Cow::Borrowed("minecraft"),
-                    path: Cow::Borrowed("strider"),
-                },
-                weight: 60i32,
-                min_count: 1i32,
-                max_count: 2i32,
-            }],
-        ),
-        ("axolotls".to_string(), vec![]),
-        ("water_creature".to_string(), vec![]),
-        ("ambient".to_string(), vec![]),
         ("underground_water_creature".to_string(), vec![]),
+        ("misc".to_string(), vec![]),
+        ("ambient".to_string(), vec![]),
+        ("water_ambient".to_string(), vec![]),
+        ("axolotls".to_string(), vec![]),
     ]),
     spawn_costs: HashMap::from([
-        (
-            Identifier {
-                namespace: Cow::Borrowed("minecraft"),
-                path: Cow::Borrowed("ghast"),
-            },
-            SpawnCost {
-                energy_budget: 0.15f64,
-                charge: 0.7f64,
-            },
-        ),
-        (
-            Identifier {
-                namespace: Cow::Borrowed("minecraft"),
-                path: Cow::Borrowed("enderman"),
-            },
-            SpawnCost {
-                energy_budget: 0.15f64,
-                charge: 0.7f64,
-            },
-        ),
         (
             Identifier {
                 namespace: Cow::Borrowed("minecraft"),
@@ -17679,7 +17659,27 @@ pub static SOUL_SAND_VALLEY: LazyLock<Biome> = LazyLock::new(|| Biome {
         (
             Identifier {
                 namespace: Cow::Borrowed("minecraft"),
+                path: Cow::Borrowed("ghast"),
+            },
+            SpawnCost {
+                energy_budget: 0.15f64,
+                charge: 0.7f64,
+            },
+        ),
+        (
+            Identifier {
+                namespace: Cow::Borrowed("minecraft"),
                 path: Cow::Borrowed("strider"),
+            },
+            SpawnCost {
+                energy_budget: 0.15f64,
+                charge: 0.7f64,
+            },
+        ),
+        (
+            Identifier {
+                namespace: Cow::Borrowed("minecraft"),
+                path: Cow::Borrowed("enderman"),
             },
             SpawnCost {
                 energy_budget: 0.15f64,
@@ -17812,7 +17812,6 @@ pub static SPARSE_JUNGLE: LazyLock<Biome> = LazyLock::new(|| Biome {
     },
     creature_spawn_probability: 0f32,
     spawners: HashMap::from([
-        ("water_creature".to_string(), vec![]),
         (
             "underground_water_creature".to_string(),
             vec![SpawnerData {
@@ -17825,19 +17824,6 @@ pub static SPARSE_JUNGLE: LazyLock<Biome> = LazyLock::new(|| Biome {
                 max_count: 6i32,
             }],
         ),
-        (
-            "ambient".to_string(),
-            vec![SpawnerData {
-                entity_type: Identifier {
-                    namespace: Cow::Borrowed("minecraft"),
-                    path: Cow::Borrowed("bat"),
-                },
-                weight: 10i32,
-                min_count: 8i32,
-                max_count: 8i32,
-            }],
-        ),
-        ("axolotls".to_string(), vec![]),
         (
             "creature".to_string(),
             vec![
@@ -17976,6 +17962,20 @@ pub static SPARSE_JUNGLE: LazyLock<Biome> = LazyLock::new(|| Biome {
             ],
         ),
         ("water_ambient".to_string(), vec![]),
+        (
+            "ambient".to_string(),
+            vec![SpawnerData {
+                entity_type: Identifier {
+                    namespace: Cow::Borrowed("minecraft"),
+                    path: Cow::Borrowed("bat"),
+                },
+                weight: 10i32,
+                min_count: 8i32,
+                max_count: 8i32,
+            }],
+        ),
+        ("water_creature".to_string(), vec![]),
+        ("axolotls".to_string(), vec![]),
     ]),
     spawn_costs: HashMap::from([]),
     carvers: vec![
@@ -18242,8 +18242,8 @@ pub static STONY_PEAKS: LazyLock<Biome> = LazyLock::new(|| Biome {
     },
     creature_spawn_probability: 0f32,
     spawners: HashMap::from([
-        ("water_creature".to_string(), vec![]),
-        ("axolotls".to_string(), vec![]),
+        ("water_ambient".to_string(), vec![]),
+        ("misc".to_string(), vec![]),
         (
             "ambient".to_string(),
             vec![SpawnerData {
@@ -18256,9 +18256,6 @@ pub static STONY_PEAKS: LazyLock<Biome> = LazyLock::new(|| Biome {
                 max_count: 8i32,
             }],
         ),
-        ("water_ambient".to_string(), vec![]),
-        ("creature".to_string(), vec![]),
-        ("misc".to_string(), vec![]),
         (
             "monster".to_string(),
             vec![
@@ -18348,6 +18345,9 @@ pub static STONY_PEAKS: LazyLock<Biome> = LazyLock::new(|| Biome {
                 max_count: 6i32,
             }],
         ),
+        ("water_creature".to_string(), vec![]),
+        ("axolotls".to_string(), vec![]),
+        ("creature".to_string(), vec![]),
     ]),
     spawn_costs: HashMap::from([]),
     carvers: vec![
@@ -18568,19 +18568,8 @@ pub static STONY_SHORE: LazyLock<Biome> = LazyLock::new(|| Biome {
     },
     creature_spawn_probability: 0f32,
     spawners: HashMap::from([
-        ("misc".to_string(), vec![]),
-        (
-            "underground_water_creature".to_string(),
-            vec![SpawnerData {
-                entity_type: Identifier {
-                    namespace: Cow::Borrowed("minecraft"),
-                    path: Cow::Borrowed("glow_squid"),
-                },
-                weight: 10i32,
-                min_count: 4i32,
-                max_count: 6i32,
-            }],
-        ),
+        ("axolotls".to_string(), vec![]),
+        ("water_creature".to_string(), vec![]),
         (
             "ambient".to_string(),
             vec![SpawnerData {
@@ -18593,9 +18582,8 @@ pub static STONY_SHORE: LazyLock<Biome> = LazyLock::new(|| Biome {
                 max_count: 8i32,
             }],
         ),
-        ("water_ambient".to_string(), vec![]),
-        ("axolotls".to_string(), vec![]),
         ("creature".to_string(), vec![]),
+        ("misc".to_string(), vec![]),
         (
             "monster".to_string(),
             vec![
@@ -18673,7 +18661,19 @@ pub static STONY_SHORE: LazyLock<Biome> = LazyLock::new(|| Biome {
                 },
             ],
         ),
-        ("water_creature".to_string(), vec![]),
+        ("water_ambient".to_string(), vec![]),
+        (
+            "underground_water_creature".to_string(),
+            vec![SpawnerData {
+                entity_type: Identifier {
+                    namespace: Cow::Borrowed("minecraft"),
+                    path: Cow::Borrowed("glow_squid"),
+                },
+                weight: 10i32,
+                min_count: 4i32,
+                max_count: 6i32,
+            }],
+        ),
     ]),
     spawn_costs: HashMap::from([]),
     carvers: vec![
@@ -18917,7 +18917,32 @@ pub static SUNFLOWER_PLAINS: LazyLock<Biome> = LazyLock::new(|| Biome {
     },
     creature_spawn_probability: 0f32,
     spawners: HashMap::from([
-        ("water_ambient".to_string(), vec![]),
+        ("water_creature".to_string(), vec![]),
+        (
+            "underground_water_creature".to_string(),
+            vec![SpawnerData {
+                entity_type: Identifier {
+                    namespace: Cow::Borrowed("minecraft"),
+                    path: Cow::Borrowed("glow_squid"),
+                },
+                weight: 10i32,
+                min_count: 4i32,
+                max_count: 6i32,
+            }],
+        ),
+        (
+            "ambient".to_string(),
+            vec![SpawnerData {
+                entity_type: Identifier {
+                    namespace: Cow::Borrowed("minecraft"),
+                    path: Cow::Borrowed("bat"),
+                },
+                weight: 10i32,
+                min_count: 8i32,
+                max_count: 8i32,
+            }],
+        ),
+        ("axolotls".to_string(), vec![]),
         (
             "creature".to_string(),
             vec![
@@ -18977,33 +19002,6 @@ pub static SUNFLOWER_PLAINS: LazyLock<Biome> = LazyLock::new(|| Biome {
                 },
             ],
         ),
-        ("water_creature".to_string(), vec![]),
-        (
-            "ambient".to_string(),
-            vec![SpawnerData {
-                entity_type: Identifier {
-                    namespace: Cow::Borrowed("minecraft"),
-                    path: Cow::Borrowed("bat"),
-                },
-                weight: 10i32,
-                min_count: 8i32,
-                max_count: 8i32,
-            }],
-        ),
-        ("misc".to_string(), vec![]),
-        (
-            "underground_water_creature".to_string(),
-            vec![SpawnerData {
-                entity_type: Identifier {
-                    namespace: Cow::Borrowed("minecraft"),
-                    path: Cow::Borrowed("glow_squid"),
-                },
-                weight: 10i32,
-                min_count: 4i32,
-                max_count: 6i32,
-            }],
-        ),
-        ("axolotls".to_string(), vec![]),
         (
             "monster".to_string(),
             vec![
@@ -19081,6 +19079,8 @@ pub static SUNFLOWER_PLAINS: LazyLock<Biome> = LazyLock::new(|| Biome {
                 },
             ],
         ),
+        ("misc".to_string(), vec![]),
+        ("water_ambient".to_string(), vec![]),
     ]),
     spawn_costs: HashMap::from([]),
     carvers: vec![
@@ -19347,7 +19347,6 @@ pub static SWAMP: LazyLock<Biome> = LazyLock::new(|| Biome {
     },
     creature_spawn_probability: 0f32,
     spawners: HashMap::from([
-        ("water_ambient".to_string(), vec![]),
         (
             "underground_water_creature".to_string(),
             vec![SpawnerData {
@@ -19360,6 +19359,72 @@ pub static SWAMP: LazyLock<Biome> = LazyLock::new(|| Biome {
                 max_count: 6i32,
             }],
         ),
+        ("water_creature".to_string(), vec![]),
+        ("axolotls".to_string(), vec![]),
+        (
+            "creature".to_string(),
+            vec![
+                SpawnerData {
+                    entity_type: Identifier {
+                        namespace: Cow::Borrowed("minecraft"),
+                        path: Cow::Borrowed("sheep"),
+                    },
+                    weight: 12i32,
+                    min_count: 4i32,
+                    max_count: 4i32,
+                },
+                SpawnerData {
+                    entity_type: Identifier {
+                        namespace: Cow::Borrowed("minecraft"),
+                        path: Cow::Borrowed("pig"),
+                    },
+                    weight: 10i32,
+                    min_count: 4i32,
+                    max_count: 4i32,
+                },
+                SpawnerData {
+                    entity_type: Identifier {
+                        namespace: Cow::Borrowed("minecraft"),
+                        path: Cow::Borrowed("chicken"),
+                    },
+                    weight: 10i32,
+                    min_count: 4i32,
+                    max_count: 4i32,
+                },
+                SpawnerData {
+                    entity_type: Identifier {
+                        namespace: Cow::Borrowed("minecraft"),
+                        path: Cow::Borrowed("cow"),
+                    },
+                    weight: 8i32,
+                    min_count: 4i32,
+                    max_count: 4i32,
+                },
+                SpawnerData {
+                    entity_type: Identifier {
+                        namespace: Cow::Borrowed("minecraft"),
+                        path: Cow::Borrowed("frog"),
+                    },
+                    weight: 10i32,
+                    min_count: 2i32,
+                    max_count: 5i32,
+                },
+            ],
+        ),
+        ("water_ambient".to_string(), vec![]),
+        (
+            "ambient".to_string(),
+            vec![SpawnerData {
+                entity_type: Identifier {
+                    namespace: Cow::Borrowed("minecraft"),
+                    path: Cow::Borrowed("bat"),
+                },
+                weight: 10i32,
+                min_count: 8i32,
+                max_count: 8i32,
+            }],
+        ),
+        ("misc".to_string(), vec![]),
         (
             "monster".to_string(),
             vec![
@@ -19455,71 +19520,6 @@ pub static SWAMP: LazyLock<Biome> = LazyLock::new(|| Biome {
                 },
             ],
         ),
-        (
-            "ambient".to_string(),
-            vec![SpawnerData {
-                entity_type: Identifier {
-                    namespace: Cow::Borrowed("minecraft"),
-                    path: Cow::Borrowed("bat"),
-                },
-                weight: 10i32,
-                min_count: 8i32,
-                max_count: 8i32,
-            }],
-        ),
-        ("water_creature".to_string(), vec![]),
-        ("axolotls".to_string(), vec![]),
-        (
-            "creature".to_string(),
-            vec![
-                SpawnerData {
-                    entity_type: Identifier {
-                        namespace: Cow::Borrowed("minecraft"),
-                        path: Cow::Borrowed("sheep"),
-                    },
-                    weight: 12i32,
-                    min_count: 4i32,
-                    max_count: 4i32,
-                },
-                SpawnerData {
-                    entity_type: Identifier {
-                        namespace: Cow::Borrowed("minecraft"),
-                        path: Cow::Borrowed("pig"),
-                    },
-                    weight: 10i32,
-                    min_count: 4i32,
-                    max_count: 4i32,
-                },
-                SpawnerData {
-                    entity_type: Identifier {
-                        namespace: Cow::Borrowed("minecraft"),
-                        path: Cow::Borrowed("chicken"),
-                    },
-                    weight: 10i32,
-                    min_count: 4i32,
-                    max_count: 4i32,
-                },
-                SpawnerData {
-                    entity_type: Identifier {
-                        namespace: Cow::Borrowed("minecraft"),
-                        path: Cow::Borrowed("cow"),
-                    },
-                    weight: 8i32,
-                    min_count: 4i32,
-                    max_count: 4i32,
-                },
-                SpawnerData {
-                    entity_type: Identifier {
-                        namespace: Cow::Borrowed("minecraft"),
-                        path: Cow::Borrowed("frog"),
-                    },
-                    weight: 10i32,
-                    min_count: 2i32,
-                    max_count: 5i32,
-                },
-            ],
-        ),
-        ("misc".to_string(), vec![]),
     ]),
     spawn_costs: HashMap::from([]),
     carvers: vec![
@@ -19791,7 +19791,20 @@ pub static TAIGA: LazyLock<Biome> = LazyLock::new(|| Biome {
     },
     creature_spawn_probability: 0f32,
     spawners: HashMap::from([
-        ("axolotls".to_string(), vec![]),
+        ("water_creature".to_string(), vec![]),
+        (
+            "underground_water_creature".to_string(),
+            vec![SpawnerData {
+                entity_type: Identifier {
+                    namespace: Cow::Borrowed("minecraft"),
+                    path: Cow::Borrowed("glow_squid"),
+                },
+                weight: 10i32,
+                min_count: 4i32,
+                max_count: 6i32,
+            }],
+        ),
+        ("water_ambient".to_string(), vec![]),
         (
             "ambient".to_string(),
             vec![SpawnerData {
@@ -19804,8 +19817,6 @@ pub static TAIGA: LazyLock<Biome> = LazyLock::new(|| Biome {
                 max_count: 8i32,
             }],
         ),
-        ("misc".to_string(), vec![]),
-        ("water_ambient".to_string(), vec![]),
         (
             "creature".to_string(),
             vec![
@@ -19874,6 +19885,7 @@ pub static TAIGA: LazyLock<Biome> = LazyLock::new(|| Biome {
                 },
             ],
         ),
+        ("axolotls".to_string(), vec![]),
         (
             "monster".to_string(),
             vec![
@@ -19951,19 +19963,7 @@ pub static TAIGA: LazyLock<Biome> = LazyLock::new(|| Biome {
                 },
             ],
         ),
-        ("water_creature".to_string(), vec![]),
-        (
-            "underground_water_creature".to_string(),
-            vec![SpawnerData {
-                entity_type: Identifier {
-                    namespace: Cow::Borrowed("minecraft"),
-                    path: Cow::Borrowed("glow_squid"),
-                },
-                weight: 10i32,
-                min_count: 4i32,
-                max_count: 6i32,
-            }],
-        ),
+        ("misc".to_string(), vec![]),
     ]),
     spawn_costs: HashMap::from([]),
     carvers: vec![
@@ -20219,11 +20219,7 @@ pub static THE_END: LazyLock<Biome> = LazyLock::new(|| Biome {
     },
     creature_spawn_probability: 0f32,
     spawners: HashMap::from([
-        ("misc".to_string(), vec![]),
         ("underground_water_creature".to_string(), vec![]),
-        ("water_ambient".to_string(), vec![]),
-        ("axolotls".to_string(), vec![]),
-        ("ambient".to_string(), vec![]),
         (
             "monster".to_string(),
             vec![SpawnerData {
@@ -20236,8 +20232,12 @@ pub static THE_END: LazyLock<Biome> = LazyLock::new(|| Biome {
                 max_count: 4i32,
             }],
         ),
+        ("water_ambient".to_string(), vec![]),
         ("creature".to_string(), vec![]),
+        ("axolotls".to_string(), vec![]),
+        ("misc".to_string(), vec![]),
         ("water_creature".to_string(), vec![]),
+        ("ambient".to_string(), vec![]),
     ]),
     spawn_costs: HashMap::from([]),
     carvers: vec![],
@@ -20292,12 +20292,12 @@ pub static THE_VOID: LazyLock<Biome> = LazyLock::new(|| Biome {
     creature_spawn_probability: 0f32,
     spawners: HashMap::from([
         ("underground_water_creature".to_string(), vec![]),
+        ("creature".to_string(), vec![]),
         ("water_ambient".to_string(), vec![]),
         ("axolotls".to_string(), vec![]),
-        ("creature".to_string(), vec![]),
+        ("monster".to_string(), vec![]),
         ("misc".to_string(), vec![]),
         ("ambient".to_string(), vec![]),
-        ("monster".to_string(), vec![]),
         ("water_creature".to_string(), vec![]),
     ]),
     spawn_costs: HashMap::from([]),
@@ -20349,6 +20349,56 @@ pub static WARM_OCEAN: LazyLock<Biome> = LazyLock::new(|| Biome {
     },
     creature_spawn_probability: 0f32,
     spawners: HashMap::from([
+        ("axolotls".to_string(), vec![]),
+        (
+            "ambient".to_string(),
+            vec![SpawnerData {
+                entity_type: Identifier {
+                    namespace: Cow::Borrowed("minecraft"),
+                    path: Cow::Borrowed("bat"),
+                },
+                weight: 10i32,
+                min_count: 8i32,
+                max_count: 8i32,
+            }],
+        ),
+        (
+            "water_creature".to_string(),
+            vec![
+                SpawnerData {
+                    entity_type: Identifier {
+                        namespace: Cow::Borrowed("minecraft"),
+                        path: Cow::Borrowed("squid"),
+                    },
+                    weight: 10i32,
+                    min_count: 4i32,
+                    max_count: 4i32,
+                },
+                SpawnerData {
+                    entity_type: Identifier {
+                        namespace: Cow::Borrowed("minecraft"),
+                        path: Cow::Borrowed("dolphin"),
+                    },
+                    weight: 2i32,
+                    min_count: 1i32,
+                    max_count: 2i32,
+                },
+            ],
+        ),
+        ("misc".to_string(), vec![]),
+        (
+            "underground_water_creature".to_string(),
+            vec![SpawnerData {
+                entity_type: Identifier {
+                    namespace: Cow::Borrowed("minecraft"),
+                    path: Cow::Borrowed("glow_squid"),
+                },
+                weight: 10i32,
+                min_count: 4i32,
+                max_count: 6i32,
+            }],
+        ),
+        ("creature".to_string(), vec![]),
         (
             "monster".to_string(),
             vec![
@@ -20436,55 +20486,6 @@ pub static WARM_OCEAN: LazyLock<Biome> = LazyLock::new(|| Biome {
             ],
         ),
         (
-            "water_creature".to_string(),
-            vec![
-                SpawnerData {
-                    entity_type: Identifier {
-                        namespace: Cow::Borrowed("minecraft"),
-                        path: Cow::Borrowed("squid"),
-                    },
-                    weight: 10i32,
-                    min_count: 4i32,
-                    max_count: 4i32,
-                },
-                SpawnerData {
-                    entity_type: Identifier {
-                        namespace: Cow::Borrowed("minecraft"),
-                        path: Cow::Borrowed("dolphin"),
-                    },
-                    weight: 2i32,
-                    min_count: 1i32,
-                    max_count: 2i32,
-                },
-            ],
-        ),
-        (
-            "ambient".to_string(),
-            vec![SpawnerData {
-                entity_type: Identifier {
-                    namespace: Cow::Borrowed("minecraft"),
-                    path: Cow::Borrowed("bat"),
-                },
-                weight: 10i32,
-                min_count: 8i32,
-                max_count: 8i32,
-            }],
-        ),
-        (
-            "underground_water_creature".to_string(),
-            vec![SpawnerData {
-                entity_type: Identifier {
-                    namespace: Cow::Borrowed("minecraft"),
-                    path: Cow::Borrowed("glow_squid"),
-                },
-                weight: 10i32,
-                min_count: 4i32,
-                max_count: 6i32,
-            }],
-        ),
-        ("axolotls".to_string(), vec![]),
-        ("creature".to_string(), vec![]),
-        (
             "water_ambient".to_string(),
             vec![
                 SpawnerData {
@@ -20507,7 +20508,6 @@ pub static WARM_OCEAN: LazyLock<Biome> = LazyLock::new(|| Biome {
                 },
             ],
         ),
-        ("misc".to_string(), vec![]),
     ]),
     spawn_costs: HashMap::from([]),
     carvers: vec![
@@ -20795,24 +20795,6 @@ pub static WARPED_FOREST: LazyLock<Biome> = LazyLock::new(|| Biome {
     },
     creature_spawn_probability: 0f32,
     spawners: HashMap::from([
-        ("water_creature".to_string(), vec![]),
-        (
-            "creature".to_string(),
-            vec![SpawnerData {
-                entity_type: Identifier {
-                    namespace: Cow::Borrowed("minecraft"),
-                    path: Cow::Borrowed("strider"),
-                },
-                weight: 60i32,
-                min_count: 1i32,
-                max_count: 2i32,
-            }],
-        ),
-        ("misc".to_string(), vec![]),
-        ("underground_water_creature".to_string(), vec![]),
-        ("axolotls".to_string(), vec![]),
-        ("water_ambient".to_string(), vec![]),
-        ("ambient".to_string(), vec![]),
         (
             "monster".to_string(),
             vec![SpawnerData {
@@ -20825,6 +20807,24 @@ pub static WARPED_FOREST: LazyLock<Biome> = LazyLock::new(|| Biome {
                 max_count: 4i32,
             }],
         ),
+        (
+            "creature".to_string(),
+            vec![SpawnerData {
+                entity_type: Identifier {
+                    namespace: Cow::Borrowed("minecraft"),
+                    path: Cow::Borrowed("strider"),
+                },
+                weight: 60i32,
+                min_count: 1i32,
+                max_count: 2i32,
+            }],
+        ),
+        ("water_ambient".to_string(), vec![]),
+        ("underground_water_creature".to_string(), vec![]),
+        ("axolotls".to_string(), vec![]),
+        ("misc".to_string(), vec![]),
+        ("ambient".to_string(), vec![]),
+        ("water_creature".to_string(), vec![]),
     ]),
     spawn_costs: HashMap::from([(
         Identifier {
@@ -20965,18 +20965,8 @@ pub static WINDSWEPT_FOREST: LazyLock<Biome> = LazyLock::new(|| Biome {
     },
     creature_spawn_probability: 0f32,
     spawners: HashMap::from([
-        (
-            "ambient".to_string(),
-            vec![SpawnerData {
-                entity_type: Identifier {
-                    namespace: Cow::Borrowed("minecraft"),
-                    path: Cow::Borrowed("bat"),
-                },
-                weight: 10i32,
-                min_count: 8i32,
-                max_count: 8i32,
-            }],
-        ),
+        ("misc".to_string(), vec![]),
+        ("axolotls".to_string(), vec![]),
         (
             "monster".to_string(),
             vec![
@@ -21054,22 +21044,7 @@ pub static WINDSWEPT_FOREST: LazyLock<Biome> = LazyLock::new(|| Biome {
                 },
             ],
         ),
-        ("misc".to_string(), vec![]),
-        ("water_ambient".to_string(), vec![]),
         ("water_creature".to_string(), vec![]),
-        ("axolotls".to_string(), vec![]),
-        (
-            "underground_water_creature".to_string(),
-            vec![SpawnerData {
-                entity_type: Identifier {
-                    namespace: Cow::Borrowed("minecraft"),
-                    path: Cow::Borrowed("glow_squid"),
-                },
-                weight: 10i32,
-                min_count: 4i32,
-                max_count: 6i32,
-            }],
-        ),
         (
             "creature".to_string(),
             vec![
@@ -21119,6 +21094,31 @@ pub static WINDSWEPT_FOREST: LazyLock<Biome> = LazyLock::new(|| Biome {
                     max_count: 6i32,
                 },
             ],
+        ),
+        ("water_ambient".to_string(), vec![]),
+        (
+            "underground_water_creature".to_string(),
+            vec![SpawnerData {
+                entity_type: Identifier {
+                    namespace: Cow::Borrowed("minecraft"),
+                    path: Cow::Borrowed("glow_squid"),
+                },
+                weight: 10i32,
+                min_count: 4i32,
+                max_count: 6i32,
+            }],
+        ),
+        (
+            "ambient".to_string(),
+            vec![SpawnerData {
+                entity_type: Identifier {
+                    namespace: Cow::Borrowed("minecraft"),
+                    path: Cow::Borrowed("bat"),
+                },
+                weight: 10i32,
+                min_count: 8i32,
+                max_count: 8i32,
+            }],
         ),
     ]),
     spawn_costs: HashMap::from([]),
@@ -21378,9 +21378,6 @@ pub static WINDSWEPT_GRAVELLY_HILLS: LazyLock<Biome> = LazyLock::new(|| Biome {
     },
     creature_spawn_probability: 0f32,
     spawners: HashMap::from([
-        ("water_creature".to_string(), vec![]),
-        ("axolotls".to_string(), vec![]),
-        ("water_ambient".to_string(), vec![]),
         (
             "underground_water_creature".to_string(),
             vec![SpawnerData {
@@ -21470,18 +21467,8 @@ pub static WINDSWEPT_GRAVELLY_HILLS: LazyLock<Biome> = LazyLock::new(|| Biome {
                 },
             ],
         ),
-        (
-            "ambient".to_string(),
-            vec![SpawnerData {
-                entity_type: Identifier {
-                    namespace: Cow::Borrowed("minecraft"),
-                    path: Cow::Borrowed("bat"),
-                },
-                weight: 10i32,
-                min_count: 8i32,
-                max_count: 8i32,
-            }],
-        ),
+        ("water_ambient".to_string(), vec![]),
+        ("axolotls".to_string(), vec![]),
         (
             "creature".to_string(),
             vec![
@@ -21531,6 +21518,19 @@ pub static WINDSWEPT_GRAVELLY_HILLS: LazyLock<Biome> = LazyLock::new(|| Biome {
                     max_count: 6i32,
                 },
             ],
+        ),
+        ("water_creature".to_string(), vec![]),
+        (
+            "ambient".to_string(),
+            vec![SpawnerData {
+                entity_type: Identifier {
+                    namespace: Cow::Borrowed("minecraft"),
+                    path: Cow::Borrowed("bat"),
+                },
+                weight: 10i32,
+                min_count: 8i32,
+                max_count: 8i32,
+            }],
         ),
         ("misc".to_string(), vec![]),
     ]),
@@ -21791,19 +21791,70 @@ pub static WINDSWEPT_HILLS: LazyLock<Biome> = LazyLock::new(|| Biome {
     },
     creature_spawn_probability: 0f32,
     spawners: HashMap::from([
+        ("axolotls".to_string(), vec![]),
         (
-            "underground_water_creature".to_string(),
+            "ambient".to_string(),
             vec![SpawnerData {
                 entity_type: Identifier {
                     namespace: Cow::Borrowed("minecraft"),
-                    path: Cow::Borrowed("glow_squid"),
+                    path: Cow::Borrowed("bat"),
                 },
                 weight: 10i32,
-                min_count: 4i32,
-                max_count: 6i32,
+                min_count: 8i32,
+                max_count: 8i32,
             }],
         ),
-        ("water_creature".to_string(), vec![]),
+        (
+            "creature".to_string(),
+            vec![
+                SpawnerData {
+                    entity_type: Identifier {
+                        namespace: Cow::Borrowed("minecraft"),
+                        path: Cow::Borrowed("sheep"),
+                    },
+                    weight: 12i32,
+                    min_count: 4i32,
+                    max_count: 4i32,
+                },
+                SpawnerData {
+                    entity_type: Identifier {
+                        namespace: Cow::Borrowed("minecraft"),
+                        path: Cow::Borrowed("pig"),
+                    },
+                    weight: 10i32,
+                    min_count: 4i32,
+                    max_count: 4i32,
+                },
+                SpawnerData {
+                    entity_type: Identifier {
+                        namespace: Cow::Borrowed("minecraft"),
+                        path: Cow::Borrowed("chicken"),
+                    },
+                    weight: 10i32,
+                    min_count: 4i32,
+                    max_count: 4i32,
+                },
+                SpawnerData {
+                    entity_type: Identifier {
+                        namespace: Cow::Borrowed("minecraft"),
+                        path: Cow::Borrowed("cow"),
+                    },
+                    weight: 8i32,
+                    min_count: 4i32,
+                    max_count: 4i32,
+                },
+                SpawnerData {
+                    entity_type: Identifier {
+                        namespace: Cow::Borrowed("minecraft"),
+                        path: Cow::Borrowed("llama"),
+                    },
+                    weight: 5i32,
+                    min_count: 4i32,
+                    max_count: 6i32,
+                },
+            ],
+        ),
+        ("misc".to_string(), vec![]),
         (
             "monster".to_string(),
             vec![
@@ -21881,70 +21932,19 @@ pub static WINDSWEPT_HILLS: LazyLock<Biome> = LazyLock::new(|| Biome {
                 },
             ],
         ),
-        ("axolotls".to_string(), vec![]),
-        ("misc".to_string(), vec![]),
         ("water_ambient".to_string(), vec![]),
+        ("water_creature".to_string(), vec![]),
         (
-            "ambient".to_string(),
+            "underground_water_creature".to_string(),
             vec![SpawnerData {
                 entity_type: Identifier {
                     namespace: Cow::Borrowed("minecraft"),
-                    path: Cow::Borrowed("bat"),
+                    path: Cow::Borrowed("glow_squid"),
                 },
                 weight: 10i32,
-                min_count: 8i32,
-                max_count: 8i32,
+                min_count: 4i32,
+                max_count: 6i32,
             }],
-        ),
-        (
-            "creature".to_string(),
-            vec![
-                SpawnerData {
-                    entity_type: Identifier {
-                        namespace: Cow::Borrowed("minecraft"),
-                        path: Cow::Borrowed("sheep"),
-                    },
-                    weight: 12i32,
-                    min_count: 4i32,
-                    max_count: 4i32,
-                },
-                SpawnerData {
-                    entity_type: Identifier {
-                        namespace: Cow::Borrowed("minecraft"),
-                        path: Cow::Borrowed("pig"),
-                    },
-                    weight: 10i32,
-                    min_count: 4i32,
-                    max_count: 4i32,
-                },
-                SpawnerData {
-                    entity_type: Identifier {
-                        namespace: Cow::Borrowed("minecraft"),
-                        path: Cow::Borrowed("chicken"),
-                    },
-                    weight: 10i32,
-                    min_count: 4i32,
-                    max_count: 4i32,
-                },
-                SpawnerData {
-                    entity_type: Identifier {
-                        namespace: Cow::Borrowed("minecraft"),
-                        path: Cow::Borrowed("cow"),
-                    },
-                    weight: 8i32,
-                    min_count: 4i32,
-                    max_count: 4i32,
-                },
-                SpawnerData {
-                    entity_type: Identifier {
-                        namespace: Cow::Borrowed("minecraft"),
-                        path: Cow::Borrowed("llama"),
-                    },
-                    weight: 5i32,
-                    min_count: 4i32,
-                    max_count: 6i32,
-                },
-            ],
         ),
     ]),
     spawn_costs: HashMap::from([]),
@@ -22204,89 +22204,6 @@ pub static WINDSWEPT_SAVANNA: LazyLock<Biome> = LazyLock::new(|| Biome {
     },
     creature_spawn_probability: 0f32,
     spawners: HashMap::from([
-        ("misc".to_string(), vec![]),
-        (
-            "creature".to_string(),
-            vec![
-                SpawnerData {
-                    entity_type: Identifier {
-                        namespace: Cow::Borrowed("minecraft"),
-                        path: Cow::Borrowed("sheep"),
-                    },
-                    weight: 12i32,
-                    min_count: 4i32,
-                    max_count: 4i32,
-                },
-                SpawnerData {
-                    entity_type: Identifier {
-                        namespace: Cow::Borrowed("minecraft"),
-                        path: Cow::Borrowed("pig"),
-                    },
-                    weight: 10i32,
-                    min_count: 4i32,
-                    max_count: 4i32,
-                },
-                SpawnerData {
-                    entity_type: Identifier {
-                        namespace: Cow::Borrowed("minecraft"),
-                        path: Cow::Borrowed("chicken"),
-                    },
-                    weight: 10i32,
-                    min_count: 4i32,
-                    max_count: 4i32,
-                },
-                SpawnerData {
-                    entity_type: Identifier {
-                        namespace: Cow::Borrowed("minecraft"),
-                        path: Cow::Borrowed("cow"),
-                    },
-                    weight: 8i32,
-                    min_count: 4i32,
-                    max_count: 4i32,
-                },
-                SpawnerData {
-                    entity_type: Identifier {
-                        namespace: Cow::Borrowed("minecraft"),
-                        path: Cow::Borrowed("horse"),
-                    },
-                    weight: 1i32,
-                    min_count: 2i32,
-                    max_count: 6i32,
-                },
-                SpawnerData {
-                    entity_type: Identifier {
-                        namespace: Cow::Borrowed("minecraft"),
-                        path: Cow::Borrowed("donkey"),
-                    },
-                    weight: 1i32,
-                    min_count: 1i32,
-                    max_count: 1i32,
-                },
-                SpawnerData {
-                    entity_type: Identifier {
-                        namespace: Cow::Borrowed("minecraft"),
-                        path: Cow::Borrowed("armadillo"),
-                    },
-                    weight: 10i32,
-                    min_count: 2i32,
-                    max_count: 3i32,
-                },
-            ],
-        ),
-        (
-            "underground_water_creature".to_string(),
-            vec![SpawnerData {
-                entity_type: Identifier {
-                    namespace: Cow::Borrowed("minecraft"),
-                    path: Cow::Borrowed("glow_squid"),
-                },
-                weight: 10i32,
-                min_count: 4i32,
-                max_count: 6i32,
-            }],
-        ),
-        ("water_creature".to_string(), vec![]),
-        ("axolotls".to_string(), vec![]),
         (
             "monster".to_string(),
             vec![
@@ -22364,7 +22281,9 @@ pub static WINDSWEPT_SAVANNA: LazyLock<Biome> = LazyLock::new(|| Biome {
                 },
             ],
         ),
+        ("misc".to_string(), vec![]),
         ("water_ambient".to_string(), vec![]),
+        ("axolotls".to_string(), vec![]),
         (
             "ambient".to_string(),
             vec![SpawnerData {
@@ -22376,6 +22295,87 @@ pub static WINDSWEPT_SAVANNA: LazyLock<Biome> = LazyLock::new(|| Biome {
                 min_count: 8i32,
                 max_count: 8i32,
             }],
+        ),
+        (
+            "underground_water_creature".to_string(),
+            vec![SpawnerData {
+                entity_type: Identifier {
+                    namespace: Cow::Borrowed("minecraft"),
+                    path: Cow::Borrowed("glow_squid"),
+                },
+                weight: 10i32,
+                min_count: 4i32,
+                max_count: 6i32,
+            }],
+        ),
+        ("water_creature".to_string(), vec![]),
+        (
+            "creature".to_string(),
+            vec![
+                SpawnerData {
+                    entity_type: Identifier {
+                        namespace: Cow::Borrowed("minecraft"),
+                        path: Cow::Borrowed("sheep"),
+                    },
+                    weight: 12i32,
+                    min_count: 4i32,
+                    max_count: 4i32,
+                },
+                SpawnerData {
+                    entity_type: Identifier {
+                        namespace: Cow::Borrowed("minecraft"),
+                        path: Cow::Borrowed("pig"),
+                    },
+                    weight: 10i32,
+                    min_count: 4i32,
+                    max_count: 4i32,
+                },
+                SpawnerData {
+                    entity_type: Identifier {
+                        namespace: Cow::Borrowed("minecraft"),
+                        path: Cow::Borrowed("chicken"),
+                    },
+                    weight: 10i32,
+                    min_count: 4i32,
+                    max_count: 4i32,
+                },
+                SpawnerData {
+                    entity_type: Identifier {
+                        namespace: Cow::Borrowed("minecraft"),
+                        path: Cow::Borrowed("cow"),
+                    },
+                    weight: 8i32,
+                    min_count: 4i32,
+                    max_count: 4i32,
+                },
+                SpawnerData {
+                    entity_type: Identifier {
+                        namespace: Cow::Borrowed("minecraft"),
+                        path: Cow::Borrowed("horse"),
+                    },
+                    weight: 1i32,
+                    min_count: 2i32,
+                    max_count: 6i32,
+                },
+                SpawnerData {
+                    entity_type: Identifier {
+                        namespace: Cow::Borrowed("minecraft"),
+                        path: Cow::Borrowed("donkey"),
+                    },
+                    weight: 1i32,
+                    min_count: 1i32,
+                    max_count: 1i32,
+                },
+                SpawnerData {
+                    entity_type: Identifier {
+                        namespace: Cow::Borrowed("minecraft"),
+                        path: Cow::Borrowed("armadillo"),
+                    },
+                    weight: 10i32,
+                    min_count: 2i32,
+                    max_count: 3i32,
+                },
+            ],
         ),
     ]),
     spawn_costs: HashMap::from([]),
@@ -22635,20 +22635,65 @@ pub static WOODED_BADLANDS: LazyLock<Biome> = LazyLock::new(|| Biome {
     },
     creature_spawn_probability: 0.04f32,
     spawners: HashMap::from([
-        ("axolotls".to_string(), vec![]),
         (
-            "underground_water_creature".to_string(),
-            vec![SpawnerData {
-                entity_type: Identifier {
-                    namespace: Cow::Borrowed("minecraft"),
-                    path: Cow::Borrowed("glow_squid"),
+            "creature".to_string(),
+            vec![
+                SpawnerData {
+                    entity_type: Identifier {
+                        namespace: Cow::Borrowed("minecraft"),
+                        path: Cow::Borrowed("sheep"),
+                    },
+                    weight: 12i32,
+                    min_count: 4i32,
+                    max_count: 4i32,
                 },
-                weight: 10i32,
-                min_count: 4i32,
-                max_count: 6i32,
-            }],
+                SpawnerData {
+                    entity_type: Identifier {
+                        namespace: Cow::Borrowed("minecraft"),
+                        path: Cow::Borrowed("pig"),
+                    },
+                    weight: 10i32,
+                    min_count: 4i32,
+                    max_count: 4i32,
+                },
+                SpawnerData {
+                    entity_type: Identifier {
+                        namespace: Cow::Borrowed("minecraft"),
+                        path: Cow::Borrowed("chicken"),
+                    },
+                    weight: 10i32,
+                    min_count: 4i32,
+                    max_count: 4i32,
+                },
+                SpawnerData {
+                    entity_type: Identifier {
+                        namespace: Cow::Borrowed("minecraft"),
+                        path: Cow::Borrowed("cow"),
+                    },
+                    weight: 8i32,
+                    min_count: 4i32,
+                    max_count: 4i32,
+                },
+                SpawnerData {
+                    entity_type: Identifier {
+                        namespace: Cow::Borrowed("minecraft"),
+                        path: Cow::Borrowed("armadillo"),
+                    },
+                    weight: 6i32,
+                    min_count: 1i32,
+                    max_count: 2i32,
+                },
+                SpawnerData {
+                    entity_type: Identifier {
+                        namespace: Cow::Borrowed("minecraft"),
+                        path: Cow::Borrowed("wolf"),
+                    },
+                    weight: 2i32,
+                    min_count: 4i32,
+                    max_count: 8i32,
+                },
+            ],
         ),
-        ("misc".to_string(), vec![]),
         (
             "monster".to_string(),
             vec![
@@ -22726,66 +22771,20 @@ pub static WOODED_BADLANDS: LazyLock<Biome> = LazyLock::new(|| Biome {
                 },
             ],
         ),
+        ("axolotls".to_string(), vec![]),
+        ("misc".to_string(), vec![]),
         (
-            "creature".to_string(),
-            vec![
-                SpawnerData {
-                    entity_type: Identifier {
-                        namespace: Cow::Borrowed("minecraft"),
-                        path: Cow::Borrowed("sheep"),
-                    },
-                    weight: 12i32,
-                    min_count: 4i32,
-                    max_count: 4i32,
+            "underground_water_creature".to_string(),
+            vec![SpawnerData {
+                entity_type: Identifier {
+                    namespace: Cow::Borrowed("minecraft"),
+                    path: Cow::Borrowed("glow_squid"),
                 },
-                SpawnerData {
-                    entity_type: Identifier {
-                        namespace: Cow::Borrowed("minecraft"),
-                        path: Cow::Borrowed("pig"),
-                    },
-                    weight: 10i32,
-                    min_count: 4i32,
-                    max_count: 4i32,
-                },
-                SpawnerData {
-                    entity_type: Identifier {
-                        namespace: Cow::Borrowed("minecraft"),
-                        path: Cow::Borrowed("chicken"),
-                    },
-                    weight: 10i32,
-                    min_count: 4i32,
-                    max_count: 4i32,
-                },
-                SpawnerData {
-                    entity_type: Identifier {
-                        namespace: Cow::Borrowed("minecraft"),
-                        path: Cow::Borrowed("cow"),
-                    },
-                    weight: 8i32,
-                    min_count: 4i32,
-                    max_count: 4i32,
-                },
-                SpawnerData {
-                    entity_type: Identifier {
-                        namespace: Cow::Borrowed("minecraft"),
-                        path: Cow::Borrowed("armadillo"),
-                    },
-                    weight: 6i32,
-                    min_count: 1i32,
-                    max_count: 2i32,
-                },
-                SpawnerData {
-                    entity_type: Identifier {
-                        namespace: Cow::Borrowed("minecraft"),
-                        path: Cow::Borrowed("wolf"),
-                    },
-                    weight: 2i32,
-                    min_count: 4i32,
-                    max_count: 8i32,
-                },
-            ],
+                weight: 10i32,
+                min_count: 4i32,
+                max_count: 6i32,
+            }],
         ),
-        ("water_creature".to_string(), vec![]),
         (
             "ambient".to_string(),
             vec![SpawnerData {
@@ -22799,6 +22798,7 @@ pub static WOODED_BADLANDS: LazyLock<Biome> = LazyLock::new(|| Biome {
             }],
         ),
         ("water_ambient".to_string(), vec![]),
+        ("water_creature".to_string(), vec![]),
     ]),
     spawn_costs: HashMap::from([]),
     carvers: vec![

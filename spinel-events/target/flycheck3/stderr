@@ -1,0 +1,15 @@
+    Blocking waiting for file lock on package cache
+    Updating crates.io index
+error: failed to get `spinel-utils` as a dependency of package `spinel-events v0.1.0 (C:\Users\Wayne\Documents\CodeProjects\CodePracticing\SpinelandSteel\Spinel\spinel-events)`
+
+Caused by:
+  failed to load source for dependency `spinel-utils`
+
+Caused by:
+  Unable to update C:\Users\Wayne\Documents\CodeProjects\CodePracticing\SpinelandSteel\Spinel\spinel-utils
+
+Caused by:
+  failed to read `C:\Users\Wayne\Documents\CodeProjects\CodePracticing\SpinelandSteel\Spinel\spinel-utils\Cargo.toml`
+
+Caused by:
+  The system cannot find the path specified. (os error 3)

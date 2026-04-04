@@ -1,6 +1,6 @@
-use std::collections::HashMap;
 use crate::types::Identifier;
 use spinel_utils::component::text::TextComponent;
+use std::collections::HashMap;
 
 use crate::RegistryExt;
 
