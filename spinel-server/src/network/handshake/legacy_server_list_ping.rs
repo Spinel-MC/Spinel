@@ -1,5 +1,6 @@
 use crate::MinecraftServer;
-use crate::events::server_list_ping::{ServerListPingEvent, ServerListPingType};
+use crate::events::server_list_ping::event::ServerListPingEvent;
+use crate::events::server_list_ping::ping_type::ServerListPingType;
 use crate::network::client::instance::Client;
 use spinel_core::network::serverbound::handshake::legacy_server_list_ping::LegacyServerListPingPacket;
 use spinel_macros::packet_listener;

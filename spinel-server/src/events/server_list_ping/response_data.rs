@@ -1,41 +1,8 @@
 use serde_json::{Map, Value, json};
-use spinel_macros::event_dispatcher;
-use spinel_utils::{
-    component::text::TextComponent,
-    constants::{PROTOCOL_VERSION, SERVER_BRAND},
-};
-use uuid::Uuid;
+use spinel_utils::{component::text::TextComponent, constants::{PROTOCOL_VERSION, SERVER_BRAND}};
 
-#[event_dispatcher(with_client: true)]
-pub struct ServerListPingEvent {
-    pub response_data: ServerListPingEventResponseData,
-    pub server_list_ping_type: ServerListPingType,
-    pub hide_players: bool,
-    pub cancelled: bool,
-}
+use crate::events::server_list_ping::{favicon::Favicon, player_sample::PlayerSample};
 
-impl ServerListPingEvent {
-    pub fn new(server_list_ping_type: ServerListPingType) -> Self {
-        Self {
-            response_data: ServerListPingEventResponseData::new(),
-            server_list_ping_type,
-            cancelled: false,
-            hide_players: false,
-            connection_ptr: None,
-        }
-    }
-
-    pub fn hide_players(&mut self) {
-        self.hide_players = true;
-    }
-}
-
-#[derive(Clone, Debug)]
-pub enum ServerListPingType {
-    Modern,
-    LegacyVersioned,
-    LegacyUnversioned,
-}
 
 #[derive(Default)]
 pub struct ServerListPingEventResponseData {
@@ -45,7 +12,7 @@ pub struct ServerListPingEventResponseData {
     pub brand: Option<String>,
     pub protocol: u16,
     pub player_sample: Option<Vec<PlayerSample>>,
-    pub favicon: Option<String>, //TODO: Create a Favicon struct(for creating favicons with less boilerplate)
+    pub favicon: Option<Favicon>, //TODO: Create a Favicon struct(for creating favicons with less boilerplate)
     pub enforce_secure_chat: Option<bool>,
 }
 
@@ -122,7 +89,7 @@ impl ServerListPingEventResponseData {
         insert_if_some(
             &mut root_json_map,
             "favicon",
-            self.favicon.as_ref().map(|s| Value::from(s.as_str())),
+            self.favicon.as_ref().map(|s| Value::from(s.base64.as_str())),
         );
 
         insert_if_some(
@@ -138,16 +105,5 @@ impl ServerListPingEventResponseData {
 fn insert_if_some(map: &mut Map<String, Value>, key: &str, value: Option<Value>) {
     if let Some(actual_value) = value {
         map.insert(key.to_string(), actual_value);
-    }
-}
-
-pub struct PlayerSample {
-    pub name: TextComponent,
-    pub uuid: Uuid,
-}
-
-impl PlayerSample {
-    pub fn new(name: TextComponent, uuid: Uuid) -> Self {
-        Self { name, uuid }
     }
 }
