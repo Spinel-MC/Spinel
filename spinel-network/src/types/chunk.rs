@@ -1,6 +1,5 @@
 use crate::data_type::DataType;
 use crate::types::var_int::VarIntWrapper;
-use spinel_nbt::NbtCompound;
 use std::io::{self, Read, Write};
 
 #[derive(Debug, Clone)]
@@ -33,7 +32,6 @@ impl DataType for PalettedContainer {
             }
         }
 
-        VarIntWrapper(self.data.len() as i32).encode(w)?;
         for &long in &self.data {
             long.encode(w)?;
         }
@@ -48,20 +46,16 @@ impl DataType for PalettedContainer {
             Some(vec![single])
         } else if bits_per_entry <= 8 {
             let len = VarIntWrapper::decode(r)?.0 as usize;
-            let mut pal = Vec::with_capacity(len);
-            for _ in 0..len {
-                pal.push(VarIntWrapper::decode(r)?.0);
-            }
-            Some(pal)
+            Some(ChunkDataCodec::decode_vec(len, || {
+                VarIntWrapper::decode(r).map(|value| value.0)
+            })?)
         } else {
             None
         };
 
-        let data_len = VarIntWrapper::decode(r)?.0 as usize;
-        let mut data = Vec::with_capacity(data_len);
-        for _ in 0..data_len {
-            data.push(u64::decode(r)?);
-        }
+        let entry_count = if bits_per_entry == 0 { 0 } else { 4096 };
+        let data_len = ChunkDataCodec::storage_len(bits_per_entry, entry_count);
+        let data = ChunkDataCodec::decode_vec(data_len, || u64::decode(r))?;
 
         Ok(PalettedContainer {
             bits_per_entry,
@@ -113,15 +107,43 @@ impl ChunkSection {
 }
 
 #[derive(Debug, Clone)]
+pub struct HeightmapEntry {
+    pub kind: i32,
+    pub data: Vec<i64>,
+}
+
+impl DataType for HeightmapEntry {
+    fn encode<W: Write>(&self, w: &mut W) -> io::Result<()> {
+        VarIntWrapper(self.kind).encode(w)?;
+        VarIntWrapper(self.data.len() as i32).encode(w)?;
+        for &value in &self.data {
+            value.encode(w)?;
+        }
+        Ok(())
+    }
+
+    fn decode<R: Read>(r: &mut R) -> io::Result<Self> {
+        let kind = VarIntWrapper::decode(r)?.0;
+        let len = VarIntWrapper::decode(r)?.0 as usize;
+        let data = ChunkDataCodec::decode_vec(len, || i64::decode(r))?;
+
+        Ok(Self { kind, data })
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct ChunkData {
-    pub heightmaps: NbtCompound,
+    pub heightmaps: Vec<HeightmapEntry>,
     pub sections: Vec<ChunkSection>,
-    pub block_entities: Vec<NbtCompound>,
+    pub block_entities: Vec<()>,
 }
 
 impl DataType for ChunkData {
     fn encode<W: Write>(&self, w: &mut W) -> io::Result<()> {
-        self.heightmaps.encode(w)?;
+        VarIntWrapper(self.heightmaps.len() as i32).encode(w)?;
+        for heightmap in &self.heightmaps {
+            heightmap.encode(w)?;
+        }
 
         let mut section_buf = Vec::new();
         for section in &self.sections {
@@ -131,35 +153,67 @@ impl DataType for ChunkData {
         w.write_all(&section_buf)?;
 
         VarIntWrapper(self.block_entities.len() as i32).encode(w)?;
-        for entity in &self.block_entities {
-            entity.encode(w)?;
-        }
         Ok(())
     }
 
     fn decode<R: Read>(r: &mut R) -> io::Result<Self> {
-        let heightmaps = NbtCompound::decode(r)?;
+        let heightmap_count = VarIntWrapper::decode(r)?.0 as usize;
+        let heightmaps = ChunkDataCodec::decode_vec(heightmap_count, || HeightmapEntry::decode(r))?;
 
         let len = VarIntWrapper::decode(r)?.0 as usize;
         let mut section_data = vec![0u8; len];
         r.read_exact(&mut section_data)?;
 
-        let mut sections = Vec::new();
-        let mut section_cursor = std::io::Cursor::new(section_data);
-        while section_cursor.position() < section_cursor.get_ref().len() as u64 {
-            sections.push(ChunkSection::decode(&mut section_cursor)?);
-        }
-
         let entity_count = VarIntWrapper::decode(r)?.0 as usize;
-        let mut block_entities = Vec::with_capacity(entity_count);
-        for _ in 0..entity_count {
-            block_entities.push(NbtCompound::decode(r)?);
-        }
+        let sections = ChunkDataCodec::decode_sections(section_data)?;
+        let block_entities = ChunkDataCodec::decode_block_entities(entity_count)?;
 
         Ok(ChunkData {
             heightmaps,
             sections,
             block_entities,
         })
+    }
+}
+
+struct ChunkDataCodec;
+
+impl ChunkDataCodec {
+    fn decode_block_entities(entity_count: usize) -> io::Result<Vec<()>> {
+        if entity_count == 0 {
+            return Ok(Vec::new());
+        }
+
+        Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            "Block entity decoding is not implemented",
+        ))
+    }
+
+    fn decode_sections(section_data: Vec<u8>) -> io::Result<Vec<ChunkSection>> {
+        let mut section_cursor = std::io::Cursor::new(section_data);
+        std::iter::from_fn(|| {
+            if section_cursor.position() >= section_cursor.get_ref().len() as u64 {
+                return None;
+            }
+
+            Some(ChunkSection::decode(&mut section_cursor))
+        })
+        .collect()
+    }
+
+    fn decode_vec<T>(
+        len: usize,
+        mut decode_item: impl FnMut() -> io::Result<T>,
+    ) -> io::Result<Vec<T>> {
+        (0..len).map(|_| decode_item()).collect()
+    }
+
+    fn storage_len(bits_per_entry: u8, entry_count: usize) -> usize {
+        if bits_per_entry == 0 {
+            0
+        } else {
+            (entry_count * bits_per_entry as usize).div_ceil(64)
+        }
     }
 }

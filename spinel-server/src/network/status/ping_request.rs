@@ -19,9 +19,7 @@ fn on_ping_request(
         return true;
     }
 
-    let response_packet = PongResponsePacket::new(packet.timestamp);
-
-    response_packet.dispatch(client);
-
-    true
+    PongResponsePacket::new(packet.timestamp)
+        .dispatch(client)
+        .is_ok()
 }

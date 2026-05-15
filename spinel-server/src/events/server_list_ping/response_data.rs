@@ -1,8 +1,10 @@
 use serde_json::{Map, Value, json};
-use spinel_utils::{component::text::TextComponent, constants::{PROTOCOL_VERSION, SERVER_BRAND}};
+use spinel_utils::{
+    component::text::TextComponent,
+    constants::{PROTOCOL_VERSION, SERVER_BRAND},
+};
 
 use crate::events::server_list_ping::{favicon::Favicon, player_sample::PlayerSample};
-
 
 #[derive(Default)]
 pub struct ServerListPingEventResponseData {
@@ -89,7 +91,9 @@ impl ServerListPingEventResponseData {
         insert_if_some(
             &mut root_json_map,
             "favicon",
-            self.favicon.as_ref().map(|s| Value::from(s.base64.as_str())),
+            self.favicon
+                .as_ref()
+                .map(|s| Value::from(s.base64.as_str())),
         );
 
         insert_if_some(

@@ -3,45 +3,39 @@ use std::io::{self, Read, Write};
 
 #[derive(Debug, Clone, Copy)]
 pub struct TeleportFlags {
-    pub x: bool,
-    pub y: bool,
-    pub z: bool,
-    pub y_rot: bool,
-    pub x_rot: bool,
+    bitmask: i32,
+}
+
+impl TeleportFlags {
+    pub const X: i32 = 1 << 0;
+    pub const Y: i32 = 1 << 1;
+    pub const Z: i32 = 1 << 2;
+    pub const Y_ROTATION: i32 = 1 << 3;
+    pub const X_ROTATION: i32 = 1 << 4;
+    pub const DELTA_X: i32 = 1 << 5;
+    pub const DELTA_Y: i32 = 1 << 6;
+    pub const DELTA_Z: i32 = 1 << 7;
+    pub const ROTATE_DELTA: i32 = 1 << 8;
+
+    pub const fn absolute() -> Self {
+        Self { bitmask: 0 }
+    }
+
+    pub const fn from_bitmask(bitmask: i32) -> Self {
+        Self { bitmask }
+    }
+
+    pub const fn bitmask(self) -> i32 {
+        self.bitmask
+    }
 }
 
 impl DataType for TeleportFlags {
     fn encode<W: Write>(&self, w: &mut W) -> io::Result<()> {
-        let mut byte = 0;
-        if self.x {
-            byte |= 0x01;
-        }
-        if self.y {
-            byte |= 0x02;
-        }
-        if self.z {
-            byte |= 0x04;
-        }
-        if self.y_rot {
-            byte |= 0x08;
-        }
-        if self.x_rot {
-            byte |= 0x10;
-        }
-        w.write_all(&[byte])
+        self.bitmask.encode(w)
     }
 
     fn decode<R: Read>(r: &mut R) -> io::Result<Self> {
-        let mut buf = [0u8; 1];
-        r.read_exact(&mut buf)?;
-        let byte = buf[0];
-
-        Ok(Self {
-            x: (byte & 0x01) != 0,
-            y: (byte & 0x02) != 0,
-            z: (byte & 0x04) != 0,
-            y_rot: (byte & 0x08) != 0,
-            x_rot: (byte & 0x10) != 0,
-        })
+        Ok(Self::from_bitmask(i32::decode(r)?))
     }
 }

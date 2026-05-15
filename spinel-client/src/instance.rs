@@ -3,6 +3,7 @@ use crate::network::server::instance::Server;
 use crate::network::socket::connect_to_server;
 use spinel_network::{ConnectionState, PacketSender};
 use std::collections::HashMap;
+use std::io;
 use std::io::Cursor;
 use std::sync::{Arc, Mutex};
 
@@ -10,12 +11,15 @@ use std::sync::{Arc, Mutex};
 pub struct ServerHandle(pub Arc<Mutex<Option<Server>>>);
 
 impl PacketSender for ServerHandle {
-    fn send_packet(&mut self, id: i32, payload: &[u8]) {
-        if let Ok(mut lock) = self.0.lock() {
-            if let Some(server) = lock.as_mut() {
-                server.send_packet(id, payload);
-            }
-        }
+    fn send_packet(&mut self, id: i32, payload: &[u8]) -> io::Result<()> {
+        let mut server_lock = self
+            .0
+            .lock()
+            .map_err(|_| io::Error::other("ServerHandle lock poisoned"))?;
+        let server = server_lock
+            .as_mut()
+            .ok_or_else(|| io::Error::new(io::ErrorKind::NotConnected, "Server missing"))?;
+        server.send_packet(id, payload)
     }
 }
 
@@ -41,13 +45,17 @@ pub struct MinecraftClient {
 }
 
 impl PacketSender for MinecraftClient {
-    fn send_packet(&mut self, id: i32, payload: &[u8]) {
-        if let Ok(mut lock) = self.server.0.lock() {
-            if let Some(server) = lock.as_mut() {
-                server.state = self.state;
-                server.send_packet(id, payload);
-            }
-        }
+    fn send_packet(&mut self, id: i32, payload: &[u8]) -> io::Result<()> {
+        let mut server_lock = self
+            .server
+            .0
+            .lock()
+            .map_err(|_| io::Error::other("MinecraftClient server lock poisoned"))?;
+        let server = server_lock
+            .as_mut()
+            .ok_or_else(|| io::Error::new(io::ErrorKind::NotConnected, "Server missing"))?;
+        server.state = self.state;
+        server.send_packet(id, payload)
     }
 }
 
@@ -121,11 +129,17 @@ impl MinecraftClient {
         server_conn.payload_cursor = Some(Cursor::new(payload));
 
         for listener in specific {
-            server_conn.payload_cursor.as_mut().unwrap().set_position(0);
+            let Some(payload_cursor) = server_conn.payload_cursor.as_mut() else {
+                return false;
+            };
+            payload_cursor.set_position(0);
             (listener.handler)(server_conn, client_ptr);
         }
         for listener in generic {
-            server_conn.payload_cursor.as_mut().unwrap().set_position(0);
+            let Some(payload_cursor) = server_conn.payload_cursor.as_mut() else {
+                return false;
+            };
+            payload_cursor.set_position(0);
             (listener.handler)(server_conn, client_ptr);
         }
         server_conn.payload_cursor = None;

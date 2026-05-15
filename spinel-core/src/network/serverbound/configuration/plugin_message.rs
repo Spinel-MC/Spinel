@@ -6,7 +6,7 @@ use spinel_network::types::Array;
     state: ConnectionState::Configuration,
     recipient: Recipient::Server
 )]
-pub struct PluginMessagePacket {
+pub struct CustomPayloadPacket {
     pub channel: String,
     pub data: Array<u8>,
 }

@@ -19,10 +19,11 @@ pub use encoder::PacketEncoder;
 
 pub use inventory;
 pub use spinel_utils::Priority;
+use std::io;
 pub use tokio;
 
 pub trait PacketSender {
-    fn send_packet(&mut self, id: i32, payload: &[u8]);
+    fn send_packet(&mut self, id: i32, payload: &[u8]) -> io::Result<()>;
 }
 
 pub trait PacketStruct: DataType {

@@ -38,6 +38,10 @@ impl ConnectionManager {
         self.clients.get(addr).cloned()
     }
 
+    pub fn has_connection(&self, addr: &SocketAddr) -> bool {
+        self.clients.contains_key(addr)
+    }
+
     pub fn get_client_by_uuid(&self, uuid: &Uuid) -> Option<Arc<Mutex<Client>>> {
         self.players
             .get(uuid)

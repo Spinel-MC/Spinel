@@ -5,7 +5,8 @@ use spinel::{
     server::{
         MinecraftServer,
         events::server_list_ping::{
-            event::ServerListPingEvent, favicon::Favicon, player_sample::PlayerSample, response_data::ServerListPingEventResponseData
+            event::ServerListPingEvent, favicon::Favicon, player_sample::PlayerSample,
+            response_data::ServerListPingEventResponseData,
         },
     },
     utils::{
@@ -18,7 +19,6 @@ use spinel::{
     },
 };
 use uuid::Uuid;
-
 
 #[event_listener(priority: Priority::High)]
 fn on_event(event: &mut ServerListPingEvent, _server: &mut MinecraftServer) {
@@ -40,7 +40,9 @@ fn on_event(event: &mut ServerListPingEvent, _server: &mut MinecraftServer) {
         brand: Some(SERVER_BRAND.to_owned()),
         protocol: PROTOCOL_VERSION,
         player_sample: Some(sample),
-        favicon: Some(Favicon::from_bytes(fs::read("test_server/assets/favicon.png").unwrap())),
+        favicon: Some(Favicon::from_bytes(
+            fs::read("test_server/assets/favicon.png").unwrap(),
+        )),
         enforce_secure_chat: Some(true),
     };
 }

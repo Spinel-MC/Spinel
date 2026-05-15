@@ -1,6 +1,8 @@
 use spinel_macros::event_dispatcher;
 
-use crate::events::server_list_ping::{ping_type::ServerListPingType, response_data::ServerListPingEventResponseData};
+use crate::events::server_list_ping::{
+    ping_type::ServerListPingType, response_data::ServerListPingEventResponseData,
+};
 
 #[event_dispatcher(with_client: true)]
 pub struct ServerListPingEvent {
@@ -25,4 +27,3 @@ impl ServerListPingEvent {
         self.hide_players = true;
     }
 }
-

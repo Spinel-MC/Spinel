@@ -1,3273 +1,2959 @@
 {
-  "version": 773,
-  "serverbound": {
-    "handshake": {
-      "intention": {
-        "id": "0x00"
+  "version": 774,
+  "packets": {
+    "serverbound": {
+      "handshake": {
+        "intention": {
+          "id": "0x00",
+          "fields": [
+            {
+              "name": "protocolVersion",
+              "type": "VarInt"
+            },
+            {
+              "name": "hostName",
+              "type": "String"
+            },
+            {
+              "name": "port",
+              "type": "Short"
+            },
+            {
+              "name": "intention",
+              "type": "VarInt"
+            }
+          ]
+        }
+      },
+      "status": {
+        "status_request": {
+          "id": "0x00",
+          "fields": []
+        },
+        "ping_request": {
+          "id": "0x01",
+          "fields": [
+            {
+              "name": "id",
+              "type": "Int"
+            }
+          ]
+        }
+      },
+      "login": {
+        "hello": {
+          "id": "0x00",
+          "fields": [
+            {
+              "name": "name",
+              "type": "String"
+            },
+            {
+              "name": "profileId",
+              "type": "UUID"
+            }
+          ]
+        },
+        "key": {
+          "id": "0x01",
+          "fields": [
+            {
+              "name": "keybytes",
+              "type": "ByteArray"
+            },
+            {
+              "name": "encryptedChallenge",
+              "type": "ByteArray"
+            }
+          ]
+        },
+        "custom_query_answer": {
+          "id": "0x02",
+          "fields": [
+            {
+              "name": "transactionId",
+              "type": "VarInt"
+            },
+            {
+              "name": "payload",
+              "type": "Nullable<unknown>"
+            }
+          ]
+        },
+        "login_acknowledged": {
+          "id": "0x03",
+          "fields": []
+        },
+        "cookie_response": {
+          "id": "0x04",
+          "fields": [
+            {
+              "name": "key",
+              "type": "Identifier"
+            },
+            {
+              "name": "payload",
+              "type": "Nullable<unknown>"
+            }
+          ]
+        }
+      },
+      "configuration": {
+        "client_information": {
+          "id": "0x00",
+          "fields": []
+        },
+        "cookie_response": {
+          "id": "0x01",
+          "fields": [
+            {
+              "name": "key",
+              "type": "Identifier"
+            },
+            {
+              "name": "payload",
+              "type": "Nullable<unknown>"
+            }
+          ]
+        },
+        "custom_payload": {
+          "id": "0x02",
+          "fields": []
+        },
+        "finish_configuration": {
+          "id": "0x03",
+          "fields": []
+        },
+        "keep_alive": {
+          "id": "0x04",
+          "fields": [
+            {
+              "name": "id",
+              "type": "Long"
+            }
+          ]
+        },
+        "pong": {
+          "id": "0x05",
+          "fields": [
+            {
+              "name": "id",
+              "type": "Int"
+            }
+          ]
+        },
+        "resource_pack": {
+          "id": "0x06",
+          "fields": [
+            {
+              "name": "id",
+              "type": "UUID"
+            },
+            {
+              "name": "action",
+              "type": "Enum"
+            }
+          ]
+        },
+        "select_known_packs": {
+          "id": "0x07",
+          "fields": []
+        },
+        "custom_click_action": {
+          "id": "0x08",
+          "fields": []
+        },
+        "accept_code_of_conduct": {
+          "id": "0x09",
+          "fields": []
+        }
+      },
+      "play": {
+        "accept_teleportation": {
+          "id": "0x00",
+          "fields": [
+            {
+              "name": "id",
+              "type": "VarInt"
+            }
+          ]
+        },
+        "block_entity_tag_query": {
+          "id": "0x01",
+          "fields": [
+            {
+              "name": "transactionId",
+              "type": "VarInt"
+            },
+            {
+              "name": "pos",
+              "type": "Position"
+            }
+          ]
+        },
+        "bundle_item_selected": {
+          "id": "0x02",
+          "fields": [
+            {
+              "name": "slotId",
+              "type": "VarInt"
+            },
+            {
+              "name": "selectedItemIndex",
+              "type": "VarInt"
+            }
+          ]
+        },
+        "change_difficulty": {
+          "id": "0x03",
+          "fields": []
+        },
+        "change_game_mode": {
+          "id": "0x04",
+          "fields": []
+        },
+        "chat_ack": {
+          "id": "0x05",
+          "fields": [
+            {
+              "name": "offset",
+              "type": "VarInt"
+            }
+          ]
+        },
+        "chat_command": {
+          "id": "0x06",
+          "fields": [
+            {
+              "name": "command",
+              "type": "String"
+            }
+          ]
+        },
+        "chat_command_signed": {
+          "id": "0x07",
+          "fields": [
+            {
+              "name": "command",
+              "type": "String"
+            },
+            {
+              "name": "timeStamp",
+              "type": "Instant"
+            },
+            {
+              "name": "salt",
+              "type": "Long"
+            }
+          ]
+        },
+        "chat": {
+          "id": "0x08",
+          "fields": [
+            {
+              "name": "message",
+              "type": "String"
+            },
+            {
+              "name": "timeStamp",
+              "type": "Instant"
+            },
+            {
+              "name": "salt",
+              "type": "Long"
+            },
+            {
+              "name": "signature",
+              "type": "Nullable<unknown>"
+            }
+          ]
+        },
+        "chat_session_update": {
+          "id": "0x09",
+          "fields": []
+        },
+        "chunk_batch_received": {
+          "id": "0x0a",
+          "fields": [
+            {
+              "name": "desiredChunksPerTick",
+              "type": "Float"
+            }
+          ]
+        },
+        "client_command": {
+          "id": "0x0b",
+          "fields": [
+            {
+              "name": "action",
+              "type": "Enum"
+            }
+          ]
+        },
+        "client_tick_end": {
+          "id": "0x0c",
+          "fields": []
+        },
+        "client_information": {
+          "id": "0x0d",
+          "fields": []
+        },
+        "command_suggestion": {
+          "id": "0x0e",
+          "fields": [
+            {
+              "name": "id",
+              "type": "VarInt"
+            },
+            {
+              "name": "command",
+              "type": "String"
+            }
+          ]
+        },
+        "configuration_acknowledged": {
+          "id": "0x0f",
+          "fields": []
+        },
+        "container_button_click": {
+          "id": "0x10",
+          "fields": []
+        },
+        "container_click": {
+          "id": "0x11",
+          "fields": []
+        },
+        "container_close": {
+          "id": "0x12",
+          "fields": [
+            {
+              "name": "containerId",
+              "type": "ContainerId"
+            }
+          ]
+        },
+        "container_slot_state_changed": {
+          "id": "0x13",
+          "fields": [
+            {
+              "name": "slotId",
+              "type": "VarInt"
+            },
+            {
+              "name": "containerId",
+              "type": "ContainerId"
+            },
+            {
+              "name": "newState",
+              "type": "Boolean"
+            }
+          ]
+        },
+        "cookie_response": {
+          "id": "0x14",
+          "fields": [
+            {
+              "name": "key",
+              "type": "Identifier"
+            },
+            {
+              "name": "payload",
+              "type": "Nullable<unknown>"
+            }
+          ]
+        },
+        "custom_payload": {
+          "id": "0x15",
+          "fields": []
+        },
+        "debug_subscription_request": {
+          "id": "0x16",
+          "fields": []
+        },
+        "edit_book": {
+          "id": "0x17",
+          "fields": []
+        },
+        "entity_tag_query": {
+          "id": "0x18",
+          "fields": [
+            {
+              "name": "transactionId",
+              "type": "VarInt"
+            },
+            {
+              "name": "entityId",
+              "type": "VarInt"
+            }
+          ]
+        },
+        "interact": {
+          "id": "0x19",
+          "fields": [
+            {
+              "name": "entityId",
+              "type": "VarInt"
+            },
+            {
+              "name": "action",
+              "type": "Enum"
+            },
+            {
+              "name": "usingSecondaryAction",
+              "type": "Boolean"
+            }
+          ]
+        },
+        "jigsaw_generate": {
+          "id": "0x1a",
+          "fields": [
+            {
+              "name": "pos",
+              "type": "Position"
+            },
+            {
+              "name": "levels",
+              "type": "VarInt"
+            },
+            {
+              "name": "keepJigsaws",
+              "type": "Boolean"
+            }
+          ]
+        },
+        "keep_alive": {
+          "id": "0x1b",
+          "fields": [
+            {
+              "name": "id",
+              "type": "Long"
+            }
+          ]
+        },
+        "lock_difficulty": {
+          "id": "0x1c",
+          "fields": [
+            {
+              "name": "locked",
+              "type": "Boolean"
+            }
+          ]
+        },
+        "move_player_pos": {
+          "id": "0x1d",
+          "fields": [
+            {
+              "name": "x",
+              "type": "Double"
+            },
+            {
+              "name": "y",
+              "type": "Double"
+            },
+            {
+              "name": "z",
+              "type": "Double"
+            },
+            {
+              "name": "horizontalCollision",
+              "type": "Byte"
+            }
+          ]
+        },
+        "move_player_pos_rot": {
+          "id": "0x1e",
+          "fields": [
+            {
+              "name": "x",
+              "type": "Double"
+            },
+            {
+              "name": "y",
+              "type": "Double"
+            },
+            {
+              "name": "z",
+              "type": "Double"
+            },
+            {
+              "name": "yRot",
+              "type": "Float"
+            },
+            {
+              "name": "xRot",
+              "type": "Float"
+            },
+            {
+              "name": "horizontalCollision",
+              "type": "Byte"
+            }
+          ]
+        },
+        "move_player_rot": {
+          "id": "0x1f",
+          "fields": [
+            {
+              "name": "yRot",
+              "type": "Float"
+            },
+            {
+              "name": "xRot",
+              "type": "Float"
+            },
+            {
+              "name": "horizontalCollision",
+              "type": "Byte"
+            }
+          ]
+        },
+        "move_player_status_only": {
+          "id": "0x20",
+          "fields": [
+            {
+              "name": "horizontalCollision",
+              "type": "Byte"
+            }
+          ]
+        },
+        "move_vehicle": {
+          "id": "0x21",
+          "fields": []
+        },
+        "paddle_boat": {
+          "id": "0x22",
+          "fields": [
+            {
+              "name": "left",
+              "type": "Boolean"
+            },
+            {
+              "name": "right",
+              "type": "Boolean"
+            }
+          ]
+        },
+        "pick_item_from_block": {
+          "id": "0x23",
+          "fields": []
+        },
+        "pick_item_from_entity": {
+          "id": "0x24",
+          "fields": []
+        },
+        "ping_request": {
+          "id": "0x25",
+          "fields": [
+            {
+              "name": "id",
+              "type": "Int"
+            }
+          ]
+        },
+        "place_recipe": {
+          "id": "0x26",
+          "fields": []
+        },
+        "player_abilities": {
+          "id": "0x27",
+          "fields": [
+            {
+              "name": "isFlying",
+              "type": "Byte"
+            }
+          ]
+        },
+        "player_action": {
+          "id": "0x28",
+          "fields": [
+            {
+              "name": "action",
+              "type": "Enum"
+            },
+            {
+              "name": "pos",
+              "type": "Position"
+            },
+            {
+              "name": "direction",
+              "type": "Byte"
+            },
+            {
+              "name": "sequence",
+              "type": "VarInt"
+            }
+          ]
+        },
+        "player_command": {
+          "id": "0x29",
+          "fields": [
+            {
+              "name": "id",
+              "type": "VarInt"
+            },
+            {
+              "name": "action",
+              "type": "Enum"
+            },
+            {
+              "name": "data",
+              "type": "VarInt"
+            }
+          ]
+        },
+        "player_input": {
+          "id": "0x2a",
+          "fields": []
+        },
+        "player_loaded": {
+          "id": "0x2b",
+          "fields": []
+        },
+        "pong": {
+          "id": "0x2c",
+          "fields": [
+            {
+              "name": "id",
+              "type": "Int"
+            }
+          ]
+        },
+        "recipe_book_change_settings": {
+          "id": "0x2d",
+          "fields": [
+            {
+              "name": "bookType",
+              "type": "Enum"
+            },
+            {
+              "name": "isOpen",
+              "type": "Boolean"
+            },
+            {
+              "name": "isFiltering",
+              "type": "Boolean"
+            }
+          ]
+        },
+        "recipe_book_seen_recipe": {
+          "id": "0x2e",
+          "fields": []
+        },
+        "rename_item": {
+          "id": "0x2f",
+          "fields": [
+            {
+              "name": "name",
+              "type": "String"
+            }
+          ]
+        },
+        "resource_pack": {
+          "id": "0x30",
+          "fields": [
+            {
+              "name": "id",
+              "type": "UUID"
+            },
+            {
+              "name": "action",
+              "type": "Enum"
+            }
+          ]
+        },
+        "seen_advancements": {
+          "id": "0x31",
+          "fields": [
+            {
+              "name": "action",
+              "type": "Enum"
+            },
+            {
+              "name": "tab",
+              "type": "Identifier"
+            }
+          ]
+        },
+        "select_trade": {
+          "id": "0x32",
+          "fields": [
+            {
+              "name": "item",
+              "type": "VarInt"
+            }
+          ]
+        },
+        "set_beacon": {
+          "id": "0x33",
+          "fields": []
+        },
+        "set_carried_item": {
+          "id": "0x34",
+          "fields": [
+            {
+              "name": "slot",
+              "type": "Short"
+            }
+          ]
+        },
+        "set_command_block": {
+          "id": "0x35",
+          "fields": [
+            {
+              "name": "pos",
+              "type": "Position"
+            },
+            {
+              "name": "command",
+              "type": "String"
+            },
+            {
+              "name": "mode",
+              "type": "Enum"
+            },
+            {
+              "name": "automatic",
+              "type": "Byte"
+            }
+          ]
+        },
+        "set_command_minecart": {
+          "id": "0x36",
+          "fields": [
+            {
+              "name": "entity",
+              "type": "VarInt"
+            },
+            {
+              "name": "command",
+              "type": "String"
+            },
+            {
+              "name": "trackOutput",
+              "type": "Boolean"
+            }
+          ]
+        },
+        "set_creative_mode_slot": {
+          "id": "0x37",
+          "fields": []
+        },
+        "set_jigsaw_block": {
+          "id": "0x38",
+          "fields": [
+            {
+              "name": "pos",
+              "type": "Position"
+            },
+            {
+              "name": "name",
+              "type": "Identifier"
+            },
+            {
+              "name": "target",
+              "type": "Identifier"
+            },
+            {
+              "name": "pool",
+              "type": "Identifier"
+            },
+            {
+              "name": "finalState",
+              "type": "String"
+            },
+            {
+              "name": "joint",
+              "type": "String"
+            },
+            {
+              "name": "selectionPriority",
+              "type": "VarInt"
+            },
+            {
+              "name": "placementPriority",
+              "type": "VarInt"
+            }
+          ]
+        },
+        "set_structure_block": {
+          "id": "0x39",
+          "fields": [
+            {
+              "name": "pos",
+              "type": "Position"
+            },
+            {
+              "name": "updateType",
+              "type": "Enum"
+            },
+            {
+              "name": "mode",
+              "type": "Enum"
+            },
+            {
+              "name": "name",
+              "type": "String"
+            },
+            {
+              "name": "offset",
+              "type": "Byte"
+            },
+            {
+              "name": "size",
+              "type": "Byte"
+            },
+            {
+              "name": "mirror",
+              "type": "Enum"
+            },
+            {
+              "name": "rotation",
+              "type": "Enum"
+            },
+            {
+              "name": "data",
+              "type": "String"
+            },
+            {
+              "name": "integrity",
+              "type": "Float"
+            },
+            {
+              "name": "seed",
+              "type": "VarLong"
+            },
+            {
+              "name": "strict",
+              "type": "Byte"
+            }
+          ]
+        },
+        "set_test_block": {
+          "id": "0x3a",
+          "fields": []
+        },
+        "sign_update": {
+          "id": "0x3b",
+          "fields": [
+            {
+              "name": "pos",
+              "type": "Position"
+            },
+            {
+              "name": "isFrontText",
+              "type": "Boolean"
+            },
+            {
+              "name": "lines",
+              "type": "String"
+            }
+          ]
+        },
+        "swing": {
+          "id": "0x3c",
+          "fields": [
+            {
+              "name": "hand",
+              "type": "Enum"
+            }
+          ]
+        },
+        "teleport_to_entity": {
+          "id": "0x3d",
+          "fields": [
+            {
+              "name": "uuid",
+              "type": "UUID"
+            }
+          ]
+        },
+        "test_instance_block_action": {
+          "id": "0x3e",
+          "fields": []
+        },
+        "use_item_on": {
+          "id": "0x3f",
+          "fields": [
+            {
+              "name": "hand",
+              "type": "Enum"
+            },
+            {
+              "name": "blockHit",
+              "type": "BlockHitResult"
+            },
+            {
+              "name": "sequence",
+              "type": "VarInt"
+            }
+          ]
+        },
+        "use_item": {
+          "id": "0x40",
+          "fields": [
+            {
+              "name": "hand",
+              "type": "Enum"
+            },
+            {
+              "name": "sequence",
+              "type": "VarInt"
+            },
+            {
+              "name": "yRot",
+              "type": "Float"
+            },
+            {
+              "name": "xRot",
+              "type": "Float"
+            }
+          ]
+        },
+        "custom_click_action": {
+          "id": "0x41",
+          "fields": []
+        }
       }
     },
-    "status": {
-      "status_request": {
-        "id": "0x00",
-        "fields": []
-      },
-      "ping_request": {
-        "id": "0x01"
-      }
-    },
-    "login": {
-      "hello": {
-        "id": "0x00",
-        "fields": [
-          {
-            "name": "name",
-            "type": "String"
-          },
-          {
-            "name": "profile_id",
-            "type": "UUID"
-          }
-        ]
-      },
-      "key": {
-        "id": "0x01",
-        "fields": [
-          {
-            "name": "keybytes",
-            "type": "Array<byte>"
-          },
-          {
-            "name": "encrypted_challenge",
-            "type": "Array<byte>"
-          }
-        ]
-      },
-      "custom_query_answer": {
-        "id": "0x02",
-        "fields": [
-          {
-            "name": "transaction_id",
-            "type": "int"
-          },
-          {
-            "name": "payload",
-            "type": "CustomQueryAnswerPayload"
-          }
-        ]
-      },
-      "login_acknowledged": {
-        "id": "0x03",
-        "fields": []
-      },
-      "cookie_response": {
-        "id": "0x04"
-      }
-    },
-    "config": {
-      "client_information": {
-        "id": "0x00",
-        "fields": [
-          {
-            "name": "information",
-            "type": "ClientInformation"
-          }
-        ]
-      },
-      "cookie_response": {
-        "id": "0x01"
-      },
-      "custom_payload": {
-        "id": "0x02",
-        "fields": [
-          {
-            "name": "payload",
-            "type": "CustomPacketPayload"
-          }
-        ]
-      },
-      "finish_configuration": {
-        "id": "0x03",
-        "fields": []
-      },
-      "keep_alive": {
-        "id": "0x04",
-        "fields": [
-          {
-            "name": "id",
-            "type": "long"
-          }
-        ]
-      },
-      "pong": {
-        "id": "0x05",
-        "fields": [
-          {
-            "name": "id",
-            "type": "int"
-          }
-        ]
-      },
-      "resource_pack": {
-        "id": "0x06",
-        "fields": [
-          {
-            "name": "id",
-            "type": "UUID"
-          },
-          {
-            "name": "action",
-            "type": "Action"
-          }
-        ]
-      },
-      "select_known_packs": {
-        "id": "0x07"
-      },
-      "custom_click_action": {
-        "id": "0x08",
-        "fields": [
-          {
-            "name": "id",
-            "type": "ResourceLocation"
-          },
-          {
-            "name": "payload",
-            "type": "Optional<Tag>"
-          }
-        ]
-      },
-      "accept_code_of_conduct": {
-        "id": "0x09",
-        "fields": []
-      }
-    },
-    "play": {
-      "accept_teleportation": {
-        "id": "0x00",
-        "fields": [
-          {
-            "name": "id",
-            "type": "int"
-          }
-        ]
-      },
-      "block_entity_tag_query": {
-        "id": "0x01",
-        "fields": [
-          {
-            "name": "transaction_id",
-            "type": "int"
-          },
-          {
-            "name": "pos",
-            "type": "BlockPos"
-          }
-        ]
-      },
-      "bundle_item_selected": {
-        "id": "0x02"
-      },
-      "change_difficulty": {
-        "id": "0x03",
-        "fields": [
-          {
-            "name": "difficulty",
-            "type": "Difficulty"
-          }
-        ]
-      },
-      "change_game_mode": {
-        "id": "0x04",
-        "fields": [
-          {
-            "name": "mode",
-            "type": "GameType"
-          }
-        ]
-      },
-      "chat_ack": {
-        "id": "0x05",
-        "fields": [
-          {
-            "name": "offset",
-            "type": "int"
-          }
-        ]
-      },
-      "chat_command": {
-        "id": "0x06",
-        "fields": [
-          {
-            "name": "command",
-            "type": "String"
-          }
-        ]
-      },
-      "chat_command_signed": {
-        "id": "0x07",
-        "fields": [
-          {
-            "name": "command",
-            "type": "String"
-          },
-          {
-            "name": "time_stamp",
-            "type": "Instant"
-          },
-          {
-            "name": "salt",
-            "type": "long"
-          },
-          {
-            "name": "argument_signatures",
-            "type": "ArgumentSignatures"
-          },
-          {
-            "name": "last_seen_messages",
-            "type": "Update"
-          }
-        ]
-      },
-      "chat": {
-        "id": "0x08",
-        "fields": [
-          {
-            "name": "message",
-            "type": "String"
-          },
-          {
-            "name": "time_stamp",
-            "type": "Instant"
-          },
-          {
-            "name": "salt",
-            "type": "long"
-          },
-          {
-            "name": "signature",
-            "type": "MessageSignature"
-          },
-          {
-            "name": "last_seen_messages",
-            "type": "Update"
-          }
-        ]
-      },
-      "chat_session_update": {
-        "id": "0x09",
-        "fields": [
-          {
-            "name": "chat_session",
-            "type": "Data"
-          }
-        ]
-      },
-      "chunk_batch_received": {
-        "id": "0x0A",
-        "fields": [
-          {
-            "name": "desired_chunks_per_tick",
-            "type": "float"
-          }
-        ]
-      },
-      "client_command": {
-        "id": "0x0B",
-        "fields": [
-          {
-            "name": "action",
-            "type": "Action"
-          }
-        ]
-      },
-      "client_tick_end": {
-        "id": "0x0C",
-        "fields": []
-      },
-      "client_information": {
-        "id": "0x0D",
-        "fields": [
-          {
-            "name": "information",
-            "type": "ClientInformation"
-          }
-        ]
-      },
-      "command_suggestion": {
-        "id": "0x0E",
-        "fields": [
-          {
-            "name": "id",
-            "type": "int"
-          },
-          {
-            "name": "command",
-            "type": "String"
-          }
-        ]
-      },
-      "configuration_acknowledged": {
-        "id": "0x0F",
-        "fields": []
-      },
-      "container_button_click": {
-        "id": "0x10",
-        "fields": [
-          {
-            "name": "container_id",
-            "type": "int"
-          },
-          {
-            "name": "button_id",
-            "type": "int"
-          }
-        ]
-      },
-      "container_click": {
-        "id": "0x11",
-        "fields": [
-          {
-            "name": "container_id",
-            "type": "int"
-          },
-          {
-            "name": "state_id",
-            "type": "int"
-          },
-          {
-            "name": "slot_num",
-            "type": "short"
-          },
-          {
-            "name": "button_num",
-            "type": "byte"
-          },
-          {
-            "name": "click_type",
-            "type": "ClickType"
-          },
-          {
-            "name": "changed_slots",
-            "type": "Int2ObjectMap<HashedStack>"
-          },
-          {
-            "name": "carried_item",
-            "type": "HashedStack"
-          }
-        ]
-      },
-      "container_close": {
-        "id": "0x12",
-        "fields": [
-          {
-            "name": "container_id",
-            "type": "int"
-          }
-        ]
-      },
-      "container_slot_state_changed": {
-        "id": "0x13",
-        "fields": [
-          {
-            "name": "slot_id",
-            "type": "int"
-          },
-          {
-            "name": "container_id",
-            "type": "int"
-          },
-          {
-            "name": "new_state",
-            "type": "boolean"
-          }
-        ]
-      },
-      "cookie_response": {
-        "id": "0x14"
-      },
-      "custom_payload": {
-        "id": "0x15",
-        "fields": [
-          {
-            "name": "payload",
-            "type": "CustomPacketPayload"
-          }
-        ]
-      },
-      "debug_subscription_request": {
-        "id": "0x16",
-        "fields": [
-          {
-            "name": "subscriptions",
-            "type": "Set<DebugSubscription<Object>>"
-          }
-        ]
-      },
-      "edit_book": {
-        "id": "0x17",
-        "fields": [
-          {
-            "name": "slot",
-            "type": "int"
-          },
-          {
-            "name": "pages",
-            "type": "List<String>"
-          },
-          {
-            "name": "title",
-            "type": "Optional<String>"
-          }
-        ]
-      },
-      "entity_tag_query": {
-        "id": "0x18",
-        "fields": [
-          {
-            "name": "transaction_id",
-            "type": "int"
-          },
-          {
-            "name": "entity_id",
-            "type": "int"
-          }
-        ]
-      },
-      "interact": {
-        "id": "0x19",
-        "fields": [
-          {
-            "name": "entity_id",
-            "type": "int"
-          },
-          {
-            "name": "action",
-            "type": "Action"
-          },
-          {
-            "name": "using_secondary_action",
-            "type": "boolean"
-          }
-        ]
-      },
-      "jigsaw_generate": {
-        "id": "0x1A",
-        "fields": [
-          {
-            "name": "pos",
-            "type": "BlockPos"
-          },
-          {
-            "name": "levels",
-            "type": "int"
-          },
-          {
-            "name": "keep_jigsaws",
-            "type": "boolean"
-          }
-        ]
-      },
-      "keep_alive": {
-        "id": "0x1B",
-        "fields": [
-          {
-            "name": "id",
-            "type": "long"
-          }
-        ]
-      },
-      "lock_difficulty": {
-        "id": "0x1C",
-        "fields": [
-          {
-            "name": "locked",
-            "type": "boolean"
-          }
-        ]
-      },
-      "move_player_pos": {
-        "id": "0x1D"
-      },
-      "move_player_pos_rot": {
-        "id": "0x1E"
-      },
-      "move_player_rot": {
-        "id": "0x1F"
-      },
-      "move_player_status_only": {
-        "id": "0x20"
-      },
-      "move_vehicle": {
-        "id": "0x21",
-        "fields": [
-          {
-            "name": "position",
-            "type": "Vec3"
-          },
-          {
-            "name": "y_rot",
-            "type": "float"
-          },
-          {
-            "name": "x_rot",
-            "type": "float"
-          },
-          {
-            "name": "on_ground",
-            "type": "boolean"
-          }
-        ]
-      },
-      "paddle_boat": {
-        "id": "0x22",
-        "fields": [
-          {
-            "name": "left",
-            "type": "boolean"
-          },
-          {
-            "name": "right",
-            "type": "boolean"
-          }
-        ]
-      },
-      "pick_item_from_block": {
-        "id": "0x23",
-        "fields": [
-          {
-            "name": "pos",
-            "type": "BlockPos"
-          },
-          {
-            "name": "include_data",
-            "type": "boolean"
-          }
-        ]
-      },
-      "pick_item_from_entity": {
-        "id": "0x24",
-        "fields": [
-          {
-            "name": "id",
-            "type": "int"
-          },
-          {
-            "name": "include_data",
-            "type": "boolean"
-          }
-        ]
-      },
-      "ping_request": {
-        "id": "0x25"
-      },
-      "place_recipe": {
-        "id": "0x26",
-        "fields": [
-          {
-            "name": "container_id",
-            "type": "int"
-          },
-          {
-            "name": "recipe",
-            "type": "RecipeDisplayId"
-          },
-          {
-            "name": "use_max_items",
-            "type": "boolean"
-          }
-        ]
-      },
-      "player_abilities": {
-        "id": "0x27",
-        "fields": [
-          {
-            "name": "is_flying",
-            "type": "boolean"
-          }
-        ]
-      },
-      "player_action": {
-        "id": "0x28",
-        "fields": [
-          {
-            "name": "pos",
-            "type": "BlockPos"
-          },
-          {
-            "name": "direction",
-            "type": "Direction"
-          },
-          {
-            "name": "action",
-            "type": "Action"
-          },
-          {
-            "name": "sequence",
-            "type": "int"
-          }
-        ]
-      },
-      "player_command": {
-        "id": "0x29",
-        "fields": [
-          {
-            "name": "id",
-            "type": "int"
-          },
-          {
-            "name": "action",
-            "type": "Action"
-          },
-          {
-            "name": "data",
-            "type": "int"
-          }
-        ]
-      },
-      "player_input": {
-        "id": "0x2A",
-        "fields": [
-          {
-            "name": "input",
-            "type": "Input"
-          }
-        ]
-      },
-      "player_loaded": {
-        "id": "0x2B",
-        "fields": []
-      },
-      "pong": {
-        "id": "0x2C",
-        "fields": [
-          {
-            "name": "id",
-            "type": "int"
-          }
-        ]
-      },
-      "recipe_book_change_settings": {
-        "id": "0x2D",
-        "fields": [
-          {
-            "name": "book_type",
-            "type": "RecipeBookType"
-          },
-          {
-            "name": "is_open",
-            "type": "boolean"
-          },
-          {
-            "name": "is_filtering",
-            "type": "boolean"
-          }
-        ]
-      },
-      "recipe_book_seen_recipe": {
-        "id": "0x2E",
-        "fields": [
-          {
-            "name": "recipe",
-            "type": "RecipeDisplayId"
-          }
-        ]
-      },
-      "rename_item": {
-        "id": "0x2F",
-        "fields": [
-          {
-            "name": "name",
-            "type": "String"
-          }
-        ]
-      },
-      "resource_pack": {
-        "id": "0x30",
-        "fields": [
-          {
-            "name": "id",
-            "type": "UUID"
-          },
-          {
-            "name": "action",
-            "type": "Action"
-          }
-        ]
-      },
-      "seen_advancements": {
-        "id": "0x31",
-        "fields": [
-          {
-            "name": "action",
-            "type": "Action"
-          },
-          {
-            "name": "tab",
-            "type": "ResourceLocation"
-          }
-        ]
-      },
-      "select_trade": {
-        "id": "0x32",
-        "fields": [
-          {
-            "name": "item",
-            "type": "int"
-          }
-        ]
-      },
-      "set_beacon": {
-        "id": "0x33",
-        "fields": [
-          {
-            "name": "primary",
-            "type": "Optional<Holder<MobEffect>>"
-          },
-          {
-            "name": "secondary",
-            "type": "Optional<Holder<MobEffect>>"
-          }
-        ]
-      },
-      "set_carried_item": {
-        "id": "0x34",
-        "fields": [
-          {
-            "name": "slot",
-            "type": "int"
-          }
-        ]
-      },
-      "set_command_block": {
-        "id": "0x35",
-        "fields": [
-          {
-            "name": "pos",
-            "type": "BlockPos"
-          },
-          {
-            "name": "command",
-            "type": "String"
-          },
-          {
-            "name": "track_output",
-            "type": "boolean"
-          },
-          {
-            "name": "conditional",
-            "type": "boolean"
-          },
-          {
-            "name": "automatic",
-            "type": "boolean"
-          },
-          {
-            "name": "mode",
-            "type": "Mode"
-          }
-        ]
-      },
-      "set_command_minecart": {
-        "id": "0x36",
-        "fields": [
-          {
-            "name": "entity",
-            "type": "int"
-          },
-          {
-            "name": "command",
-            "type": "String"
-          },
-          {
-            "name": "track_output",
-            "type": "boolean"
-          }
-        ]
-      },
-      "set_creative_mode_slot": {
-        "id": "0x37",
-        "fields": [
-          {
-            "name": "slot_num",
-            "type": "short"
-          },
-          {
-            "name": "item_stack",
-            "type": "ItemStack"
-          }
-        ]
-      },
-      "set_jigsaw_block": {
-        "id": "0x38",
-        "fields": [
-          {
-            "name": "pos",
-            "type": "BlockPos"
-          },
-          {
-            "name": "name",
-            "type": "ResourceLocation"
-          },
-          {
-            "name": "target",
-            "type": "ResourceLocation"
-          },
-          {
-            "name": "pool",
-            "type": "ResourceLocation"
-          },
-          {
-            "name": "final_state",
-            "type": "String"
-          },
-          {
-            "name": "joint",
-            "type": "JointType"
-          },
-          {
-            "name": "selection_priority",
-            "type": "int"
-          },
-          {
-            "name": "placement_priority",
-            "type": "int"
-          }
-        ]
-      },
-      "set_structure_block": {
-        "id": "0x39",
-        "fields": [
-          {
-            "name": "pos",
-            "type": "BlockPos"
-          },
-          {
-            "name": "update_type",
-            "type": "UpdateType"
-          },
-          {
-            "name": "mode",
-            "type": "StructureMode"
-          },
-          {
-            "name": "name",
-            "type": "String"
-          },
-          {
-            "name": "offset",
-            "type": "BlockPos"
-          },
-          {
-            "name": "size",
-            "type": "Vec3i"
-          },
-          {
-            "name": "mirror",
-            "type": "Mirror"
-          },
-          {
-            "name": "rotation",
-            "type": "Rotation"
-          },
-          {
-            "name": "data",
-            "type": "String"
-          },
-          {
-            "name": "ignore_entities",
-            "type": "boolean"
-          },
-          {
-            "name": "strict",
-            "type": "boolean"
-          },
-          {
-            "name": "show_air",
-            "type": "boolean"
-          },
-          {
-            "name": "show_bounding_box",
-            "type": "boolean"
-          },
-          {
-            "name": "integrity",
-            "type": "float"
-          },
-          {
-            "name": "seed",
-            "type": "long"
-          }
-        ]
-      },
-      "set_test_block": {
-        "id": "0x3A",
-        "fields": [
-          {
-            "name": "position",
-            "type": "BlockPos"
-          },
-          {
-            "name": "mode",
-            "type": "TestBlockMode"
-          },
-          {
-            "name": "message",
-            "type": "String"
-          }
-        ]
-      },
-      "sign_update": {
-        "id": "0x3B",
-        "fields": [
-          {
-            "name": "pos",
-            "type": "BlockPos"
-          },
-          {
-            "name": "lines",
-            "type": "Array<String>"
-          },
-          {
-            "name": "is_front_text",
-            "type": "boolean"
-          }
-        ]
-      },
-      "swing": {
-        "id": "0x3C",
-        "fields": [
-          {
-            "name": "hand",
-            "type": "InteractionHand"
-          }
-        ]
-      },
-      "teleport_to_entity": {
-        "id": "0x3D",
-        "fields": [
-          {
-            "name": "uuid",
-            "type": "UUID"
-          }
-        ]
-      },
-      "test_instance_block_action": {
-        "id": "0x3E",
-        "fields": [
-          {
-            "name": "pos",
-            "type": "BlockPos"
-          },
-          {
-            "name": "action",
-            "type": "Action"
-          },
-          {
-            "name": "data",
-            "type": "Data"
-          }
-        ]
-      },
-      "use_item_on": {
-        "id": "0x3F",
-        "fields": [
-          {
-            "name": "block_hit",
-            "type": "BlockHitResult"
-          },
-          {
-            "name": "hand",
-            "type": "InteractionHand"
-          },
-          {
-            "name": "sequence",
-            "type": "int"
-          }
-        ]
-      },
-      "use_item": {
-        "id": "0x40",
-        "fields": [
-          {
-            "name": "hand",
-            "type": "InteractionHand"
-          },
-          {
-            "name": "sequence",
-            "type": "int"
-          },
-          {
-            "name": "y_rot",
-            "type": "float"
-          },
-          {
-            "name": "x_rot",
-            "type": "float"
-          }
-        ]
-      },
-      "custom_click_action": {
-        "id": "0x41",
-        "fields": [
-          {
-            "name": "id",
-            "type": "ResourceLocation"
-          },
-          {
-            "name": "payload",
-            "type": "Optional<Tag>"
-          }
-        ]
+    "clientbound": {
+      "status": {
+        "status_response": {
+          "id": "0x00",
+          "fields": []
+        },
+        "pong_response": {
+          "id": "0x01",
+          "fields": [
+            {
+              "name": "id",
+              "type": "Int"
+            }
+          ]
+        }
+      },
+      "login": {
+        "login_disconnect": {
+          "id": "0x00",
+          "fields": []
+        },
+        "hello": {
+          "id": "0x01",
+          "fields": [
+            {
+              "name": "serverId",
+              "type": "String"
+            },
+            {
+              "name": "publicKey",
+              "type": "ByteArray"
+            },
+            {
+              "name": "challenge",
+              "type": "ByteArray"
+            },
+            {
+              "name": "shouldAuthenticate",
+              "type": "Boolean"
+            }
+          ]
+        },
+        "login_finished": {
+          "id": "0x02",
+          "fields": []
+        },
+        "login_compression": {
+          "id": "0x03",
+          "fields": [
+            {
+              "name": "compressionThreshold",
+              "type": "VarInt"
+            }
+          ]
+        },
+        "custom_query": {
+          "id": "0x04",
+          "fields": [
+            {
+              "name": "transactionId",
+              "type": "VarInt"
+            },
+            {
+              "name": "payload",
+              "type": "Identifier"
+            }
+          ]
+        },
+        "cookie_request": {
+          "id": "0x05",
+          "fields": [
+            {
+              "name": "key",
+              "type": "Identifier"
+            }
+          ]
+        }
+      },
+      "configuration": {
+        "cookie_request": {
+          "id": "0x00",
+          "fields": [
+            {
+              "name": "key",
+              "type": "Identifier"
+            }
+          ]
+        },
+        "custom_payload": {
+          "id": "0x01",
+          "fields": []
+        },
+        "disconnect": {
+          "id": "0x02",
+          "fields": []
+        },
+        "finish_configuration": {
+          "id": "0x03",
+          "fields": []
+        },
+        "keep_alive": {
+          "id": "0x04",
+          "fields": [
+            {
+              "name": "id",
+              "type": "Long"
+            }
+          ]
+        },
+        "ping": {
+          "id": "0x05",
+          "fields": [
+            {
+              "name": "id",
+              "type": "Int"
+            }
+          ]
+        },
+        "reset_chat": {
+          "id": "0x06",
+          "fields": []
+        },
+        "registry_data": {
+          "id": "0x07",
+          "fields": []
+        },
+        "resource_pack_pop": {
+          "id": "0x08",
+          "fields": [
+            {
+              "name": "id",
+              "type": "Optional<unknown>"
+            }
+          ]
+        },
+        "resource_pack_push": {
+          "id": "0x09",
+          "fields": []
+        },
+        "store_cookie": {
+          "id": "0x0a",
+          "fields": [
+            {
+              "name": "key",
+              "type": "Identifier"
+            }
+          ]
+        },
+        "transfer": {
+          "id": "0x0b",
+          "fields": [
+            {
+              "name": "host",
+              "type": "String"
+            },
+            {
+              "name": "port",
+              "type": "VarInt"
+            }
+          ]
+        },
+        "update_enabled_features": {
+          "id": "0x0c",
+          "fields": [
+            {
+              "name": "features",
+              "type": "PrefixedArray<unknown>"
+            }
+          ]
+        },
+        "update_tags": {
+          "id": "0x0d",
+          "fields": [
+            {
+              "name": "tags",
+              "type": "Map<unknown, unknown>"
+            }
+          ]
+        },
+        "select_known_packs": {
+          "id": "0x0e",
+          "fields": []
+        },
+        "custom_report_details": {
+          "id": "0x0f",
+          "fields": []
+        },
+        "server_links": {
+          "id": "0x10",
+          "fields": []
+        },
+        "clear_dialog": {
+          "id": "0x11",
+          "fields": []
+        },
+        "show_dialog": {
+          "id": "0x12",
+          "fields": []
+        },
+        "code_of_conduct": {
+          "id": "0x13",
+          "fields": []
+        }
+      },
+      "play": {
+        "bundle_delimiter": {
+          "id": "0x00",
+          "fields": []
+        },
+        "add_entity": {
+          "id": "0x01",
+          "fields": [
+            {
+              "name": "id",
+              "type": "VarInt"
+            },
+            {
+              "name": "uuid",
+              "type": "UUID"
+            },
+            {
+              "name": "type",
+              "type": "RegistryValue<minecraft:entity_type>"
+            },
+            {
+              "name": "x",
+              "type": "Double"
+            },
+            {
+              "name": "y",
+              "type": "Double"
+            },
+            {
+              "name": "z",
+              "type": "Double"
+            },
+            {
+              "name": "movement",
+              "type": "LpVec3"
+            },
+            {
+              "name": "xRot",
+              "type": "Byte"
+            },
+            {
+              "name": "yRot",
+              "type": "Byte"
+            },
+            {
+              "name": "yHeadRot",
+              "type": "Byte"
+            },
+            {
+              "name": "data",
+              "type": "VarInt"
+            }
+          ]
+        },
+        "animate": {
+          "id": "0x02",
+          "fields": [
+            {
+              "name": "id",
+              "type": "VarInt"
+            },
+            {
+              "name": "action",
+              "type": "Byte"
+            }
+          ]
+        },
+        "award_stats": {
+          "id": "0x03",
+          "fields": []
+        },
+        "block_changed_ack": {
+          "id": "0x04",
+          "fields": [
+            {
+              "name": "sequence",
+              "type": "VarInt"
+            }
+          ]
+        },
+        "block_destruction": {
+          "id": "0x05",
+          "fields": [
+            {
+              "name": "id",
+              "type": "VarInt"
+            },
+            {
+              "name": "pos",
+              "type": "Position"
+            },
+            {
+              "name": "progress",
+              "type": "Byte"
+            }
+          ]
+        },
+        "block_entity_data": {
+          "id": "0x06",
+          "fields": []
+        },
+        "block_event": {
+          "id": "0x07",
+          "fields": [
+            {
+              "name": "pos",
+              "type": "Position"
+            },
+            {
+              "name": "b0",
+              "type": "Byte"
+            },
+            {
+              "name": "b1",
+              "type": "Byte"
+            },
+            {
+              "name": "block",
+              "type": "RegistryValue<minecraft:block>"
+            }
+          ]
+        },
+        "block_update": {
+          "id": "0x08",
+          "fields": []
+        },
+        "boss_event": {
+          "id": "0x09",
+          "fields": [
+            {
+              "name": "id",
+              "type": "UUID"
+            },
+            {
+              "name": "operation",
+              "type": "Enum"
+            }
+          ]
+        },
+        "change_difficulty": {
+          "id": "0x0a",
+          "fields": []
+        },
+        "chunk_batch_finished": {
+          "id": "0x0b",
+          "fields": [
+            {
+              "name": "batchSize",
+              "type": "VarInt"
+            }
+          ]
+        },
+        "chunk_batch_start": {
+          "id": "0x0c",
+          "fields": []
+        },
+        "chunks_biomes": {
+          "id": "0x0d",
+          "fields": [
+            {
+              "name": "chunkBiomeData",
+              "type": "PrefixedArray<unknown>"
+            }
+          ]
+        },
+        "clear_titles": {
+          "id": "0x0e",
+          "fields": [
+            {
+              "name": "resetTimes",
+              "type": "Boolean"
+            }
+          ]
+        },
+        "command_suggestions": {
+          "id": "0x0f",
+          "fields": []
+        },
+        "commands": {
+          "id": "0x10",
+          "fields": [
+            {
+              "name": "entries",
+              "type": "PrefixedArray<unknown>"
+            },
+            {
+              "name": "rootIndex",
+              "type": "VarInt"
+            }
+          ]
+        },
+        "container_close": {
+          "id": "0x11",
+          "fields": [
+            {
+              "name": "containerId",
+              "type": "ContainerId"
+            }
+          ]
+        },
+        "container_set_content": {
+          "id": "0x12",
+          "fields": []
+        },
+        "container_set_data": {
+          "id": "0x13",
+          "fields": [
+            {
+              "name": "containerId",
+              "type": "ContainerId"
+            },
+            {
+              "name": "id",
+              "type": "Short"
+            },
+            {
+              "name": "value",
+              "type": "Short"
+            }
+          ]
+        },
+        "container_set_slot": {
+          "id": "0x14",
+          "fields": [
+            {
+              "name": "containerId",
+              "type": "ContainerId"
+            },
+            {
+              "name": "stateId",
+              "type": "VarInt"
+            },
+            {
+              "name": "slot",
+              "type": "Short"
+            }
+          ]
+        },
+        "cookie_request": {
+          "id": "0x15",
+          "fields": [
+            {
+              "name": "key",
+              "type": "Identifier"
+            }
+          ]
+        },
+        "cooldown": {
+          "id": "0x16",
+          "fields": []
+        },
+        "custom_chat_completions": {
+          "id": "0x17",
+          "fields": [
+            {
+              "name": "action",
+              "type": "Enum"
+            },
+            {
+              "name": "entries",
+              "type": "PrefixedArray<unknown>"
+            }
+          ]
+        },
+        "custom_payload": {
+          "id": "0x18",
+          "fields": []
+        },
+        "damage_event": {
+          "id": "0x19",
+          "fields": [
+            {
+              "name": "entityId",
+              "type": "VarInt"
+            },
+            {
+              "name": "sourcePosition",
+              "type": "Optional<unknown>"
+            }
+          ]
+        },
+        "debug/block_value": {
+          "id": "0x1a",
+          "fields": []
+        },
+        "debug/chunk_value": {
+          "id": "0x1b",
+          "fields": []
+        },
+        "debug/entity_value": {
+          "id": "0x1c",
+          "fields": []
+        },
+        "debug/event": {
+          "id": "0x1d",
+          "fields": []
+        },
+        "debug_sample": {
+          "id": "0x1e",
+          "fields": [
+            {
+              "name": "sample",
+              "type": "LongArray"
+            },
+            {
+              "name": "debugSampleType",
+              "type": "Enum"
+            }
+          ]
+        },
+        "delete_chat": {
+          "id": "0x1f",
+          "fields": []
+        },
+        "disconnect": {
+          "id": "0x20",
+          "fields": []
+        },
+        "disguised_chat": {
+          "id": "0x21",
+          "fields": []
+        },
+        "entity_event": {
+          "id": "0x22",
+          "fields": [
+            {
+              "name": "entityId",
+              "type": "Int"
+            },
+            {
+              "name": "eventId",
+              "type": "Byte"
+            }
+          ]
+        },
+        "entity_position_sync": {
+          "id": "0x23",
+          "fields": []
+        },
+        "explode": {
+          "id": "0x24",
+          "fields": []
+        },
+        "forget_level_chunk": {
+          "id": "0x25",
+          "fields": [
+            {
+              "name": "pos",
+              "type": "ChunkPos"
+            }
+          ]
+        },
+        "game_event": {
+          "id": "0x26",
+          "fields": [
+            {
+              "name": "event",
+              "type": "Byte"
+            },
+            {
+              "name": "param",
+              "type": "Float"
+            }
+          ]
+        },
+        "game_test_highlight_pos": {
+          "id": "0x27",
+          "fields": []
+        },
+        "mount_screen_open": {
+          "id": "0x28",
+          "fields": [
+            {
+              "name": "containerId",
+              "type": "ContainerId"
+            },
+            {
+              "name": "inventoryColumns",
+              "type": "VarInt"
+            },
+            {
+              "name": "entityId",
+              "type": "Int"
+            }
+          ]
+        },
+        "hurt_animation": {
+          "id": "0x29",
+          "fields": [
+            {
+              "name": "id",
+              "type": "VarInt"
+            },
+            {
+              "name": "yaw",
+              "type": "Float"
+            }
+          ]
+        },
+        "initialize_border": {
+          "id": "0x2a",
+          "fields": [
+            {
+              "name": "newCenterX",
+              "type": "Double"
+            },
+            {
+              "name": "newCenterZ",
+              "type": "Double"
+            },
+            {
+              "name": "oldSize",
+              "type": "Double"
+            },
+            {
+              "name": "newSize",
+              "type": "Double"
+            },
+            {
+              "name": "lerpTime",
+              "type": "VarLong"
+            },
+            {
+              "name": "newAbsoluteMaxSize",
+              "type": "VarInt"
+            },
+            {
+              "name": "warningBlocks",
+              "type": "VarInt"
+            },
+            {
+              "name": "warningTime",
+              "type": "VarInt"
+            }
+          ]
+        },
+        "keep_alive": {
+          "id": "0x2b",
+          "fields": [
+            {
+              "name": "id",
+              "type": "Long"
+            }
+          ]
+        },
+        "level_chunk_with_light": {
+          "id": "0x2c",
+          "fields": [
+            {
+              "name": "x",
+              "type": "Int"
+            },
+            {
+              "name": "z",
+              "type": "Int"
+            }
+          ]
+        },
+        "level_event": {
+          "id": "0x2d",
+          "fields": [
+            {
+              "name": "type",
+              "type": "Int"
+            },
+            {
+              "name": "pos",
+              "type": "Position"
+            },
+            {
+              "name": "data",
+              "type": "Int"
+            },
+            {
+              "name": "globalEvent",
+              "type": "Boolean"
+            }
+          ]
+        },
+        "level_particles": {
+          "id": "0x2e",
+          "fields": [
+            {
+              "name": "overrideLimiter",
+              "type": "Boolean"
+            },
+            {
+              "name": "alwaysShow",
+              "type": "Boolean"
+            },
+            {
+              "name": "x",
+              "type": "Double"
+            },
+            {
+              "name": "y",
+              "type": "Double"
+            },
+            {
+              "name": "z",
+              "type": "Double"
+            },
+            {
+              "name": "xDist",
+              "type": "Float"
+            },
+            {
+              "name": "yDist",
+              "type": "Float"
+            },
+            {
+              "name": "zDist",
+              "type": "Float"
+            },
+            {
+              "name": "maxSpeed",
+              "type": "Float"
+            },
+            {
+              "name": "count",
+              "type": "Int"
+            }
+          ]
+        },
+        "light_update": {
+          "id": "0x2f",
+          "fields": [
+            {
+              "name": "x",
+              "type": "VarInt"
+            },
+            {
+              "name": "z",
+              "type": "VarInt"
+            }
+          ]
+        },
+        "login": {
+          "id": "0x30",
+          "fields": [
+            {
+              "name": "playerId",
+              "type": "Int"
+            },
+            {
+              "name": "hardcore",
+              "type": "Boolean"
+            },
+            {
+              "name": "levels",
+              "type": "PrefixedArray<unknown>"
+            },
+            {
+              "name": "maxPlayers",
+              "type": "VarInt"
+            },
+            {
+              "name": "chunkRadius",
+              "type": "VarInt"
+            },
+            {
+              "name": "simulationDistance",
+              "type": "VarInt"
+            },
+            {
+              "name": "reducedDebugInfo",
+              "type": "Boolean"
+            },
+            {
+              "name": "showDeathScreen",
+              "type": "Boolean"
+            },
+            {
+              "name": "doLimitedCrafting",
+              "type": "Boolean"
+            },
+            {
+              "name": "enforcesSecureChat",
+              "type": "Boolean"
+            }
+          ]
+        },
+        "map_item_data": {
+          "id": "0x31",
+          "fields": []
+        },
+        "merchant_offers": {
+          "id": "0x32",
+          "fields": [
+            {
+              "name": "containerId",
+              "type": "ContainerId"
+            },
+            {
+              "name": "villagerLevel",
+              "type": "VarInt"
+            },
+            {
+              "name": "villagerXp",
+              "type": "VarInt"
+            },
+            {
+              "name": "showProgress",
+              "type": "Boolean"
+            },
+            {
+              "name": "canRestock",
+              "type": "Boolean"
+            }
+          ]
+        },
+        "move_entity_pos": {
+          "id": "0x33",
+          "fields": [
+            {
+              "name": "entityId",
+              "type": "VarInt"
+            },
+            {
+              "name": "xa",
+              "type": "Short"
+            },
+            {
+              "name": "ya",
+              "type": "Short"
+            },
+            {
+              "name": "za",
+              "type": "Short"
+            },
+            {
+              "name": "onGround",
+              "type": "Boolean"
+            }
+          ]
+        },
+        "move_entity_pos_rot": {
+          "id": "0x34",
+          "fields": [
+            {
+              "name": "entityId",
+              "type": "VarInt"
+            },
+            {
+              "name": "xa",
+              "type": "Short"
+            },
+            {
+              "name": "ya",
+              "type": "Short"
+            },
+            {
+              "name": "za",
+              "type": "Short"
+            },
+            {
+              "name": "yRot",
+              "type": "Byte"
+            },
+            {
+              "name": "xRot",
+              "type": "Byte"
+            },
+            {
+              "name": "onGround",
+              "type": "Boolean"
+            }
+          ]
+        },
+        "move_minecart_along_track": {
+          "id": "0x35",
+          "fields": []
+        },
+        "move_entity_rot": {
+          "id": "0x36",
+          "fields": [
+            {
+              "name": "entityId",
+              "type": "VarInt"
+            },
+            {
+              "name": "yRot",
+              "type": "Byte"
+            },
+            {
+              "name": "xRot",
+              "type": "Byte"
+            },
+            {
+              "name": "onGround",
+              "type": "Boolean"
+            }
+          ]
+        },
+        "move_vehicle": {
+          "id": "0x37",
+          "fields": []
+        },
+        "open_book": {
+          "id": "0x38",
+          "fields": [
+            {
+              "name": "hand",
+              "type": "Enum"
+            }
+          ]
+        },
+        "open_screen": {
+          "id": "0x39",
+          "fields": []
+        },
+        "open_sign_editor": {
+          "id": "0x3a",
+          "fields": [
+            {
+              "name": "pos",
+              "type": "Position"
+            },
+            {
+              "name": "isFrontText",
+              "type": "Boolean"
+            }
+          ]
+        },
+        "ping": {
+          "id": "0x3b",
+          "fields": [
+            {
+              "name": "id",
+              "type": "Int"
+            }
+          ]
+        },
+        "pong_response": {
+          "id": "0x3c",
+          "fields": [
+            {
+              "name": "id",
+              "type": "Int"
+            }
+          ]
+        },
+        "place_ghost_recipe": {
+          "id": "0x3d",
+          "fields": []
+        },
+        "player_abilities": {
+          "id": "0x3e",
+          "fields": [
+            {
+              "name": "instabuild",
+              "type": "Byte"
+            },
+            {
+              "name": "flyingSpeed",
+              "type": "Float"
+            },
+            {
+              "name": "walkingSpeed",
+              "type": "Float"
+            }
+          ]
+        },
+        "player_chat": {
+          "id": "0x3f",
+          "fields": [
+            {
+              "name": "globalIndex",
+              "type": "VarInt"
+            },
+            {
+              "name": "sender",
+              "type": "UUID"
+            },
+            {
+              "name": "index",
+              "type": "VarInt"
+            },
+            {
+              "name": "signature",
+              "type": "Nullable<unknown>"
+            },
+            {
+              "name": "unsignedContent",
+              "type": "Nullable<unknown>"
+            }
+          ]
+        },
+        "player_combat_end": {
+          "id": "0x40",
+          "fields": [
+            {
+              "name": "duration",
+              "type": "VarInt"
+            }
+          ]
+        },
+        "player_combat_enter": {
+          "id": "0x41",
+          "fields": []
+        },
+        "player_combat_kill": {
+          "id": "0x42",
+          "fields": []
+        },
+        "player_info_remove": {
+          "id": "0x43",
+          "fields": [
+            {
+              "name": "profileIds",
+              "type": "PrefixedArray<unknown>"
+            }
+          ]
+        },
+        "player_info_update": {
+          "id": "0x44",
+          "fields": [
+            {
+              "name": "actions",
+              "type": "EnumSet<unknown>"
+            },
+            {
+              "name": "entries",
+              "type": "PrefixedArray<unknown>"
+            }
+          ]
+        },
+        "player_look_at": {
+          "id": "0x45",
+          "fields": [
+            {
+              "name": "fromAnchor",
+              "type": "Enum"
+            },
+            {
+              "name": "x",
+              "type": "Double"
+            },
+            {
+              "name": "y",
+              "type": "Double"
+            },
+            {
+              "name": "z",
+              "type": "Double"
+            },
+            {
+              "name": "atEntity",
+              "type": "Boolean"
+            },
+            {
+              "name": "entity",
+              "type": "VarInt"
+            },
+            {
+              "name": "toAnchor",
+              "type": "Enum"
+            }
+          ]
+        },
+        "player_position": {
+          "id": "0x46",
+          "fields": []
+        },
+        "player_rotation": {
+          "id": "0x47",
+          "fields": []
+        },
+        "recipe_book_add": {
+          "id": "0x48",
+          "fields": []
+        },
+        "recipe_book_remove": {
+          "id": "0x49",
+          "fields": []
+        },
+        "recipe_book_settings": {
+          "id": "0x4a",
+          "fields": []
+        },
+        "remove_entities": {
+          "id": "0x4b",
+          "fields": [
+            {
+              "name": "entityIds",
+              "type": "unknown"
+            }
+          ]
+        },
+        "remove_mob_effect": {
+          "id": "0x4c",
+          "fields": []
+        },
+        "reset_score": {
+          "id": "0x4d",
+          "fields": [
+            {
+              "name": "owner",
+              "type": "String"
+            },
+            {
+              "name": "objectiveName",
+              "type": "Nullable<unknown>"
+            }
+          ]
+        },
+        "resource_pack_pop": {
+          "id": "0x4e",
+          "fields": [
+            {
+              "name": "id",
+              "type": "Optional<unknown>"
+            }
+          ]
+        },
+        "resource_pack_push": {
+          "id": "0x4f",
+          "fields": []
+        },
+        "respawn": {
+          "id": "0x50",
+          "fields": [
+            {
+              "name": "dataToKeep",
+              "type": "Byte"
+            }
+          ]
+        },
+        "rotate_head": {
+          "id": "0x51",
+          "fields": [
+            {
+              "name": "entityId",
+              "type": "VarInt"
+            },
+            {
+              "name": "yHeadRot",
+              "type": "Byte"
+            }
+          ]
+        },
+        "section_blocks_update": {
+          "id": "0x52",
+          "fields": [
+            {
+              "name": "positions",
+              "type": "VarInt"
+            }
+          ]
+        },
+        "select_advancements_tab": {
+          "id": "0x53",
+          "fields": [
+            {
+              "name": "tab",
+              "type": "Nullable<unknown>"
+            }
+          ]
+        },
+        "server_data": {
+          "id": "0x54",
+          "fields": []
+        },
+        "set_action_bar_text": {
+          "id": "0x55",
+          "fields": []
+        },
+        "set_border_center": {
+          "id": "0x56",
+          "fields": [
+            {
+              "name": "newCenterX",
+              "type": "Double"
+            },
+            {
+              "name": "newCenterZ",
+              "type": "Double"
+            }
+          ]
+        },
+        "set_border_lerp_size": {
+          "id": "0x57",
+          "fields": [
+            {
+              "name": "oldSize",
+              "type": "Double"
+            },
+            {
+              "name": "newSize",
+              "type": "Double"
+            },
+            {
+              "name": "lerpTime",
+              "type": "VarLong"
+            }
+          ]
+        },
+        "set_border_size": {
+          "id": "0x58",
+          "fields": [
+            {
+              "name": "size",
+              "type": "Double"
+            }
+          ]
+        },
+        "set_border_warning_delay": {
+          "id": "0x59",
+          "fields": [
+            {
+              "name": "warningDelay",
+              "type": "VarInt"
+            }
+          ]
+        },
+        "set_border_warning_distance": {
+          "id": "0x5a",
+          "fields": [
+            {
+              "name": "warningBlocks",
+              "type": "VarInt"
+            }
+          ]
+        },
+        "set_camera": {
+          "id": "0x5b",
+          "fields": [
+            {
+              "name": "cameraId",
+              "type": "VarInt"
+            }
+          ]
+        },
+        "set_chunk_cache_center": {
+          "id": "0x5c",
+          "fields": [
+            {
+              "name": "x",
+              "type": "VarInt"
+            },
+            {
+              "name": "z",
+              "type": "VarInt"
+            }
+          ]
+        },
+        "set_chunk_cache_radius": {
+          "id": "0x5d",
+          "fields": [
+            {
+              "name": "radius",
+              "type": "VarInt"
+            }
+          ]
+        },
+        "set_cursor_item": {
+          "id": "0x5e",
+          "fields": []
+        },
+        "set_default_spawn_position": {
+          "id": "0x5f",
+          "fields": []
+        },
+        "set_display_objective": {
+          "id": "0x60",
+          "fields": [
+            {
+              "name": "slot",
+              "type": "unknown"
+            },
+            {
+              "name": "objectiveName",
+              "type": "String"
+            }
+          ]
+        },
+        "set_entity_data": {
+          "id": "0x61",
+          "fields": [
+            {
+              "name": "id",
+              "type": "VarInt"
+            }
+          ]
+        },
+        "set_entity_link": {
+          "id": "0x62",
+          "fields": [
+            {
+              "name": "sourceId",
+              "type": "Int"
+            },
+            {
+              "name": "destId",
+              "type": "Int"
+            }
+          ]
+        },
+        "set_entity_motion": {
+          "id": "0x63",
+          "fields": [
+            {
+              "name": "id",
+              "type": "VarInt"
+            },
+            {
+              "name": "movement",
+              "type": "LpVec3"
+            }
+          ]
+        },
+        "set_equipment": {
+          "id": "0x64",
+          "fields": [
+            {
+              "name": "entity",
+              "type": "VarInt"
+            },
+            {
+              "name": "slots",
+              "type": "Byte"
+            }
+          ]
+        },
+        "set_experience": {
+          "id": "0x65",
+          "fields": [
+            {
+              "name": "experienceProgress",
+              "type": "Float"
+            },
+            {
+              "name": "experienceLevel",
+              "type": "VarInt"
+            },
+            {
+              "name": "totalExperience",
+              "type": "VarInt"
+            }
+          ]
+        },
+        "set_health": {
+          "id": "0x66",
+          "fields": [
+            {
+              "name": "health",
+              "type": "Float"
+            },
+            {
+              "name": "food",
+              "type": "VarInt"
+            },
+            {
+              "name": "saturation",
+              "type": "Float"
+            }
+          ]
+        },
+        "set_held_slot": {
+          "id": "0x67",
+          "fields": []
+        },
+        "set_objective": {
+          "id": "0x68",
+          "fields": [
+            {
+              "name": "objectiveName",
+              "type": "String"
+            },
+            {
+              "name": "method",
+              "type": "Byte"
+            },
+            {
+              "name": "renderType",
+              "type": "Enum"
+            }
+          ]
+        },
+        "set_passengers": {
+          "id": "0x69",
+          "fields": [
+            {
+              "name": "vehicle",
+              "type": "VarInt"
+            },
+            {
+              "name": "passengers",
+              "type": "VarIntArray"
+            }
+          ]
+        },
+        "set_player_inventory": {
+          "id": "0x6a",
+          "fields": []
+        },
+        "set_player_team": {
+          "id": "0x6b",
+          "fields": [
+            {
+              "name": "name",
+              "type": "String"
+            },
+            {
+              "name": "method",
+              "type": "Byte"
+            },
+            {
+              "name": "players",
+              "type": "PrefixedArray<unknown>"
+            }
+          ]
+        },
+        "set_score": {
+          "id": "0x6c",
+          "fields": []
+        },
+        "set_simulation_distance": {
+          "id": "0x6d",
+          "fields": [
+            {
+              "name": "simulationDistance",
+              "type": "VarInt"
+            }
+          ]
+        },
+        "set_subtitle_text": {
+          "id": "0x6e",
+          "fields": []
+        },
+        "set_time": {
+          "id": "0x6f",
+          "fields": []
+        },
+        "set_title_text": {
+          "id": "0x70",
+          "fields": []
+        },
+        "set_titles_animation": {
+          "id": "0x71",
+          "fields": [
+            {
+              "name": "fadeIn",
+              "type": "Int"
+            },
+            {
+              "name": "stay",
+              "type": "Int"
+            },
+            {
+              "name": "fadeOut",
+              "type": "Int"
+            }
+          ]
+        },
+        "sound_entity": {
+          "id": "0x72",
+          "fields": [
+            {
+              "name": "source",
+              "type": "Enum"
+            },
+            {
+              "name": "id",
+              "type": "VarInt"
+            },
+            {
+              "name": "volume",
+              "type": "Float"
+            },
+            {
+              "name": "pitch",
+              "type": "Float"
+            },
+            {
+              "name": "seed",
+              "type": "Long"
+            }
+          ]
+        },
+        "sound": {
+          "id": "0x73",
+          "fields": [
+            {
+              "name": "source",
+              "type": "Enum"
+            },
+            {
+              "name": "x",
+              "type": "Int"
+            },
+            {
+              "name": "y",
+              "type": "Int"
+            },
+            {
+              "name": "z",
+              "type": "Int"
+            },
+            {
+              "name": "volume",
+              "type": "Float"
+            },
+            {
+              "name": "pitch",
+              "type": "Float"
+            },
+            {
+              "name": "seed",
+              "type": "Long"
+            }
+          ]
+        },
+        "start_configuration": {
+          "id": "0x74",
+          "fields": []
+        },
+        "stop_sound": {
+          "id": "0x75",
+          "fields": [
+            {
+              "name": "name",
+              "type": "Byte"
+            },
+            {
+              "name": "source",
+              "type": "Enum"
+            }
+          ]
+        },
+        "store_cookie": {
+          "id": "0x76",
+          "fields": [
+            {
+              "name": "key",
+              "type": "Identifier"
+            }
+          ]
+        },
+        "system_chat": {
+          "id": "0x77",
+          "fields": []
+        },
+        "tab_list": {
+          "id": "0x78",
+          "fields": []
+        },
+        "tag_query": {
+          "id": "0x79",
+          "fields": [
+            {
+              "name": "transactionId",
+              "type": "VarInt"
+            },
+            {
+              "name": "tag",
+              "type": "NBT"
+            }
+          ]
+        },
+        "take_item_entity": {
+          "id": "0x7a",
+          "fields": [
+            {
+              "name": "itemId",
+              "type": "VarInt"
+            },
+            {
+              "name": "playerId",
+              "type": "VarInt"
+            },
+            {
+              "name": "amount",
+              "type": "VarInt"
+            }
+          ]
+        },
+        "teleport_entity": {
+          "id": "0x7b",
+          "fields": []
+        },
+        "test_instance_block_status": {
+          "id": "0x7c",
+          "fields": []
+        },
+        "ticking_state": {
+          "id": "0x7d",
+          "fields": [
+            {
+              "name": "tickRate",
+              "type": "Float"
+            },
+            {
+              "name": "isFrozen",
+              "type": "Boolean"
+            }
+          ]
+        },
+        "ticking_step": {
+          "id": "0x7e",
+          "fields": [
+            {
+              "name": "tickSteps",
+              "type": "VarInt"
+            }
+          ]
+        },
+        "transfer": {
+          "id": "0x7f",
+          "fields": [
+            {
+              "name": "host",
+              "type": "String"
+            },
+            {
+              "name": "port",
+              "type": "VarInt"
+            }
+          ]
+        },
+        "update_advancements": {
+          "id": "0x80",
+          "fields": [
+            {
+              "name": "reset",
+              "type": "Boolean"
+            },
+            {
+              "name": "removed",
+              "type": "PrefixedArray<unknown>"
+            },
+            {
+              "name": "progress",
+              "type": "Map<unknown, unknown>"
+            },
+            {
+              "name": "showAdvancements",
+              "type": "Boolean"
+            }
+          ]
+        },
+        "update_attributes": {
+          "id": "0x81",
+          "fields": []
+        },
+        "update_mob_effect": {
+          "id": "0x82",
+          "fields": [
+            {
+              "name": "entityId",
+              "type": "VarInt"
+            },
+            {
+              "name": "effectAmplifier",
+              "type": "VarInt"
+            },
+            {
+              "name": "effectDurationTicks",
+              "type": "VarInt"
+            },
+            {
+              "name": "flags",
+              "type": "Byte"
+            }
+          ]
+        },
+        "update_recipes": {
+          "id": "0x83",
+          "fields": []
+        },
+        "update_tags": {
+          "id": "0x84",
+          "fields": [
+            {
+              "name": "tags",
+              "type": "Map<unknown, unknown>"
+            }
+          ]
+        },
+        "projectile_power": {
+          "id": "0x85",
+          "fields": [
+            {
+              "name": "id",
+              "type": "VarInt"
+            },
+            {
+              "name": "accelerationPower",
+              "type": "Double"
+            }
+          ]
+        },
+        "custom_report_details": {
+          "id": "0x86",
+          "fields": []
+        },
+        "server_links": {
+          "id": "0x87",
+          "fields": []
+        },
+        "waypoint": {
+          "id": "0x88",
+          "fields": []
+        },
+        "clear_dialog": {
+          "id": "0x89",
+          "fields": []
+        },
+        "show_dialog": {
+          "id": "0x8a",
+          "fields": []
+        }
       }
     }
   },
-  "clientbound": {
-    "status": {
-      "status_response": {
-        "id": "0x00",
-        "fields": [
-          {
-            "name": "status",
-            "type": "ServerStatus"
-          }
-        ]
-      },
-      "pong_response": {
-        "id": "0x01"
-      }
+  "types": {
+    "Boolean": {
+      "read": [
+        "readBoolean"
+      ],
+      "write": [
+        "writeBoolean"
+      ]
     },
-    "login": {
-      "login_disconnect": {
-        "id": "0x00",
-        "fields": [
-          {
-            "name": "reason",
-            "type": "Component"
-          }
-        ]
-      },
-      "hello": {
-        "id": "0x01",
-        "fields": [
-          {
-            "name": "server_id",
-            "type": "String"
-          },
-          {
-            "name": "public_key",
-            "type": "Array<byte>"
-          },
-          {
-            "name": "challenge",
-            "type": "Array<byte>"
-          },
-          {
-            "name": "should_authenticate",
-            "type": "boolean"
-          }
-        ]
-      },
-      "login_finished": {
-        "id": "0x02",
-        "fields": [
-          {
-            "name": "game_profile",
-            "type": "GameProfile"
-          }
-        ]
-      },
-      "login_compression": {
-        "id": "0x03",
-        "fields": [
-          {
-            "name": "compression_threshold",
-            "type": "int"
-          }
-        ]
-      },
-      "custom_query": {
-        "id": "0x04",
-        "fields": [
-          {
-            "name": "transaction_id",
-            "type": "int"
-          },
-          {
-            "name": "payload",
-            "type": "CustomQueryPayload"
-          }
-        ]
-      },
-      "cookie_request": {
-        "id": "0x05"
-      }
+    "Byte": {
+      "read": [
+        "readByte"
+      ],
+      "write": [
+        "writeByte"
+      ]
     },
-    "config": {
-      "cookie_request": {
-        "id": "0x00"
-      },
-      "custom_payload": {
-        "id": "0x01",
-        "fields": [
-          {
-            "name": "payload",
-            "type": "CustomPacketPayload"
-          }
-        ]
-      },
-      "disconnect": {
-        "id": "0x02",
-        "fields": [
-          {
-            "name": "reason",
-            "type": "Component"
-          }
-        ]
-      },
-      "finish_configuration": {
-        "id": "0x03",
-        "fields": []
-      },
-      "keep_alive": {
-        "id": "0x04",
-        "fields": [
-          {
-            "name": "id",
-            "type": "long"
-          }
-        ]
-      },
-      "ping": {
-        "id": "0x05",
-        "fields": [
-          {
-            "name": "id",
-            "type": "int"
-          }
-        ]
-      },
-      "reset_chat": {
-        "id": "0x06",
-        "fields": []
-      },
-      "registry_data": {
-        "id": "0x07",
-        "fields": [
-          {
-            "name": "registry",
-            "type": "ResourceKey<Registry<Object>>"
-          },
-          {
-            "name": "entries",
-            "type": "List<PackedRegistryEntry>"
-          }
-        ]
-      },
-      "resource_pack_pop": {
-        "id": "0x08",
-        "fields": [
-          {
-            "name": "id",
-            "type": "Optional<UUID>"
-          }
-        ]
-      },
-      "resource_pack_push": {
-        "id": "0x09",
-        "fields": [
-          {
-            "name": "id",
-            "type": "UUID"
-          },
-          {
-            "name": "url",
-            "type": "String"
-          },
-          {
-            "name": "hash",
-            "type": "String"
-          },
-          {
-            "name": "required",
-            "type": "boolean"
-          },
-          {
-            "name": "prompt",
-            "type": "Optional<Component>"
-          }
-        ]
-      },
-      "store_cookie": {
-        "id": "0x0A",
-        "fields": [
-          {
-            "name": "key",
-            "type": "ResourceLocation"
-          },
-          {
-            "name": "payload",
-            "type": "Array<byte>"
-          }
-        ]
-      },
-      "transfer": {
-        "id": "0x0B",
-        "fields": [
-          {
-            "name": "host",
-            "type": "String"
-          },
-          {
-            "name": "port",
-            "type": "int"
-          }
-        ]
-      },
-      "update_enabled_features": {
-        "id": "0x0C",
-        "fields": [
-          {
-            "name": "features",
-            "type": "Set<ResourceLocation>"
-          }
-        ]
-      },
-      "update_tags": {
-        "id": "0x0D",
-        "fields": [
-          {
-            "name": "tags",
-            "type": "Map<ResourceKey<Registry<Object>>, NetworkPayload>"
-          }
-        ]
-      },
-      "select_known_packs": {
-        "id": "0x0E"
-      },
-      "custom_report_details": {
-        "id": "0x0F",
-        "fields": [
-          {
-            "name": "details",
-            "type": "Map<String, String>"
-          }
-        ]
-      },
-      "server_links": {
-        "id": "0x10",
-        "fields": [
-          {
-            "name": "links",
-            "type": "List<UntrustedEntry>"
-          }
-        ]
-      },
-      "clear_dialog": {
-        "id": "0x11",
-        "fields": []
-      },
-      "show_dialog": {
-        "id": "0x12",
-        "fields": [
-          {
-            "name": "dialog",
-            "type": "Holder<Dialog>"
-          }
-        ]
-      },
-      "code_of_conduct": {
-        "id": "0x13",
-        "fields": [
-          {
-            "name": "code_of_conduct",
-            "type": "String"
-          }
-        ]
-      }
+    "UnsignedByte": {
+      "read": [
+        "readUnsignedByte"
+      ],
+      "write": [
+        "writeByte"
+      ]
     },
-    "play": {
-      "bundle_delimiter": {
-        "id": "0x00",
-        "fields": []
-      },
-      "add_entity": {
-        "id": "0x01",
-        "fields": [
-          {
-            "name": "id",
-            "type": "int"
-          },
-          {
-            "name": "uuid",
-            "type": "UUID"
-          },
-          {
-            "name": "type",
-            "type": "EntityType<Object>"
-          },
-          {
-            "name": "x",
-            "type": "double"
-          },
-          {
-            "name": "y",
-            "type": "double"
-          },
-          {
-            "name": "z",
-            "type": "double"
-          },
-          {
-            "name": "movement",
-            "type": "Vec3"
-          },
-          {
-            "name": "x_rot",
-            "type": "byte"
-          },
-          {
-            "name": "y_rot",
-            "type": "byte"
-          },
-          {
-            "name": "y_head_rot",
-            "type": "byte"
-          },
-          {
-            "name": "data",
-            "type": "int"
-          }
-        ]
-      },
-      "animate": {
-        "id": "0x02",
-        "fields": [
-          {
-            "name": "id",
-            "type": "int"
-          },
-          {
-            "name": "action",
-            "type": "int"
-          }
-        ]
-      },
-      "award_stats": {
-        "id": "0x03",
-        "fields": [
-          {
-            "name": "stats",
-            "type": "Object2IntMap<Stat<Object>>"
-          }
-        ]
-      },
-      "block_changed_ack": {
-        "id": "0x04",
-        "fields": [
-          {
-            "name": "sequence",
-            "type": "int"
-          }
-        ]
-      },
-      "block_destruction": {
-        "id": "0x05",
-        "fields": [
-          {
-            "name": "id",
-            "type": "int"
-          },
-          {
-            "name": "pos",
-            "type": "BlockPos"
-          },
-          {
-            "name": "progress",
-            "type": "int"
-          }
-        ]
-      },
-      "block_entity_data": {
-        "id": "0x06",
-        "fields": [
-          {
-            "name": "pos",
-            "type": "BlockPos"
-          },
-          {
-            "name": "type",
-            "type": "BlockEntityType<Object>"
-          },
-          {
-            "name": "tag",
-            "type": "CompoundTag"
-          }
-        ]
-      },
-      "block_event": {
-        "id": "0x07",
-        "fields": [
-          {
-            "name": "pos",
-            "type": "BlockPos"
-          },
-          {
-            "name": "b0",
-            "type": "int"
-          },
-          {
-            "name": "b1",
-            "type": "int"
-          },
-          {
-            "name": "block",
-            "type": "Block"
-          }
-        ]
-      },
-      "block_update": {
-        "id": "0x08",
-        "fields": [
-          {
-            "name": "pos",
-            "type": "BlockPos"
-          },
-          {
-            "name": "block_state",
-            "type": "BlockState"
-          }
-        ]
-      },
-      "boss_event": {
-        "id": "0x09",
-        "fields": [
-          {
-            "name": "id",
-            "type": "UUID"
-          },
-          {
-            "name": "operation",
-            "type": "Operation"
-          }
-        ]
-      },
-      "change_difficulty": {
-        "id": "0x0A",
-        "fields": [
-          {
-            "name": "difficulty",
-            "type": "Difficulty"
-          },
-          {
-            "name": "locked",
-            "type": "boolean"
-          }
-        ]
-      },
-      "chunk_batch_finished": {
-        "id": "0x0B",
-        "fields": [
-          {
-            "name": "batch_size",
-            "type": "int"
-          }
-        ]
-      },
-      "chunk_batch_start": {
-        "id": "0x0C",
-        "fields": []
-      },
-      "chunks_biomes": {
-        "id": "0x0D",
-        "fields": [
-          {
-            "name": "chunk_biome_data",
-            "type": "List<ChunkBiomeData>"
-          }
-        ]
-      },
-      "clear_titles": {
-        "id": "0x0E",
-        "fields": [
-          {
-            "name": "reset_times",
-            "type": "boolean"
-          }
-        ]
-      },
-      "command_suggestions": {
-        "id": "0x0F",
-        "fields": [
-          {
-            "name": "id",
-            "type": "int"
-          },
-          {
-            "name": "start",
-            "type": "int"
-          },
-          {
-            "name": "length",
-            "type": "int"
-          },
-          {
-            "name": "suggestions",
-            "type": "List<Entry>"
-          }
-        ]
-      },
-      "commands": {
-        "id": "0x10",
-        "fields": [
-          {
-            "name": "root_index",
-            "type": "int"
-          },
-          {
-            "name": "entries",
-            "type": "List<Entry>"
-          }
-        ]
-      },
-      "container_close": {
-        "id": "0x11",
-        "fields": [
-          {
-            "name": "container_id",
-            "type": "int"
-          }
-        ]
-      },
-      "container_set_content": {
-        "id": "0x12",
-        "fields": [
-          {
-            "name": "container_id",
-            "type": "int"
-          },
-          {
-            "name": "state_id",
-            "type": "int"
-          },
-          {
-            "name": "items",
-            "type": "List<ItemStack>"
-          },
-          {
-            "name": "carried_item",
-            "type": "ItemStack"
-          }
-        ]
-      },
-      "container_set_data": {
-        "id": "0x13",
-        "fields": [
-          {
-            "name": "container_id",
-            "type": "int"
-          },
-          {
-            "name": "id",
-            "type": "int"
-          },
-          {
-            "name": "value",
-            "type": "int"
-          }
-        ]
-      },
-      "container_set_slot": {
-        "id": "0x14",
-        "fields": [
-          {
-            "name": "container_id",
-            "type": "int"
-          },
-          {
-            "name": "state_id",
-            "type": "int"
-          },
-          {
-            "name": "slot",
-            "type": "int"
-          },
-          {
-            "name": "item_stack",
-            "type": "ItemStack"
-          }
-        ]
-      },
-      "cookie_request": {
-        "id": "0x15"
-      },
-      "cooldown": {
-        "id": "0x16",
-        "fields": [
-          {
-            "name": "cooldown_group",
-            "type": "ResourceLocation"
-          },
-          {
-            "name": "duration",
-            "type": "int"
-          }
-        ]
-      },
-      "custom_chat_completions": {
-        "id": "0x17",
-        "fields": [
-          {
-            "name": "action",
-            "type": "Action"
-          },
-          {
-            "name": "entries",
-            "type": "List<String>"
-          }
-        ]
-      },
-      "custom_payload": {
-        "id": "0x18",
-        "fields": [
-          {
-            "name": "payload",
-            "type": "CustomPacketPayload"
-          }
-        ]
-      },
-      "damage_event": {
-        "id": "0x19",
-        "fields": [
-          {
-            "name": "entity_id",
-            "type": "int"
-          },
-          {
-            "name": "source_type",
-            "type": "Holder<DamageType>"
-          },
-          {
-            "name": "source_cause_id",
-            "type": "int"
-          },
-          {
-            "name": "source_direct_id",
-            "type": "int"
-          },
-          {
-            "name": "source_position",
-            "type": "Optional<Vec3>"
-          }
-        ]
-      },
-      "debug/block_value": {
-        "id": "0x1A"
-      },
-      "debug/chunk_value": {
-        "id": "0x1B"
-      },
-      "debug/entity_value": {
-        "id": "0x1C"
-      },
-      "debug/event": {
-        "id": "0x1D"
-      },
-      "debug_sample": {
-        "id": "0x1E",
-        "fields": [
-          {
-            "name": "sample",
-            "type": "Array<long>"
-          },
-          {
-            "name": "debug_sample_type",
-            "type": "RemoteDebugSampleType"
-          }
-        ]
-      },
-      "delete_chat": {
-        "id": "0x1F",
-        "fields": [
-          {
-            "name": "message_signature",
-            "type": "Packed"
-          }
-        ]
-      },
-      "disconnect": {
-        "id": "0x20",
-        "fields": [
-          {
-            "name": "reason",
-            "type": "Component"
-          }
-        ]
-      },
-      "disguised_chat": {
-        "id": "0x21",
-        "fields": [
-          {
-            "name": "message",
-            "type": "Component"
-          },
-          {
-            "name": "chat_type",
-            "type": "Bound"
-          }
-        ]
-      },
-      "entity_event": {
-        "id": "0x22",
-        "fields": [
-          {
-            "name": "entity_id",
-            "type": "int"
-          },
-          {
-            "name": "event_id",
-            "type": "byte"
-          }
-        ]
-      },
-      "entity_position_sync": {
-        "id": "0x23",
-        "fields": [
-          {
-            "name": "id",
-            "type": "int"
-          },
-          {
-            "name": "values",
-            "type": "PositionMoveRotation"
-          },
-          {
-            "name": "on_ground",
-            "type": "boolean"
-          }
-        ]
-      },
-      "explode": {
-        "id": "0x24",
-        "fields": [
-          {
-            "name": "center",
-            "type": "Vec3"
-          },
-          {
-            "name": "radius",
-            "type": "float"
-          },
-          {
-            "name": "block_count",
-            "type": "i32"
-          },
-          {
-            "name": "player_knockback",
-            "type": "Optional<Vec3>"
-          },
-          {
-            "name": "explosion_particle",
-            "type": "ParticleOptions"
-          },
-          {
-            "name": "explosion_sound",
-            "type": "Holder<SoundEvent>"
-          },
-          {
-            "name": "block_particles",
-            "type": "WeightedList<ExplosionParticleInfo>"
-          }
-        ]
-      },
-      "forget_level_chunk": {
-        "id": "0x25",
-        "fields": [
-          {
-            "name": "pos",
-            "type": "ChunkPos"
-          }
-        ]
-      },
-      "game_event": {
-        "id": "0x26",
-        "fields": [
-          {
-            "name": "event",
-            "type": "Type"
-          },
-          {
-            "name": "param",
-            "type": "float"
-          }
-        ]
-      },
-      "game_test_highlight_pos": {
-        "id": "0x27",
-        "fields": [
-          {
-            "name": "absolute_pos",
-            "type": "BlockPos"
-          },
-          {
-            "name": "relative_pos",
-            "type": "BlockPos"
-          }
-        ]
-      },
-      "horse_screen_open": {
-        "id": "0x28",
-        "fields": [
-          {
-            "name": "container_id",
-            "type": "int"
-          },
-          {
-            "name": "inventory_columns",
-            "type": "int"
-          },
-          {
-            "name": "entity_id",
-            "type": "int"
-          }
-        ]
-      },
-      "hurt_animation": {
-        "id": "0x29",
-        "fields": [
-          {
-            "name": "id",
-            "type": "int"
-          },
-          {
-            "name": "yaw",
-            "type": "float"
-          }
-        ]
-      },
-      "initialize_border": {
-        "id": "0x2A",
-        "fields": [
-          {
-            "name": "new_center_x",
-            "type": "double"
-          },
-          {
-            "name": "new_center_z",
-            "type": "double"
-          },
-          {
-            "name": "old_size",
-            "type": "double"
-          },
-          {
-            "name": "new_size",
-            "type": "double"
-          },
-          {
-            "name": "lerp_time",
-            "type": "long"
-          },
-          {
-            "name": "new_absolute_max_size",
-            "type": "int"
-          },
-          {
-            "name": "warning_blocks",
-            "type": "int"
-          },
-          {
-            "name": "warning_time",
-            "type": "int"
-          }
-        ]
-      },
-      "keep_alive": {
-        "id": "0x2B",
-        "fields": [
-          {
-            "name": "id",
-            "type": "long"
-          }
-        ]
-      },
-      "level_chunk_with_light": {
-        "id": "0x2C",
-        "fields": [
-          {
-            "name": "x",
-            "type": "int"
-          },
-          {
-            "name": "z",
-            "type": "int"
-          },
-          {
-            "name": "chunk_data",
-            "type": "ClientboundLevelChunkPacketData"
-          },
-          {
-            "name": "light_data",
-            "type": "ClientboundLightUpdatePacketData"
-          }
-        ]
-      },
-      "level_event": {
-        "id": "0x2D",
-        "fields": [
-          {
-            "name": "type",
-            "type": "int"
-          },
-          {
-            "name": "pos",
-            "type": "BlockPos"
-          },
-          {
-            "name": "data",
-            "type": "int"
-          },
-          {
-            "name": "global_event",
-            "type": "boolean"
-          }
-        ]
-      },
-      "level_particles": {
-        "id": "0x2E",
-        "fields": [
-          {
-            "name": "x",
-            "type": "double"
-          },
-          {
-            "name": "y",
-            "type": "double"
-          },
-          {
-            "name": "z",
-            "type": "double"
-          },
-          {
-            "name": "x_dist",
-            "type": "float"
-          },
-          {
-            "name": "y_dist",
-            "type": "float"
-          },
-          {
-            "name": "z_dist",
-            "type": "float"
-          },
-          {
-            "name": "max_speed",
-            "type": "float"
-          },
-          {
-            "name": "count",
-            "type": "int"
-          },
-          {
-            "name": "override_limiter",
-            "type": "boolean"
-          },
-          {
-            "name": "always_show",
-            "type": "boolean"
-          },
-          {
-            "name": "particle",
-            "type": "ParticleOptions"
-          }
-        ]
-      },
-      "light_update": {
-        "id": "0x2F",
-        "fields": [
-          {
-            "name": "x",
-            "type": "int"
-          },
-          {
-            "name": "z",
-            "type": "int"
-          },
-          {
-            "name": "light_data",
-            "type": "ClientboundLightUpdatePacketData"
-          }
-        ]
-      },
-      "login": {
-        "id": "0x30",
-        "fields": [
-          {
-            "name": "player_id",
-            "type": "i32"
-          },
-          {
-            "name": "hardcore",
-            "type": "boolean"
-          },
-          {
-            "name": "levels",
-            "type": "Set<ResourceKey<Level>>"
-          },
-          {
-            "name": "max_players",
-            "type": "int"
-          },
-          {
-            "name": "chunk_radius",
-            "type": "int"
-          },
-          {
-            "name": "simulation_distance",
-            "type": "int"
-          },
-          {
-            "name": "reduced_debug_info",
-            "type": "boolean"
-          },
-          {
-            "name": "show_death_screen",
-            "type": "boolean"
-          },
-          {
-            "name": "do_limited_crafting",
-            "type": "boolean"
-          },
-          {
-            "name": "common_player_spawn_info",
-            "type": "CommonPlayerSpawnInfo"
-          },
-          {
-            "name": "enforces_secure_chat",
-            "type": "boolean"
-          }
-        ]
-      },
-      "map_item_data": {
-        "id": "0x31",
-        "fields": [
-          {
-            "name": "map_id",
-            "type": "MapId"
-          },
-          {
-            "name": "scale",
-            "type": "byte"
-          },
-          {
-            "name": "locked",
-            "type": "boolean"
-          },
-          {
-            "name": "decorations",
-            "type": "Optional<List<MapDecoration>>"
-          },
-          {
-            "name": "color_patch",
-            "type": "Optional<MapPatch>"
-          }
-        ]
-      },
-      "merchant_offers": {
-        "id": "0x32",
-        "fields": [
-          {
-            "name": "container_id",
-            "type": "int"
-          },
-          {
-            "name": "offers",
-            "type": "MerchantOffers"
-          },
-          {
-            "name": "villager_level",
-            "type": "int"
-          },
-          {
-            "name": "villager_xp",
-            "type": "int"
-          },
-          {
-            "name": "show_progress",
-            "type": "boolean"
-          },
-          {
-            "name": "can_restock",
-            "type": "boolean"
-          }
-        ]
-      },
-      "move_entity_pos": {
-        "id": "0x33"
-      },
-      "move_entity_pos_rot": {
-        "id": "0x34"
-      },
-      "move_minecart_along_track": {
-        "id": "0x35"
-      },
-      "move_entity_rot": {
-        "id": "0x36"
-      },
-      "move_vehicle": {
-        "id": "0x37",
-        "fields": [
-          {
-            "name": "position",
-            "type": "Vec3"
-          },
-          {
-            "name": "y_rot",
-            "type": "float"
-          },
-          {
-            "name": "x_rot",
-            "type": "float"
-          }
-        ]
-      },
-      "open_book": {
-        "id": "0x38",
-        "fields": [
-          {
-            "name": "hand",
-            "type": "InteractionHand"
-          }
-        ]
-      },
-      "open_screen": {
-        "id": "0x39",
-        "fields": [
-          {
-            "name": "container_id",
-            "type": "int"
-          },
-          {
-            "name": "type",
-            "type": "MenuType<Object>"
-          },
-          {
-            "name": "title",
-            "type": "Component"
-          }
-        ]
-      },
-      "open_sign_editor": {
-        "id": "0x3A",
-        "fields": [
-          {
-            "name": "pos",
-            "type": "BlockPos"
-          },
-          {
-            "name": "is_front_text",
-            "type": "boolean"
-          }
-        ]
-      },
-      "ping": {
-        "id": "0x3B",
-        "fields": [
-          {
-            "name": "id",
-            "type": "i32"
-          }
-        ]
-      },
-      "pong_response": {
-        "id": "0x3C"
-      },
-      "place_ghost_recipe": {
-        "id": "0x3D",
-        "fields": [
-          {
-            "name": "container_id",
-            "type": "int"
-          },
-          {
-            "name": "recipe_display",
-            "type": "RecipeDisplay"
-          }
-        ]
-      },
-      "player_abilities": {
-        "id": "0x3E",
-        "fields": [
-          {
-            "name": "invulnerable",
-            "type": "boolean"
-          },
-          {
-            "name": "is_flying",
-            "type": "boolean"
-          },
-          {
-            "name": "can_fly",
-            "type": "boolean"
-          },
-          {
-            "name": "instabuild",
-            "type": "boolean"
-          },
-          {
-            "name": "flying_speed",
-            "type": "float"
-          },
-          {
-            "name": "walking_speed",
-            "type": "float"
-          }
-        ]
-      },
-      "player_chat": {
-        "id": "0x3F",
-        "fields": [
-          {
-            "name": "global_index",
-            "type": "int"
-          },
-          {
-            "name": "sender",
-            "type": "UUID"
-          },
-          {
-            "name": "index",
-            "type": "int"
-          },
-          {
-            "name": "signature",
-            "type": "MessageSignature"
-          },
-          {
-            "name": "body",
-            "type": "Packed"
-          },
-          {
-            "name": "unsigned_content",
-            "type": "Component"
-          },
-          {
-            "name": "filter_mask",
-            "type": "FilterMask"
-          },
-          {
-            "name": "chat_type",
-            "type": "Bound"
-          }
-        ]
-      },
-      "player_combat_end": {
-        "id": "0x40",
-        "fields": [
-          {
-            "name": "duration",
-            "type": "int"
-          }
-        ]
-      },
-      "player_combat_enter": {
-        "id": "0x41",
-        "fields": []
-      },
-      "player_combat_kill": {
-        "id": "0x42",
-        "fields": [
-          {
-            "name": "player_id",
-            "type": "int"
-          },
-          {
-            "name": "message",
-            "type": "Component"
-          }
-        ]
-      },
-      "player_info_remove": {
-        "id": "0x43",
-        "fields": [
-          {
-            "name": "profile_ids",
-            "type": "List<UUID>"
-          }
-        ]
-      },
-      "player_info_update": {
-        "id": "0x44",
-        "fields": [
-          {
-            "name": "actions",
-            "type": "EnumSet<Action>"
-          },
-          {
-            "name": "entries",
-            "type": "List<Entry>"
-          }
-        ]
-      },
-      "player_look_at": {
-        "id": "0x45",
-        "fields": [
-          {
-            "name": "x",
-            "type": "double"
-          },
-          {
-            "name": "y",
-            "type": "double"
-          },
-          {
-            "name": "z",
-            "type": "double"
-          },
-          {
-            "name": "entity",
-            "type": "int"
-          },
-          {
-            "name": "from_anchor",
-            "type": "Anchor"
-          },
-          {
-            "name": "to_anchor",
-            "type": "Anchor"
-          },
-          {
-            "name": "at_entity",
-            "type": "boolean"
-          }
-        ]
-      },
-      "player_position": {
-        "id": "0x46",
-        "fields": [
-          {
-            "name": "id",
-            "type": "int"
-          },
-          {
-            "name": "change",
-            "type": "PositionMoveRotation"
-          },
-          {
-            "name": "relatives",
-            "type": "Set<Relative>"
-          }
-        ]
-      },
-      "player_rotation": {
-        "id": "0x47",
-        "fields": [
-          {
-            "name": "y_rot",
-            "type": "float"
-          },
-          {
-            "name": "relative_y",
-            "type": "boolean"
-          },
-          {
-            "name": "x_rot",
-            "type": "float"
-          },
-          {
-            "name": "relative_x",
-            "type": "boolean"
-          }
-        ]
-      },
-      "recipe_book_add": {
-        "id": "0x48",
-        "fields": [
-          {
-            "name": "entries",
-            "type": "List<Entry>"
-          },
-          {
-            "name": "replace",
-            "type": "boolean"
-          }
-        ]
-      },
-      "recipe_book_remove": {
-        "id": "0x49",
-        "fields": [
-          {
-            "name": "recipes",
-            "type": "List<RecipeDisplayId>"
-          }
-        ]
-      },
-      "recipe_book_settings": {
-        "id": "0x4A",
-        "fields": [
-          {
-            "name": "book_settings",
-            "type": "RecipeBookSettings"
-          }
-        ]
-      },
-      "remove_entities": {
-        "id": "0x4B",
-        "fields": [
-          {
-            "name": "entity_ids",
-            "type": "IntList"
-          }
-        ]
-      },
-      "remove_mob_effect": {
-        "id": "0x4C",
-        "fields": [
-          {
-            "name": "entity_id",
-            "type": "int"
-          },
-          {
-            "name": "effect",
-            "type": "Holder<MobEffect>"
-          }
-        ]
-      },
-      "reset_score": {
-        "id": "0x4D",
-        "fields": [
-          {
-            "name": "owner",
-            "type": "String"
-          },
-          {
-            "name": "objective_name",
-            "type": "String"
-          }
-        ]
-      },
-      "resource_pack_pop": {
-        "id": "0x4E",
-        "fields": [
-          {
-            "name": "id",
-            "type": "Optional<UUID>"
-          }
-        ]
-      },
-      "resource_pack_push": {
-        "id": "0x4F",
-        "fields": [
-          {
-            "name": "id",
-            "type": "UUID"
-          },
-          {
-            "name": "url",
-            "type": "String"
-          },
-          {
-            "name": "hash",
-            "type": "String"
-          },
-          {
-            "name": "required",
-            "type": "boolean"
-          },
-          {
-            "name": "prompt",
-            "type": "Optional<Component>"
-          }
-        ]
-      },
-      "respawn": {
-        "id": "0x50",
-        "fields": [
-          {
-            "name": "common_player_spawn_info",
-            "type": "CommonPlayerSpawnInfo"
-          },
-          {
-            "name": "data_to_keep",
-            "type": "byte"
-          }
-        ]
-      },
-      "rotate_head": {
-        "id": "0x51",
-        "fields": [
-          {
-            "name": "entity_id",
-            "type": "int"
-          },
-          {
-            "name": "y_head_rot",
-            "type": "byte"
-          }
-        ]
-      },
-      "section_blocks_update": {
-        "id": "0x52",
-        "fields": [
-          {
-            "name": "section_pos",
-            "type": "SectionPos"
-          },
-          {
-            "name": "positions",
-            "type": "Array<short>"
-          },
-          {
-            "name": "states",
-            "type": "Array<BlockState>"
-          }
-        ]
-      },
-      "select_advancements_tab": {
-        "id": "0x53",
-        "fields": [
-          {
-            "name": "tab",
-            "type": "ResourceLocation"
-          }
-        ]
-      },
-      "server_data": {
-        "id": "0x54",
-        "fields": [
-          {
-            "name": "motd",
-            "type": "Component"
-          },
-          {
-            "name": "icon_bytes",
-            "type": "Optional<Array<byte>>"
-          }
-        ]
-      },
-      "set_action_bar_text": {
-        "id": "0x55",
-        "fields": [
-          {
-            "name": "text",
-            "type": "Component"
-          }
-        ]
-      },
-      "set_border_center": {
-        "id": "0x56",
-        "fields": [
-          {
-            "name": "new_center_x",
-            "type": "double"
-          },
-          {
-            "name": "new_center_z",
-            "type": "double"
-          }
-        ]
-      },
-      "set_border_lerp_size": {
-        "id": "0x57",
-        "fields": [
-          {
-            "name": "old_size",
-            "type": "double"
-          },
-          {
-            "name": "new_size",
-            "type": "double"
-          },
-          {
-            "name": "lerp_time",
-            "type": "long"
-          }
-        ]
-      },
-      "set_border_size": {
-        "id": "0x58",
-        "fields": [
-          {
-            "name": "size",
-            "type": "double"
-          }
-        ]
-      },
-      "set_border_warning_delay": {
-        "id": "0x59",
-        "fields": [
-          {
-            "name": "warning_delay",
-            "type": "int"
-          }
-        ]
-      },
-      "set_border_warning_distance": {
-        "id": "0x5A",
-        "fields": [
-          {
-            "name": "warning_blocks",
-            "type": "int"
-          }
-        ]
-      },
-      "set_camera": {
-        "id": "0x5B",
-        "fields": [
-          {
-            "name": "camera_id",
-            "type": "int"
-          }
-        ]
-      },
-      "set_chunk_cache_center": {
-        "id": "0x5C",
-        "fields": [
-          {
-            "name": "x",
-            "type": "int"
-          },
-          {
-            "name": "z",
-            "type": "int"
-          }
-        ]
-      },
-      "set_chunk_cache_radius": {
-        "id": "0x5D",
-        "fields": [
-          {
-            "name": "radius",
-            "type": "int"
-          }
-        ]
-      },
-      "set_cursor_item": {
-        "id": "0x5E",
-        "fields": [
-          {
-            "name": "contents",
-            "type": "ItemStack"
-          }
-        ]
-      },
-      "set_default_spawn_position": {
-        "id": "0x5F",
-        "fields": [
-          {
-            "name": "respawn_data",
-            "type": "RespawnData"
-          }
-        ]
-      },
-      "set_display_objective": {
-        "id": "0x60",
-        "fields": [
-          {
-            "name": "slot",
-            "type": "DisplaySlot"
-          },
-          {
-            "name": "objective_name",
-            "type": "String"
-          }
-        ]
-      },
-      "set_entity_data": {
-        "id": "0x61",
-        "fields": [
-          {
-            "name": "id",
-            "type": "int"
-          },
-          {
-            "name": "packed_items",
-            "type": "List<DataValue<Object>>"
-          }
-        ]
-      },
-      "set_entity_link": {
-        "id": "0x62",
-        "fields": [
-          {
-            "name": "source_id",
-            "type": "int"
-          },
-          {
-            "name": "dest_id",
-            "type": "int"
-          }
-        ]
-      },
-      "set_entity_motion": {
-        "id": "0x63",
-        "fields": [
-          {
-            "name": "id",
-            "type": "int"
-          },
-          {
-            "name": "movement",
-            "type": "Vec3"
-          }
-        ]
-      },
-      "set_equipment": {
-        "id": "0x64",
-        "fields": [
-          {
-            "name": "entity",
-            "type": "int"
-          },
-          {
-            "name": "slots",
-            "type": "List<Pair<EquipmentSlot, ItemStack>>"
-          }
-        ]
-      },
-      "set_experience": {
-        "id": "0x65",
-        "fields": [
-          {
-            "name": "experience_progress",
-            "type": "float"
-          },
-          {
-            "name": "total_experience",
-            "type": "int"
-          },
-          {
-            "name": "experience_level",
-            "type": "int"
-          }
-        ]
-      },
-      "set_health": {
-        "id": "0x66",
-        "fields": [
-          {
-            "name": "health",
-            "type": "float"
-          },
-          {
-            "name": "food",
-            "type": "int"
-          },
-          {
-            "name": "saturation",
-            "type": "float"
-          }
-        ]
-      },
-      "set_held_slot": {
-        "id": "0x67",
-        "fields": [
-          {
-            "name": "slot",
-            "type": "int"
-          }
-        ]
-      },
-      "set_objective": {
-        "id": "0x68",
-        "fields": [
-          {
-            "name": "objective_name",
-            "type": "String"
-          },
-          {
-            "name": "display_name",
-            "type": "Component"
-          },
-          {
-            "name": "render_type",
-            "type": "RenderType"
-          },
-          {
-            "name": "number_format",
-            "type": "Optional<NumberFormat>"
-          },
-          {
-            "name": "method",
-            "type": "int"
-          }
-        ]
-      },
-      "set_passengers": {
-        "id": "0x69",
-        "fields": [
-          {
-            "name": "vehicle",
-            "type": "int"
-          },
-          {
-            "name": "passengers",
-            "type": "Array<int>"
-          }
-        ]
-      },
-      "set_player_inventory": {
-        "id": "0x6A",
-        "fields": [
-          {
-            "name": "slot",
-            "type": "int"
-          },
-          {
-            "name": "contents",
-            "type": "ItemStack"
-          }
-        ]
-      },
-      "set_player_team": {
-        "id": "0x6B",
-        "fields": [
-          {
-            "name": "method",
-            "type": "int"
-          },
-          {
-            "name": "name",
-            "type": "String"
-          },
-          {
-            "name": "players",
-            "type": "Collection<String>"
-          },
-          {
-            "name": "parameters",
-            "type": "Optional<Parameters>"
-          }
-        ]
-      },
-      "set_score": {
-        "id": "0x6C",
-        "fields": [
-          {
-            "name": "owner",
-            "type": "String"
-          },
-          {
-            "name": "objective_name",
-            "type": "String"
-          },
-          {
-            "name": "score",
-            "type": "int"
-          },
-          {
-            "name": "display",
-            "type": "Optional<Component>"
-          },
-          {
-            "name": "number_format",
-            "type": "Optional<NumberFormat>"
-          }
-        ]
-      },
-      "set_simulation_distance": {
-        "id": "0x6D",
-        "fields": [
-          {
-            "name": "simulation_distance",
-            "type": "int"
-          }
-        ]
-      },
-      "set_subtitle_text": {
-        "id": "0x6E",
-        "fields": [
-          {
-            "name": "text",
-            "type": "Component"
-          }
-        ]
-      },
-      "set_time": {
-        "id": "0x6F",
-        "fields": [
-          {
-            "name": "game_time",
-            "type": "long"
-          },
-          {
-            "name": "day_time",
-            "type": "long"
-          },
-          {
-            "name": "tick_day_time",
-            "type": "boolean"
-          }
-        ]
-      },
-      "set_title_text": {
-        "id": "0x70",
-        "fields": [
-          {
-            "name": "text",
-            "type": "Component"
-          }
-        ]
-      },
-      "set_titles_animation": {
-        "id": "0x71",
-        "fields": [
-          {
-            "name": "fade_in",
-            "type": "int"
-          },
-          {
-            "name": "stay",
-            "type": "int"
-          },
-          {
-            "name": "fade_out",
-            "type": "int"
-          }
-        ]
-      },
-      "sound_entity": {
-        "id": "0x72",
-        "fields": [
-          {
-            "name": "sound",
-            "type": "Holder<SoundEvent>"
-          },
-          {
-            "name": "source",
-            "type": "SoundSource"
-          },
-          {
-            "name": "id",
-            "type": "int"
-          },
-          {
-            "name": "volume",
-            "type": "float"
-          },
-          {
-            "name": "pitch",
-            "type": "float"
-          },
-          {
-            "name": "seed",
-            "type": "long"
-          }
-        ]
-      },
-      "sound": {
-        "id": "0x73",
-        "fields": [
-          {
-            "name": "sound",
-            "type": "Holder<SoundEvent>"
-          },
-          {
-            "name": "source",
-            "type": "SoundSource"
-          },
-          {
-            "name": "x",
-            "type": "int"
-          },
-          {
-            "name": "y",
-            "type": "int"
-          },
-          {
-            "name": "z",
-            "type": "int"
-          },
-          {
-            "name": "volume",
-            "type": "float"
-          },
-          {
-            "name": "pitch",
-            "type": "float"
-          },
-          {
-            "name": "seed",
-            "type": "long"
-          }
-        ]
-      },
-      "start_configuration": {
-        "id": "0x74",
-        "fields": []
-      },
-      "stop_sound": {
-        "id": "0x75",
-        "fields": [
-          {
-            "name": "name",
-            "type": "ResourceLocation"
-          },
-          {
-            "name": "source",
-            "type": "SoundSource"
-          }
-        ]
-      },
-      "store_cookie": {
-        "id": "0x76",
-        "fields": [
-          {
-            "name": "key",
-            "type": "ResourceLocation"
-          },
-          {
-            "name": "payload",
-            "type": "Array<byte>"
-          }
-        ]
-      },
-      "system_chat": {
-        "id": "0x77",
-        "fields": [
-          {
-            "name": "content",
-            "type": "Component"
-          },
-          {
-            "name": "overlay",
-            "type": "boolean"
-          }
-        ]
-      },
-      "tab_list": {
-        "id": "0x78",
-        "fields": [
-          {
-            "name": "header",
-            "type": "Component"
-          },
-          {
-            "name": "footer",
-            "type": "Component"
-          }
-        ]
-      },
-      "tag_query": {
-        "id": "0x79",
-        "fields": [
-          {
-            "name": "transaction_id",
-            "type": "int"
-          },
-          {
-            "name": "tag",
-            "type": "CompoundTag"
-          }
-        ]
-      },
-      "take_item_entity": {
-        "id": "0x7A",
-        "fields": [
-          {
-            "name": "item_id",
-            "type": "int"
-          },
-          {
-            "name": "player_id",
-            "type": "int"
-          },
-          {
-            "name": "amount",
-            "type": "int"
-          }
-        ]
-      },
-      "teleport_entity": {
-        "id": "0x7B",
-        "fields": [
-          {
-            "name": "id",
-            "type": "int"
-          },
-          {
-            "name": "change",
-            "type": "PositionMoveRotation"
-          },
-          {
-            "name": "relatives",
-            "type": "Set<Relative>"
-          },
-          {
-            "name": "on_ground",
-            "type": "boolean"
-          }
-        ]
-      },
-      "test_instance_block_status": {
-        "id": "0x7C"
-      },
-      "ticking_state": {
-        "id": "0x7D",
-        "fields": [
-          {
-            "name": "tick_rate",
-            "type": "float"
-          },
-          {
-            "name": "is_frozen",
-            "type": "boolean"
-          }
-        ]
-      },
-      "ticking_step": {
-        "id": "0x7E",
-        "fields": [
-          {
-            "name": "tick_steps",
-            "type": "int"
-          }
-        ]
-      },
-      "transfer": {
-        "id": "0x7F",
-        "fields": [
-          {
-            "name": "host",
-            "type": "String"
-          },
-          {
-            "name": "port",
-            "type": "int"
-          }
-        ]
-      },
-      "update_advancements": {
-        "id": "0x80",
-        "fields": [
-          {
-            "name": "reset",
-            "type": "boolean"
-          },
-          {
-            "name": "added",
-            "type": "List<AdvancementHolder>"
-          },
-          {
-            "name": "removed",
-            "type": "Set<ResourceLocation>"
-          },
-          {
-            "name": "progress",
-            "type": "Map<ResourceLocation, AdvancementProgress>"
-          },
-          {
-            "name": "show_advancements",
-            "type": "boolean"
-          }
-        ]
-      },
-      "update_attributes": {
-        "id": "0x81",
-        "fields": [
-          {
-            "name": "entity_id",
-            "type": "int"
-          },
-          {
-            "name": "attributes",
-            "type": "List<AttributeSnapshot>"
-          }
-        ]
-      },
-      "update_mob_effect": {
-        "id": "0x82",
-        "fields": [
-          {
-            "name": "entity_id",
-            "type": "int"
-          },
-          {
-            "name": "effect",
-            "type": "Holder<MobEffect>"
-          },
-          {
-            "name": "effect_amplifier",
-            "type": "int"
-          },
-          {
-            "name": "effect_duration_ticks",
-            "type": "int"
-          },
-          {
-            "name": "flags",
-            "type": "byte"
-          }
-        ]
-      },
-      "update_recipes": {
-        "id": "0x83",
-        "fields": [
-          {
-            "name": "item_sets",
-            "type": "Map<ResourceKey<RecipePropertySet>, RecipePropertySet>"
-          },
-          {
-            "name": "stonecutter_recipes",
-            "type": "SingleInputSet<StonecutterRecipe>"
-          }
-        ]
-      },
-      "update_tags": {
-        "id": "0x84",
-        "fields": [
-          {
-            "name": "tags",
-            "type": "Map<ResourceKey<Registry<Object>>, NetworkPayload>"
-          }
-        ]
-      },
-      "projectile_power": {
-        "id": "0x85",
-        "fields": [
-          {
-            "name": "id",
-            "type": "int"
-          },
-          {
-            "name": "acceleration_power",
-            "type": "double"
-          }
-        ]
-      },
-      "custom_report_details": {
-        "id": "0x86",
-        "fields": [
-          {
-            "name": "details",
-            "type": "Map<String, String>"
-          }
-        ]
-      },
-      "server_links": {
-        "id": "0x87",
-        "fields": [
-          {
-            "name": "links",
-            "type": "List<UntrustedEntry>"
-          }
-        ]
-      },
-      "waypoint": {
-        "id": "0x88"
-      },
-      "clear_dialog": {
-        "id": "0x89",
-        "fields": []
-      },
-      "show_dialog": {
-        "id": "0x8A",
-        "fields": [
-          {
-            "name": "dialog",
-            "type": "Holder<Dialog>"
-          }
-        ]
-      }
+    "Short": {
+      "read": [
+        "readShort"
+      ],
+      "write": [
+        "writeShort"
+      ]
+    },
+    "UnsignedShort": {
+      "read": [
+        "readUnsignedShort"
+      ],
+      "write": []
+    },
+    "Int": {
+      "read": [
+        "readInt"
+      ],
+      "write": [
+        "writeInt"
+      ]
+    },
+    "VarInt": {
+      "read": [
+        "readVarInt"
+      ],
+      "write": [
+        "writeVarInt"
+      ]
+    },
+    "Long": {
+      "read": [
+        "readLong"
+      ],
+      "write": [
+        "writeLong"
+      ]
+    },
+    "VarLong": {
+      "read": [
+        "readVarLong"
+      ],
+      "write": [
+        "writeVarLong"
+      ]
+    },
+    "Float": {
+      "read": [
+        "readFloat"
+      ],
+      "write": [
+        "writeFloat"
+      ]
+    },
+    "Double": {
+      "read": [
+        "readDouble"
+      ],
+      "write": [
+        "writeDouble"
+      ]
+    },
+    "String": {
+      "read": [
+        "readUtf"
+      ],
+      "write": [
+        "writeUtf"
+      ]
+    },
+    "UUID": {
+      "read": [
+        "readUUID"
+      ],
+      "write": [
+        "writeUUID"
+      ]
+    },
+    "Identifier": {
+      "read": [
+        "readIdentifier"
+      ],
+      "write": [
+        "writeIdentifier"
+      ]
+    },
+    "Position": {
+      "read": [
+        "readBlockPos"
+      ],
+      "write": [
+        "writeBlockPos"
+      ]
+    },
+    "ChunkPos": {
+      "read": [
+        "readChunkPos"
+      ],
+      "write": [
+        "writeChunkPos"
+      ]
+    },
+    "GlobalPos": {
+      "read": [
+        "readGlobalPos"
+      ],
+      "write": [
+        "writeGlobalPos"
+      ]
+    },
+    "Vector3f": {
+      "read": [
+        "readVector3f"
+      ],
+      "write": [
+        "writeVector3f"
+      ]
+    },
+    "Quaternion": {
+      "read": [
+        "readQuaternion"
+      ],
+      "write": [
+        "writeQuaternion"
+      ]
+    },
+    "Vec3": {
+      "read": [
+        "readVec3"
+      ],
+      "write": [
+        "writeVec3"
+      ]
+    },
+    "LpVec3": {
+      "read": [
+        "readLpVec3"
+      ],
+      "write": [
+        "writeLpVec3"
+      ]
+    },
+    "NBT": {
+      "read": [
+        "readNbt"
+      ],
+      "write": [
+        "writeNbt"
+      ]
+    },
+    "ByteArray": {
+      "read": [
+        "readByteArray"
+      ],
+      "write": [
+        "writeByteArray"
+      ]
+    },
+    "VarIntArray": {
+      "read": [
+        "readVarIntArray"
+      ],
+      "write": [
+        "writeVarIntArray"
+      ]
+    },
+    "LongArray": {
+      "read": [
+        "readLongArray"
+      ],
+      "write": [
+        "writeLongArray"
+      ]
+    },
+    "BitSet": {
+      "read": [
+        "readBitSet"
+      ],
+      "write": [
+        "writeBitSet"
+      ]
+    },
+    "FixedBitSet": {
+      "read": [
+        "readFixedBitSet"
+      ],
+      "write": [
+        "writeFixedBitSet"
+      ]
+    },
+    "Instant": {
+      "read": [
+        "readInstant"
+      ],
+      "write": [
+        "writeInstant"
+      ]
+    },
+    "PublicKey": {
+      "read": [
+        "readPublicKey"
+      ],
+      "write": [
+        "writePublicKey"
+      ]
+    },
+    "BlockHitResult": {
+      "read": [
+        "readBlockHitResult"
+      ],
+      "write": [
+        "writeBlockHitResult"
+      ]
+    },
+    "ContainerId": {
+      "read": [
+        "readContainerId"
+      ],
+      "write": [
+        "writeContainerId"
+      ]
+    },
+    "ResourceKey": {
+      "read": [
+        "readResourceKey"
+      ],
+      "write": [
+        "writeResourceKey"
+      ]
+    },
+    "RegistryKey": {
+      "read": [
+        "readRegistryKey"
+      ],
+      "write": []
+    },
+    "PrefixedArray<T>": {
+      "read": [
+        "readCollection",
+        "readList"
+      ],
+      "write": [
+        "writeCollection"
+      ]
+    },
+    "Map<K, V>": {
+      "read": [
+        "readMap"
+      ],
+      "write": [
+        "writeMap"
+      ]
+    },
+    "Optional<T>": {
+      "read": [
+        "readOptional"
+      ],
+      "write": [
+        "writeOptional"
+      ]
+    },
+    "Nullable<T>": {
+      "read": [
+        "readNullable"
+      ],
+      "write": [
+        "writeNullable"
+      ]
+    },
+    "Either<L, R>": {
+      "read": [
+        "readEither"
+      ],
+      "write": [
+        "writeEither"
+      ]
+    },
+    "Enum<E>": {
+      "read": [
+        "readEnum"
+      ],
+      "write": [
+        "writeEnum"
+      ]
+    },
+    "EnumSet<E>": {
+      "read": [
+        "readEnumSet"
+      ],
+      "write": [
+        "writeEnumSet"
+      ]
+    },
+    "RegistryValue<T>": {
+      "read": [],
+      "write": []
     }
   }
 }

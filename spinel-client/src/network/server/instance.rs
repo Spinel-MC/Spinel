@@ -40,24 +40,15 @@ impl Server {
     pub fn enable_encryption(&mut self, key: &[u8]) {
         self.encoder.enable_encryption(key);
         self.pending_encryption = Some(key.to_vec());
-        println!("Encryption enabled for server {} (writer)", self.addr);
     }
 
     pub fn set_compression(&mut self, threshold: i32) {
         self.encoder.set_compression(threshold);
         self.pending_compression = Some(threshold);
-        println!(
-            "Compression set to {} for server {} (writer)",
-            threshold, self.addr
-        );
     }
 
     pub fn decode<T: DataType>(&mut self) -> io::Result<T> {
-        if let Some(cursor) = &mut self.payload_cursor {
-            T::decode(cursor)
-        } else {
-            Err(Error::new(ErrorKind::NotConnected, "No payload cursor set"))
-        }
+        T::decode(self.payload_cursor_mut()?)
     }
 
     pub fn read_varint(&mut self) -> io::Result<i32> {
@@ -74,6 +65,12 @@ impl Server {
 
     pub fn read_varint_from_cursor<R: Read>(reader: &mut R) -> Result<i32, Error> {
         Ok(VarIntWrapper::decode(reader)?.0)
+    }
+
+    fn payload_cursor_mut(&mut self) -> io::Result<&mut Cursor<Vec<u8>>> {
+        self.payload_cursor
+            .as_mut()
+            .ok_or_else(|| Error::new(ErrorKind::NotConnected, "No payload cursor set"))
     }
 
     pub fn read_byte(&mut self) -> io::Result<i8> {
@@ -124,18 +121,9 @@ impl Server {
 }
 
 impl PacketSender for Server {
-    fn send_packet(&mut self, id: i32, payload: &[u8]) {
-        if let Err(e) = self.encoder.write_frame(&mut self.stream, id, payload) {
-            eprintln!("Failed to send packet to server {}: {}", self.addr, e);
-        }
-        let packet_name = spinel_network::packet_names::get_serverbound_packet_name(self.state, id);
-        println!(
-            "[Serverbound]: State={:?}, ID={:#04X}, resource=\"{}\", PayloadSize={}",
-            self.state,
-            id,
-            packet_name,
-            payload.len()
-        );
+    fn send_packet(&mut self, id: i32, payload: &[u8]) -> io::Result<()> {
+        self.encoder.write_frame(&mut self.stream, id, payload)?;
+        Ok(())
     }
 }
 

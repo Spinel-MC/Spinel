@@ -1,4 +1,3 @@
-
 use crate::events::server_list_ping::event::ServerListPingEvent;
 use crate::events::server_list_ping::ping_type::ServerListPingType;
 use crate::network::client::instance::Client;
@@ -22,13 +21,11 @@ fn on_status_request(
         return true;
     }
 
-    let response_packet = StatusResponsePacket::new(
+    StatusResponsePacket::new(
         event
             .response_data
             .to_status_response_json(event.hide_players),
-    );
-
-    response_packet.dispatch(client);
-
-    true
+    )
+    .dispatch(client)
+    .is_ok()
 }

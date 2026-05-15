@@ -10,8 +10,6 @@ pub struct ClientInformationPacket;
 
 impl Default for ClientInformationPacket {
     fn default() -> Self {
-        Self {
-            information: spinel_network::types::ClientInformation::default(),
-        }
+        Self {}
     }
 }

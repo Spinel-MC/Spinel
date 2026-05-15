@@ -1,4 +1,5 @@
 use serde::Deserialize;
+use serde_json::Value;
 use std::collections::HashMap;
 use std::path::Path;
 
@@ -17,79 +18,113 @@ pub struct PacketEntry {
 
 #[derive(Deserialize)]
 pub struct PacketsJson {
+    #[allow(dead_code)]
+    pub version: Option<u32>,
+    #[allow(dead_code)]
+    pub types: Option<HashMap<String, Value>>,
+    pub packets: Option<PacketDirections>,
+    pub serverbound: Option<HashMap<String, HashMap<String, PacketEntry>>>,
+    pub clientbound: Option<HashMap<String, HashMap<String, PacketEntry>>>,
+}
+
+#[derive(Deserialize)]
+pub struct PacketDirections {
     pub serverbound: HashMap<String, HashMap<String, PacketEntry>>,
     pub clientbound: HashMap<String, HashMap<String, PacketEntry>>,
 }
 
-pub fn resolve_packet_entry(
-    name: &str,
-    state: Option<&str>,
-    recipient: &str,
-) -> Option<PacketEntry> {
-    let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();
-    let packets_path =
-        Path::new(&manifest_dir).join("../spinel-registry/build_assets/packets.json");
-
-    if !packets_path.exists() {
-        panic!("packets.json not found at {:?}", packets_path);
+impl PacketsJson {
+    fn serverbound(&self) -> Option<&HashMap<String, HashMap<String, PacketEntry>>> {
+        self.packets
+            .as_ref()
+            .map(|packets| &packets.serverbound)
+            .or(self.serverbound.as_ref())
     }
 
-    let file = std::fs::File::open(packets_path).expect("Failed to open packets.json");
-    let reader = std::io::BufReader::new(file);
-    let packets: PacketsJson =
-        serde_json::from_reader(reader).expect("Failed to parse packets.json");
+    fn clientbound(&self) -> Option<&HashMap<String, HashMap<String, PacketEntry>>> {
+        self.packets
+            .as_ref()
+            .map(|packets| &packets.clientbound)
+            .or(self.clientbound.as_ref())
+    }
+}
 
-    let direction = match recipient {
-        "Client" => &packets.clientbound,
-        "Server" => &packets.serverbound,
-        _ => panic!("Invalid recipient: {}", recipient),
-    };
+pub struct PacketMetadataResolver;
 
-    if let Some(state_name) = state {
-        let protocol_key = match state_name {
-            "Handshaking" => "handshake",
-            "Status" => "status",
-            "Login" => "login",
-            "Configuration" => "config",
-            "Play" => "play",
-            _ => return None,
+impl PacketMetadataResolver {
+    pub fn extract_recipient_string(recipient_expr: &Option<syn::Expr>) -> Option<String> {
+        Self::extract_path_segment(recipient_expr.as_ref())
+    }
+
+    pub fn extract_state_string(state_expr: &Option<syn::Expr>) -> Option<String> {
+        Self::extract_path_segment(state_expr.as_ref())
+    }
+
+    pub fn resolve_packet_entry(
+        name: &str,
+        state: Option<&str>,
+        recipient: &str,
+    ) -> Option<PacketEntry> {
+        let packet_catalog = Self::read_packet_catalog()?;
+        let direction = Self::select_direction(&packet_catalog, recipient)?;
+        let protocol_key = Self::protocol_key(state?)?;
+        let protocol = Self::select_protocol(direction, protocol_key)?;
+        protocol.get(name).cloned()
+    }
+
+    fn extract_path_segment(expr: Option<&syn::Expr>) -> Option<String> {
+        let syn::Expr::Path(expr_path) = expr? else {
+            return None;
         };
 
-        if let Some(protocol) = direction.get(protocol_key) {
-            if let Some(entry) = protocol.get(name) {
-                return Some(entry.clone());
-            }
-        }
-        return None;
+        expr_path
+            .path
+            .segments
+            .last()
+            .map(|segment| segment.ident.to_string())
     }
 
-    None
-}
-
-pub fn extract_state_string(state_expr: &Option<syn::Expr>) -> Option<String> {
-    state_expr.as_ref().and_then(|expr| {
-        if let syn::Expr::Path(expr_path) = expr {
-            expr_path
-                .path
-                .segments
-                .last()
-                .map(|seg| seg.ident.to_string())
-        } else {
-            None
+    fn protocol_key(state_name: &str) -> Option<&'static str> {
+        match state_name {
+            "Handshaking" => Some("handshake"),
+            "Status" => Some("status"),
+            "Login" => Some("login"),
+            "Configuration" => Some("configuration"),
+            "Play" => Some("play"),
+            _ => None,
         }
-    })
-}
+    }
 
-pub fn extract_recipient_string(recipient_expr: &Option<syn::Expr>) -> Option<String> {
-    recipient_expr.as_ref().and_then(|expr| {
-        if let syn::Expr::Path(expr_path) = expr {
-            expr_path
-                .path
-                .segments
-                .last()
-                .map(|seg| seg.ident.to_string())
-        } else {
-            None
+    fn read_packet_catalog() -> Option<PacketsJson> {
+        let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").ok()?;
+        let packets_path =
+            Path::new(&manifest_dir).join("../spinel-registry/build_assets/packets.json");
+        let file = std::fs::File::open(packets_path).ok()?;
+        let reader = std::io::BufReader::new(file);
+        serde_json::from_reader(reader).ok()
+    }
+
+    fn select_direction<'a>(
+        packets_json: &'a PacketsJson,
+        recipient: &str,
+    ) -> Option<&'a HashMap<String, HashMap<String, PacketEntry>>> {
+        match recipient {
+            "Client" => packets_json.clientbound(),
+            "Server" => packets_json.serverbound(),
+            _ => None,
         }
-    })
+    }
+
+    fn select_protocol<'a>(
+        direction: &'a HashMap<String, HashMap<String, PacketEntry>>,
+        protocol_key: &str,
+    ) -> Option<&'a HashMap<String, PacketEntry>> {
+        direction.get(protocol_key).or_else(|| {
+            if protocol_key == "configuration" {
+                return direction.get("config");
+            }
+
+            None
+        })
+    }
 }

@@ -1,29 +1,31 @@
 use ::spinel_macros::packet;
-use ::spinel_network::types::Array;
+use ::spinel_network::types::{Array, Identifier};
 
 #[packet(
     id: "update_enabled_features",
     state: ConnectionState::Configuration,
     recipient: Recipient::Client,
-    generate_fields: true
+    generate_fields: false
 )]
 pub struct FeaturesPacket {
     pub features: Array<Identifier>,
 }
 
 impl FeaturesPacket {
-    pub fn new(features: Vec<String>) -> Self {
-        Self {
-            features: Array(
-                features
-                    .into_iter()
-                    .map(|s| s.parse().expect("Invalid feature identifier"))
-                    .collect(),
-            ),
-        }
+    pub fn new(features: Vec<String>) -> Result<Self, String> {
+        let feature_identifiers = features
+            .into_iter()
+            .map(|feature_identifier| feature_identifier.parse())
+            .collect::<Result<Vec<Identifier>, String>>()?;
+
+        Ok(Self {
+            features: Array(feature_identifiers),
+        })
     }
 
     pub fn vanilla() -> Self {
-        Self::new(vec!["minecraft:vanilla".to_string()])
+        Self {
+            features: Array(vec![Identifier::minecraft("vanilla")]),
+        }
     }
 }

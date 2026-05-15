@@ -1,4 +1,5 @@
-use std::{fs, path::Path, process::Command};
+use proc_macro2::TokenStream;
+use std::{fs, io, path::Path, process::Command};
 
 mod banner_patterns;
 mod biomes;
@@ -26,84 +27,119 @@ mod types;
 mod wolf_sound_variants;
 mod wolf_variants;
 
-const FMT: bool = true;
-const OUT_DIR: &str = "src/generated";
-const DATAPACKS_DIR: &str = "build_assets/datapacks/default";
+const SHOULD_FORMAT_OUTPUT: bool = true;
+const GENERATED_OUTPUT_DIRECTORY: &str = "src/generated";
+const VANILLA_DATAPACK_DIRECTORY: &str = "build_assets/datapacks/default";
 
 pub fn main() {
-    let target_version = spinel_utils::constants::MINECRAFT_VERSION;
-    let version_file = format!("{}/spinel.json", DATAPACKS_DIR);
+    RegistryBuildScript::new()
+        .run()
+        .unwrap_or_else(|error| panic!("registry build failed: {}", error));
+}
 
-    // Tell Cargo to rerun if the version constant or the asset manifest changes
-    println!("cargo:rerun-if-changed=build/build.rs");
-    println!("cargo:rerun-if-changed={}", version_file);
+struct RegistryBuildScript {
+    target_version: &'static str,
+}
 
-    // --- FAST PATH CHECK ---
-    let mut needs_build = true;
-    if Path::new(&version_file).exists() && Path::new(OUT_DIR).exists() {
-        if let Ok(content) = fs::read_to_string(&version_file) {
-            if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
-                if json["minecraft_version"] == target_version {
-                    // Assets match version, now check if we have generated files
-                    if fs::read_dir(OUT_DIR)
-                        .map(|mut d| d.next().is_some())
-                        .unwrap_or(false)
-                    {
-                        needs_build = false;
-                    }
-                }
-            }
+impl RegistryBuildScript {
+    fn new() -> Self {
+        Self {
+            target_version: spinel_utils::constants::MINECRAFT_VERSION,
         }
     }
 
-    if !needs_build {
-        return;
-    }
+    fn run(self) -> io::Result<()> {
+        self.emit_rerun_instructions();
 
-    // --- FULL BUILD START ---
-    download::ensure_datapacks_downloaded(target_version)
-        .expect("Failed to download minecraft-assets");
-
-    if !Path::new(OUT_DIR).exists() {
-        fs::create_dir_all(OUT_DIR).unwrap();
-    }
-
-    let vanilla_builds = [
-        (blocks::build(), "blocks"),
-        (banner_patterns::build(), "banner_patterns"),
-        (biomes::build(), "biomes"),
-        (block_tags::build(), "block_tags"),
-        (cat_variants::build(), "cat_variants"),
-        (chat_types::build(), "chat_types"),
-        (chicken_variants::build(), "chicken_variants"),
-        (cow_variants::build(), "cow_variants"),
-        (damage_types::build(), "damage_types"),
-        (dialogs::build(), "dialogs"),
-        (dimension_types::build(), "dimension_types"),
-        (frog_variants::build(), "frog_variants"),
-        (instruments::build(), "instruments"),
-        (items::build(), "items"),
-        (item_tags::build(), "item_tags"),
-        (jukebox_songs::build(), "jukebox_songs"),
-        (painting_variants::build(), "painting_variants"),
-        (pig_variants::build(), "pig_variants"),
-        (trim_materials::build(), "trim_materials"),
-        (trim_patterns::build(), "trim_patterns"),
-        (wolf_sound_variants::build(), "wolf_sound_variants"),
-        (wolf_variants::build(), "wolf_variants"),
-        (packets::build(), "packets"),
-    ];
-
-    for (content, file_name) in vanilla_builds {
-        let path = format!("{OUT_DIR}/vanilla_{file_name}.rs");
-        fs::write(&path, content.to_string()).unwrap();
-    }
-
-    if FMT {
-        if let Ok(entries) = fs::read_dir(OUT_DIR) {
-            for entry in entries.flatten() {
-                let _ = Command::new("rustfmt").arg(entry.path()).output();
-            }
+        if self.generated_assets_are_current()? {
+            return Ok(());
         }
+
+        download::ensure_datapacks_downloaded(self.target_version).map_err(io::Error::other)?;
+        self.ensure_output_directory()?;
+        self.write_generated_modules()?;
+
+        if SHOULD_FORMAT_OUTPUT {
+            self.format_generated_modules()?;
+        }
+
+        Ok(())
+    }
+
+    fn emit_rerun_instructions(&self) {
+        println!("cargo:rerun-if-changed=build/build.rs");
+        println!("cargo:rerun-if-changed={}", self.version_file_path());
+    }
+
+    fn generated_assets_are_current(&self) -> io::Result<bool> {
+        if !Path::new(&self.version_file_path()).exists()
+            || !Path::new(GENERATED_OUTPUT_DIRECTORY).exists()
+        {
+            return Ok(false);
+        }
+
+        let version_manifest = fs::read_to_string(self.version_file_path())?;
+        let version_json = serde_json::from_str::<serde_json::Value>(&version_manifest)
+            .map_err(io::Error::other)?;
+
+        if version_json["minecraft_version"] != self.target_version {
+            return Ok(false);
+        }
+
+        Ok(fs::read_dir(GENERATED_OUTPUT_DIRECTORY)?.next().is_some())
+    }
+
+    fn ensure_output_directory(&self) -> io::Result<()> {
+        fs::create_dir_all(GENERATED_OUTPUT_DIRECTORY)
+    }
+
+    fn write_generated_modules(&self) -> io::Result<()> {
+        for (file_contents, file_name) in self.generated_modules() {
+            let output_path = format!("{GENERATED_OUTPUT_DIRECTORY}/vanilla_{file_name}.rs");
+            fs::write(output_path, file_contents.to_string())?;
+        }
+
+        Ok(())
+    }
+
+    fn format_generated_modules(&self) -> io::Result<()> {
+        for directory_entry in fs::read_dir(GENERATED_OUTPUT_DIRECTORY)? {
+            let directory_entry = directory_entry?;
+            let _ = Command::new("rustfmt").arg(directory_entry.path()).output();
+        }
+
+        Ok(())
+    }
+
+    fn generated_modules(&self) -> [(TokenStream, &'static str); 23] {
+        [
+            (blocks::build(), "blocks"),
+            (banner_patterns::build(), "banner_patterns"),
+            (biomes::build(), "biomes"),
+            (block_tags::build(), "block_tags"),
+            (cat_variants::build(), "cat_variants"),
+            (chat_types::build(), "chat_types"),
+            (chicken_variants::build(), "chicken_variants"),
+            (cow_variants::build(), "cow_variants"),
+            (damage_types::build(), "damage_types"),
+            (dialogs::build(), "dialogs"),
+            (dimension_types::build(), "dimension_types"),
+            (frog_variants::build(), "frog_variants"),
+            (instruments::build(), "instruments"),
+            (items::build(), "items"),
+            (item_tags::build(), "item_tags"),
+            (jukebox_songs::build(), "jukebox_songs"),
+            (painting_variants::build(), "painting_variants"),
+            (pig_variants::build(), "pig_variants"),
+            (trim_materials::build(), "trim_materials"),
+            (trim_patterns::build(), "trim_patterns"),
+            (wolf_sound_variants::build(), "wolf_sound_variants"),
+            (wolf_variants::build(), "wolf_variants"),
+            (packets::PacketModuleBuilder::build(), "packets"),
+        ]
+    }
+
+    fn version_file_path(&self) -> String {
+        format!("{}/spinel.json", VANILLA_DATAPACK_DIRECTORY)
     }
 }

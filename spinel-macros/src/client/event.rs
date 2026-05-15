@@ -23,7 +23,7 @@ pub fn generate(
     let dependent_lit = event_attrs.dependent;
     let modules = event_attrs.modules;
     let modules_slice = quote! { &[#(#modules),*] };
-    let priority = resolve_priority_token(event_attrs.priority, "Priority", "Medium");
+    let priority = resolve_priority_token(event_attrs.priority, "Medium");
 
     let wrapper_fn = quote! {
         #[doc(hidden)]
