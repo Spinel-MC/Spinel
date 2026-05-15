@@ -3,7 +3,7 @@ use crate::events::server_list_ping::ping_type::ServerListPingType;
 use crate::network::client::instance::Client;
 use ::spinel_macros::packet_listener;
 
-use crate::instance::MinecraftServer;
+use crate::server::MinecraftServer;
 use ::spinel_core::network::clientbound::status::status_response::StatusResponsePacket;
 use ::spinel_core::network::serverbound::status::status_request::StatusRequestPacket;
 

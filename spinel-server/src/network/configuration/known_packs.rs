@@ -1,7 +1,7 @@
 use ::std::thread::sleep;
 use ::std::time::Duration;
 
-use crate::instance::MinecraftServer;
+use crate::server::MinecraftServer;
 use crate::network::client::instance::Client;
 use ::spinel_core::network::clientbound::configuration::finish_configuration::FinishConfigurationPacket;
 use ::spinel_core::network::clientbound::configuration::update_tags::UpdateTagsPacket;

@@ -1,6 +1,6 @@
 use crate::events::intention::IntentionEvent;
 use crate::events::login::PreLoginEvent;
-use crate::instance::MinecraftServer;
+use crate::server::MinecraftServer;
 use crate::network::client::instance::Client;
 use crate::network::client::metadata::LoginMetadata;
 

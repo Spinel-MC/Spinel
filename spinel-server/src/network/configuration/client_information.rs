@@ -1,4 +1,4 @@
-use crate::instance::MinecraftServer;
+use crate::server::MinecraftServer;
 use crate::network::client::instance::Client;
 use spinel_core::network::serverbound::configuration::client_information::ClientInformationPacket;
 use spinel_macros::packet_listener;

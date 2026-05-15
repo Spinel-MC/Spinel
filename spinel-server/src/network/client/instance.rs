@@ -1,7 +1,7 @@
 use crate::network::client::metadata::LoginMetadata;
 use crate::{
     events::network::packet_io::{PacketFlowDirection, PacketIoEvent},
-    instance::MinecraftServer,
+    server::MinecraftServer,
 };
 use spinel_network::ConnectionState;
 use spinel_network::DataType;

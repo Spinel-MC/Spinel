@@ -1,5 +1,5 @@
 use crate::events::intention::IntentionEvent;
-use crate::instance::MinecraftServer;
+use crate::server::MinecraftServer;
 use crate::network::client::instance::Client;
 use spinel_core::network::serverbound::handshake::intention::IntentionPacket;
 use spinel_macros::packet_listener;

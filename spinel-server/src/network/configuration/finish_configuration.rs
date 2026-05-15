@@ -1,4 +1,4 @@
-use crate::instance::MinecraftServer;
+use crate::server::MinecraftServer;
 use crate::network::client::instance::Client;
 use ::spinel_core::network::clientbound::play::chunk_data::ChunkDataAndUpdateLightPacket;
 use ::spinel_core::network::clientbound::play::game_event::{GameEvent, GameEventPacket};

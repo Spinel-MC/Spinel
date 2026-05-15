@@ -1,7 +1,7 @@
 use crate::events::network::inbound_packet_error::{
     InboundPacketErrorEvent, InboundPacketErrorStage,
 };
-use crate::instance::MinecraftServer;
+use crate::server::MinecraftServer;
 use crate::network::client::instance::Client;
 use spinel_network::DataType;
 use spinel_network::VarIntWrapper;

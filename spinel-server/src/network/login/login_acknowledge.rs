@@ -1,4 +1,4 @@
-use crate::instance::MinecraftServer;
+use crate::server::MinecraftServer;
 use crate::network::client::instance::Client;
 use ::spinel_core::network::clientbound::configuration::{
     known_packs::KnownPacksPacket, plugin_message::CustomPayloadPacket,

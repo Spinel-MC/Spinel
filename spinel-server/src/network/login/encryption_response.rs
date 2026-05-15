@@ -1,5 +1,5 @@
 use crate::entity::player::Player;
-use crate::instance::MinecraftServer;
+use crate::server::MinecraftServer;
 use crate::network::client::instance::Client;
 use ::rsa::Pkcs1v15Encrypt;
 use ::spinel_core::network::clientbound::login::login_success::LoginSuccessPacket;

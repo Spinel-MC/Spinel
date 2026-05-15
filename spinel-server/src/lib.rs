@@ -1,15 +1,15 @@
 pub mod entity;
 pub mod events;
-pub mod instance;
 pub mod module_manager;
 pub mod modules;
 pub mod network;
 pub mod registry_cache;
+pub mod server;
 
 mod listeners;
 
 pub use entity::player::Player;
-pub use instance::MinecraftServer;
+pub use server::MinecraftServer;
 
 use spinel_network::ConnectionState;
 use spinel_utils::Priority;
