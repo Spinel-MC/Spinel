@@ -1,6 +1,6 @@
 use crate::events::ping::PingEvent;
-use crate::server::MinecraftServer;
 use crate::network::client::instance::Client;
+use crate::server::MinecraftServer;
 use ::spinel_core::network::clientbound::status::pong_response::PongResponsePacket;
 use ::spinel_core::network::serverbound::status::ping_request::PingRequestPacket;
 use ::spinel_macros::packet_listener;

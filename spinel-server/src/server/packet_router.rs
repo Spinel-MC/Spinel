@@ -1,5 +1,5 @@
 use crate::ServerPacketListener;
-use crate::events::network::packet_io::{PacketFlowDirection, PacketIoEvent};
+use crate::events::network::inbound_packet::InboundPacketEvent;
 use crate::listeners::get_listeners;
 use crate::network::client::instance::Client;
 use crate::server::MinecraftServer;
@@ -53,17 +53,11 @@ impl PacketRouter {
             return false;
         }
 
-        let packet_name =
-            PacketNameRegistry::get_serverbound_packet_name(client.state, packet_id);
-        let mut packet_io_event = PacketIoEvent::new(
-            PacketFlowDirection::Serverbound,
-            client.state,
-            packet_id,
-            packet_name,
-            payload.len(),
-        );
+        let packet_name = PacketNameRegistry::get_serverbound_packet_name(client.state, packet_id);
+        let mut inbound_packet_event =
+            InboundPacketEvent::new(client.state, packet_id, packet_name, payload.len());
         let server = unsafe { &mut *server_pointer };
-        packet_io_event.dispatch(server, client);
+        inbound_packet_event.dispatch(server, client);
         client.payload_cursor = Some(Cursor::new(payload));
 
         for packet_listener in assigned_packet_listeners {

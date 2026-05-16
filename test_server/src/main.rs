@@ -1,11 +1,7 @@
-use std::sync::{Arc, Mutex};
-
 use spinel::{
     macros::import_module,
-    server::{
-        MinecraftServer,
-        events::signal::ServerSignal,
-    },
+    network::types::Identifier,
+    server::{MinecraftServer, world::Block},
 };
 pub mod events;
 
@@ -14,31 +10,15 @@ import_module!("minecraft:login");
 
 #[tokio::main]
 async fn main() {
-    let server = Arc::new(Mutex::new(MinecraftServer::new()));
-    println!("Starting Spinel Server on 127.0.0.1:25565");
-    let mut server_task = tokio::spawn(MinecraftServer::start_shared(
-        server.clone(),
-        "127.0.0.1",
-        25565,
-    ));
-
-    tokio::select! {
-        _ = tokio::signal::ctrl_c() => {
-            {
-                let Ok(mut server) = server.lock() else {
-                    return;
-                };
-                server.on_signal(ServerSignal::CtrlC);
-            }
-
-            server_task.abort();
-            let _ = server_task.await;
-        }
-        result = &mut server_task => {
-            match result {
-                Ok(()) => {}
-                Err(error) => eprintln!("Server task failed: {}", error),
-            }
-        }
+    let mut server = MinecraftServer::new();
+    let world_id = server
+        .world_manager
+        .create_world(Identifier::minecraft("overworld"));
+    if let Some(world) = server.world_manager.world_mut(world_id) {
+        world.set_generator(|unit| {
+            unit.modifier().fill_height(0, 3, Block::grass_block());
+        });
     }
+    println!("Starting Spinel Server on 127.0.0.1:25565");
+    server.start("127.0.0.1", 25565).await;
 }

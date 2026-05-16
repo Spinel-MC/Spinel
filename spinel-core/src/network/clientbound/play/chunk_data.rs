@@ -1,8 +1,5 @@
 use spinel_macros::packet;
-use spinel_network::types::{
-    chunk::{ChunkData, ChunkSection, HeightmapEntry},
-    light::LightData,
-};
+use spinel_network::types::{chunk::ChunkData, light::LightData};
 
 #[packet(id: "level_chunk_with_light", state: ConnectionState::Play, recipient: Recipient::Client)]
 pub struct ChunkDataAndUpdateLightPacket {
@@ -13,7 +10,7 @@ pub struct ChunkDataAndUpdateLightPacket {
 }
 
 impl ChunkDataAndUpdateLightPacket {
-    pub fn new_stub(chunk_x: i32, chunk_z: i32) -> Self {
+    pub fn new(chunk_x: i32, chunk_z: i32, chunk_data: ChunkData) -> Self {
         let light_data = LightData {
             sky_light_mask: Self::full_light_mask(),
             block_light_mask: Self::full_light_mask(),
@@ -26,35 +23,9 @@ impl ChunkDataAndUpdateLightPacket {
         Self {
             chunk_x,
             chunk_z,
-            chunk_data: Self::stub_chunk_data(),
+            chunk_data,
             light_data,
         }
-    }
-
-    fn stub_chunk_data() -> ChunkData {
-        ChunkData {
-            heightmaps: Self::stub_heightmaps(),
-            sections: (0..24).map(|_| ChunkSection::empty()).collect(),
-            block_entities: vec![],
-        }
-    }
-
-    fn stub_heightmaps() -> Vec<HeightmapEntry> {
-        let packed_heightmap_entries = vec![0; 37];
-        vec![
-            HeightmapEntry {
-                kind: 1,
-                data: packed_heightmap_entries.clone(),
-            },
-            HeightmapEntry {
-                kind: 4,
-                data: packed_heightmap_entries.clone(),
-            },
-            HeightmapEntry {
-                kind: 5,
-                data: packed_heightmap_entries,
-            },
-        ]
     }
 
     fn full_light_mask() -> Vec<i64> {

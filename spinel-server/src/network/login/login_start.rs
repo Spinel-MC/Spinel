@@ -1,8 +1,8 @@
 use crate::events::intention::IntentionEvent;
 use crate::events::login::PreLoginEvent;
-use crate::server::MinecraftServer;
 use crate::network::client::instance::Client;
 use crate::network::client::metadata::LoginMetadata;
+use crate::server::MinecraftServer;
 
 use rsa::RsaPrivateKey;
 use rsa::pkcs8::EncodePublicKey;

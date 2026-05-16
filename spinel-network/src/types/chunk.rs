@@ -14,12 +14,10 @@ impl DataType for PalettedContainer {
         self.bits_per_entry.encode(w)?;
 
         if self.bits_per_entry == 0 {
-            let val = self
-                .palette
-                .as_ref()
-                .and_then(|p| p.first())
-                .copied()
-                .unwrap_or(0);
+            let val = match self.palette.as_ref().and_then(|p| p.first()).copied() {
+                Some(palette_entry) => palette_entry,
+                None => 0,
+            };
             VarIntWrapper(val).encode(w)?;
         } else if self.bits_per_entry <= 8 {
             if let Some(palette) = &self.palette {
@@ -32,9 +30,7 @@ impl DataType for PalettedContainer {
             }
         }
 
-        for &long in &self.data {
-            long.encode(w)?;
-        }
+        self.data.iter().try_for_each(|long| long.encode(w))?;
         Ok(())
     }
 
@@ -85,24 +81,6 @@ impl DataType for ChunkSection {
             block_states: PalettedContainer::decode(r)?,
             biomes: PalettedContainer::decode(r)?,
         })
-    }
-}
-
-impl ChunkSection {
-    pub fn empty() -> Self {
-        Self {
-            block_count: 0,
-            block_states: PalettedContainer {
-                bits_per_entry: 0,
-                palette: Some(vec![0]),
-                data: vec![],
-            },
-            biomes: PalettedContainer {
-                bits_per_entry: 0,
-                palette: Some(vec![1]),
-                data: vec![],
-            },
-        }
     }
 }
 
@@ -211,9 +189,9 @@ impl ChunkDataCodec {
 
     fn storage_len(bits_per_entry: u8, entry_count: usize) -> usize {
         if bits_per_entry == 0 {
-            0
-        } else {
-            (entry_count * bits_per_entry as usize).div_ceil(64)
+            return 0;
         }
+        let entries_per_long = 64 / bits_per_entry as usize;
+        entry_count.div_ceil(entries_per_long)
     }
 }

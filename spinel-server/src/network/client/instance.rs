@@ -1,14 +1,8 @@
 use crate::network::client::metadata::LoginMetadata;
-use crate::{
-    events::network::packet_io::{PacketFlowDirection, PacketIoEvent},
-    server::MinecraftServer,
-};
 use spinel_network::ConnectionState;
 use spinel_network::DataType;
-use spinel_network::PacketSender;
 use spinel_network::VarIntWrapper;
 use spinel_network::encoder::PacketEncoder;
-use spinel_network::packet_names::PacketNameRegistry;
 use spinel_network::types::{Position, Slot};
 use spinel_network::wrappers::JsonTextComponent;
 use spinel_utils::component::text::TextComponent;
@@ -26,6 +20,10 @@ pub struct Client {
     pub server_ptr: Option<usize>,
     pub pending_encryption: Option<Vec<u8>>,
     pub pending_compression: Option<i32>,
+    pub(super) alive_time: u64,
+    pub(super) alive_pending: bool,
+    pub(super) alive_id: u64,
+    pub(super) latency_millis: u32,
 }
 
 impl Client {
@@ -40,6 +38,10 @@ impl Client {
             server_ptr: None,
             pending_encryption: None,
             pending_compression: None,
+            alive_time: 0,
+            alive_pending: false,
+            alive_id: 0,
+            latency_millis: 0,
         }
     }
 
@@ -141,33 +143,6 @@ impl Client {
     }
     pub fn read_json_text_component(&mut self) -> io::Result<TextComponent> {
         Ok(self.decode::<JsonTextComponent>()?.0)
-    }
-}
-
-impl PacketSender for Client {
-    fn send_packet(&mut self, id: i32, payload: &[u8]) -> io::Result<()> {
-        self.encoder.write_frame(&mut self.stream, id, payload)?;
-        self.dispatch_packet_io_event(id, payload.len());
-        Ok(())
-    }
-}
-
-impl Client {
-    fn dispatch_packet_io_event(&mut self, id: i32, payload_size: usize) {
-        let Some(server_address) = self.server_ptr else {
-            return;
-        };
-
-        let packet_name = PacketNameRegistry::get_clientbound_packet_name(self.state, id);
-        let mut packet_io_event = PacketIoEvent::new(
-            PacketFlowDirection::Clientbound,
-            self.state,
-            id,
-            packet_name,
-            payload_size,
-        );
-        let server = unsafe { &mut *(server_address as *mut MinecraftServer) };
-        packet_io_event.dispatch(server, self);
     }
 }
 

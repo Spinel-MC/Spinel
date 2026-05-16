@@ -5,11 +5,13 @@ pub mod modules;
 pub mod network;
 pub mod registry_cache;
 pub mod server;
+pub mod world;
 
 mod listeners;
 
-pub use entity::player::Player;
+pub use entity::Player;
 pub use server::MinecraftServer;
+pub use world::World;
 
 use spinel_network::ConnectionState;
 use spinel_utils::Priority;

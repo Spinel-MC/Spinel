@@ -1,18 +1,25 @@
-use crate::events::signal::{ServerSignal, SignalEvent};
 use crate::events::shutdown::ShutdownEvent;
+use crate::events::signal::{ServerSignal, SignalEvent};
 use crate::events::startup::StartupEvent;
 use crate::network::client::instance::Client;
 use crate::network::connection_manager::ConnectionManager;
-use crate::network::socket::start_tcp_listener;
 use crate::registry_cache::RegistryCache;
 use crate::server::packet_router::PacketRouter;
+use crate::world::WorldManager;
 use spinel_network::ConnectionState;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
+
+const DEFAULT_TICKS_PER_SECOND: u32 = 20;
 
 pub struct MinecraftServer {
     pub connection_manager: ConnectionManager,
+    pub world_manager: WorldManager,
     pub registry_cache: RegistryCache,
     pub registry: ::spinel_registry::Registry,
+    pub ticks_per_second: u32,
+    pub current_tick: u64,
+    pub is_ticking: Arc<AtomicBool>,
     packet_router: PacketRouter,
 }
 
@@ -23,30 +30,18 @@ impl MinecraftServer {
 
         Self {
             connection_manager: ConnectionManager::new(),
+            world_manager: WorldManager::new(),
             registry_cache,
             registry,
+            ticks_per_second: DEFAULT_TICKS_PER_SECOND,
+            current_tick: 0,
+            is_ticking: Arc::new(AtomicBool::new(false)),
             packet_router: PacketRouter::new(),
         }
     }
 
-    pub async fn start(self, address: &str, port: u16) {
-        let server_arc = Arc::new(Mutex::new(self));
-        Self::start_shared(server_arc, address, port).await;
-    }
-
-    pub async fn start_shared(server_arc: Arc<Mutex<Self>>, address: &str, port: u16) {
-        if Self::startup_cancelled(&server_arc) {
-            eprintln!("Server startup event was cancelled.");
-            return;
-        }
-
-        match start_tcp_listener(server_arc, address, port).await {
-            Ok(()) => println!("Server listener task completed normally."),
-            Err(error) => eprintln!("Server listener task failed: {}", error),
-        }
-    }
-
     pub fn stop(&mut self) {
+        self.is_ticking.store(false, Ordering::SeqCst);
         self.on_shutdown();
     }
 
@@ -89,11 +84,10 @@ impl MinecraftServer {
             .dispatch_packet(server_pointer, packet_id, client, payload)
     }
 
-    fn startup_cancelled(server_arc: &Arc<Mutex<Self>>) -> bool {
-        let Ok(mut server_guard) = server_arc.lock() else {
-            return true;
-        };
-        server_guard.on_startup()
+    pub fn set_tick_rate(&mut self, ticks_per_second: u32) {
+        self.ticks_per_second = ticks_per_second.max(1);
+        self.world_manager
+            .sync_ticks(&self.connection_manager, self.ticks_per_second);
     }
 }
 

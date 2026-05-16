@@ -31,7 +31,9 @@ impl MinecraftServer {
         disconnect_reason: TextComponent,
     ) -> io::Result<()> {
         match client.state {
-            ConnectionState::Login => LoginDisconnectPacket::new(disconnect_reason).dispatch(client),
+            ConnectionState::Login => {
+                LoginDisconnectPacket::new(disconnect_reason).dispatch(client)
+            }
             ConnectionState::Configuration => {
                 ConfigurationDisconnectPacket::new(disconnect_reason).dispatch(client)
             }

@@ -19,7 +19,8 @@ impl MinecraftServer {
             return true;
         }
 
-        self.connection_manager.add_connection(client_address, client);
+        self.connection_manager
+            .add_connection(client_address, client);
         false
     }
 
@@ -29,6 +30,7 @@ impl MinecraftServer {
         }
 
         DisconnectionEvent::new(address).dispatch(self);
+        self.world_manager.remove_entity_by_addr(&address);
         self.connection_manager.remove_connection(&address);
     }
 
@@ -41,10 +43,7 @@ impl MinecraftServer {
         Some(connection.addr)
     }
 
-    fn create_connection_event(
-        &mut self,
-        client: &Arc<Mutex<Client>>,
-    ) -> Option<ConnectionEvent> {
+    fn create_connection_event(&mut self, client: &Arc<Mutex<Client>>) -> Option<ConnectionEvent> {
         let Ok(mut connection) = client.lock() else {
             return None;
         };

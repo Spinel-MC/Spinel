@@ -1,6 +1,5 @@
-use crate::entity::player::Player;
-use crate::server::MinecraftServer;
 use crate::network::client::instance::Client;
+use crate::server::MinecraftServer;
 use ::rsa::Pkcs1v15Encrypt;
 use ::spinel_core::network::clientbound::login::login_success::LoginSuccessPacket;
 use ::spinel_core::network::clientbound::login::set_compression::SetCompressionPacket;
@@ -13,7 +12,6 @@ use uuid::Uuid;
 struct VerifiedLoginMetadata {
     private_key: RsaPrivateKey,
     expected_verify_token: Vec<u8>,
-    protocol_version: i32,
     username: String,
     uuid: Uuid,
 }
@@ -71,7 +69,6 @@ impl<'a> EncryptionResponseHandler<'a> {
         Some(VerifiedLoginMetadata {
             private_key,
             expected_verify_token,
-            protocol_version: login_metadata.protocol_version,
             username,
             uuid,
         })
@@ -107,16 +104,6 @@ impl<'a> EncryptionResponseHandler<'a> {
         if SetCompressionPacket::new(-1).dispatch(self.client).is_err() {
             return false;
         }
-
-        self.server.connection_manager.register_player(
-            self.client.addr,
-            Player::new(
-                login_metadata.uuid,
-                login_metadata.username.clone(),
-                login_metadata.protocol_version,
-                self.client.addr,
-            ),
-        );
 
         if LoginSuccessPacket::new(login_metadata.uuid, login_metadata.username)
             .dispatch(self.client)

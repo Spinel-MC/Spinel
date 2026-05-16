@@ -1,2 +1,4 @@
+pub mod inbound_packet;
 pub mod inbound_packet_error;
-pub mod packet_io;
+pub mod outbound_packet;
+pub mod outbound_packet_error;
