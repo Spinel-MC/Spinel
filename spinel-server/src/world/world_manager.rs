@@ -1,7 +1,6 @@
 use crate::entity::Entity;
 use crate::entity::Player;
 use crate::network::client::instance::Client;
-use crate::network::connection_manager::ConnectionManager;
 use crate::world::World;
 use spinel_network::types::Identifier;
 use std::io;
@@ -50,17 +49,8 @@ impl WorldManager {
         true
     }
 
-    pub(crate) fn tick(&mut self, connections: &ConnectionManager) -> Vec<SocketAddr> {
-        self.worlds
-            .iter_mut()
-            .flat_map(|world| world.tick(connections))
-            .collect()
-    }
-
-    pub(crate) fn sync_ticks(&mut self, connections: &ConnectionManager, ticks_per_second: u32) {
-        self.worlds
-            .iter_mut()
-            .for_each(|world| world.sync_ticks(connections, ticks_per_second));
+    pub(crate) fn tick(&mut self) {
+        self.worlds.iter_mut().for_each(World::tick);
     }
 
     pub(crate) fn remove_entity_by_addr(&mut self, addr: &SocketAddr) {

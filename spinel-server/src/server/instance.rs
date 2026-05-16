@@ -7,6 +7,8 @@ use crate::registry_cache::RegistryCache;
 use crate::server::packet_router::PacketRouter;
 use crate::world::WorldManager;
 use spinel_network::ConnectionState;
+use spinel_utils::component::Component;
+use std::net::SocketAddr;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
@@ -86,8 +88,72 @@ impl MinecraftServer {
 
     pub fn set_tick_rate(&mut self, ticks_per_second: u32) {
         self.ticks_per_second = ticks_per_second.max(1);
-        self.world_manager
-            .sync_ticks(&self.connection_manager, self.ticks_per_second);
+        self.sync_client_tick_rate();
+    }
+
+    pub(crate) fn sync_client_tick_rate(&mut self) {
+        self.connection_manager
+            .get_all_clients()
+            .into_iter()
+            .for_each(|client_arc| self.sync_client(client_arc));
+    }
+
+    fn sync_client(&mut self, client_arc: std::sync::Arc<std::sync::Mutex<Client>>) {
+        let Ok(mut client) = client_arc.lock() else {
+            return;
+        };
+        if client.state != ConnectionState::Play {
+            return;
+        }
+        let _ = self.send_tick_rate(&mut client);
+    }
+
+    pub(crate) fn send_tick_rate(&self, client: &mut Client) -> std::io::Result<()> {
+        spinel_core::network::clientbound::play::ticking_state::TickingStatePacket {
+            tick_rate: self.ticks_per_second as f32,
+            is_frozen: false,
+        }
+        .dispatch(client)?;
+        spinel_core::network::clientbound::play::ticking_step::TickingStepPacket::new(0)
+            .dispatch(client)
+    }
+
+    pub(crate) fn tick_connections(&mut self) {
+        let timed_out_clients = self
+            .connection_manager
+            .get_all_clients()
+            .into_iter()
+            .filter_map(|client_arc| self.tick_client(client_arc))
+            .collect();
+        self.disconnect_timed_out_clients(timed_out_clients);
+    }
+
+    fn tick_client(
+        &mut self,
+        client_arc: std::sync::Arc<std::sync::Mutex<Client>>,
+    ) -> Option<SocketAddr> {
+        let Ok(mut client) = client_arc.lock() else {
+            return None;
+        };
+        if client.state != ConnectionState::Play {
+            return None;
+        }
+        if client.tick() {
+            return None;
+        }
+        Some(client.addr)
+    }
+
+    fn disconnect_timed_out_clients(&mut self, client_addresses: Vec<SocketAddr>) {
+        client_addresses.into_iter().for_each(|client_address| {
+            let Some(client_arc) = self.connection_manager.get_client(&client_address) else {
+                return;
+            };
+            let Ok(mut client) = client_arc.lock() else {
+                return;
+            };
+            let _ = self.disconnect(&mut client, Component::text("Timed out"));
+        });
     }
 }
 

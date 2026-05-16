@@ -1,13 +1,11 @@
-use crate::entity::{Entity, EntityTickContext, Player, PlayerChunk};
+use crate::entity::{Entity, Player, PlayerChunk};
 use crate::network::client::instance::Client;
-use crate::network::connection_manager::ConnectionManager;
 use crate::world::generator::{GenerationFork, Generator};
 use crate::world::{BlockPosition, BlockSize, Chunk, ChunkPosition, GenerationUnit};
 use spinel_core::network::clientbound::play::chunk_data::ChunkDataAndUpdateLightPacket;
 use spinel_network::types::Identifier;
 use std::collections::{HashMap, hash_map::Entry};
 use std::io::{Error, ErrorKind, Result};
-use std::net::SocketAddr;
 use uuid::Uuid;
 
 pub struct World {
@@ -111,35 +109,27 @@ impl World {
         player.move_to(client, x, y, z, transition, chunk_packets)
     }
 
-    pub fn tick(&mut self, connections: &ConnectionManager) -> Vec<SocketAddr> {
-        let entity_tick_context = EntityTickContext { connections };
-        self.entities
-            .iter_mut()
-            .filter_map(|entity| entity.tick(&entity_tick_context))
-            .collect()
+    pub fn tick(&mut self) {
+        self.entities.iter_mut().for_each(Entity::tick);
     }
 
-    pub(crate) fn sync_ticks(&mut self, connections: &ConnectionManager, ticks_per_second: u32) {
-        let entity_tick_context = EntityTickContext { connections };
-        self.entities.iter_mut().for_each(|entity| match entity {
-            Entity::Player(player) => player.sync_tick_rate(&entity_tick_context, ticks_per_second),
-        });
-    }
-
-    pub(crate) fn remove_entity_by_addr(&mut self, addr: &SocketAddr) {
+    pub(crate) fn remove_entity_by_addr(&mut self, addr: &std::net::SocketAddr) {
         self.entities.retain(|entity| match entity {
             Entity::Player(player) => player.addr != *addr,
         });
     }
 
-    pub(crate) fn player_by_addr_mut(&mut self, addr: &SocketAddr) -> Option<&mut Player> {
+    pub(crate) fn player_by_addr_mut(
+        &mut self,
+        addr: &std::net::SocketAddr,
+    ) -> Option<&mut Player> {
         self.entities.iter_mut().find_map(|entity| match entity {
             Entity::Player(player) if player.addr == *addr => Some(player),
             Entity::Player(_) => None,
         })
     }
 
-    pub(crate) fn player_by_addr(&self, addr: &SocketAddr) -> Option<&Player> {
+    pub(crate) fn player_by_addr(&self, addr: &std::net::SocketAddr) -> Option<&Player> {
         self.entities.iter().find_map(|entity| match entity {
             Entity::Player(player) if player.addr == *addr => Some(player),
             Entity::Player(_) => None,

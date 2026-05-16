@@ -1,7 +1,5 @@
 use crate::network::socket::start_tcp_listener;
 use crate::server::MinecraftServer;
-use spinel_utils::component::Component;
-use std::net::SocketAddr;
 use std::sync::atomic::Ordering;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
@@ -110,19 +108,7 @@ impl MinecraftServer {
 
     fn tick(&mut self) {
         self.current_tick += 1;
-        let timed_out_players = self.world_manager.tick(&self.connection_manager);
-        self.disconnect_timed_out(timed_out_players);
-    }
-
-    fn disconnect_timed_out(&mut self, player_addresses: Vec<SocketAddr>) {
-        for player_address in player_addresses {
-            let Some(client_arc) = self.connection_manager.get_client(&player_address) else {
-                continue;
-            };
-            let Ok(mut client) = client_arc.lock() else {
-                continue;
-            };
-            let _ = self.disconnect(&mut client, Component::text("Timed out"));
-        }
+        self.world_manager.tick();
+        self.tick_connections();
     }
 }

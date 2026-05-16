@@ -1,11 +1,9 @@
 use crate::entity::PlayerSpawnPoint;
 use crate::entity::player::chunks::PlayerChunk;
 use crate::entity::player::position::PlayerPosition;
-use crate::entity::tick_context::EntityTickContext;
 use crate::network::client::instance::Client;
 use spinel_core::network::clientbound::play::ticking_state::TickingStatePacket;
 use spinel_core::network::clientbound::play::ticking_step::TickingStepPacket;
-use spinel_network::ConnectionState;
 use std::io;
 use std::net::SocketAddr;
 use uuid::Uuid;
@@ -45,35 +43,7 @@ impl Player {
         self.respawn_point
     }
 
-    pub(crate) fn tick(&mut self, context: &EntityTickContext<'_>) -> Option<SocketAddr> {
-        let Some(client_arc) = context.connections.get_client(&self.addr) else {
-            return None;
-        };
-        let Ok(mut client) = client_arc.lock() else {
-            return None;
-        };
-        if client.state != ConnectionState::Play {
-            return None;
-        }
-        if client.tick() {
-            return None;
-        }
-
-        Some(self.addr)
-    }
-
-    pub(crate) fn sync_tick_rate(&self, context: &EntityTickContext<'_>, ticks_per_second: u32) {
-        let Some(client_arc) = context.connections.get_client(&self.addr) else {
-            return;
-        };
-        let Ok(mut client) = client_arc.lock() else {
-            return;
-        };
-        if client.state != ConnectionState::Play {
-            return;
-        }
-        let _ = self.send_tick_rate(&mut client, ticks_per_second);
-    }
+    pub(crate) fn tick(&mut self) {}
 
     pub(super) fn send_tick_rate(
         &self,
