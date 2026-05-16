@@ -33,6 +33,11 @@ pub mod vanilla_blocks;
 
 #[allow(warnings)]
 #[rustfmt::skip]
+#[path = "generated/vanilla_world_blocks.rs"]
+pub mod vanilla_world_blocks;
+
+#[allow(warnings)]
+#[rustfmt::skip]
 #[path = "generated/vanilla_banner_patterns.rs"]
 pub mod vanilla_banner_patterns;
 

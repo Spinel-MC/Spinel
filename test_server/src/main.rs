@@ -16,7 +16,13 @@ async fn main() {
         .create_world(Identifier::minecraft("overworld"));
     if let Some(world) = server.world_manager.world_mut(world_id) {
         world.set_generator(|unit| {
-            unit.modifier().fill_height(0, 3, Block::grass_block());
+
+            let floor_block = Block::DARK_PRISMARINE;
+
+
+            unit.modifier().fill_height(1, 4, floor_block);
+            
+            unit.modifier().fill_height(0, 1, Block::BEDROCK);
         });
     }
     println!("Starting Spinel Server on 127.0.0.1:25565");

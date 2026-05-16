@@ -26,6 +26,7 @@ mod trim_patterns;
 mod types;
 mod wolf_sound_variants;
 mod wolf_variants;
+mod world_blocks;
 
 const SHOULD_FORMAT_OUTPUT: bool = true;
 const GENERATED_OUTPUT_DIRECTORY: &str = "src/generated";
@@ -50,6 +51,7 @@ impl RegistryBuildScript {
 
     fn run(self) -> io::Result<()> {
         self.emit_rerun_instructions();
+        self.refresh_world_blocks_module()?;
 
         if self.generated_assets_are_current()? {
             return Ok(());
@@ -68,6 +70,8 @@ impl RegistryBuildScript {
 
     fn emit_rerun_instructions(&self) {
         println!("cargo:rerun-if-changed=build/build.rs");
+        println!("cargo:rerun-if-changed=build/world_blocks.rs");
+        println!("cargo:rerun-if-changed=build/world_block_matches.rs");
         println!("cargo:rerun-if-changed={}", self.version_file_path());
     }
 
@@ -86,11 +90,46 @@ impl RegistryBuildScript {
             return Ok(false);
         }
 
-        Ok(fs::read_dir(GENERATED_OUTPUT_DIRECTORY)?.next().is_some())
+        if fs::read_dir(GENERATED_OUTPUT_DIRECTORY)?.next().is_none() {
+            return Ok(false);
+        }
+
+        Ok(Path::new(&format!(
+            "{GENERATED_OUTPUT_DIRECTORY}/vanilla_world_blocks.rs"
+        ))
+        .exists())
     }
 
     fn ensure_output_directory(&self) -> io::Result<()> {
         fs::create_dir_all(GENERATED_OUTPUT_DIRECTORY)
+    }
+
+    fn refresh_world_blocks_module(&self) -> io::Result<()> {
+        if !Path::new(GENERATED_OUTPUT_DIRECTORY).exists()
+            || !Path::new(world_blocks::BLOCK_EXTRACTION_PATH).exists()
+        {
+            return Ok(());
+        }
+
+        let output_path = format!("{GENERATED_OUTPUT_DIRECTORY}/vanilla_world_blocks.rs");
+        let should_refresh = match fs::metadata(&output_path) {
+            Ok(metadata) => {
+                let generated_blocks = metadata.modified()?;
+                generated_blocks < fs::metadata(world_blocks::BLOCK_EXTRACTION_PATH)?.modified()?
+                    || generated_blocks < fs::metadata("build/world_blocks.rs")?.modified()?
+                    || generated_blocks
+                        < fs::metadata("build/world_block_matches.rs")?.modified()?
+            }
+            Err(_) => true,
+        };
+
+        if !should_refresh {
+            return Ok(());
+        }
+
+        fs::write(&output_path, world_blocks::build().to_string())?;
+        let _ = Command::new("rustfmt").arg(output_path).output();
+        Ok(())
     }
 
     fn write_generated_modules(&self) -> io::Result<()> {
@@ -111,9 +150,10 @@ impl RegistryBuildScript {
         Ok(())
     }
 
-    fn generated_modules(&self) -> [(TokenStream, &'static str); 23] {
+    fn generated_modules(&self) -> [(TokenStream, &'static str); 24] {
         [
             (blocks::build(), "blocks"),
+            (world_blocks::build(), "world_blocks"),
             (banner_patterns::build(), "banner_patterns"),
             (biomes::build(), "biomes"),
             (block_tags::build(), "block_tags"),

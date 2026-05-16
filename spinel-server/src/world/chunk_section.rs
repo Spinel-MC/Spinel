@@ -15,7 +15,7 @@ impl ChunkSection {
     pub fn new(y: i32) -> Self {
         Self {
             y,
-            blocks: vec![Block::air(); CHUNK_SECTION_BLOCK_COUNT],
+            blocks: vec![Block::AIR; CHUNK_SECTION_BLOCK_COUNT],
             biomes: vec![Biome::plains(); CHUNK_SECTION_BIOME_COUNT],
         }
     }
@@ -41,7 +41,7 @@ impl ChunkSection {
     fn block_count(&self) -> i16 {
         self.blocks
             .iter()
-            .filter(|block| block.state_id != Block::air().state_id)
+            .filter(|block| block.state_id() != Block::AIR.state_id())
             .count() as i16
     }
 
@@ -76,8 +76,8 @@ impl ChunkSection {
 
     fn block_state_palette(&self) -> Vec<i32> {
         self.blocks.iter().fold(Vec::new(), |mut palette, block| {
-            if !palette.contains(&block.state_id) {
-                palette.push(block.state_id);
+            if !palette.contains(&block.state_id()) {
+                palette.push(block.state_id());
             }
             palette
         })
@@ -96,7 +96,7 @@ impl ChunkSection {
         blocks.iter().enumerate().for_each(|(block_index, block)| {
             let Some(palette_index) = palette
                 .iter()
-                .position(|state_id| *state_id == block.state_id)
+                .position(|state_id| *state_id == block.state_id())
             else {
                 return;
             };
