@@ -28,7 +28,7 @@ impl Player {
     ) -> io::Result<()> {
         self.position = PlayerPosition::from(self.respawn_point());
         self.loaded_chunk = PlayerChunk::from_position(self.position);
-        LoginPlayPacket::new_default(41).dispatch(client)?;
+        LoginPlayPacket::new(41, self.game_mode()).dispatch(client)?;
         client.enter_play();
         self.last_completed_client_tick = 0;
         self.send_tick_rate(client, ticks_per_second)?;

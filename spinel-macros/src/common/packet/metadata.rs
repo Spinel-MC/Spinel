@@ -97,8 +97,7 @@ impl PacketMetadataResolver {
 
     fn read_packet_catalog() -> Option<PacketsJson> {
         let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").ok()?;
-        let packets_path =
-            Path::new(&manifest_dir).join("../spinel-registry/build_assets/packets.json");
+        let packets_path = Path::new(&manifest_dir).join("../spinel-registry/assets/packets.json");
         let file = std::fs::File::open(packets_path).ok()?;
         let reader = std::io::BufReader::new(file);
         serde_json::from_reader(reader).ok()

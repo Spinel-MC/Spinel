@@ -1,31 +1,36 @@
-use super::text::TextComponent;
+use crate::component::text::TextComponent;
 
-#[derive(Clone, Debug)]
-pub enum ComponentType<T: Into<String>> {
+#[derive(Clone, Debug, PartialEq, Default)]
+pub enum ComponentType {
+    #[default]
     Empty,
-    Text(T),
-    StaticText(&'static str),
+    Text(String),
     Translatable {
         key: String,
+        fallback: Option<String>,
         args: Vec<TextComponent>,
     },
-    StaticTranslatable(&'static str),
     Score {
         name: String,
         objective: String,
+        value: Option<String>,
     },
-    Selector(String),
-    StaticSelector(&'static str),
+    Selector {
+        selector: String,
+        separator: Option<Box<TextComponent>>,
+    },
     Keybind(String),
-    StaticKeybind(&'static str),
     Nbt {
         nbt_path: String,
-        source: String,
+        source: NbtSource,
+        interpret: bool,
+        separator: Option<Box<TextComponent>>,
     },
 }
 
-impl<T: Into<String>> Default for ComponentType<T> {
-    fn default() -> Self {
-        ComponentType::Empty
-    }
+#[derive(Clone, Debug, PartialEq)]
+pub enum NbtSource {
+    Block(String),
+    Entity(String),
+    Storage(String),
 }

@@ -46,88 +46,13 @@ impl DataType for TagRegistry {
     state: ConnectionState::Configuration,
     recipient: Recipient::Client
 )]
+#[derive(Debug, Clone)]
 pub struct UpdateTagsPacket {
     pub registries: Array<TagRegistry>,
 }
 
 impl UpdateTagsPacket {
-    pub fn vanilla_tags() -> Self {
-        let registries = vec![
-            TagRegistry {
-                registry_name: "minecraft:worldgen/biome".to_string(),
-                tags: Array(vec![
-                    Tag {
-                        tag_name: "minecraft:is_overworld".to_string(),
-                        entries: Array(
-                            (0..65)
-                                .filter(|&i| ![7, 16, 17, 18, 34, 44, 49, 56, 57, 59].contains(&i))
-                                .map(|i| VarIntWrapper(i as i32))
-                                .collect(),
-                        ),
-                    },
-                    Tag {
-                        tag_name: "minecraft:is_nether".to_string(),
-                        entries: Array(vec![
-                            VarIntWrapper(2),
-                            VarIntWrapper(7),
-                            VarIntWrapper(34),
-                            VarIntWrapper(49),
-                            VarIntWrapper(59),
-                        ]),
-                    },
-                    Tag {
-                        tag_name: "minecraft:is_end".to_string(),
-                        entries: Array(vec![
-                            VarIntWrapper(16),
-                            VarIntWrapper(17),
-                            VarIntWrapper(18),
-                            VarIntWrapper(44),
-                            VarIntWrapper(56),
-                        ]),
-                    },
-                ]),
-            },
-            TagRegistry {
-                registry_name: "minecraft:dialog".to_string(),
-                tags: Array(vec![
-                    Tag {
-                        tag_name: "minecraft:pause_screen_additions".to_string(),
-                        entries: Array(vec![]),
-                    },
-                    Tag {
-                        tag_name: "minecraft:quick_actions".to_string(),
-                        entries: Array(vec![]),
-                    },
-                ]),
-            },
-            TagRegistry {
-                registry_name: "minecraft:timeline".to_string(),
-                tags: Array(vec![
-                    Tag {
-                        tag_name: "minecraft:in_overworld".to_string(),
-                        entries: Array(vec![
-                            VarIntWrapper(0),
-                            VarIntWrapper(1),
-                            VarIntWrapper(2),
-                            VarIntWrapper(3),
-                        ]),
-                    },
-                    Tag {
-                        tag_name: "minecraft:in_nether".to_string(),
-                        entries: Array(vec![]),
-                    },
-                    Tag {
-                        tag_name: "minecraft:in_end".to_string(),
-                        entries: Array(vec![]),
-                    },
-                    Tag {
-                        tag_name: "minecraft:universal".to_string(),
-                        entries: Array(vec![]),
-                    },
-                ]),
-            },
-        ];
-
+    pub fn new(registries: Vec<TagRegistry>) -> Self {
         Self {
             registries: Array(registries),
         }

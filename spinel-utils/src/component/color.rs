@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum TextColor {
     Named(NamedTextColor),
@@ -12,8 +12,8 @@ impl TextColor {
         TextColor::Named(color)
     }
 
-    pub fn from_hex(hex: String) -> Self {
-        TextColor::Hex(hex)
+    pub fn from_hex(hex: impl Into<String>) -> Self {
+        TextColor::Hex(hex.into())
     }
 
     pub fn to_legacy_code(&self) -> String {
@@ -24,7 +24,7 @@ impl TextColor {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum NamedTextColor {
     Black,
@@ -46,7 +46,7 @@ pub enum NamedTextColor {
 }
 
 impl NamedTextColor {
-    pub fn as_str(&self) -> &str {
+    pub fn as_str(self) -> &'static str {
         match self {
             NamedTextColor::Black => "black",
             NamedTextColor::DarkBlue => "dark_blue",
@@ -67,24 +67,25 @@ impl NamedTextColor {
         }
     }
 
-    pub fn to_legacy_code(&self) -> String {
-        match self {
-            NamedTextColor::Black => "§0".to_string(),
-            NamedTextColor::DarkBlue => "§1".to_string(),
-            NamedTextColor::DarkGreen => "§2".to_string(),
-            NamedTextColor::DarkAqua => "§3".to_string(),
-            NamedTextColor::DarkRed => "§4".to_string(),
-            NamedTextColor::DarkPurple => "§5".to_string(),
-            NamedTextColor::Gold => "§6".to_string(),
-            NamedTextColor::Gray => "§7".to_string(),
-            NamedTextColor::DarkGray => "§8".to_string(),
-            NamedTextColor::Blue => "§9".to_string(),
-            NamedTextColor::Green => "§a".to_string(),
-            NamedTextColor::Aqua => "§b".to_string(),
-            NamedTextColor::Red => "§c".to_string(),
-            NamedTextColor::LightPurple => "§d".to_string(),
-            NamedTextColor::Yellow => "§e".to_string(),
-            NamedTextColor::White => "§f".to_string(),
-        }
+    pub fn to_legacy_code(self) -> String {
+        let code = match self {
+            NamedTextColor::Black => '0',
+            NamedTextColor::DarkBlue => '1',
+            NamedTextColor::DarkGreen => '2',
+            NamedTextColor::DarkAqua => '3',
+            NamedTextColor::DarkRed => '4',
+            NamedTextColor::DarkPurple => '5',
+            NamedTextColor::Gold => '6',
+            NamedTextColor::Gray => '7',
+            NamedTextColor::DarkGray => '8',
+            NamedTextColor::Blue => '9',
+            NamedTextColor::Green => 'a',
+            NamedTextColor::Aqua => 'b',
+            NamedTextColor::Red => 'c',
+            NamedTextColor::LightPurple => 'd',
+            NamedTextColor::Yellow => 'e',
+            NamedTextColor::White => 'f',
+        };
+        format!("\u{00a7}{code}")
     }
 }

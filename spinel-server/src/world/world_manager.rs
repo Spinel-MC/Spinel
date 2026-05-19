@@ -3,6 +3,7 @@ use crate::entity::Player;
 use crate::network::client::instance::Client;
 use crate::world::World;
 use spinel_network::types::Identifier;
+use spinel_registry::Registries;
 use std::io;
 use std::net::SocketAddr;
 use uuid::Uuid;
@@ -69,6 +70,7 @@ impl WorldManager {
         &mut self,
         client: &mut Client,
         ticks_per_second: u32,
+        registries: &Registries,
     ) -> io::Result<()> {
         let Some(world) = self
             .worlds
@@ -77,7 +79,7 @@ impl WorldManager {
         else {
             return Err(io::Error::new(io::ErrorKind::NotFound, "Player not found."));
         };
-        world.enter_player(client, ticks_per_second)
+        world.enter_player(client, ticks_per_second, registries)
     }
 
     pub(crate) fn move_player(
@@ -86,6 +88,7 @@ impl WorldManager {
         x: f64,
         y: f64,
         z: f64,
+        registries: &Registries,
     ) -> io::Result<()> {
         let Some(world) = self
             .worlds
@@ -94,7 +97,7 @@ impl WorldManager {
         else {
             return Err(io::Error::new(io::ErrorKind::NotFound, "Player not found."));
         };
-        world.move_player(client, x, y, z)
+        world.move_player(client, x, y, z, registries)
     }
 }
 

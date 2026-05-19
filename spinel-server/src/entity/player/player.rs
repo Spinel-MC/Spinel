@@ -2,6 +2,7 @@ use crate::entity::PlayerSpawnPoint;
 use crate::entity::player::chunks::PlayerChunk;
 use crate::entity::player::position::PlayerPosition;
 use crate::network::client::instance::Client;
+use spinel_core::entity::game_mode::GameMode;
 use spinel_core::network::clientbound::play::ticking_state::TickingStatePacket;
 use spinel_core::network::clientbound::play::ticking_step::TickingStepPacket;
 use std::io;
@@ -15,6 +16,7 @@ pub struct Player {
     pub addr: SocketAddr,
     pub(crate) loaded_chunk: PlayerChunk,
     pub(crate) position: PlayerPosition,
+    game_mode: GameMode,
     respawn_point: PlayerSpawnPoint,
     pub(super) last_completed_client_tick: u64,
 }
@@ -30,9 +32,19 @@ impl Player {
             addr,
             loaded_chunk: PlayerChunk::from_position(position),
             position,
+            game_mode: GameMode::Survival,
             respawn_point,
             last_completed_client_tick: 0,
         }
+    }
+
+    pub fn set_game_mode(&mut self, game_mode: GameMode) -> bool {
+        self.game_mode = game_mode;
+        true
+    }
+
+    pub fn game_mode(&self) -> GameMode {
+        self.game_mode
     }
 
     pub fn set_respawn_point(&mut self, respawn_point: PlayerSpawnPoint) {
@@ -64,5 +76,27 @@ impl Player {
 
     pub(crate) fn look(&mut self, yaw: f32, pitch: f32) {
         self.position = self.position.looking_at(yaw, pitch);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Player;
+    use spinel_core::entity::game_mode::GameMode;
+    use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+    use uuid::Uuid;
+
+    #[test]
+    fn player_game_mode_defaults_to_survival_and_can_be_set_during_configuration() {
+        let mut player = Player::new(
+            Uuid::nil(),
+            "Player".to_string(),
+            0,
+            SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 25565),
+        );
+
+        assert_eq!(player.game_mode(), GameMode::Survival);
+        assert!(player.set_game_mode(GameMode::Creative));
+        assert_eq!(player.game_mode(), GameMode::Creative);
     }
 }

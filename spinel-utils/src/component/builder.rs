@@ -1,18 +1,24 @@
-use crate::component::{
-    color::TextColor, style::Style, text::TextComponent, variant::ComponentType,
-};
+use crate::component::color::TextColor;
+use crate::component::events::{ClickEvent, HoverEvent};
+use crate::component::style::Style;
+use crate::component::text::TextComponent;
+use crate::component::variant::ComponentType;
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct ComponentBuilder {
-    pub content: ComponentType<String>,
+    pub content: ComponentType,
     pub style: Style,
     pub extra: Vec<TextComponent>,
 }
 
 impl ComponentBuilder {
-    pub fn new(text: String) -> Self {
+    pub fn new(text: impl Into<String>) -> Self {
+        Self::from_content(ComponentType::Text(text.into()))
+    }
+
+    pub fn from_content(content: ComponentType) -> Self {
         Self {
-            content: ComponentType::Text(text),
+            content,
             style: Style::empty(),
             extra: Vec::new(),
         }
@@ -48,9 +54,33 @@ impl ComponentBuilder {
         self
     }
 
-    pub fn append(mut self, child: TextComponent) -> Self {
-        self.extra.push(child);
+    pub fn click_event(mut self, event: ClickEvent) -> Self {
+        self.style.click_event = Some(event);
         self
+    }
+
+    pub fn hover_event(mut self, event: HoverEvent) -> Self {
+        self.style.hover_event = Some(event);
+        self
+    }
+
+    pub fn insertion(mut self, insertion: impl Into<String>) -> Self {
+        self.style.insertion = Some(insertion.into());
+        self
+    }
+
+    pub fn font(mut self, font: impl Into<String>) -> Self {
+        self.style.font = Some(font.into());
+        self
+    }
+
+    pub fn append(mut self, child: impl Into<TextComponent>) -> Self {
+        self.extra.push(child.into());
+        self
+    }
+
+    pub fn build(self) -> TextComponent {
+        self.into()
     }
 
     pub fn to_json_string(&self) -> String {
@@ -72,8 +102,8 @@ impl From<ComponentBuilder> for TextComponent {
     }
 }
 
-impl<'a> From<&'a ComponentBuilder> for TextComponent {
-    fn from(builder_ref: &'a ComponentBuilder) -> Self {
+impl From<&ComponentBuilder> for TextComponent {
+    fn from(builder_ref: &ComponentBuilder) -> Self {
         TextComponent::from(builder_ref.clone())
     }
 }

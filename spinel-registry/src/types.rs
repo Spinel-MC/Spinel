@@ -6,20 +6,28 @@ use std::{
 
 use serde::{Deserialize, Serialize};
 
-/// An identifier used by Minecraft.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Identifier {
-    /// The namespace of the identifier.
     pub namespace: Cow<'static, str>,
-    /// The path of the identifier.
     pub path: Cow<'static, str>,
 }
 
 impl Identifier {
-    /// The vanilla namespace.
     pub const VANILLA_NAMESPACE: &'static str = "minecraft";
 
-    /// Creates a new `Identifier` with the vanilla namespace.
+    #[must_use]
+    pub fn new(namespace: impl Into<String>, path: impl Into<String>) -> Self {
+        Identifier {
+            namespace: Cow::Owned(namespace.into()),
+            path: Cow::Owned(path.into()),
+        }
+    }
+
+    #[must_use]
+    pub fn minecraft(path: impl Into<String>) -> Self {
+        Self::new(Self::VANILLA_NAMESPACE, path)
+    }
+
     #[must_use]
     pub fn vanilla(path: String) -> Self {
         Identifier {
@@ -28,7 +36,6 @@ impl Identifier {
         }
     }
 
-    /// Creates a new `Identifier` with the vanilla namespace and a static path.
     #[must_use]
     pub const fn vanilla_static(path: &'static str) -> Self {
         Identifier {
@@ -37,7 +44,6 @@ impl Identifier {
         }
     }
 
-    /// Returns whether the character is a valid namespace character.
     #[must_use]
     pub fn valid_namespace_char(char: char) -> bool {
         char == '_'
@@ -47,23 +53,19 @@ impl Identifier {
             || char == '.'
     }
 
-    /// Returns whether the character is a valid path character.
     #[must_use]
     pub fn valid_char(char: char) -> bool {
         Self::valid_namespace_char(char) || char == '/'
     }
 
-    /// Returns whether the namespace is valid.
     pub fn validate_namespace(namespace: &str) -> bool {
         namespace.chars().all(Self::valid_namespace_char)
     }
 
-    /// Returns whether the path is valid.
     pub fn validate_path(path: &str) -> bool {
         path.chars().all(Self::valid_char)
     }
 
-    /// Returns whether the namespace and path are valid.
     #[must_use]
     pub fn validate(namespace: &str, path: &str) -> bool {
         Self::validate_namespace(namespace) && Self::validate_path(path)
@@ -76,26 +78,34 @@ impl Display for Identifier {
     }
 }
 
+impl Default for Identifier {
+    fn default() -> Self {
+        Self::minecraft("air")
+    }
+}
+
 impl FromStr for Identifier {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let parts: Vec<&str> = s.split(':').collect();
-        if parts.len() != 2 {
-            return Err(format!("Invalid resource location: {s}"));
+        let (namespace, path) = match parts.as_slice() {
+            [path] => (Self::VANILLA_NAMESPACE, *path),
+            [namespace, path] => (*namespace, *path),
+            _ => return Err(format!("Invalid resource location: {s}")),
+        };
+
+        if !Identifier::validate_namespace(namespace) {
+            return Err(format!("Invalid namespace: {namespace}"));
         }
 
-        if !Identifier::validate_namespace(parts[0]) {
-            return Err(format!("Invalid namespace: {}", parts[0]));
-        }
-
-        if !Identifier::validate_path(parts[1]) {
-            return Err(format!("Invalid path: {}", parts[1]));
+        if !Identifier::validate_path(path) {
+            return Err(format!("Invalid path: {path}"));
         }
 
         Ok(Identifier {
-            namespace: Cow::Owned(parts[0].to_string()),
-            path: Cow::Owned(parts[1].to_string()),
+            namespace: Cow::Owned(namespace.to_string()),
+            path: Cow::Owned(path.to_string()),
         })
     }
 }
@@ -119,23 +129,17 @@ impl<'de> Deserialize<'de> for Identifier {
     }
 }
 
-/// A raw block state id. Using the registry this id can be derived into a block and its current properties.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub struct BlockStateId(pub u16);
 
-/// An axis in 3D space.
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum Axis {
-    /// X axis
     X,
-    /// Y axis
     Y,
-    /// Z axis
     Z,
 }
 
 impl Axis {
-    /// Returns the axis as a string.
     #[must_use]
     pub fn as_str(&self) -> &str {
         match self {
@@ -146,6 +150,5 @@ impl Axis {
     }
 }
 
-/// Placeholder type for unimplemented data component values
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Todo;

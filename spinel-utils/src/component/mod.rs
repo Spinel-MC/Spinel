@@ -3,12 +3,17 @@ use crate::component::{
 };
 
 pub mod builder;
+mod codec;
 pub mod color;
+mod decode;
+pub mod events;
+pub mod nbt;
 pub mod style;
+#[cfg(test)]
+mod tests;
 pub mod text;
 pub mod variant;
 
-//TODO: figure out if I wanna move this to ./builder.rs
 pub struct Component {}
 
 impl Component {

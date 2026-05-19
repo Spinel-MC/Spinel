@@ -1,17 +1,24 @@
-use crate::world::{BlockPosition, Chunk, ChunkPosition, ChunkSection};
+use crate::world::{BlockPosition, Chunk, ChunkPosition, ChunkSection, SectionPosition};
 
 #[derive(Clone)]
 pub struct GenerationFork {
     pub start: BlockPosition,
     pub end: BlockPosition,
+    pub section_positions: Vec<SectionPosition>,
     pub sections: Vec<ChunkSection>,
 }
 
 impl GenerationFork {
-    pub fn new(start: BlockPosition, end: BlockPosition, sections: Vec<ChunkSection>) -> Self {
+    pub fn new(
+        start: BlockPosition,
+        end: BlockPosition,
+        section_positions: Vec<SectionPosition>,
+        sections: Vec<ChunkSection>,
+    ) -> Self {
         Self {
             start,
             end,
+            section_positions,
             sections,
         }
     }
@@ -27,14 +34,16 @@ impl GenerationFork {
     }
 
     pub(crate) fn apply_to(&self, chunk: &mut Chunk) {
-        self.sections.iter().for_each(|fork_section| {
-            if let Some(chunk_section) = chunk
-                .sections_mut()
-                .iter_mut()
-                .find(|chunk_section| chunk_section.y == fork_section.y)
-            {
-                *chunk_section = fork_section.clone();
-            }
-        });
+        let chunk_x = chunk.x();
+        let chunk_z = chunk.z();
+        self.section_positions
+            .iter()
+            .zip(self.sections.iter())
+            .filter(|(section_position, _)| {
+                section_position.x == chunk_x && section_position.z == chunk_z
+            })
+            .for_each(|(section_position, fork_section)| {
+                chunk.merge_section_from_fork(section_position.y, fork_section);
+            });
     }
 }

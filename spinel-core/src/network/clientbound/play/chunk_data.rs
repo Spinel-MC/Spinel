@@ -10,6 +10,20 @@ pub struct ChunkDataAndUpdateLightPacket {
 }
 
 impl ChunkDataAndUpdateLightPacket {
+    pub fn with_light_data(
+        chunk_x: i32,
+        chunk_z: i32,
+        chunk_data: ChunkData,
+        light_data: LightData,
+    ) -> Self {
+        Self {
+            chunk_x,
+            chunk_z,
+            chunk_data,
+            light_data,
+        }
+    }
+
     pub fn new(chunk_x: i32, chunk_z: i32, chunk_data: ChunkData) -> Self {
         let light_data = LightData {
             sky_light_mask: Self::full_light_mask(),
@@ -20,12 +34,7 @@ impl ChunkDataAndUpdateLightPacket {
             block_light_arrays: Self::filled_light_arrays(),
         };
 
-        Self {
-            chunk_x,
-            chunk_z,
-            chunk_data,
-            light_data,
-        }
+        Self::with_light_data(chunk_x, chunk_z, chunk_data, light_data)
     }
 
     fn full_light_mask() -> Vec<i64> {

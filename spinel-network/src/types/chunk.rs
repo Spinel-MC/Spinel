@@ -1,5 +1,7 @@
 use crate::data_type::DataType;
 use crate::types::var_int::VarIntWrapper;
+use spinel_nbt::NbtCompound;
+use spinel_registry::block_entity_type::BlockEntityType;
 use std::io::{self, Read, Write};
 
 #[derive(Debug, Clone)]
@@ -109,11 +111,62 @@ impl DataType for HeightmapEntry {
     }
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct BlockEntity {
+    pub packed_xz: u8,
+    pub y: i16,
+    pub block_entity_type: BlockEntityType,
+    pub nbt: NbtCompound,
+}
+
+impl BlockEntity {
+    pub fn new(
+        x: i32,
+        y: i32,
+        z: i32,
+        block_entity_type: BlockEntityType,
+        nbt: NbtCompound,
+    ) -> Self {
+        Self {
+            packed_xz: (((x & 15) << 4) | (z & 15)) as u8,
+            y: y as i16,
+            block_entity_type,
+            nbt,
+        }
+    }
+}
+
+impl DataType for BlockEntity {
+    fn encode<W: Write>(&self, w: &mut W) -> io::Result<()> {
+        self.packed_xz.encode(w)?;
+        self.y.encode(w)?;
+        VarIntWrapper(self.block_entity_type.id()).encode(w)?;
+        self.nbt.encode(w)
+    }
+
+    fn decode<R: Read>(r: &mut R) -> io::Result<Self> {
+        let packed_xz = u8::decode(r)?;
+        let y = i16::decode(r)?;
+        let block_entity_type_id = VarIntWrapper::decode(r)?.0;
+        let block_entity_type =
+            BlockEntityType::from_id(block_entity_type_id).ok_or_else(|| {
+                io::Error::new(io::ErrorKind::InvalidData, "Unknown block entity type")
+            })?;
+        let nbt = NbtCompound::decode(r)?;
+        Ok(Self {
+            packed_xz,
+            y,
+            block_entity_type,
+            nbt,
+        })
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct ChunkData {
     pub heightmaps: Vec<HeightmapEntry>,
     pub sections: Vec<ChunkSection>,
-    pub block_entities: Vec<()>,
+    pub block_entities: Vec<BlockEntity>,
 }
 
 impl DataType for ChunkData {
@@ -131,6 +184,9 @@ impl DataType for ChunkData {
         w.write_all(&section_buf)?;
 
         VarIntWrapper(self.block_entities.len() as i32).encode(w)?;
+        for block_entity in &self.block_entities {
+            block_entity.encode(w)?;
+        }
         Ok(())
     }
 
@@ -144,7 +200,7 @@ impl DataType for ChunkData {
 
         let entity_count = VarIntWrapper::decode(r)?.0 as usize;
         let sections = ChunkDataCodec::decode_sections(section_data)?;
-        let block_entities = ChunkDataCodec::decode_block_entities(entity_count)?;
+        let block_entities = ChunkDataCodec::decode_block_entities(r, entity_count)?;
 
         Ok(ChunkData {
             heightmaps,
@@ -157,15 +213,11 @@ impl DataType for ChunkData {
 struct ChunkDataCodec;
 
 impl ChunkDataCodec {
-    fn decode_block_entities(entity_count: usize) -> io::Result<Vec<()>> {
-        if entity_count == 0 {
-            return Ok(Vec::new());
-        }
-
-        Err(io::Error::new(
-            io::ErrorKind::InvalidData,
-            "Block entity decoding is not implemented",
-        ))
+    fn decode_block_entities<R: Read>(
+        r: &mut R,
+        entity_count: usize,
+    ) -> io::Result<Vec<BlockEntity>> {
+        ChunkDataCodec::decode_vec(entity_count, || BlockEntity::decode(r))
     }
 
     fn decode_sections(section_data: Vec<u8>) -> io::Result<Vec<ChunkSection>> {

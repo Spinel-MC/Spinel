@@ -30,10 +30,12 @@ impl DataType for NbtTextComponent {
     }
 
     fn decode<R: Read>(r: &mut R) -> io::Result<Self> {
-        let _nbt = NbtCompound::decode(r)?;
-        Ok(NbtTextComponent(TextComponent::literal(
-            "NBT Component (Not Implemented)",
-        )))
+        let nbt = NbtCompound::decode(r)?;
+        let json =
+            serde_json::Value::Object(spinel_utils::component::nbt::nbt_compound_to_json(nbt));
+        let component = serde_json::from_value(json)
+            .map_err(|error| io::Error::new(io::ErrorKind::InvalidData, error))?;
+        Ok(NbtTextComponent(component))
     }
 }
 

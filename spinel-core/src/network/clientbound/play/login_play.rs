@@ -22,6 +22,10 @@ pub struct LoginPlayPacket {
 
 impl LoginPlayPacket {
     pub fn new_default(player_id: i32) -> Self {
+        Self::new(player_id, GameMode::Survival)
+    }
+
+    pub fn new(player_id: i32, game_mode: GameMode) -> Self {
         Self {
             player_id,
             is_hardcore: false,
@@ -32,7 +36,7 @@ impl LoginPlayPacket {
             has_reduced_debug_info: false,
             should_show_death_screen: true,
             is_limited_crafting_enabled: false,
-            common_player_spawn_info: Self::default_spawn_info(),
+            common_player_spawn_info: Self::default_spawn_info(game_mode),
             is_secure_chat_enforced: false,
         }
     }
@@ -45,12 +49,12 @@ impl LoginPlayPacket {
         ])
     }
 
-    fn default_spawn_info() -> CommonPlayerSpawnInfo {
+    fn default_spawn_info(game_mode: GameMode) -> CommonPlayerSpawnInfo {
         CommonPlayerSpawnInfo {
             dimension_type: 1,
             dimension: Identifier::minecraft("overworld"),
             seed: 0,
-            game_mode: GameMode::Creative.id(),
+            game_mode: game_mode.id(),
             previous_game_mode: -1,
             is_debug: false,
             is_flat: true,
@@ -58,5 +62,21 @@ impl LoginPlayPacket {
             portal_cooldown: 0,
             sea_level: 63,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::LoginPlayPacket;
+    use crate::entity::game_mode::GameMode;
+
+    #[test]
+    fn default_login_game_mode_is_survival() {
+        let packet = LoginPlayPacket::new_default(1);
+
+        assert_eq!(
+            packet.common_player_spawn_info.game_mode,
+            GameMode::Survival.id()
+        );
     }
 }

@@ -1,182 +1,131 @@
-use crate::types::Identifier;
-use std::collections::HashMap;
+pub use crate::biome_attributes::{BiomeAttribute, BiomeAttributes, OwnedBiomeAttribute};
+pub use crate::biome_effects::{BiomeEffects, Color, GrassColorModifier};
+use crate::nbt_builder::{bool_tag, put_optional};
+use crate::{Identifier, RegistryCodec};
+use serde_json::Value;
+use spinel_nbt::{Nbt, NbtCompound};
 
-use crate::RegistryExt;
-
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Biome {
-    pub key: Identifier,
     pub has_precipitation: bool,
     pub temperature: f32,
     pub downfall: f32,
     pub temperature_modifier: TemperatureModifier,
+    pub attributes: BiomeAttributes,
     pub effects: BiomeEffects,
-    pub creature_spawn_probability: f32,
-    pub spawners: HashMap<String, Vec<SpawnerData>>,
-    pub spawn_costs: HashMap<Identifier, SpawnCost>,
-    pub carvers: Vec<Identifier>,
-    pub features: Vec<Vec<Identifier>>,
 }
 
-#[derive(Debug)]
-pub struct BiomeEffects {
-    pub fog_color: i32,
-    pub sky_color: i32,
-    pub water_color: i32,
-    pub water_fog_color: i32,
-    pub foliage_color: Option<i32>,
-    pub grass_color: Option<i32>,
-    pub grass_color_modifier: GrassColorModifier,
-    pub music: Option<Vec<WeightedMusic>>,
-    pub ambient_sound: Option<Identifier>,
-    pub additions_sound: Option<AdditionsSound>,
-    pub mood_sound: Option<MoodSound>,
-    pub particle: Option<Particle>,
+impl Biome {
+    #[must_use]
+    pub fn builder() -> BiomeBuilder {
+        BiomeBuilder::new()
+    }
 }
 
-#[derive(Debug)]
-pub struct SpawnerData {
-    pub entity_type: Identifier,
-    pub weight: i32,
-    pub min_count: i32,
-    pub max_count: i32,
+impl RegistryCodec for Biome {
+    fn registry_nbt(&self) -> NbtCompound {
+        let mut biome_nbt = NbtCompound::new();
+        biome_nbt.insert(
+            "has_precipitation".to_string(),
+            bool_tag(self.has_precipitation),
+        );
+        biome_nbt.insert("temperature".to_string(), Nbt::Float(self.temperature));
+        put_optional(
+            &mut biome_nbt,
+            "temperature_modifier",
+            self.temperature_modifier.nbt(),
+        );
+        biome_nbt.insert("downfall".to_string(), Nbt::Float(self.downfall));
+        put_optional(&mut biome_nbt, "attributes", self.attributes.nbt());
+        biome_nbt.insert("effects".to_string(), self.effects.nbt());
+        biome_nbt
+    }
 }
 
-#[derive(Debug)]
-pub struct SpawnCost {
-    pub energy_budget: f64,
-    pub charge: f64,
+pub struct BiomeBuilder {
+    biome: Biome,
 }
 
-#[derive(Debug, Default)]
+impl BiomeBuilder {
+    #[must_use]
+    pub fn new() -> Self {
+        Self {
+            biome: Biome::default(),
+        }
+    }
+
+    pub fn precipitation(&mut self, has_precipitation: bool) -> &mut Self {
+        self.biome.has_precipitation = has_precipitation;
+        self
+    }
+
+    pub fn temperature(&mut self, temperature: f32) -> &mut Self {
+        self.biome.temperature = temperature;
+        self
+    }
+
+    pub fn downfall(&mut self, downfall: f32) -> &mut Self {
+        self.biome.downfall = downfall;
+        self
+    }
+
+    pub fn temperature_modifier(&mut self, temperature_modifier: TemperatureModifier) -> &mut Self {
+        self.biome.temperature_modifier = temperature_modifier;
+        self
+    }
+
+    pub fn attribute(&mut self, key: Identifier, attribute: Value) -> &mut Self {
+        self.biome.attributes.push(key, attribute);
+        self
+    }
+
+    pub fn effects(&mut self, effects: BiomeEffects) -> &mut Self {
+        self.biome.effects = effects;
+        self
+    }
+
+    pub fn water_color(&mut self, water_color: Color) -> &mut Self {
+        self.biome.effects.water_color = Some(water_color);
+        self
+    }
+
+    #[must_use]
+    pub fn build(&self) -> Biome {
+        self.biome.clone()
+    }
+}
+
+impl Default for BiomeBuilder {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Default for Biome {
+    fn default() -> Self {
+        Self {
+            has_precipitation: true,
+            temperature: 0.8,
+            downfall: 0.4,
+            temperature_modifier: TemperatureModifier::None,
+            attributes: BiomeAttributes::default(),
+            effects: BiomeEffects::default(),
+        }
+    }
+}
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub enum TemperatureModifier {
     #[default]
     None,
     Frozen,
 }
 
-#[derive(Debug)]
-pub enum GrassColorModifier {
-    None,
-    DarkForest,
-    Swamp,
-}
-
-#[derive(Debug)]
-pub struct WeightedMusic {
-    pub data: Music,
-    pub weight: i32,
-}
-
-#[derive(Debug)]
-pub struct Music {
-    pub replace_current_music: bool,
-    pub max_delay: i32,
-    pub min_delay: i32,
-    pub sound: Identifier,
-}
-
-#[derive(Debug)]
-pub struct AdditionsSound {
-    pub sound: Identifier,
-    pub tick_chance: f64,
-}
-
-#[derive(Debug)]
-pub struct MoodSound {
-    pub sound: Identifier,
-    pub tick_delay: i32,
-    pub block_search_extent: i32,
-    pub offset: f64,
-}
-
-#[derive(Debug)]
-pub struct Particle {
-    pub options: ParticleOptions,
-    pub probability: f32,
-}
-
-#[derive(Debug)]
-pub struct ParticleOptions {
-    pub particle_type: Identifier,
-}
-
-pub type BiomeRef = &'static Biome;
-
-pub struct BiomeRegistry {
-    biomes_by_id: Vec<BiomeRef>,
-    biomes_by_key: HashMap<Identifier, usize>,
-    allows_registering: bool,
-}
-
-impl BiomeRegistry {
-    #[must_use]
-    pub fn new() -> Self {
-        Self {
-            biomes_by_id: Vec::new(),
-            biomes_by_key: HashMap::new(),
-            allows_registering: true,
+impl TemperatureModifier {
+    fn nbt(self) -> Option<Nbt> {
+        match self {
+            Self::None => None,
+            Self::Frozen => Some(Nbt::String("frozen".to_string())),
         }
-    }
-
-    pub fn register(&mut self, biome: BiomeRef, key: Identifier) -> usize {
-        assert!(
-            self.allows_registering,
-            "Cannot register biomes after the registry has been frozen"
-        );
-
-        let id = self.biomes_by_id.len();
-        self.biomes_by_key.insert(key, id);
-        self.biomes_by_id.push(biome);
-        id
-    }
-
-    #[must_use]
-    pub fn by_id(&self, id: usize) -> Option<BiomeRef> {
-        self.biomes_by_id.get(id).copied()
-    }
-
-    #[must_use]
-    pub fn get_id(&self, biome: BiomeRef) -> &usize {
-        self.biomes_by_key.get(&biome.key).expect("Biome not found")
-    }
-
-    #[must_use]
-    pub fn get(&self, key: &Identifier) -> Option<BiomeRef> {
-        self.biomes_by_key.get(key).and_then(|id| self.by_id(*id))
-    }
-
-    #[must_use]
-    pub fn by_key(&self, key: &Identifier) -> Option<BiomeRef> {
-        self.get(key)
-    }
-
-    pub fn iter(&self) -> impl Iterator<Item = (usize, BiomeRef)> + '_ {
-        self.biomes_by_id
-            .iter()
-            .enumerate()
-            .map(|(id, &biome)| (id, biome))
-    }
-
-    #[must_use]
-    pub fn len(&self) -> usize {
-        self.biomes_by_id.len()
-    }
-
-    #[must_use]
-    pub fn is_empty(&self) -> bool {
-        self.biomes_by_id.is_empty()
-    }
-}
-
-impl RegistryExt for BiomeRegistry {
-    fn freeze(&mut self) {
-        self.allows_registering = false;
-    }
-}
-
-impl Default for BiomeRegistry {
-    fn default() -> Self {
-        Self::new()
     }
 }

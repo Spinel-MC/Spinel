@@ -1,116 +1,154 @@
 use ::spinel_core::network::clientbound::configuration::registry_data::RegistryDataPacket;
-use spinel_registry::{
-    BANNER_PATTERN_REGISTRY, BIOME_REGISTRY, CAT_VARIANT_REGISTRY, CHAT_TYPE_REGISTRY,
-    CHICKEN_VARIANT_REGISTRY, COW_VARIANT_REGISTRY, DAMAGE_TYPE_REGISTRY, DIALOG_REGISTRY,
-    DIMENSION_TYPE_REGISTRY, ENCHANTMENT_REGISTRY, FROG_VARIANT_REGISTRY, INSTRUMENT_REGISTRY,
-    JUKEBOX_SONG_REGISTRY, PAINTING_VARIANT_REGISTRY, PIG_VARIANT_REGISTRY, Registry,
-    TIMELINE_REGISTRY, TRIM_MATERIAL_REGISTRY, TRIM_PATTERN_REGISTRY, WOLF_SOUND_VARIANT_REGISTRY,
-    WOLF_VARIANT_REGISTRY, ZOMBIE_NAUTILUS_VARIANT_REGISTRY,
+use ::spinel_core::network::clientbound::configuration::update_tags::{
+    Tag, TagRegistry, UpdateTagsPacket,
 };
+use spinel_network::types::Array;
+use spinel_network::types::var_int::VarIntWrapper;
+use spinel_registry::{Registries, RegistryTags};
 use std::sync::Arc;
 
 pub struct RegistryCache {
     pub registry_packets: Arc<Vec<RegistryDataPacket>>,
+    tag_packet: Arc<UpdateTagsPacket>,
 }
 
 impl RegistryCache {
-    pub fn new(registry: &Registry) -> Self {
-        let registry_packets = Self::build_registry_packets(registry);
+    pub fn new(registries: &Registries) -> Self {
         Self {
-            registry_packets: Arc::new(registry_packets),
+            registry_packets: Arc::new(Self::registry_packets(registries)),
+            tag_packet: Arc::new(Self::tag_packet(registries)),
         }
-    }
-
-    fn build_registry_packets(registry: &Registry) -> Vec<RegistryDataPacket> {
-        let mut packets = Vec::new();
-
-        macro_rules! add_registry {
-            ($reg_key:expr, $field:ident) => {
-                let entries: Vec<String> = registry
-                    .$field
-                    .iter()
-                    .map(|(_, entry)| entry.key.to_string())
-                    .collect();
-                packets.push(RegistryDataPacket::from_identifiers(
-                    $reg_key.to_string(),
-                    &entries,
-                ));
-            };
-        }
-
-        add_registry!(BIOME_REGISTRY, biomes);
-        add_registry!(CHAT_TYPE_REGISTRY, chat_types);
-        add_registry!(TRIM_PATTERN_REGISTRY, trim_patterns);
-        add_registry!(TRIM_MATERIAL_REGISTRY, trim_materials);
-        add_registry!(WOLF_VARIANT_REGISTRY, wolf_variants);
-        add_registry!(WOLF_SOUND_VARIANT_REGISTRY, wolf_sound_variants);
-        add_registry!(PIG_VARIANT_REGISTRY, pig_variants);
-        add_registry!(FROG_VARIANT_REGISTRY, frog_variants);
-        add_registry!(CAT_VARIANT_REGISTRY, cat_variants);
-        add_registry!(COW_VARIANT_REGISTRY, cow_variants);
-        add_registry!(CHICKEN_VARIANT_REGISTRY, chicken_variants);
-        add_registry!(PAINTING_VARIANT_REGISTRY, painting_variants);
-        add_registry!(DIMENSION_TYPE_REGISTRY, dimension_types);
-        add_registry!(DAMAGE_TYPE_REGISTRY, damage_types);
-        add_registry!(BANNER_PATTERN_REGISTRY, banner_patterns);
-        add_registry!(JUKEBOX_SONG_REGISTRY, jukebox_songs);
-        add_registry!(INSTRUMENT_REGISTRY, instruments);
-
-        let dialog_entries: Vec<String> = registry
-            .dialogs
-            .iter()
-            .map(|(_, entry)| entry.key().to_string())
-            .collect();
-        packets.push(RegistryDataPacket::from_identifiers(
-            DIALOG_REGISTRY.to_string(),
-            &dialog_entries,
-        ));
-
-        packets.push(RegistryDataPacket::from_identifiers(
-            ZOMBIE_NAUTILUS_VARIANT_REGISTRY.to_string(),
-            &[
-                "minecraft:temperate".to_string(),
-                "minecraft:warm".to_string(),
-            ],
-        ));
-
-        packets.push(RegistryDataPacket::from_identifiers(
-            TIMELINE_REGISTRY.to_string(),
-            &[
-                "minecraft:day".to_string(),
-                "minecraft:early_game".to_string(),
-                "minecraft:moon".to_string(),
-                "minecraft:villager_schedule".to_string(),
-            ],
-        ));
-
-        packets.push(RegistryDataPacket::from_identifiers(
-            ENCHANTMENT_REGISTRY.to_string(),
-            &[],
-        ));
-        packets.push(RegistryDataPacket::from_identifiers(
-            "minecraft:test_environment".to_string(),
-            &[],
-        ));
-        packets.push(RegistryDataPacket::from_identifiers(
-            "minecraft:test_instance".to_string(),
-            &[],
-        ));
-
-        println!("[RegistryCache] Built {} registry packets", packets.len());
-        for (idx, packet) in packets.iter().enumerate() {
-            println!(
-                "  [{}] Registry: {} with {} entries",
-                idx,
-                packet.registry_id,
-                packet.entries.0.len()
-            );
-        }
-
-        packets
     }
 
     pub fn get_packets(&self) -> &[RegistryDataPacket] {
         &self.registry_packets
+    }
+
+    pub fn get_tag_packet(&self) -> &UpdateTagsPacket {
+        &self.tag_packet
+    }
+
+    fn registry_packets(registries: &Registries) -> Vec<RegistryDataPacket> {
+        registries
+            .dynamic_registry_entries(true)
+            .into_iter()
+            .map(|(registry_id, entries)| RegistryDataPacket::new(registry_id, Array(entries)))
+            .collect()
+    }
+
+    fn tag_packet(registries: &Registries) -> UpdateTagsPacket {
+        let mut registry_tags = match registries.static_tag_entries() {
+            Ok(registry_tags) => registry_tags,
+            Err(error) => panic!("failed to build registry tags: {error:?}"),
+        };
+        registry_tags.extend(match registries.dynamic_tag_entries() {
+            Ok(registry_tags) => registry_tags,
+            Err(error) => panic!("failed to build registry tags: {error:?}"),
+        });
+        UpdateTagsPacket::new(registry_tags.into_iter().map(Self::tag_registry).collect())
+    }
+
+    fn tag_registry(registry_tags: RegistryTags) -> TagRegistry {
+        TagRegistry {
+            registry_name: registry_tags.registry_name.to_string(),
+            tags: Array(registry_tags.tags.into_iter().map(Self::tag).collect()),
+        }
+    }
+
+    fn tag(tag: spinel_registry::RegistryTag) -> Tag {
+        Tag {
+            tag_name: tag.tag_name.to_string(),
+            entries: Array(tag.entries.into_iter().map(VarIntWrapper).collect()),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn tag_packet_includes_enchantment_exclusive_sets() {
+        let registries = Registries::new_vanilla();
+        let registry_cache = RegistryCache::new(&registries);
+        let enchantment_tags = registry_cache
+            .get_tag_packet()
+            .registries
+            .0
+            .iter()
+            .find(|registry| registry.registry_name == "minecraft:enchantment");
+        let required_tags = [
+            "minecraft:exclusive_set/armor",
+            "minecraft:exclusive_set/boots",
+            "minecraft:exclusive_set/bow",
+            "minecraft:exclusive_set/crossbow",
+            "minecraft:exclusive_set/damage",
+            "minecraft:exclusive_set/mining",
+            "minecraft:exclusive_set/riptide",
+        ];
+
+        assert!(required_tags.iter().all(|required_tag| {
+            enchantment_tags.is_some_and(|registry| {
+                registry
+                    .tags
+                    .0
+                    .iter()
+                    .any(|tag| tag.tag_name == *required_tag && !tag.entries.0.is_empty())
+            })
+        }));
+    }
+
+    #[test]
+    fn tag_packet_includes_static_item_tags_used_by_enchantments() {
+        let registries = Registries::new_vanilla();
+        let registry_cache = RegistryCache::new(&registries);
+        let item_tags = registry_cache
+            .get_tag_packet()
+            .registries
+            .0
+            .iter()
+            .find(|registry| registry.registry_name == "minecraft:item");
+        let required_tags = [
+            "minecraft:enchantable/weapon",
+            "minecraft:swords",
+            "minecraft:axes",
+        ];
+
+        assert!(required_tags.iter().all(|required_tag| {
+            item_tags.is_some_and(|registry| {
+                registry
+                    .tags
+                    .0
+                    .iter()
+                    .any(|tag| tag.tag_name == *required_tag && !tag.entries.0.is_empty())
+            })
+        }));
+    }
+
+    #[test]
+    fn tag_packet_includes_static_block_tags_used_by_registries() {
+        let registries = Registries::new_vanilla();
+        let registry_cache = RegistryCache::new(&registries);
+        let block_tags = registry_cache
+            .get_tag_packet()
+            .registries
+            .0
+            .iter()
+            .find(|registry| registry.registry_name == "minecraft:block");
+        let required_tags = [
+            "minecraft:infiniburn_overworld",
+            "minecraft:infiniburn_nether",
+            "minecraft:base_stone_overworld",
+        ];
+
+        assert!(required_tags.iter().all(|required_tag| {
+            block_tags.is_some_and(|registry| {
+                registry
+                    .tags
+                    .0
+                    .iter()
+                    .any(|tag| tag.tag_name == *required_tag && !tag.entries.0.is_empty())
+            })
+        }));
     }
 }

@@ -1,447 +1,106 @@
-use crate::damage_type::{
-    DamageEffects, DamageScaling, DamageType, DamageTypeRegistry, DeathMessageType,
-};
-use crate::types::Identifier;
-pub const ARROW: &DamageType = &DamageType {
-    key: Identifier::vanilla_static("arrow"),
-    message_id: "arrow",
-    scaling: DamageScaling::WhenCausedByLivingNonPlayer,
-    exhaustion: 0.1f32,
-    effects: DamageEffects::Hurt,
-    death_message_type: DeathMessageType::Default,
-};
-pub const BAD_RESPAWN_POINT: &DamageType = &DamageType {
-    key: Identifier::vanilla_static("bad_respawn_point"),
-    message_id: "badRespawnPoint",
-    scaling: DamageScaling::Always,
-    exhaustion: 0.1f32,
-    effects: DamageEffects::Hurt,
-    death_message_type: DeathMessageType::IntentionalGameDesign,
-};
-pub const CACTUS: &DamageType = &DamageType {
-    key: Identifier::vanilla_static("cactus"),
-    message_id: "cactus",
-    scaling: DamageScaling::WhenCausedByLivingNonPlayer,
-    exhaustion: 0.1f32,
-    effects: DamageEffects::Hurt,
-    death_message_type: DeathMessageType::Default,
-};
-pub const CAMPFIRE: &DamageType = &DamageType {
-    key: Identifier::vanilla_static("campfire"),
-    message_id: "inFire",
-    scaling: DamageScaling::WhenCausedByLivingNonPlayer,
-    exhaustion: 0.1f32,
-    effects: DamageEffects::Burning,
-    death_message_type: DeathMessageType::Default,
-};
-pub const CRAMMING: &DamageType = &DamageType {
-    key: Identifier::vanilla_static("cramming"),
-    message_id: "cramming",
-    scaling: DamageScaling::WhenCausedByLivingNonPlayer,
-    exhaustion: 0f32,
-    effects: DamageEffects::Hurt,
-    death_message_type: DeathMessageType::Default,
-};
-pub const DRAGON_BREATH: &DamageType = &DamageType {
-    key: Identifier::vanilla_static("dragon_breath"),
-    message_id: "dragonBreath",
-    scaling: DamageScaling::WhenCausedByLivingNonPlayer,
-    exhaustion: 0f32,
-    effects: DamageEffects::Hurt,
-    death_message_type: DeathMessageType::Default,
-};
-pub const DROWN: &DamageType = &DamageType {
-    key: Identifier::vanilla_static("drown"),
-    message_id: "drown",
-    scaling: DamageScaling::WhenCausedByLivingNonPlayer,
-    exhaustion: 0f32,
-    effects: DamageEffects::Drowning,
-    death_message_type: DeathMessageType::Default,
-};
-pub const DRY_OUT: &DamageType = &DamageType {
-    key: Identifier::vanilla_static("dry_out"),
-    message_id: "dryout",
-    scaling: DamageScaling::WhenCausedByLivingNonPlayer,
-    exhaustion: 0.1f32,
-    effects: DamageEffects::Hurt,
-    death_message_type: DeathMessageType::Default,
-};
-pub const ENDER_PEARL: &DamageType = &DamageType {
-    key: Identifier::vanilla_static("ender_pearl"),
-    message_id: "fall",
-    scaling: DamageScaling::WhenCausedByLivingNonPlayer,
-    exhaustion: 0f32,
-    effects: DamageEffects::Hurt,
-    death_message_type: DeathMessageType::FallVariants,
-};
-pub const EXPLOSION: &DamageType = &DamageType {
-    key: Identifier::vanilla_static("explosion"),
-    message_id: "explosion",
-    scaling: DamageScaling::Always,
-    exhaustion: 0.1f32,
-    effects: DamageEffects::Hurt,
-    death_message_type: DeathMessageType::Default,
-};
-pub const FALL: &DamageType = &DamageType {
-    key: Identifier::vanilla_static("fall"),
-    message_id: "fall",
-    scaling: DamageScaling::WhenCausedByLivingNonPlayer,
-    exhaustion: 0f32,
-    effects: DamageEffects::Hurt,
-    death_message_type: DeathMessageType::FallVariants,
-};
-pub const FALLING_ANVIL: &DamageType = &DamageType {
-    key: Identifier::vanilla_static("falling_anvil"),
-    message_id: "anvil",
-    scaling: DamageScaling::WhenCausedByLivingNonPlayer,
-    exhaustion: 0.1f32,
-    effects: DamageEffects::Hurt,
-    death_message_type: DeathMessageType::Default,
-};
-pub const FALLING_BLOCK: &DamageType = &DamageType {
-    key: Identifier::vanilla_static("falling_block"),
-    message_id: "fallingBlock",
-    scaling: DamageScaling::WhenCausedByLivingNonPlayer,
-    exhaustion: 0.1f32,
-    effects: DamageEffects::Hurt,
-    death_message_type: DeathMessageType::Default,
-};
-pub const FALLING_STALACTITE: &DamageType = &DamageType {
-    key: Identifier::vanilla_static("falling_stalactite"),
-    message_id: "fallingStalactite",
-    scaling: DamageScaling::WhenCausedByLivingNonPlayer,
-    exhaustion: 0.1f32,
-    effects: DamageEffects::Hurt,
-    death_message_type: DeathMessageType::Default,
-};
-pub const FIREBALL: &DamageType = &DamageType {
-    key: Identifier::vanilla_static("fireball"),
-    message_id: "fireball",
-    scaling: DamageScaling::WhenCausedByLivingNonPlayer,
-    exhaustion: 0.1f32,
-    effects: DamageEffects::Burning,
-    death_message_type: DeathMessageType::Default,
-};
-pub const FIREWORKS: &DamageType = &DamageType {
-    key: Identifier::vanilla_static("fireworks"),
-    message_id: "fireworks",
-    scaling: DamageScaling::WhenCausedByLivingNonPlayer,
-    exhaustion: 0.1f32,
-    effects: DamageEffects::Hurt,
-    death_message_type: DeathMessageType::Default,
-};
-pub const FLY_INTO_WALL: &DamageType = &DamageType {
-    key: Identifier::vanilla_static("fly_into_wall"),
-    message_id: "flyIntoWall",
-    scaling: DamageScaling::WhenCausedByLivingNonPlayer,
-    exhaustion: 0f32,
-    effects: DamageEffects::Hurt,
-    death_message_type: DeathMessageType::Default,
-};
-pub const FREEZE: &DamageType = &DamageType {
-    key: Identifier::vanilla_static("freeze"),
-    message_id: "freeze",
-    scaling: DamageScaling::WhenCausedByLivingNonPlayer,
-    exhaustion: 0f32,
-    effects: DamageEffects::Freezing,
-    death_message_type: DeathMessageType::Default,
-};
-pub const GENERIC: &DamageType = &DamageType {
-    key: Identifier::vanilla_static("generic"),
-    message_id: "generic",
-    scaling: DamageScaling::WhenCausedByLivingNonPlayer,
-    exhaustion: 0f32,
-    effects: DamageEffects::Hurt,
-    death_message_type: DeathMessageType::Default,
-};
-pub const GENERIC_KILL: &DamageType = &DamageType {
-    key: Identifier::vanilla_static("generic_kill"),
-    message_id: "genericKill",
-    scaling: DamageScaling::WhenCausedByLivingNonPlayer,
-    exhaustion: 0f32,
-    effects: DamageEffects::Hurt,
-    death_message_type: DeathMessageType::Default,
-};
-pub const HOT_FLOOR: &DamageType = &DamageType {
-    key: Identifier::vanilla_static("hot_floor"),
-    message_id: "hotFloor",
-    scaling: DamageScaling::WhenCausedByLivingNonPlayer,
-    exhaustion: 0.1f32,
-    effects: DamageEffects::Burning,
-    death_message_type: DeathMessageType::Default,
-};
-pub const IN_FIRE: &DamageType = &DamageType {
-    key: Identifier::vanilla_static("in_fire"),
-    message_id: "inFire",
-    scaling: DamageScaling::WhenCausedByLivingNonPlayer,
-    exhaustion: 0.1f32,
-    effects: DamageEffects::Burning,
-    death_message_type: DeathMessageType::Default,
-};
-pub const IN_WALL: &DamageType = &DamageType {
-    key: Identifier::vanilla_static("in_wall"),
-    message_id: "inWall",
-    scaling: DamageScaling::WhenCausedByLivingNonPlayer,
-    exhaustion: 0f32,
-    effects: DamageEffects::Hurt,
-    death_message_type: DeathMessageType::Default,
-};
-pub const INDIRECT_MAGIC: &DamageType = &DamageType {
-    key: Identifier::vanilla_static("indirect_magic"),
-    message_id: "indirectMagic",
-    scaling: DamageScaling::WhenCausedByLivingNonPlayer,
-    exhaustion: 0f32,
-    effects: DamageEffects::Hurt,
-    death_message_type: DeathMessageType::Default,
-};
-pub const LAVA: &DamageType = &DamageType {
-    key: Identifier::vanilla_static("lava"),
-    message_id: "lava",
-    scaling: DamageScaling::WhenCausedByLivingNonPlayer,
-    exhaustion: 0.1f32,
-    effects: DamageEffects::Burning,
-    death_message_type: DeathMessageType::Default,
-};
-pub const LIGHTNING_BOLT: &DamageType = &DamageType {
-    key: Identifier::vanilla_static("lightning_bolt"),
-    message_id: "lightningBolt",
-    scaling: DamageScaling::WhenCausedByLivingNonPlayer,
-    exhaustion: 0.1f32,
-    effects: DamageEffects::Hurt,
-    death_message_type: DeathMessageType::Default,
-};
-pub const MACE_SMASH: &DamageType = &DamageType {
-    key: Identifier::vanilla_static("mace_smash"),
-    message_id: "mace_smash",
-    scaling: DamageScaling::WhenCausedByLivingNonPlayer,
-    exhaustion: 0.1f32,
-    effects: DamageEffects::Hurt,
-    death_message_type: DeathMessageType::Default,
-};
-pub const MAGIC: &DamageType = &DamageType {
-    key: Identifier::vanilla_static("magic"),
-    message_id: "magic",
-    scaling: DamageScaling::WhenCausedByLivingNonPlayer,
-    exhaustion: 0f32,
-    effects: DamageEffects::Hurt,
-    death_message_type: DeathMessageType::Default,
-};
-pub const MOB_ATTACK: &DamageType = &DamageType {
-    key: Identifier::vanilla_static("mob_attack"),
-    message_id: "mob",
-    scaling: DamageScaling::WhenCausedByLivingNonPlayer,
-    exhaustion: 0.1f32,
-    effects: DamageEffects::Hurt,
-    death_message_type: DeathMessageType::Default,
-};
-pub const MOB_ATTACK_NO_AGGRO: &DamageType = &DamageType {
-    key: Identifier::vanilla_static("mob_attack_no_aggro"),
-    message_id: "mob",
-    scaling: DamageScaling::WhenCausedByLivingNonPlayer,
-    exhaustion: 0.1f32,
-    effects: DamageEffects::Hurt,
-    death_message_type: DeathMessageType::Default,
-};
-pub const MOB_PROJECTILE: &DamageType = &DamageType {
-    key: Identifier::vanilla_static("mob_projectile"),
-    message_id: "mob",
-    scaling: DamageScaling::WhenCausedByLivingNonPlayer,
-    exhaustion: 0.1f32,
-    effects: DamageEffects::Hurt,
-    death_message_type: DeathMessageType::Default,
-};
-pub const ON_FIRE: &DamageType = &DamageType {
-    key: Identifier::vanilla_static("on_fire"),
-    message_id: "onFire",
-    scaling: DamageScaling::WhenCausedByLivingNonPlayer,
-    exhaustion: 0f32,
-    effects: DamageEffects::Burning,
-    death_message_type: DeathMessageType::Default,
-};
-pub const OUT_OF_WORLD: &DamageType = &DamageType {
-    key: Identifier::vanilla_static("out_of_world"),
-    message_id: "outOfWorld",
-    scaling: DamageScaling::WhenCausedByLivingNonPlayer,
-    exhaustion: 0f32,
-    effects: DamageEffects::Hurt,
-    death_message_type: DeathMessageType::Default,
-};
-pub const OUTSIDE_BORDER: &DamageType = &DamageType {
-    key: Identifier::vanilla_static("outside_border"),
-    message_id: "outsideBorder",
-    scaling: DamageScaling::WhenCausedByLivingNonPlayer,
-    exhaustion: 0f32,
-    effects: DamageEffects::Hurt,
-    death_message_type: DeathMessageType::Default,
-};
-pub const PLAYER_ATTACK: &DamageType = &DamageType {
-    key: Identifier::vanilla_static("player_attack"),
-    message_id: "player",
-    scaling: DamageScaling::WhenCausedByLivingNonPlayer,
-    exhaustion: 0.1f32,
-    effects: DamageEffects::Hurt,
-    death_message_type: DeathMessageType::Default,
-};
-pub const PLAYER_EXPLOSION: &DamageType = &DamageType {
-    key: Identifier::vanilla_static("player_explosion"),
-    message_id: "explosion.player",
-    scaling: DamageScaling::Always,
-    exhaustion: 0.1f32,
-    effects: DamageEffects::Hurt,
-    death_message_type: DeathMessageType::Default,
-};
-pub const SONIC_BOOM: &DamageType = &DamageType {
-    key: Identifier::vanilla_static("sonic_boom"),
-    message_id: "sonic_boom",
-    scaling: DamageScaling::Always,
-    exhaustion: 0f32,
-    effects: DamageEffects::Hurt,
-    death_message_type: DeathMessageType::Default,
-};
-pub const SPIT: &DamageType = &DamageType {
-    key: Identifier::vanilla_static("spit"),
-    message_id: "mob",
-    scaling: DamageScaling::WhenCausedByLivingNonPlayer,
-    exhaustion: 0.1f32,
-    effects: DamageEffects::Hurt,
-    death_message_type: DeathMessageType::Default,
-};
-pub const STALAGMITE: &DamageType = &DamageType {
-    key: Identifier::vanilla_static("stalagmite"),
-    message_id: "stalagmite",
-    scaling: DamageScaling::WhenCausedByLivingNonPlayer,
-    exhaustion: 0f32,
-    effects: DamageEffects::Hurt,
-    death_message_type: DeathMessageType::Default,
-};
-pub const STARVE: &DamageType = &DamageType {
-    key: Identifier::vanilla_static("starve"),
-    message_id: "starve",
-    scaling: DamageScaling::WhenCausedByLivingNonPlayer,
-    exhaustion: 0f32,
-    effects: DamageEffects::Hurt,
-    death_message_type: DeathMessageType::Default,
-};
-pub const STING: &DamageType = &DamageType {
-    key: Identifier::vanilla_static("sting"),
-    message_id: "sting",
-    scaling: DamageScaling::WhenCausedByLivingNonPlayer,
-    exhaustion: 0.1f32,
-    effects: DamageEffects::Hurt,
-    death_message_type: DeathMessageType::Default,
-};
-pub const SWEET_BERRY_BUSH: &DamageType = &DamageType {
-    key: Identifier::vanilla_static("sweet_berry_bush"),
-    message_id: "sweetBerryBush",
-    scaling: DamageScaling::WhenCausedByLivingNonPlayer,
-    exhaustion: 0.1f32,
-    effects: DamageEffects::Poking,
-    death_message_type: DeathMessageType::Default,
-};
-pub const THORNS: &DamageType = &DamageType {
-    key: Identifier::vanilla_static("thorns"),
-    message_id: "thorns",
-    scaling: DamageScaling::WhenCausedByLivingNonPlayer,
-    exhaustion: 0.1f32,
-    effects: DamageEffects::Thorns,
-    death_message_type: DeathMessageType::Default,
-};
-pub const THROWN: &DamageType = &DamageType {
-    key: Identifier::vanilla_static("thrown"),
-    message_id: "thrown",
-    scaling: DamageScaling::WhenCausedByLivingNonPlayer,
-    exhaustion: 0.1f32,
-    effects: DamageEffects::Hurt,
-    death_message_type: DeathMessageType::Default,
-};
-pub const TRIDENT: &DamageType = &DamageType {
-    key: Identifier::vanilla_static("trident"),
-    message_id: "trident",
-    scaling: DamageScaling::WhenCausedByLivingNonPlayer,
-    exhaustion: 0.1f32,
-    effects: DamageEffects::Hurt,
-    death_message_type: DeathMessageType::Default,
-};
-pub const UNATTRIBUTED_FIREBALL: &DamageType = &DamageType {
-    key: Identifier::vanilla_static("unattributed_fireball"),
-    message_id: "onFire",
-    scaling: DamageScaling::WhenCausedByLivingNonPlayer,
-    exhaustion: 0.1f32,
-    effects: DamageEffects::Burning,
-    death_message_type: DeathMessageType::Default,
-};
-pub const WIND_CHARGE: &DamageType = &DamageType {
-    key: Identifier::vanilla_static("wind_charge"),
-    message_id: "mob",
-    scaling: DamageScaling::WhenCausedByLivingNonPlayer,
-    exhaustion: 0.1f32,
-    effects: DamageEffects::Hurt,
-    death_message_type: DeathMessageType::Default,
-};
-pub const WITHER: &DamageType = &DamageType {
-    key: Identifier::vanilla_static("wither"),
-    message_id: "wither",
-    scaling: DamageScaling::WhenCausedByLivingNonPlayer,
-    exhaustion: 0f32,
-    effects: DamageEffects::Hurt,
-    death_message_type: DeathMessageType::Default,
-};
-pub const WITHER_SKULL: &DamageType = &DamageType {
-    key: Identifier::vanilla_static("wither_skull"),
-    message_id: "witherSkull",
-    scaling: DamageScaling::WhenCausedByLivingNonPlayer,
-    exhaustion: 0.1f32,
-    effects: DamageEffects::Hurt,
-    death_message_type: DeathMessageType::Default,
-};
-pub fn register_damage_types(registry: &mut DamageTypeRegistry) {
-    registry.register(ARROW);
-    registry.register(BAD_RESPAWN_POINT);
-    registry.register(CACTUS);
-    registry.register(CAMPFIRE);
-    registry.register(CRAMMING);
-    registry.register(DRAGON_BREATH);
-    registry.register(DROWN);
-    registry.register(DRY_OUT);
-    registry.register(ENDER_PEARL);
-    registry.register(EXPLOSION);
-    registry.register(FALL);
-    registry.register(FALLING_ANVIL);
-    registry.register(FALLING_BLOCK);
-    registry.register(FALLING_STALACTITE);
-    registry.register(FIREBALL);
-    registry.register(FIREWORKS);
-    registry.register(FLY_INTO_WALL);
-    registry.register(FREEZE);
-    registry.register(GENERIC);
-    registry.register(GENERIC_KILL);
-    registry.register(HOT_FLOOR);
-    registry.register(IN_FIRE);
-    registry.register(IN_WALL);
-    registry.register(INDIRECT_MAGIC);
-    registry.register(LAVA);
-    registry.register(LIGHTNING_BOLT);
-    registry.register(MACE_SMASH);
-    registry.register(MAGIC);
-    registry.register(MOB_ATTACK);
-    registry.register(MOB_ATTACK_NO_AGGRO);
-    registry.register(MOB_PROJECTILE);
-    registry.register(ON_FIRE);
-    registry.register(OUT_OF_WORLD);
-    registry.register(OUTSIDE_BORDER);
-    registry.register(PLAYER_ATTACK);
-    registry.register(PLAYER_EXPLOSION);
-    registry.register(SONIC_BOOM);
-    registry.register(SPIT);
-    registry.register(STALAGMITE);
-    registry.register(STARVE);
-    registry.register(STING);
-    registry.register(SWEET_BERRY_BUSH);
-    registry.register(THORNS);
-    registry.register(THROWN);
-    registry.register(TRIDENT);
-    registry.register(UNATTRIBUTED_FIREBALL);
-    registry.register(WIND_CHARGE);
-    registry.register(WITHER);
-    registry.register(WITHER_SKULL);
+use crate::{DynamicRegistry, RegistryKey};
+use crate::damage_type::DamageType;
+impl DamageType {
+    pub const ARROW: RegistryKey<Self> = RegistryKey::vanilla_static("arrow");
+    pub const BAD_RESPAWN_POINT: RegistryKey<Self> = RegistryKey::vanilla_static("bad_respawn_point");
+    pub const CACTUS: RegistryKey<Self> = RegistryKey::vanilla_static("cactus");
+    pub const CAMPFIRE: RegistryKey<Self> = RegistryKey::vanilla_static("campfire");
+    pub const CRAMMING: RegistryKey<Self> = RegistryKey::vanilla_static("cramming");
+    pub const DRAGON_BREATH: RegistryKey<Self> = RegistryKey::vanilla_static("dragon_breath");
+    pub const DROWN: RegistryKey<Self> = RegistryKey::vanilla_static("drown");
+    pub const DRY_OUT: RegistryKey<Self> = RegistryKey::vanilla_static("dry_out");
+    pub const ENDER_PEARL: RegistryKey<Self> = RegistryKey::vanilla_static("ender_pearl");
+    pub const EXPLOSION: RegistryKey<Self> = RegistryKey::vanilla_static("explosion");
+    pub const FALL: RegistryKey<Self> = RegistryKey::vanilla_static("fall");
+    pub const FALLING_ANVIL: RegistryKey<Self> = RegistryKey::vanilla_static("falling_anvil");
+    pub const FALLING_BLOCK: RegistryKey<Self> = RegistryKey::vanilla_static("falling_block");
+    pub const FALLING_STALACTITE: RegistryKey<Self> = RegistryKey::vanilla_static("falling_stalactite");
+    pub const FIREBALL: RegistryKey<Self> = RegistryKey::vanilla_static("fireball");
+    pub const FIREWORKS: RegistryKey<Self> = RegistryKey::vanilla_static("fireworks");
+    pub const FLY_INTO_WALL: RegistryKey<Self> = RegistryKey::vanilla_static("fly_into_wall");
+    pub const FREEZE: RegistryKey<Self> = RegistryKey::vanilla_static("freeze");
+    pub const GENERIC: RegistryKey<Self> = RegistryKey::vanilla_static("generic");
+    pub const GENERIC_KILL: RegistryKey<Self> = RegistryKey::vanilla_static("generic_kill");
+    pub const HOT_FLOOR: RegistryKey<Self> = RegistryKey::vanilla_static("hot_floor");
+    pub const IN_FIRE: RegistryKey<Self> = RegistryKey::vanilla_static("in_fire");
+    pub const IN_WALL: RegistryKey<Self> = RegistryKey::vanilla_static("in_wall");
+    pub const INDIRECT_MAGIC: RegistryKey<Self> = RegistryKey::vanilla_static("indirect_magic");
+    pub const LAVA: RegistryKey<Self> = RegistryKey::vanilla_static("lava");
+    pub const LIGHTNING_BOLT: RegistryKey<Self> = RegistryKey::vanilla_static("lightning_bolt");
+    pub const MACE_SMASH: RegistryKey<Self> = RegistryKey::vanilla_static("mace_smash");
+    pub const MAGIC: RegistryKey<Self> = RegistryKey::vanilla_static("magic");
+    pub const MOB_ATTACK: RegistryKey<Self> = RegistryKey::vanilla_static("mob_attack");
+    pub const MOB_ATTACK_NO_AGGRO: RegistryKey<Self> = RegistryKey::vanilla_static("mob_attack_no_aggro");
+    pub const MOB_PROJECTILE: RegistryKey<Self> = RegistryKey::vanilla_static("mob_projectile");
+    pub const ON_FIRE: RegistryKey<Self> = RegistryKey::vanilla_static("on_fire");
+    pub const OUT_OF_WORLD: RegistryKey<Self> = RegistryKey::vanilla_static("out_of_world");
+    pub const OUTSIDE_BORDER: RegistryKey<Self> = RegistryKey::vanilla_static("outside_border");
+    pub const PLAYER_ATTACK: RegistryKey<Self> = RegistryKey::vanilla_static("player_attack");
+    pub const PLAYER_EXPLOSION: RegistryKey<Self> = RegistryKey::vanilla_static("player_explosion");
+    pub const SONIC_BOOM: RegistryKey<Self> = RegistryKey::vanilla_static("sonic_boom");
+    pub const SPEAR: RegistryKey<Self> = RegistryKey::vanilla_static("spear");
+    pub const SPIT: RegistryKey<Self> = RegistryKey::vanilla_static("spit");
+    pub const STALAGMITE: RegistryKey<Self> = RegistryKey::vanilla_static("stalagmite");
+    pub const STARVE: RegistryKey<Self> = RegistryKey::vanilla_static("starve");
+    pub const STING: RegistryKey<Self> = RegistryKey::vanilla_static("sting");
+    pub const SWEET_BERRY_BUSH: RegistryKey<Self> = RegistryKey::vanilla_static("sweet_berry_bush");
+    pub const THORNS: RegistryKey<Self> = RegistryKey::vanilla_static("thorns");
+    pub const THROWN: RegistryKey<Self> = RegistryKey::vanilla_static("thrown");
+    pub const TRIDENT: RegistryKey<Self> = RegistryKey::vanilla_static("trident");
+    pub const UNATTRIBUTED_FIREBALL: RegistryKey<Self> = RegistryKey::vanilla_static("unattributed_fireball");
+    pub const WIND_CHARGE: RegistryKey<Self> = RegistryKey::vanilla_static("wind_charge");
+    pub const WITHER: RegistryKey<Self> = RegistryKey::vanilla_static("wither");
+    pub const WITHER_SKULL: RegistryKey<Self> = RegistryKey::vanilla_static("wither_skull");
+}
+pub fn register_damage_types(registry: &mut DynamicRegistry<DamageType>) {
+    let _ = registry.register_vanilla(DamageType::ARROW, DamageType::default());
+    let _ = registry.register_vanilla(DamageType::BAD_RESPAWN_POINT, DamageType::default());
+    let _ = registry.register_vanilla(DamageType::CACTUS, DamageType::default());
+    let _ = registry.register_vanilla(DamageType::CAMPFIRE, DamageType::default());
+    let _ = registry.register_vanilla(DamageType::CRAMMING, DamageType::default());
+    let _ = registry.register_vanilla(DamageType::DRAGON_BREATH, DamageType::default());
+    let _ = registry.register_vanilla(DamageType::DROWN, DamageType::default());
+    let _ = registry.register_vanilla(DamageType::DRY_OUT, DamageType::default());
+    let _ = registry.register_vanilla(DamageType::ENDER_PEARL, DamageType::default());
+    let _ = registry.register_vanilla(DamageType::EXPLOSION, DamageType::default());
+    let _ = registry.register_vanilla(DamageType::FALL, DamageType::default());
+    let _ = registry.register_vanilla(DamageType::FALLING_ANVIL, DamageType::default());
+    let _ = registry.register_vanilla(DamageType::FALLING_BLOCK, DamageType::default());
+    let _ = registry.register_vanilla(DamageType::FALLING_STALACTITE, DamageType::default());
+    let _ = registry.register_vanilla(DamageType::FIREBALL, DamageType::default());
+    let _ = registry.register_vanilla(DamageType::FIREWORKS, DamageType::default());
+    let _ = registry.register_vanilla(DamageType::FLY_INTO_WALL, DamageType::default());
+    let _ = registry.register_vanilla(DamageType::FREEZE, DamageType::default());
+    let _ = registry.register_vanilla(DamageType::GENERIC, DamageType::default());
+    let _ = registry.register_vanilla(DamageType::GENERIC_KILL, DamageType::default());
+    let _ = registry.register_vanilla(DamageType::HOT_FLOOR, DamageType::default());
+    let _ = registry.register_vanilla(DamageType::IN_FIRE, DamageType::default());
+    let _ = registry.register_vanilla(DamageType::IN_WALL, DamageType::default());
+    let _ = registry.register_vanilla(DamageType::INDIRECT_MAGIC, DamageType::default());
+    let _ = registry.register_vanilla(DamageType::LAVA, DamageType::default());
+    let _ = registry.register_vanilla(DamageType::LIGHTNING_BOLT, DamageType::default());
+    let _ = registry.register_vanilla(DamageType::MACE_SMASH, DamageType::default());
+    let _ = registry.register_vanilla(DamageType::MAGIC, DamageType::default());
+    let _ = registry.register_vanilla(DamageType::MOB_ATTACK, DamageType::default());
+    let _ = registry.register_vanilla(DamageType::MOB_ATTACK_NO_AGGRO, DamageType::default());
+    let _ = registry.register_vanilla(DamageType::MOB_PROJECTILE, DamageType::default());
+    let _ = registry.register_vanilla(DamageType::ON_FIRE, DamageType::default());
+    let _ = registry.register_vanilla(DamageType::OUT_OF_WORLD, DamageType::default());
+    let _ = registry.register_vanilla(DamageType::OUTSIDE_BORDER, DamageType::default());
+    let _ = registry.register_vanilla(DamageType::PLAYER_ATTACK, DamageType::default());
+    let _ = registry.register_vanilla(DamageType::PLAYER_EXPLOSION, DamageType::default());
+    let _ = registry.register_vanilla(DamageType::SONIC_BOOM, DamageType::default());
+    let _ = registry.register_vanilla(DamageType::SPEAR, DamageType::default());
+    let _ = registry.register_vanilla(DamageType::SPIT, DamageType::default());
+    let _ = registry.register_vanilla(DamageType::STALAGMITE, DamageType::default());
+    let _ = registry.register_vanilla(DamageType::STARVE, DamageType::default());
+    let _ = registry.register_vanilla(DamageType::STING, DamageType::default());
+    let _ = registry.register_vanilla(DamageType::SWEET_BERRY_BUSH, DamageType::default());
+    let _ = registry.register_vanilla(DamageType::THORNS, DamageType::default());
+    let _ = registry.register_vanilla(DamageType::THROWN, DamageType::default());
+    let _ = registry.register_vanilla(DamageType::TRIDENT, DamageType::default());
+    let _ = registry.register_vanilla(DamageType::UNATTRIBUTED_FIREBALL, DamageType::default());
+    let _ = registry.register_vanilla(DamageType::WIND_CHARGE, DamageType::default());
+    let _ = registry.register_vanilla(DamageType::WITHER, DamageType::default());
+    let _ = registry.register_vanilla(DamageType::WITHER_SKULL, DamageType::default());
 }

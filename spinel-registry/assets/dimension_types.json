@@ -1,0 +1,72 @@
+{
+  "dimension_types": {
+    "minecraft:overworld": {
+      "has_fixed_time": false,
+      "has_skylight": true,
+      "has_ceiling": false,
+      "coordinate_scale": 1.0,
+      "min_y": -64,
+      "height": 384,
+      "logical_height": 384,
+      "infiniburn": "#minecraft:infiniburn_overworld",
+      "ambient_light": 0.0,
+      "monster_spawn_light_level": {
+        "type": "minecraft:uniform",
+        "min_inclusive": 0,
+        "max_inclusive": 7
+      },
+      "monster_spawn_block_light_limit": 0,
+      "skybox": "overworld",
+      "cardinal_light_type": "default"
+    },
+    "minecraft:overworld_caves": {
+      "has_fixed_time": false,
+      "has_skylight": true,
+      "has_ceiling": true,
+      "coordinate_scale": 1.0,
+      "min_y": -64,
+      "height": 384,
+      "logical_height": 384,
+      "infiniburn": "#minecraft:infiniburn_overworld",
+      "ambient_light": 0.0,
+      "monster_spawn_light_level": {
+        "type": "minecraft:uniform",
+        "min_inclusive": 0,
+        "max_inclusive": 7
+      },
+      "monster_spawn_block_light_limit": 0,
+      "skybox": "overworld",
+      "cardinal_light_type": "default"
+    },
+    "minecraft:the_end": {
+      "has_fixed_time": true,
+      "has_skylight": true,
+      "has_ceiling": false,
+      "coordinate_scale": 1.0,
+      "min_y": 0,
+      "height": 256,
+      "logical_height": 256,
+      "infiniburn": "#minecraft:infiniburn_end",
+      "ambient_light": 0.25,
+      "monster_spawn_light_level": 15,
+      "monster_spawn_block_light_limit": 0,
+      "skybox": "end",
+      "cardinal_light_type": "default"
+    },
+    "minecraft:the_nether": {
+      "has_fixed_time": true,
+      "has_skylight": false,
+      "has_ceiling": true,
+      "coordinate_scale": 8.0,
+      "min_y": 0,
+      "height": 256,
+      "logical_height": 128,
+      "infiniburn": "#minecraft:infiniburn_nether",
+      "ambient_light": 0.1,
+      "monster_spawn_light_level": 7,
+      "monster_spawn_block_light_limit": 15,
+      "skybox": "none",
+      "cardinal_light_type": "nether"
+    }
+  }
+}

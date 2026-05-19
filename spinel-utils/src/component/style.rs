@@ -1,8 +1,10 @@
+use crate::component::color::TextColor;
+use crate::component::events::{ClickEvent, HoverEvent};
+use crate::component::nbt::json_to_nbt_compound;
+use crate::component::text::TextComponent;
 use serde::{Deserialize, Serialize};
 
-use crate::component::{color::TextColor, text::TextComponent};
-
-#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct Style {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub color: Option<TextColor>,
@@ -16,7 +18,14 @@ pub struct Style {
     pub strikethrough: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub obfuscated: Option<bool>,
-    //TODO: click events, and hover events.
+    #[serde(rename = "clickEvent", skip_serializing_if = "Option::is_none")]
+    pub click_event: Option<ClickEvent>,
+    #[serde(rename = "hoverEvent", skip_serializing_if = "Option::is_none")]
+    pub hover_event: Option<HoverEvent>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub insertion: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub font: Option<String>,
 }
 
 impl Style {
@@ -28,6 +37,10 @@ impl Style {
             underlined: None,
             strikethrough: None,
             obfuscated: None,
+            click_event: None,
+            hover_event: None,
+            insertion: None,
+            font: None,
         }
     }
 
@@ -39,30 +52,24 @@ impl Style {
             underlined: None,
             strikethrough: None,
             obfuscated: None,
+            click_event: None,
+            hover_event: None,
+            insertion: None,
+            font: None,
         }
     }
 
     pub fn to_legacy_codes(&self) -> String {
-        let mut s = String::new();
+        let mut codes = String::new();
         if let Some(color) = &self.color {
-            s.push_str(&color.to_legacy_code());
+            codes.push_str(&color.to_legacy_code());
         }
-        if self.bold.unwrap_or(false) {
-            s.push_str("§l");
-        }
-        if self.italic.unwrap_or(false) {
-            s.push_str("§o");
-        }
-        if self.underlined.unwrap_or(false) {
-            s.push_str("§n");
-        }
-        if self.strikethrough.unwrap_or(false) {
-            s.push_str("§m");
-        }
-        if self.obfuscated.unwrap_or(false) {
-            s.push_str("§k");
-        }
-        s
+        add_code(&mut codes, self.bold, 'l');
+        add_code(&mut codes, self.italic, 'o');
+        add_code(&mut codes, self.underlined, 'n');
+        add_code(&mut codes, self.strikethrough, 'm');
+        add_code(&mut codes, self.obfuscated, 'k');
+        codes
     }
 
     pub fn merge_with_parent(&self, child: &TextComponent) -> Style {
@@ -73,53 +80,32 @@ impl Style {
             underlined: child.style.underlined.or(self.underlined),
             strikethrough: child.style.strikethrough.or(self.strikethrough),
             obfuscated: child.style.obfuscated.or(self.obfuscated),
+            click_event: child
+                .click_event()
+                .cloned()
+                .or_else(|| self.click_event.clone()),
+            hover_event: child
+                .hover_event()
+                .cloned()
+                .or_else(|| self.hover_event.clone()),
+            insertion: child
+                .style
+                .insertion
+                .clone()
+                .or_else(|| self.insertion.clone()),
+            font: child.style.font.clone().or_else(|| self.font.clone()),
         }
     }
 
     pub fn to_nbt(&self) -> spinel_nbt::NbtCompound {
-        let mut compound = spinel_nbt::NbtCompound::new();
-        if let Some(color) = &self.color {
-            match color {
-                TextColor::Named(named) => compound.insert(
-                    "color".to_string(),
-                    spinel_nbt::Nbt::String(named.as_str().to_string()),
-                ),
-                TextColor::Hex(hex) => compound.insert(
-                    "color".to_string(),
-                    spinel_nbt::Nbt::String(hex.to_string()),
-                ),
-            }
-        }
-        if let Some(bold) = self.bold {
-            compound.insert(
-                "bold".to_string(),
-                spinel_nbt::Nbt::Byte(if bold { 1 } else { 0 }),
-            );
-        }
-        if let Some(italic) = self.italic {
-            compound.insert(
-                "italic".to_string(),
-                spinel_nbt::Nbt::Byte(if italic { 1 } else { 0 }),
-            );
-        }
-        if let Some(underlined) = self.underlined {
-            compound.insert(
-                "underlined".to_string(),
-                spinel_nbt::Nbt::Byte(if underlined { 1 } else { 0 }),
-            );
-        }
-        if let Some(strikethrough) = self.strikethrough {
-            compound.insert(
-                "strikethrough".to_string(),
-                spinel_nbt::Nbt::Byte(if strikethrough { 1 } else { 0 }),
-            );
-        }
-        if let Some(obfuscated) = self.obfuscated {
-            compound.insert(
-                "obfuscated".to_string(),
-                spinel_nbt::Nbt::Byte(if obfuscated { 1 } else { 0 }),
-            );
-        }
-        compound
+        let value = serde_json::to_value(self).unwrap_or_default();
+        json_to_nbt_compound(value.as_object().cloned().unwrap_or_default())
+    }
+}
+
+fn add_code(codes: &mut String, enabled: Option<bool>, code: char) {
+    if enabled.unwrap_or(false) {
+        codes.push('\u{00a7}');
+        codes.push(code);
     }
 }

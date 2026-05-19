@@ -15,7 +15,6 @@ fn on_move_player_pos_rot(
 
     player.look(packet.y_rot, packet.x_rot);
     server
-        .world_manager
-        .move_player(client, packet.x, packet.y, packet.z)
+        .move_player_in_world(client, packet.x, packet.y, packet.z)
         .is_ok()
 }

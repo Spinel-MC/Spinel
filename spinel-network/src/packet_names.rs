@@ -75,7 +75,7 @@ impl PacketNameRegistry {
     }
 
     fn load_packet_names() -> HashMap<(bool, ConnectionState, i32), String> {
-        let json_str = include_str!("../../spinel-registry/build_assets/packets.json");
+        let json_str = include_str!("../../spinel-registry/assets/packets.json");
         let packet_data = serde_json::from_str::<PacketsJson>(json_str).unwrap_or(PacketsJson {
             packets: None,
             serverbound: None,

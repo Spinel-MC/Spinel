@@ -1,4 +1,5 @@
 use spinel::{
+    core::entity::game_mode::GameMode,
     macros::event_listener,
     server::{
         MinecraftServer, entity::PlayerSpawnPoint,
@@ -16,6 +17,7 @@ fn on_player_configuration(
     };
 
     event.set_spawning_world(world.uuid);
+    event.player().set_game_mode(GameMode::Creative);
     event
         .player()
         .set_respawn_point(PlayerSpawnPoint::new(0.0, 4.0, 0.0, 0.0, 0.0));

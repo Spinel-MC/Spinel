@@ -7,7 +7,9 @@ use crate::registry_cache::RegistryCache;
 use crate::server::packet_router::PacketRouter;
 use crate::world::WorldManager;
 use spinel_network::ConnectionState;
+use spinel_registry::Registries;
 use spinel_utils::component::Component;
+use std::io;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -18,7 +20,7 @@ pub struct MinecraftServer {
     pub connection_manager: ConnectionManager,
     pub world_manager: WorldManager,
     pub registry_cache: RegistryCache,
-    pub registry: ::spinel_registry::Registry,
+    pub registries: Registries,
     pub ticks_per_second: u32,
     pub current_tick: u64,
     pub is_ticking: Arc<AtomicBool>,
@@ -27,14 +29,14 @@ pub struct MinecraftServer {
 
 impl MinecraftServer {
     pub fn new() -> Self {
-        let registry = ::spinel_registry::Registry::new_vanilla();
-        let registry_cache = RegistryCache::new(&registry);
+        let registries = Registries::new_vanilla();
+        let registry_cache = RegistryCache::new(&registries);
 
         Self {
             connection_manager: ConnectionManager::new(),
             world_manager: WorldManager::new(),
             registry_cache,
-            registry,
+            registries,
             ticks_per_second: DEFAULT_TICKS_PER_SECOND,
             current_tick: 0,
             is_ticking: Arc::new(AtomicBool::new(false)),
@@ -116,6 +118,22 @@ impl MinecraftServer {
         .dispatch(client)?;
         spinel_core::network::clientbound::play::ticking_step::TickingStepPacket::new(0)
             .dispatch(client)
+    }
+
+    pub(crate) fn enter_player_world(&mut self, client: &mut Client) -> io::Result<()> {
+        self.world_manager
+            .enter_player(client, self.ticks_per_second, &self.registries)
+    }
+
+    pub(crate) fn move_player_in_world(
+        &mut self,
+        client: &mut Client,
+        x: f64,
+        y: f64,
+        z: f64,
+    ) -> io::Result<()> {
+        self.world_manager
+            .move_player(client, x, y, z, &self.registries)
     }
 
     pub(crate) fn tick_connections(&mut self) {

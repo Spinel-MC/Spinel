@@ -1,185 +1,196 @@
-use proc_macro2::TokenStream;
-use std::{fs, io, path::Path, process::Command};
+use heck::{ToShoutySnakeCase, ToSnakeCase};
+use std::{collections::BTreeMap, fs, io};
 
-mod banner_patterns;
-mod biomes;
-mod block_tags;
-mod blocks;
-mod cat_variants;
-mod chat_types;
-mod chicken_variants;
-mod cow_variants;
-mod damage_types;
-mod dialogs;
-mod dimension_types;
-mod download;
-mod frog_variants;
-mod instruments;
-mod item_tags;
-mod items;
-mod jukebox_songs;
-mod packets;
-mod painting_variants;
-mod pig_variants;
-mod trim_materials;
-mod trim_patterns;
-mod types;
-mod wolf_sound_variants;
-mod wolf_variants;
-mod world_blocks;
+mod block_entries;
+mod dynamic_registry_assets;
+mod item_entries;
+mod tag_entries;
+mod tag_registry_specs;
 
-const SHOULD_FORMAT_OUTPUT: bool = true;
-const GENERATED_OUTPUT_DIRECTORY: &str = "src/generated";
-const VANILLA_DATAPACK_DIRECTORY: &str = "build_assets/datapacks/default";
+use block_entries::{block_entries_by_key, sorted_block_entries};
+use dynamic_registry_assets::DYNAMIC_REGISTRY_ASSETS;
+use item_entries::item_entries;
 
-pub fn main() {
-    RegistryBuildScript::new()
-        .run()
-        .unwrap_or_else(|error| panic!("registry build failed: {}", error));
+const GENERATED_DIRECTORY: &str = "src/generated";
+const ASSETS_DIRECTORY: &str = "assets";
+const DYNAMIC_REGISTRY_KEYS_FILE: &str = "assets/dynamic_registry_keys.json";
+
+fn main() {
+    BuildScript.run().unwrap_or_else(|error| {
+        panic!("registry build failed: {error}");
+    });
 }
 
-struct RegistryBuildScript {
-    target_version: &'static str,
-}
+struct BuildScript;
 
-impl RegistryBuildScript {
-    fn new() -> Self {
-        Self {
-            target_version: spinel_utils::constants::MINECRAFT_VERSION,
-        }
-    }
-
+impl BuildScript {
     fn run(self) -> io::Result<()> {
         self.emit_rerun_instructions();
-        self.refresh_world_blocks_module()?;
-
-        if self.generated_assets_are_current()? {
-            return Ok(());
-        }
-
-        download::ensure_datapacks_downloaded(self.target_version).map_err(io::Error::other)?;
-        self.ensure_output_directory()?;
-        self.write_generated_modules()?;
-
-        if SHOULD_FORMAT_OUTPUT {
-            self.format_generated_modules()?;
-        }
-
-        Ok(())
+        fs::create_dir_all(GENERATED_DIRECTORY)?;
+        self.write("vanilla_world_blocks.rs", self.world_blocks()?);
+        self.write("vanilla_blocks.rs", self.static_blocks()?);
+        self.write("vanilla_items.rs", self.static_items()?);
+        self.write(
+            "vanilla_biomes.rs",
+            self.dynamic_registry("biomes", "Biome")?,
+        );
+        self.write(
+            "vanilla_dimension_types.rs",
+            self.dynamic_registry("dimension_types", "DimensionType")?,
+        );
+        self.write("vanilla_dynamic_tags.rs", tag_entries::dynamic_tags()?);
+        self.write_dynamic_registry_modules()
     }
 
     fn emit_rerun_instructions(&self) {
         println!("cargo:rerun-if-changed=build/build.rs");
-        println!("cargo:rerun-if-changed=build/world_blocks.rs");
-        println!("cargo:rerun-if-changed=build/world_block_matches.rs");
-        println!("cargo:rerun-if-changed={}", self.version_file_path());
+        println!("cargo:rerun-if-changed={ASSETS_DIRECTORY}");
     }
 
-    fn generated_assets_are_current(&self) -> io::Result<bool> {
-        if !Path::new(&self.version_file_path()).exists()
-            || !Path::new(GENERATED_OUTPUT_DIRECTORY).exists()
-        {
-            return Ok(false);
-        }
+    fn write(&self, module_name: &str, contents: String) {
+        let output_path = format!("{GENERATED_DIRECTORY}/{module_name}");
+        fs::write(output_path, contents).unwrap_or_else(|error| {
+            panic!("failed to write {module_name}: {error}");
+        });
+    }
 
-        let version_manifest = fs::read_to_string(self.version_file_path())?;
-        let version_json = serde_json::from_str::<serde_json::Value>(&version_manifest)
-            .map_err(io::Error::other)?;
-
-        if version_json["minecraft_version"] != self.target_version {
-            return Ok(false);
-        }
-
-        if fs::read_dir(GENERATED_OUTPUT_DIRECTORY)?.next().is_none() {
-            return Ok(false);
-        }
-
-        Ok(Path::new(&format!(
-            "{GENERATED_OUTPUT_DIRECTORY}/vanilla_world_blocks.rs"
+    fn world_blocks(&self) -> io::Result<String> {
+        let blocks = block_entries_by_key()?;
+        let variants = blocks
+            .iter()
+            .map(|block| format!("    {},\n", block.variant))
+            .collect::<String>();
+        let state_ids = blocks
+            .iter()
+            .map(|block| {
+                format!(
+                    "            Self::{} => {},\n",
+                    block.variant, block.state_id
+                )
+            })
+            .collect::<String>();
+        let paths = blocks
+            .iter()
+            .map(|block| {
+                format!(
+                    "            Self::{} => \"{}\",\n",
+                    block.variant, block.path
+                )
+            })
+            .collect::<String>();
+        let all = blocks
+            .iter()
+            .map(|block| format!("            Self::{},\n", block.variant))
+            .collect::<String>();
+        Ok(format!(
+            "#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]\npub enum Block {{\n{variants}}}\nimpl Block {{\n    pub const ALL: &'static [Self] = &[\n{all}    ];\n    pub const fn state_id(self) -> i32 {{\n        match self {{\n{state_ids}        }}\n    }}\n    pub const fn path(self) -> &'static str {{\n        match self {{\n{paths}        }}\n    }}\n    pub const fn from_state_id(state_id: i32) -> Option<Self> {{\n        let mut block_index = 0usize;\n        while block_index < Self::ALL.len() {{\n            let block = Self::ALL[block_index];\n            if block.state_id() == state_id {{\n                return Some(block);\n            }}\n            block_index += 1;\n        }}\n        None\n    }}\n}}\n"
         ))
-        .exists())
     }
 
-    fn ensure_output_directory(&self) -> io::Result<()> {
-        fs::create_dir_all(GENERATED_OUTPUT_DIRECTORY)
+    fn static_blocks(&self) -> io::Result<String> {
+        let registrations = sorted_block_entries()?
+            .iter()
+            .map(|block| {
+                format!(
+                    "    let _ = registry.register(RegistryKey::vanilla_static(\"{}\"), Block::{});\n",
+                    block.path, block.variant
+                )
+            })
+            .collect::<String>();
+        Ok(format!(
+            "use crate::{{RegistryKey, StaticRegistry}};\nuse crate::vanilla_world_blocks::Block;\npub fn register_blocks(registry: &mut StaticRegistry<Block>) {{\n{registrations}}}\n"
+        ))
     }
 
-    fn refresh_world_blocks_module(&self) -> io::Result<()> {
-        if !Path::new(GENERATED_OUTPUT_DIRECTORY).exists()
-            || !Path::new(world_blocks::BLOCK_EXTRACTION_PATH).exists()
-        {
-            return Ok(());
-        }
-
-        let output_path = format!("{GENERATED_OUTPUT_DIRECTORY}/vanilla_world_blocks.rs");
-        let should_refresh = match fs::metadata(&output_path) {
-            Ok(metadata) => {
-                let generated_blocks = metadata.modified()?;
-                generated_blocks < fs::metadata(world_blocks::BLOCK_EXTRACTION_PATH)?.modified()?
-                    || generated_blocks < fs::metadata("build/world_blocks.rs")?.modified()?
-                    || generated_blocks
-                        < fs::metadata("build/world_block_matches.rs")?.modified()?
-            }
-            Err(_) => true,
-        };
-
-        if !should_refresh {
-            return Ok(());
-        }
-
-        fs::write(&output_path, world_blocks::build().to_string())?;
-        let _ = Command::new("rustfmt").arg(output_path).output();
-        Ok(())
+    fn dynamic_registry(&self, asset_name: &str, type_name: &str) -> io::Result<String> {
+        let asset_path = format!("{ASSETS_DIRECTORY}/{asset_name}.json");
+        let entries = self.extracted_registry_keys(&asset_path, asset_name)?;
+        Ok(self.dynamic_module(type_name, &entries))
     }
 
-    fn write_generated_modules(&self) -> io::Result<()> {
-        for (file_contents, file_name) in self.generated_modules() {
-            let output_path = format!("{GENERATED_OUTPUT_DIRECTORY}/vanilla_{file_name}.rs");
-            fs::write(output_path, file_contents.to_string())?;
-        }
-
-        Ok(())
+    fn dynamic_registry_asset(&self, registry_path: &str, type_name: &str) -> io::Result<String> {
+        Ok(self.dynamic_module(type_name, &self.dynamic_registry_keys(registry_path)?))
     }
 
-    fn format_generated_modules(&self) -> io::Result<()> {
-        for directory_entry in fs::read_dir(GENERATED_OUTPUT_DIRECTORY)? {
-            let directory_entry = directory_entry?;
-            let _ = Command::new("rustfmt").arg(directory_entry.path()).output();
-        }
-
-        Ok(())
+    fn dynamic_module(&self, type_name: &str, keys: &[String]) -> String {
+        let constants = keys
+            .iter()
+            .map(|key| {
+                format!(
+                    "    pub const {}: RegistryKey<Self> = RegistryKey::vanilla_static(\"{}\");\n",
+                    const_name(key),
+                    vanilla_path(key)
+                )
+            })
+            .collect::<String>();
+        let registrations = keys
+            .iter()
+            .map(|key| format!("    let _ = registry.register_vanilla({type_name}::{}, {type_name}::default());\n", const_name(key)))
+            .collect::<String>();
+        let function_name = format!("register_{}", plural_snake(type_name));
+        format!(
+            "use crate::{{DynamicRegistry, RegistryKey}};\nuse crate::{}::{type_name};\nimpl {type_name} {{\n{constants}}}\npub fn {function_name}(registry: &mut DynamicRegistry<{type_name}>) {{\n{registrations}}}\n",
+            type_name.to_snake_case()
+        )
     }
 
-    fn generated_modules(&self) -> [(TokenStream, &'static str); 24] {
-        [
-            (blocks::build(), "blocks"),
-            (world_blocks::build(), "world_blocks"),
-            (banner_patterns::build(), "banner_patterns"),
-            (biomes::build(), "biomes"),
-            (block_tags::build(), "block_tags"),
-            (cat_variants::build(), "cat_variants"),
-            (chat_types::build(), "chat_types"),
-            (chicken_variants::build(), "chicken_variants"),
-            (cow_variants::build(), "cow_variants"),
-            (damage_types::build(), "damage_types"),
-            (dialogs::build(), "dialogs"),
-            (dimension_types::build(), "dimension_types"),
-            (frog_variants::build(), "frog_variants"),
-            (instruments::build(), "instruments"),
-            (items::build(), "items"),
-            (item_tags::build(), "item_tags"),
-            (jukebox_songs::build(), "jukebox_songs"),
-            (painting_variants::build(), "painting_variants"),
-            (pig_variants::build(), "pig_variants"),
-            (trim_materials::build(), "trim_materials"),
-            (trim_patterns::build(), "trim_patterns"),
-            (wolf_sound_variants::build(), "wolf_sound_variants"),
-            (wolf_variants::build(), "wolf_variants"),
-            (packets::PacketModuleBuilder::build(), "packets"),
-        ]
+    fn static_items(&self) -> io::Result<String> {
+        let registrations = item_entries()?
+            .iter()
+            .map(|item| {
+                format!(
+                    "    let _ = registry.register(RegistryKey::vanilla_static(\"{}\"), Item::new(Identifier::vanilla_static(\"{}\")));\n",
+                    item.path, item.path
+                )
+            })
+            .collect::<String>();
+        Ok(format!(
+            "use crate::{{Identifier, RegistryKey, StaticRegistry}};\nuse crate::items::Item;\npub fn register_items(registry: &mut StaticRegistry<Item>) {{\n{registrations}}}\n"
+        ))
     }
 
-    fn version_file_path(&self) -> String {
-        format!("{}/spinel.json", VANILLA_DATAPACK_DIRECTORY)
+    fn write_dynamic_registry_modules(&self) -> io::Result<()> {
+        DYNAMIC_REGISTRY_ASSETS.iter().try_for_each(|registry| {
+            let contents = self.dynamic_registry_asset(registry.path, registry.type_name)?;
+            self.write(registry.module_name, contents);
+            Ok(())
+        })
     }
+
+    fn extracted_registry_keys(&self, path: &str, field_name: &str) -> io::Result<Vec<String>> {
+        let json = fs::read_to_string(path)?;
+        let registries: BTreeMap<String, BTreeMap<String, serde_json::Value>> =
+            serde_json::from_str(&json).map_err(io::Error::other)?;
+        Ok(registries
+            .get(field_name)
+            .map(|entries| entries.keys().cloned().collect())
+            .unwrap_or_default())
+    }
+
+    fn dynamic_registry_keys(&self, registry_path: &str) -> io::Result<Vec<String>> {
+        let json = fs::read_to_string(DYNAMIC_REGISTRY_KEYS_FILE)?;
+        let registries: BTreeMap<String, Vec<String>> =
+            serde_json::from_str(&json).map_err(io::Error::other)?;
+        Ok(registries.get(registry_path).cloned().unwrap_or_default())
+    }
+}
+
+fn vanilla_path(key: &str) -> &str {
+    key.strip_prefix("minecraft:").unwrap_or(key)
+}
+
+fn plural_snake(type_name: &str) -> String {
+    format!("{}s", type_name.to_snake_case())
+}
+
+fn const_name(key: &str) -> String {
+    let name = vanilla_path(key).to_shouty_snake_case();
+    if name
+        .chars()
+        .next()
+        .is_some_and(|first_char| first_char.is_ascii_digit())
+    {
+        return format!("_{name}");
+    }
+    name
 }
