@@ -1,5 +1,7 @@
 use crate::data_type::DataType;
 use crate::types::var_int::VarIntWrapper;
+use spinel_nbt::Nbt;
+use spinel_registry::DataComponentMap;
 use std::io::{self, Read, Write};
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -52,4 +54,43 @@ impl DataType for ComponentChanges {
             removed,
         })
     }
+}
+
+impl From<&DataComponentMap> for ComponentChanges {
+    fn from(component_patch: &DataComponentMap) -> Self {
+        Self {
+            added: component_patch
+                .entries()
+                .into_iter()
+                .filter_map(|component| {
+                    encode_component_nbt(&component.component_nbt).map(|data| ComponentEntry {
+                        type_id: component.component_id,
+                        data,
+                    })
+                })
+                .collect(),
+            removed: component_patch.removed_component_ids(),
+        }
+    }
+}
+
+fn encode_component_nbt(component_nbt: &Nbt) -> Option<Vec<u8>> {
+    let mut data = Vec::new();
+    match component_nbt {
+        Nbt::Int(value) => VarIntWrapper(*value).encode(&mut data).ok()?,
+        Nbt::Byte(value) => data.write_all(&value.to_be_bytes()).ok()?,
+        Nbt::String(value) => value.encode(&mut data).ok()?,
+        Nbt::List(values) => {
+            VarIntWrapper(values.len() as i32).encode(&mut data).ok()?;
+            for value in values {
+                let Nbt::String(value) = value else {
+                    return None;
+                };
+                value.encode(&mut data).ok()?;
+            }
+        }
+        Nbt::Compound(_) => return None,
+        _ => return None,
+    }
+    Some(data)
 }

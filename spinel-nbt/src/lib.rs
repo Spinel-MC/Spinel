@@ -1,4 +1,5 @@
 pub use compound::NbtCompound;
+pub use json::{json_to_nbt, json_to_nbt_compound, nbt_compound_to_json, nbt_to_json};
 pub use serializer::to_bytes_unnamed;
 use std::{
     error,
@@ -6,11 +7,19 @@ use std::{
     io::{self, Read},
 };
 pub use tag::Nbt;
+pub use tags::{Tag, TagHandler, TagReadable, TagSerializer, TagWritable, Taggable};
 
 pub mod compound;
+mod conversions;
 pub mod deserializer;
+pub mod json;
+mod read;
 pub mod serializer;
 pub mod tag;
+pub mod tags;
+#[cfg(test)]
+mod tests;
+mod write;
 
 pub const END_ID: u8 = 0x00;
 pub const BYTE_ID: u8 = 0x01;

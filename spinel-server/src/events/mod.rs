@@ -1,12 +1,21 @@
 pub use spinel_events::*;
 
 pub mod connection;
+pub mod creative_inventory_action;
 pub mod disconnection;
 pub mod intention;
+pub mod inventory_click;
+pub mod inventory_close;
+pub mod inventory_item_change;
+pub mod inventory_open;
+pub mod inventory_pre_click;
+pub mod item_drop;
 pub mod login;
 pub mod network;
 pub mod ping;
+pub mod player_block_interact;
 pub mod player_configuration;
+pub mod player_swap_item;
 pub mod server_list_ping;
 pub mod shutdown;
 pub mod signal;

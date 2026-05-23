@@ -1,0 +1,38 @@
+use crate::network::client::instance::Client;
+use crate::server::MinecraftServer;
+use crate::{
+    events::creative_inventory_action::CreativeInventoryActionEvent, inventory::slot_conversion,
+};
+use spinel_core::entity::game_mode::GameMode;
+use spinel_core::network::serverbound::play::set_creative_mode_slot::SetCreativeModeSlotPacket;
+use spinel_macros::packet_listener;
+
+#[packet_listener]
+fn on_set_creative_mode_slot(
+    client: &mut Client,
+    packet: SetCreativeModeSlotPacket,
+    server: &mut MinecraftServer,
+) -> bool {
+    let Some(player) = server.world_manager.player_pointer_for_client(client) else {
+        return false;
+    };
+    let player = unsafe { &mut *player };
+    if player.game_mode() != GameMode::Creative {
+        return false;
+    }
+    if packet.slot < 1 || packet.slot as i32 > slot_conversion::OFFHAND_SLOT {
+        return false;
+    }
+    let slot = slot_conversion::convert_window_0_slot_to_minestom_slot(packet.slot as i32);
+    let item_stack = packet.clicked_item.to_item_stack();
+    let mut event = CreativeInventoryActionEvent::new(
+        player as *mut crate::entity::Player,
+        slot,
+        item_stack.clone(),
+    );
+    event.dispatch(server, client);
+    if event.is_cancelled() {
+        return false;
+    }
+    player.inventory().set_item_stack(slot as usize, item_stack)
+}

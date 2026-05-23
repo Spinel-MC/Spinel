@@ -878,8 +878,32 @@
               "type": "Enum"
             },
             {
-              "name": "blockHit",
-              "type": "BlockHitResult"
+              "name": "blockPosition",
+              "type": "Position"
+            },
+            {
+              "name": "blockFace",
+              "type": "Enum"
+            },
+            {
+              "name": "cursorPositionX",
+              "type": "Float"
+            },
+            {
+              "name": "cursorPositionY",
+              "type": "Float"
+            },
+            {
+              "name": "cursorPositionZ",
+              "type": "Float"
+            },
+            {
+              "name": "insideBlock",
+              "type": "Boolean"
+            },
+            {
+              "name": "hitWorldBorder",
+              "type": "Boolean"
             },
             {
               "name": "sequence",

@@ -1,7 +1,7 @@
 use crate::world::chunk_heightmaps::ChunkHeightmaps;
 use crate::world::chunk_lighting::ChunkLighting;
 use crate::world::section_palette::SectionPaletteError;
-use crate::world::{BlockEntity, BlockPosition, ChunkPosition, ChunkSection};
+use crate::world::{Block, BlockEntity, BlockPosition, ChunkPosition, ChunkSection};
 use spinel_network::types::chunk::{ChunkData, HeightmapEntry};
 use spinel_network::types::light::LightData;
 use spinel_registry::Registries;
@@ -44,6 +44,21 @@ impl Chunk {
 
     pub fn sections(&self) -> &[ChunkSection] {
         &self.sections
+    }
+
+    pub fn block(&self, position: BlockPosition) -> Block {
+        let section_y = position.y.div_euclid(16);
+        self.sections
+            .iter()
+            .find(|section| section.y == section_y)
+            .and_then(|section| {
+                section.block(
+                    position.x.rem_euclid(16),
+                    position.y.rem_euclid(16),
+                    position.z.rem_euclid(16),
+                )
+            })
+            .unwrap_or(Block::AIR)
     }
 
     pub fn data(&self, registries: &Registries) -> Result<ChunkData, ChunkDataError> {

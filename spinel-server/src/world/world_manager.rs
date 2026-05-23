@@ -66,6 +66,23 @@ impl WorldManager {
             .find_map(|world| world.player_by_addr_mut(&client.addr))
     }
 
+    pub(crate) fn player_pointer_for_client(&mut self, client: &Client) -> Option<*mut Player> {
+        self.worlds
+            .iter_mut()
+            .find_map(|world| world.player_pointer_by_addr(&client.addr))
+    }
+
+    pub(crate) fn block_for_client(
+        &mut self,
+        client: &Client,
+        position: crate::world::BlockPosition,
+    ) -> Option<crate::world::Block> {
+        self.worlds
+            .iter_mut()
+            .find(|world| world.player_by_addr(&client.addr).is_some())
+            .map(|world| world.block_at(position))
+    }
+
     pub(crate) fn enter_player(
         &mut self,
         client: &mut Client,

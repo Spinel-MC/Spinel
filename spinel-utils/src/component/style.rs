@@ -1,6 +1,5 @@
 use crate::component::color::TextColor;
 use crate::component::events::{ClickEvent, HoverEvent};
-use crate::component::nbt::json_to_nbt_compound;
 use crate::component::text::TextComponent;
 use serde::{Deserialize, Serialize};
 
@@ -99,7 +98,7 @@ impl Style {
 
     pub fn to_nbt(&self) -> spinel_nbt::NbtCompound {
         let value = serde_json::to_value(self).unwrap_or_default();
-        json_to_nbt_compound(value.as_object().cloned().unwrap_or_default())
+        spinel_nbt::json_to_nbt_compound(value.as_object().cloned().unwrap_or_default())
     }
 }
 

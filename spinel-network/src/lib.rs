@@ -26,6 +26,9 @@ pub trait PacketSender {
     fn send_packet(&mut self, id: i32, payload: &[u8]) -> io::Result<()>;
 }
 
+#[cfg(test)]
+mod tests;
+
 pub trait PacketStruct: DataType {
     fn get_id() -> i32;
     fn get_state() -> ConnectionState;

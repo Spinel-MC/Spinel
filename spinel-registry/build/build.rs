@@ -1,5 +1,8 @@
 use heck::{ToShoutySnakeCase, ToSnakeCase};
-use std::{collections::BTreeMap, fs, io};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    fs, io,
+};
 
 mod block_entries;
 mod dynamic_registry_assets;
@@ -30,6 +33,7 @@ impl BuildScript {
         self.write("vanilla_world_blocks.rs", self.world_blocks()?);
         self.write("vanilla_blocks.rs", self.static_blocks()?);
         self.write("vanilla_items.rs", self.static_items()?);
+        self.write("vanilla_materials.rs", self.materials()?);
         self.write(
             "vanilla_biomes.rs",
             self.dynamic_registry("biomes", "Biome")?,
@@ -139,13 +143,48 @@ impl BuildScript {
             .iter()
             .map(|item| {
                 format!(
-                    "    let _ = registry.register(RegistryKey::vanilla_static(\"{}\"), Item::new(Identifier::vanilla_static(\"{}\")));\n",
-                    item.path, item.path
+                    "    let _ = registry.register(RegistryKey::vanilla_static(\"{}\"), Material::{});\n",
+                    item.path,
+                    const_name(&item.path)
                 )
             })
             .collect::<String>();
         Ok(format!(
-            "use crate::{{Identifier, RegistryKey, StaticRegistry}};\nuse crate::items::Item;\npub fn register_items(registry: &mut StaticRegistry<Item>) {{\n{registrations}}}\n"
+            "use crate::{{Material, RegistryKey, StaticRegistry}};\npub fn register_items(registry: &mut StaticRegistry<Material>) {{\n{registrations}}}\n"
+        ))
+    }
+
+    fn materials(&self) -> io::Result<String> {
+        let items = item_entries()?;
+        let block_paths = block_entries_by_key()?
+            .into_iter()
+            .map(|block| block.path)
+            .collect::<BTreeSet<_>>();
+        let constants = items
+            .iter()
+            .map(|item| {
+                let block = item
+                    .block_item
+                    .as_ref()
+                    .or_else(|| block_paths.get(&item.path))
+                    .map(|block| format!("Some(Block::{})", const_name(block)))
+                    .unwrap_or_else(|| "None".to_string());
+                format!(
+                    "    pub const {}: Self = Self::new({}, Identifier::vanilla_static(\"{}\"), {}, {});\n",
+                    const_name(&item.path),
+                    item.id,
+                    item.path,
+                    block,
+                    item.max_stack_size
+                )
+            })
+            .collect::<String>();
+        let all = items
+            .iter()
+            .map(|item| format!("        Self::{},\n", const_name(&item.path)))
+            .collect::<String>();
+        Ok(format!(
+            "use crate::{{Identifier, Material}};\nuse crate::vanilla_world_blocks::Block;\nimpl Material {{\n{constants}    pub const ALL: &'static [Self] = &[\n{all}    ];\n    pub fn from_id(id: i32) -> Option<Self> {{\n        Self::ALL.iter().find(|material| material.id() == id).cloned()\n    }}\n    pub fn from_key(key: &str) -> Option<Self> {{\n        Self::ALL.iter().find(|material| material.key().path == key || material.key().to_string() == key).cloned()\n    }}\n}}\n"
         ))
     }
 

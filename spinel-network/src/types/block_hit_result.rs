@@ -10,7 +10,7 @@ pub struct BlockHitResult {
     pub cursor_y: f32,
     pub cursor_z: f32,
     pub is_inside: bool,
-    pub world_coordinate_index: Option<VarInt>,
+    pub hit_world_border: bool,
 }
 
 impl DataType for BlockHitResult {
@@ -21,13 +21,7 @@ impl DataType for BlockHitResult {
         self.cursor_y.encode(w)?;
         self.cursor_z.encode(w)?;
         self.is_inside.encode(w)?;
-        if let Some(idx) = self.world_coordinate_index {
-            true.encode(w)?;
-            idx.encode(w)?;
-        } else {
-            false.encode(w)?;
-        }
-        Ok(())
+        self.hit_world_border.encode(w)
     }
 
     fn decode<R: Read>(r: &mut R) -> io::Result<Self> {
@@ -37,11 +31,7 @@ impl DataType for BlockHitResult {
         let cursor_y = f32::decode(r)?;
         let cursor_z = f32::decode(r)?;
         let is_inside = bool::decode(r)?;
-        let world_coordinate_index = if bool::decode(r)? {
-            Some(VarInt::decode(r)?)
-        } else {
-            None
-        };
+        let hit_world_border = bool::decode(r)?;
 
         Ok(BlockHitResult {
             position,
@@ -50,7 +40,7 @@ impl DataType for BlockHitResult {
             cursor_y,
             cursor_z,
             is_inside,
-            world_coordinate_index,
+            hit_world_border,
         })
     }
 }

@@ -17,8 +17,24 @@ impl NbtCompound {
         self.0.insert(name, value.into());
     }
 
+    pub fn remove(&mut self, name: &str) -> Option<Nbt> {
+        self.0.remove(name)
+    }
+
+    pub fn contains_key(&self, name: &str) -> bool {
+        self.0.contains_key(name)
+    }
+
     pub fn get(&self, name: &str) -> Option<&Nbt> {
         self.0.get(name)
+    }
+
+    pub fn get_mut(&mut self, name: &str) -> Option<&mut Nbt> {
+        self.0.get_mut(name)
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
     }
 
     pub fn skip_content<R>(reader: &mut NbtReadHelper<R>) -> Result<(), Error>

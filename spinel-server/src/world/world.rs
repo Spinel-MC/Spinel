@@ -2,7 +2,8 @@ use crate::entity::{Entity, Player, PlayerChunk};
 use crate::network::client::instance::Client;
 use crate::world::generator::{GenerationFork, Generator};
 use crate::world::{
-    BlockPosition, BlockSize, Chunk, ChunkLoader, ChunkPosition, GenerationUnit, NoopChunkLoader,
+    Block, BlockPosition, BlockSize, Chunk, ChunkLoader, ChunkPosition, GenerationUnit,
+    NoopChunkLoader,
 };
 use spinel_core::network::clientbound::play::chunk_data::ChunkDataAndUpdateLightPacket;
 use spinel_network::types::Identifier;
@@ -149,6 +150,17 @@ impl World {
             Entity::Player(player) if player.addr == *addr => Some(player),
             Entity::Player(_) => None,
         })
+    }
+
+    pub(crate) fn player_pointer_by_addr(&mut self, addr: &SocketAddr) -> Option<*mut Player> {
+        self.player_by_addr_mut(addr)
+            .map(|player| player as *mut Player)
+    }
+
+    pub(crate) fn block_at(&mut self, position: BlockPosition) -> Block {
+        let chunk_position =
+            ChunkPosition::new(position.x.div_euclid(16), position.z.div_euclid(16));
+        self.load_chunk(chunk_position).block(position)
     }
 
     fn apply_generator(&mut self, chunk: &mut Chunk) {

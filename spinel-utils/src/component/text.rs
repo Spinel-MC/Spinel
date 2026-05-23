@@ -99,7 +99,7 @@ impl TextComponent {
     pub fn to_nbt_compound(&self) -> spinel_nbt::NbtCompound {
         let value = serde_json::to_value(self).unwrap_or_default();
         let object = value.as_object().cloned().unwrap_or_default();
-        crate::component::nbt::json_to_nbt_compound(object)
+        spinel_nbt::json_to_nbt_compound(object)
     }
 
     fn write_plain_string(&self, builder: &mut String) {
