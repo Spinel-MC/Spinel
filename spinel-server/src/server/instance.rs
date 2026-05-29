@@ -259,14 +259,54 @@ impl MinecraftServer {
         self.world_manager.refresh_player_metadata(client)
     }
 
-    pub(crate) fn set_block_in_world(
+    pub(crate) fn world_uuid_for_client(&self, client: &Client) -> Option<uuid::Uuid> {
+        self.world_manager.world_uuid_for_client(client)
+    }
+
+    pub(crate) fn place_block_in_world(
         &mut self,
         client: &Client,
-        position: crate::world::BlockPosition,
-        block: crate::world::Block,
+        placement: crate::world::BlockHandlerPlacement,
+        do_block_updates: bool,
     ) -> io::Result<bool> {
         self.world_manager
-            .set_block_for_client(client, position, block)
+            .place_block_for_client(client, placement, do_block_updates)
+    }
+
+    pub(crate) fn break_block_in_world(
+        &mut self,
+        client: &Client,
+        player_id: crate::entity::EntityId,
+        position: crate::world::BlockPosition,
+        block_face: crate::events::player_block_interact::BlockFace,
+        do_block_updates: bool,
+    ) -> io::Result<bool> {
+        self.world_manager.break_block_for_client(
+            client,
+            player_id,
+            position,
+            block_face,
+            do_block_updates,
+        )
+    }
+
+    pub(crate) fn interact_block_handler_in_world(
+        &mut self,
+        client: &Client,
+        player_id: crate::entity::EntityId,
+        hand: crate::entity::PlayerHand,
+        position: crate::world::BlockPosition,
+        block_face: crate::events::player_block_interact::BlockFace,
+        cursor_position: (f32, f32, f32),
+    ) -> io::Result<bool> {
+        self.world_manager.interact_block_handler_for_client(
+            client,
+            player_id,
+            hand,
+            position,
+            block_face,
+            cursor_position,
+        )
     }
 
     pub(crate) fn loaded_block_in_world(
@@ -293,6 +333,15 @@ impl MinecraftServer {
     ) -> io::Result<()> {
         self.world_manager
             .refresh_block_for_client(client, position)
+    }
+
+    pub(crate) fn refresh_block_entity_in_world(
+        &mut self,
+        client: &mut Client,
+        position: crate::world::BlockPosition,
+    ) -> io::Result<()> {
+        self.world_manager
+            .refresh_block_entity_for_client(client, position)
     }
 
     pub(crate) fn tick_connections(&mut self) {

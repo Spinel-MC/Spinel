@@ -1,6 +1,6 @@
 use crate::entity::player::PlayerChunk;
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct ChunkPosition {
     pub x: i32,
     pub z: i32,

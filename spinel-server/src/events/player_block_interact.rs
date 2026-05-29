@@ -99,4 +99,37 @@ impl BlockFace {
             _ => None,
         }
     }
+
+    pub const fn normal(self) -> (i32, i32, i32) {
+        match self {
+            Self::Bottom => (0, -1, 0),
+            Self::Top => (0, 1, 0),
+            Self::North => (0, 0, -1),
+            Self::South => (0, 0, 1),
+            Self::West => (-1, 0, 0),
+            Self::East => (1, 0, 0),
+        }
+    }
+
+    pub const fn opposite(self) -> Self {
+        match self {
+            Self::Bottom => Self::Top,
+            Self::Top => Self::Bottom,
+            Self::North => Self::South,
+            Self::South => Self::North,
+            Self::West => Self::East,
+            Self::East => Self::West,
+        }
+    }
+
+    pub const fn update_faces() -> [Self; 6] {
+        [
+            Self::Bottom,
+            Self::Top,
+            Self::North,
+            Self::South,
+            Self::West,
+            Self::East,
+        ]
+    }
 }

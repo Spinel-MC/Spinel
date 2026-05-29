@@ -13,10 +13,13 @@ use spinel_core::network::clientbound::play::chunk_data::ChunkDataAndUpdateLight
 use spinel_core::network::clientbound::play::commands::CommandsPacket;
 use spinel_core::network::clientbound::play::forget_level_chunk::ForgetLevelChunkPacket;
 use spinel_core::network::clientbound::play::game_event::{GameEvent, GameEventPacket};
+use spinel_core::network::clientbound::play::initialize_world_border::InitializeWorldBorderPacket;
 use spinel_core::network::clientbound::play::login_play::LoginPlayPacket;
+use spinel_core::network::clientbound::play::respawn::RespawnPacket;
 use spinel_core::network::clientbound::play::set_chunk_cache_center::SetChunkCacheCenterPacket;
 use spinel_core::network::clientbound::play::set_default_spawn_position::SetDefaultSpawnPositionPacket;
 use spinel_core::network::clientbound::play::set_health::SetHealthPacket;
+use spinel_core::network::clientbound::play::set_held_slot::SetHeldSlotPacket;
 use spinel_core::network::clientbound::play::set_time::SetTimePacket;
 use spinel_core::network::clientbound::play::sync_player_pos::{
     SyncPlayerPositionPacket, SyncPlayerPositionSpec,
@@ -76,6 +79,44 @@ impl Player {
         self.mark_entered_world();
         self.refresh_commands()?;
         self.refresh_recipes()
+    }
+
+    pub(crate) fn spawn_after_instance_transition(
+        &mut self,
+        client: &mut Client,
+        world_name: Identifier,
+        chunks: Vec<PlayerChunk>,
+        time_packet: SetTimePacket,
+        world_border_packet: InitializeWorldBorderPacket,
+        first_spawn: bool,
+        dimension_change: bool,
+        update_chunks: bool,
+    ) -> io::Result<()> {
+        self.prepare_instance_spawn(world_name.clone());
+        if dimension_change {
+            RespawnPacket::new(self.game_mode(), world_name.clone()).dispatch(client)?;
+        }
+        if update_chunks {
+            SetChunkCacheCenterPacket::new(self.loaded_chunk.x, self.loaded_chunk.z)
+                .dispatch(client)?;
+            self.queue_chunks(chunks);
+        }
+        self.sync_position(client)?;
+        if dimension_change {
+            self.spawn_position(client, world_name)?;
+            world_border_packet.dispatch(client)?;
+            time_packet.dispatch(client)?;
+        }
+        if dimension_change || first_spawn {
+            self.sync_inventory(client)?;
+            SetHeldSlotPacket {
+                slot: self.held_slot() as i8,
+            }
+            .dispatch(client)?;
+            GameEventPacket::from(GameEvent::StartWaitingForLevelChunks).dispatch(client)?;
+        }
+        self.mark_entered_world();
+        Ok(())
     }
 
     #[cfg(test)]
@@ -161,6 +202,28 @@ impl Player {
 
     pub(crate) fn set_position_and_view(&mut self, position: crate::entity::EntityPosition) {
         self.set_position(position);
+    }
+
+    pub(crate) fn set_instance_position(
+        &mut self,
+        position: crate::entity::EntityPosition,
+        world_view_distance: i32,
+        should_reset_chunks: bool,
+    ) -> Vec<PlayerChunk> {
+        self.position = PlayerPosition::new(
+            position.x(),
+            position.y(),
+            position.z(),
+            position.yaw(),
+            position.pitch(),
+        );
+        self.loaded_chunk = PlayerChunk::from_position(self.position);
+        self.chunks_loaded_by_client = self.loaded_chunk;
+        if should_reset_chunks {
+            self.reset_chunk_queue_for_world_entry_or_teleport();
+        }
+        self.loaded_chunk
+            .surrounding(self.effective_chunk_view_distance(world_view_distance))
     }
 
     pub(crate) fn spawn_chunks(&self, world_view_distance: i32) -> Vec<PlayerChunk> {

@@ -128,6 +128,22 @@ impl Client {
         self.outbound_packet_queue.len()
     }
 
+    #[cfg(test)]
+    pub(crate) fn queued_outbound_packet_ids(&self) -> Vec<i32> {
+        self.outbound_packet_queue
+            .iter()
+            .map(|packet| packet.packet_id)
+            .collect()
+    }
+
+    #[cfg(test)]
+    pub(crate) fn queued_outbound_packet_payloads(&self) -> Vec<(i32, Vec<u8>)> {
+        self.outbound_packet_queue
+            .iter()
+            .map(|packet| (packet.packet_id, packet.payload.clone()))
+            .collect()
+    }
+
     pub(crate) fn enqueue_outbound_packet(&mut self, packet_id: i32, payload: Vec<u8>) {
         self.outbound_packet_queue.push_back(QueuedOutboundPacket {
             state: self.state,

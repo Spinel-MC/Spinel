@@ -106,6 +106,14 @@ impl Registries {
         &mut self.biomes
     }
 
+    pub fn block_id(&self, block: &vanilla_world_blocks::Block) -> Option<i32> {
+        self.blocks.get_id(self.blocks.key_for(block)?)
+    }
+
+    pub fn block_key(&self, block: &vanilla_world_blocks::Block) -> Option<&Identifier> {
+        self.blocks.key_for(block).map(RegistryKey::key)
+    }
+
     pub fn dynamic_registry_id(
         &self,
         registry_name: &Identifier,

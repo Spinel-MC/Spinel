@@ -50,6 +50,13 @@ impl Entity {
         }
     }
 
+    pub(crate) fn set_position(&mut self, position: EntityPosition) {
+        match self {
+            Self::Generic(entity) => entity.set_position(position),
+            Self::Player(player) => player.set_position(position),
+        }
+    }
+
     pub(crate) fn set_world(&mut self, world: Uuid) {
         match self {
             Self::Generic(entity) => entity.set_world(world),

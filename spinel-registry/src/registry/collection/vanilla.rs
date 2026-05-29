@@ -89,6 +89,25 @@ pub mod vanilla_zombie_nautilus_variants;
 include!("../../generated/vanilla_dynamic_tags.rs");
 
 impl Registries {
+    pub fn block_tag_contains(
+        &self,
+        tag_name: &Identifier,
+        block: &crate::vanilla_world_blocks::Block,
+    ) -> bool {
+        let Some(block_id) = self.block_id(block) else {
+            return false;
+        };
+        self.static_tag_entries().is_ok_and(|registry_tags| {
+            registry_tags.into_iter().any(|registry_tags| {
+                registry_tags.registry_name == BLOCKS_REGISTRY
+                    && registry_tags.tags.into_iter().any(|registry_tag| {
+                        registry_tag.tag_name == *tag_name
+                            && registry_tag.entries.contains(&block_id)
+                    })
+            })
+        })
+    }
+
     pub fn dynamic_registry_entries(
         &self,
         exclude_vanilla: bool,

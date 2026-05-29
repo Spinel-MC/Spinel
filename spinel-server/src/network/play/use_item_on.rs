@@ -5,7 +5,7 @@ use crate::events::player_block_place::PlayerBlockPlaceEvent;
 use crate::events::player_use_item_on_block::PlayerUseItemOnBlockEvent;
 use crate::network::client::instance::Client;
 use crate::server::MinecraftServer;
-use crate::world::{Block, BlockPosition};
+use crate::world::{Block, BlockHandlerPlacement, BlockPosition};
 use spinel_core::entity::game_mode::GameMode;
 use spinel_core::network::clientbound::play::acknowledge_block_change::AcknowledgeBlockChangePacket;
 use spinel_core::network::serverbound::play::use_item_on::UseItemOnPacket;
@@ -32,6 +32,22 @@ fn on_use_item_on(
         event_input.block_face,
     );
     event.dispatch(server, client);
+    if !event.is_cancelled() {
+        let player = unsafe { &mut *event_input.player };
+        let handler_allows_item_use = server
+            .interact_block_handler_in_world(
+                client,
+                player.entity_id(),
+                event_input.hand,
+                event_input.block_position,
+                event_input.block_face,
+                event_input.cursor_position,
+            )
+            .unwrap_or(true);
+        if !handler_allows_item_use {
+            event.set_blocking_item_use(true);
+        }
+    }
     if event.is_blocking_item_use() {
         return finish_blocked_item_use(event_input.player, packet.sequence, server, client);
     }
@@ -100,8 +116,18 @@ fn place_block(
     if event.is_cancelled() {
         return rollback_block_change(placement_position, sequence, server, client);
     }
+    let Some(world_uuid) = server.world_uuid_for_client(client) else {
+        return rollback_block_change(placement_position, sequence, server, client);
+    };
+    let placement = BlockHandlerPlacement::new(
+        event.block(),
+        existing_block,
+        world_uuid,
+        placement_position,
+    )
+    .player_placement(player.entity_id(), hand, block_face, cursor_position);
     let block_was_set = server
-        .set_block_in_world(client, placement_position, event.block())
+        .place_block_in_world(client, placement, event.should_do_block_updates())
         .unwrap_or(false);
     if block_was_set && event.does_consume_block() && player.game_mode() != GameMode::Creative {
         let consumed_item = player.item_in_hand(hand).consume(1);

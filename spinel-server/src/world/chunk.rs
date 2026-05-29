@@ -2,13 +2,17 @@ use crate::entity::Player;
 use crate::world::chunk_heightmaps::ChunkHeightmaps;
 use crate::world::chunk_lighting::ChunkLighting;
 use crate::world::section_palette::SectionPaletteError;
-use crate::world::{Biome, Block, BlockEntity, BlockPosition, ChunkPosition, ChunkSection};
+use crate::world::{
+    Biome, Block, BlockEntity, BlockHandlerDestroy, BlockHandlerPlacement, BlockHandlerRegistry,
+    BlockHandlerTick, BlockPosition, ChunkPosition, ChunkSection,
+};
 use spinel_core::network::clientbound::play::chunk_data::ChunkDataAndUpdateLightPacket;
 use spinel_nbt::{Nbt, NbtCompound, TagHandler, Taggable};
 use spinel_network::types::chunk::{ChunkData, HeightmapEntry};
 use spinel_network::types::light::LightData;
 use spinel_registry::{Registries, RegistryKey};
 use std::cell::RefCell;
+use std::collections::HashMap;
 use std::collections::HashSet;
 use uuid::Uuid;
 
@@ -30,6 +34,7 @@ pub struct Chunk {
     tag_handler: TagHandler,
     world: Option<Uuid>,
     viewers: HashSet<i32>,
+    tickable_blocks: HashMap<BlockPosition, Block>,
     has_generated: bool,
     loaded: bool,
     read_only: bool,
@@ -51,6 +56,7 @@ impl Chunk {
             tag_handler: TagHandler::new_handler(),
             world: None,
             viewers: HashSet::new(),
+            tickable_blocks: HashMap::new(),
             has_generated: false,
             loaded: true,
             read_only: false,
@@ -129,6 +135,7 @@ impl Chunk {
             tag_handler: self.tag_handler.readable_copy(),
             world: self.world,
             viewers: self.viewers.clone(),
+            tickable_blocks: self.tickable_blocks.clone(),
             has_generated: self.has_generated,
             loaded: self.loaded,
             read_only: self.read_only,
@@ -144,6 +151,7 @@ impl Chunk {
             .map(|section_offset| ChunkSection::new(WORLD_MIN_SECTION + section_offset))
             .collect();
         self.block_entities.clear();
+        self.tickable_blocks.clear();
         self.has_generated = false;
         self.refresh_heightmaps_from_sections();
         self.loaded = true;
@@ -179,9 +187,21 @@ impl Chunk {
     }
 
     pub fn try_set_block(&mut self, position: BlockPosition, block: Block) -> SetChunkBlockResult {
+        self.try_set_block_with_handler(position, block, None, None, None)
+    }
+
+    pub(crate) fn try_set_block_with_handler(
+        &mut self,
+        position: BlockPosition,
+        block: Block,
+        handlers: Option<&BlockHandlerRegistry>,
+        placement: Option<BlockHandlerPlacement>,
+        destroy: Option<BlockHandlerDestroy>,
+    ) -> SetChunkBlockResult {
         if self.read_only {
             return SetChunkBlockResult::ReadOnly;
         }
+        let previous_block = self.block(position);
         let Some(section) = self.section_mut(position.y.div_euclid(CHUNK_SECTION_SIZE)) else {
             return SetChunkBlockResult::OutsideHeight;
         };
@@ -192,11 +212,14 @@ impl Chunk {
             block,
         );
         if block_was_set {
+            self.update_tickable_block(position, block, handlers);
             if !ChunkSection::block_can_own_block_entity(block) {
                 self.remove_block_entity(position);
             }
             self.refresh_heightmaps_after_block_change(position, block);
             self.invalidate();
+            self.dispatch_block_handler_destroy(previous_block, block, position, handlers, destroy);
+            self.dispatch_block_handler_place(previous_block, block, position, handlers, placement);
             return SetChunkBlockResult::Changed;
         }
         SetChunkBlockResult::Unchanged
@@ -345,6 +368,12 @@ impl Chunk {
         Some(self.block_entities.remove(block_entity_index))
     }
 
+    pub fn block_entity(&self, position: BlockPosition) -> Option<&BlockEntity> {
+        self.block_entities
+            .iter()
+            .find(|block_entity| block_entity.position() == position)
+    }
+
     pub fn block_entities(&self) -> &[BlockEntity] {
         &self.block_entities
     }
@@ -354,6 +383,25 @@ impl Chunk {
             .iter()
             .map(BlockEntity::to_network)
             .collect()
+    }
+
+    pub fn tick(&self, world: Uuid, handlers: &BlockHandlerRegistry, _time: u64) -> usize {
+        self.tickable_blocks
+            .iter()
+            .filter_map(|(position, block)| {
+                handlers
+                    .handler(*block)
+                    .map(|handler| (handler, *block, *position))
+            })
+            .map(|(handler, block, position)| {
+                handler.tick(BlockHandlerTick::new(block, world, position));
+                1
+            })
+            .sum()
+    }
+
+    pub fn tickable_block_count(&self) -> usize {
+        self.tickable_blocks.len()
     }
 
     pub fn is_loaded(&self) -> bool {
@@ -465,6 +513,55 @@ impl Chunk {
             .refresh_block(&self.sections, position, block);
         self.world_surface_heightmap
             .refresh_block(&self.sections, position, block);
+    }
+
+    fn update_tickable_block(
+        &mut self,
+        position: BlockPosition,
+        block: Block,
+        handlers: Option<&BlockHandlerRegistry>,
+    ) {
+        if handlers.is_some_and(|handlers| handlers.has_tickable_handler(block)) {
+            self.tickable_blocks.insert(position, block);
+            return;
+        }
+        self.tickable_blocks.remove(&position);
+    }
+
+    fn dispatch_block_handler_destroy(
+        &self,
+        previous_block: Block,
+        new_block: Block,
+        position: BlockPosition,
+        handlers: Option<&BlockHandlerRegistry>,
+        destroy: Option<BlockHandlerDestroy>,
+    ) {
+        let Some(handler) = handlers.and_then(|handlers| handlers.handler(previous_block)) else {
+            return;
+        };
+        let world = self.world.unwrap_or_default();
+        handler.on_destroy(destroy.unwrap_or_else(|| {
+            BlockHandlerDestroy::new(previous_block, new_block, world, position, None)
+        }));
+    }
+
+    fn dispatch_block_handler_place(
+        &self,
+        previous_block: Block,
+        block: Block,
+        position: BlockPosition,
+        handlers: Option<&BlockHandlerRegistry>,
+        placement: Option<BlockHandlerPlacement>,
+    ) {
+        let Some(handler) = handlers.and_then(|handlers| handlers.handler(block)) else {
+            return;
+        };
+        let world = self.world.unwrap_or_default();
+        handler.on_place(
+            placement.unwrap_or_else(|| {
+                BlockHandlerPlacement::new(block, previous_block, world, position)
+            }),
+        );
     }
 }
 

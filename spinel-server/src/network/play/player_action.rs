@@ -9,6 +9,8 @@ use spinel_core::entity::game_mode::GameMode;
 use spinel_core::network::clientbound::play::acknowledge_block_change::AcknowledgeBlockChangePacket;
 use spinel_core::network::serverbound::play::player_action::PlayerActionPacket;
 use spinel_macros::packet_listener;
+use spinel_registry::data_components::vanilla_components::{CAN_BREAK, TOOL};
+use spinel_registry::{BlockPredicates, Registries, Tool};
 
 const STARTED_DIGGING: i32 = 0;
 const CANCELLED_DIGGING: i32 = 1;
@@ -85,7 +87,7 @@ fn finish_digging(
         return acknowledge_block_change(packet.sequence, client);
     };
     let player = unsafe { &mut *digging_input.player };
-    if player.game_mode() == GameMode::Spectator || player.game_mode() == GameMode::Adventure {
+    if should_prevent_breaking(player, digging_input.block, &server.registries) {
         return rollback_digging(
             digging_input.block_position,
             packet.sequence,
@@ -100,7 +102,13 @@ fn finish_digging(
     );
     event.dispatch(server, client);
     let block_was_broken = server
-        .set_block_in_world(client, digging_input.block_position, event.block())
+        .break_block_in_world(
+            client,
+            player.entity_id(),
+            digging_input.block_position,
+            digging_input.block_face,
+            true,
+        )
         .unwrap_or(false);
     let block_change_is_acknowledged = acknowledge_block_change(packet.sequence, client);
     block_was_broken && block_change_is_acknowledged
@@ -113,7 +121,7 @@ fn start_digging(
     server: &mut MinecraftServer,
 ) -> bool {
     let player = unsafe { &mut *digging_input.player };
-    if player.game_mode() == GameMode::Spectator || player.game_mode() == GameMode::Adventure {
+    if should_prevent_breaking(player, digging_input.block, &server.registries) {
         return rollback_digging(digging_input.block_position, sequence, server, client);
     }
     let mut event = PlayerStartDiggingEvent::new(
@@ -134,7 +142,13 @@ fn start_digging(
         );
         finish_event.dispatch(server, client);
         let block_was_broken = server
-            .set_block_in_world(client, digging_input.block_position, finish_event.block())
+            .break_block_in_world(
+                client,
+                player.entity_id(),
+                digging_input.block_position,
+                digging_input.block_face,
+                true,
+            )
             .unwrap_or(false);
         return block_was_broken && acknowledge_block_change(sequence, client);
     }
@@ -187,13 +201,71 @@ fn rollback_digging(
     client: &mut Client,
 ) -> bool {
     let block_is_refreshed = server.refresh_block_in_world(client, position).is_ok();
-    block_is_refreshed && acknowledge_block_change(sequence, client)
+    let block_entity_is_refreshed = server
+        .refresh_block_entity_in_world(client, position)
+        .is_ok();
+    let player_is_corrected = correct_player_after_failed_digging(position, server, client);
+    block_is_refreshed
+        && block_entity_is_refreshed
+        && player_is_corrected
+        && acknowledge_block_change(sequence, client)
+}
+
+pub(crate) fn correct_player_after_failed_digging(
+    position: BlockPosition,
+    server: &mut MinecraftServer,
+    client: &mut Client,
+) -> bool {
+    let Some(player) = server.world_manager.player_pointer_for_client(client) else {
+        return false;
+    };
+    let player = unsafe { &mut *player };
+    let player_position = player.position();
+    let block_is_under_player = position.x == player_position.x().floor() as i32
+        && position.y + 1 == player_position.y().floor() as i32
+        && position.z == player_position.z().floor() as i32;
+    if !block_is_under_player {
+        return true;
+    }
+    player
+        .synchronize_position_after_teleport(
+            player_position,
+            spinel_network::types::Vector3d {
+                x: 0.0,
+                y: 0.0,
+                z: 0.0,
+            },
+            spinel_network::types::TeleportFlags::absolute(),
+            true,
+        )
+        .is_ok()
 }
 
 fn acknowledge_block_change(sequence: i32, client: &mut Client) -> bool {
     AcknowledgeBlockChangePacket { sequence }
         .dispatch(client)
         .is_ok()
+}
+
+pub(crate) fn should_prevent_breaking(
+    player: &crate::entity::Player,
+    block: Block,
+    registries: &Registries,
+) -> bool {
+    let main_hand_item = player.item_in_hand(crate::entity::PlayerHand::Main);
+    match player.game_mode() {
+        GameMode::Spectator => true,
+        GameMode::Adventure => {
+            let can_break_block = main_hand_item
+                .get_or(CAN_BREAK, BlockPredicates::default())
+                .test(block, registries);
+            !can_break_block
+        }
+        GameMode::Creative => main_hand_item
+            .get::<Tool>(TOOL)
+            .is_some_and(|tool| !tool.can_destroy_blocks_in_creative()),
+        _ => false,
+    }
 }
 
 struct DiggingEventInput {

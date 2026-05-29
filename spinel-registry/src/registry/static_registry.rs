@@ -58,6 +58,16 @@ impl<T> StaticRegistry<T> {
     }
 }
 
+impl<T: PartialEq> StaticRegistry<T> {
+    #[must_use]
+    pub fn key_for(&self, value: &T) -> Option<&RegistryKey<T>> {
+        self.entries
+            .iter()
+            .find(|(_, entry_value)| entry_value == value)
+            .map(|(key, _)| key)
+    }
+}
+
 impl<T> Default for StaticRegistry<T> {
     fn default() -> Self {
         Self::new()

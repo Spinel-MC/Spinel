@@ -2,11 +2,15 @@ use crate::entity::metadata::definitions;
 use crate::entity::{
     Entity, EntityId, EntityPosition, GenericEntity, Player, PlayerChunk, PlayerChunkTransition,
 };
+use crate::events::instance_block_update::InstanceBlockUpdateEvent;
 use crate::events::instance_chunk_load::InstanceChunkLoadEvent;
 use crate::events::instance_chunk_unload::InstanceChunkUnloadEvent;
+use crate::events::instance_register::InstanceRegisterEvent;
 use crate::events::instance_section_invalidate::InstanceSectionInvalidateEvent;
 use crate::events::instance_tick::InstanceTickEvent;
 use crate::events::instance_tick_end::InstanceTickEndEvent;
+use crate::events::instance_unregister::InstanceUnregisterEvent;
+use crate::events::player_block_break::PlayerBlockBreakEvent;
 use crate::events::player_move::PlayerMoveEvent;
 use crate::events::player_spawn::PlayerSpawnEvent;
 use crate::events::player_tick::PlayerTickEvent;
@@ -14,15 +18,23 @@ use crate::events::player_tick_end::PlayerTickEndEvent;
 use crate::network::client::instance::Client;
 use crate::world::generator::{FallibleGenerator, GenerateChunkError, GenerationFork, Generator};
 use crate::world::{
-    Biome, Block, BlockPosition, BlockSize, Chunk, ChunkLoader, ChunkPosition, EntityTracker,
-    EntityTrackerTarget, GenerationUnit, NoopChunkLoader, Weather, WorldEventNode, WorldScheduler,
+    Biome, Block, BlockHandler, BlockHandlerDestroy, BlockHandlerInteraction,
+    BlockHandlerPlacement, BlockHandlerRegistry, BlockHandlerTouch, BlockLookupCondition,
+    BlockPlacementRule, BlockPlacementRuleRegistry, BlockPlacementState, BlockPosition, BlockSize,
+    BlockUpdateState, BossBar, Chunk, ChunkLoader, ChunkPosition, ChunkSection, EntityTracker,
+    EntityTrackerTarget, ExplosionSupplier, GenerationUnit, NoopChunkLoader, Weather, WorldBorder,
+    WorldEventNode, WorldIdentity, WorldPointers, WorldScheduler, WorldSnapshot, WorldSoundEmitter,
 };
 use spinel_core::network::clientbound::play::block_action::BlockActionPacket;
+use spinel_core::network::clientbound::play::block_entity_data::BlockEntityDataPacket;
 use spinel_core::network::clientbound::play::block_update::BlockUpdatePacket;
 use spinel_core::network::clientbound::play::chunk_data::ChunkDataAndUpdateLightPacket;
 use spinel_core::network::clientbound::play::entity_head_look::EntityHeadLookPacket;
 use spinel_core::network::clientbound::play::entity_position::EntityPositionPacket;
 use spinel_core::network::clientbound::play::entity_position_and_rotation::EntityPositionAndRotationPacket;
+use spinel_core::network::clientbound::play::entity_sound_effect::{
+    EntitySoundEffectPacket, NetworkSoundEvent,
+};
 use spinel_core::network::clientbound::play::entity_status::EntityStatusPacket;
 use spinel_core::network::clientbound::play::entity_teleport::EntityTeleportPacket;
 use spinel_core::network::clientbound::play::game_event::{GameEvent, GameEventPacket};
@@ -32,23 +44,33 @@ use spinel_core::network::clientbound::play::remove_entities::RemoveEntitiesPack
 use spinel_core::network::clientbound::play::set_entity_data::SetEntityDataPacket;
 use spinel_core::network::clientbound::play::set_equipment::SetEquipmentPacket;
 use spinel_core::network::clientbound::play::set_time::SetTimePacket;
+use spinel_core::network::clientbound::play::sound_effect::{
+    NetworkPositionedSoundEvent, SoundEffectPacket,
+};
 use spinel_core::network::clientbound::play::spawn_entity::EntityAngle;
 use spinel_core::network::clientbound::play::spawn_entity::SpawnEntityPacket;
+use spinel_core::network::clientbound::play::world_event::WorldEventPacket;
 use spinel_nbt::{Nbt, NbtCompound, TagHandler, Taggable};
 use spinel_network::types::entity_metadata::MetadataEntry;
+use spinel_network::types::sound::SoundEvent;
 use spinel_network::types::{Identifier, Position, TeleportFlags, Vector3d, Velocity};
 use spinel_network::{DataType, PacketSender, PacketStruct};
+use spinel_registry::block_entity_type::BlockEntityType;
 use spinel_registry::dimension_type::DimensionType;
 use spinel_registry::{EntityType, Registries, RegistryKey};
 use spinel_utils::component::Component;
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::io::{Error, ErrorKind, Result};
 use std::net::SocketAddr;
+use std::sync::Arc;
+use std::thread::JoinHandle;
+use std::time::{SystemTime, UNIX_EPOCH};
 use uuid::Uuid;
 
 const MAX_PLAYER_COORDINATE: f64 = 30_000_000.0;
 const DEFAULT_TIME_SYNCHRONIZATION_TICKS: i32 = 20;
 const DEFAULT_CHUNK_VIEW_DISTANCE: i32 = 8;
+const DESTROY_BLOCK_WORLD_EVENT_ID: i32 = 2001;
 
 pub struct ChunkSupplier {
     create_chunk: Box<dyn Fn(ChunkPosition) -> Chunk + Send + Sync>,
@@ -60,6 +82,21 @@ struct PendingPlayerChunkLoad {
     chunk: PlayerChunk,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ChunkLoadTicket {
+    id: u64,
+    position: ChunkPosition,
+}
+
+pub struct WorldIoTask {
+    handle: Option<JoinHandle<Result<()>>>,
+    completed: Option<Result<()>>,
+}
+
+struct AsyncChunkLoad {
+    handle: JoinHandle<Result<Option<Chunk>>>,
+}
+
 impl ChunkSupplier {
     pub fn new(create_chunk: impl Fn(ChunkPosition) -> Chunk + Send + Sync + 'static) -> Self {
         Self {
@@ -69,6 +106,48 @@ impl ChunkSupplier {
 
     pub fn create_chunk(&self, position: ChunkPosition) -> Chunk {
         (self.create_chunk)(position)
+    }
+}
+
+impl ChunkLoadTicket {
+    pub const fn id(&self) -> u64 {
+        self.id
+    }
+
+    pub const fn position(&self) -> ChunkPosition {
+        self.position
+    }
+}
+
+impl WorldIoTask {
+    fn completed(result: Result<()>) -> Self {
+        Self {
+            handle: None,
+            completed: Some(result),
+        }
+    }
+
+    fn running(handle: JoinHandle<Result<()>>) -> Self {
+        Self {
+            handle: Some(handle),
+            completed: None,
+        }
+    }
+
+    pub fn is_finished(&self) -> bool {
+        self.completed.is_some() || self.handle.as_ref().is_some_and(JoinHandle::is_finished)
+    }
+
+    pub fn join(mut self) -> Result<()> {
+        if let Some(result) = self.completed.take() {
+            return result;
+        }
+        let Some(handle) = self.handle.take() else {
+            return Ok(());
+        };
+        handle
+            .join()
+            .map_err(|_| Error::new(ErrorKind::Other, "World IO task panicked"))?
     }
 }
 
@@ -121,12 +200,23 @@ pub struct World {
     entities: Vec<Entity>,
     entity_tracker: EntityTracker,
     chunks: HashMap<ChunkPosition, Chunk>,
+    block_handlers: BlockHandlerRegistry,
+    block_placement_rules: BlockPlacementRuleRegistry,
+    linked_shared_worlds: Vec<Uuid>,
+    source_world: Option<Uuid>,
+    last_block_change_time: u128,
+    currently_changing_blocks: HashMap<BlockPosition, Block>,
     pending_generation: HashMap<ChunkPosition, Vec<GenerationFork>>,
     loading_chunks: HashSet<ChunkPosition>,
+    async_chunk_loads: HashMap<ChunkPosition, ChunkLoadTicket>,
+    async_chunk_load_handles: HashMap<u64, AsyncChunkLoad>,
+    completed_chunk_loads: HashSet<u64>,
+    next_chunk_load_ticket_id: u64,
     pending_player_chunk_loads: VecDeque<PendingPlayerChunkLoad>,
     pending_player_chunk_load_keys: HashSet<(SocketAddr, PlayerChunk)>,
     generator: Option<Box<dyn Generator + Send + Sync>>,
-    chunk_loader: Box<dyn ChunkLoader>,
+    explosion_supplier: Option<Box<dyn ExplosionSupplier>>,
+    chunk_loader: Arc<dyn ChunkLoader>,
     chunk_supplier: ChunkSupplier,
     registered: bool,
     dimension_type: RegistryKey<DimensionType>,
@@ -138,7 +228,12 @@ pub struct World {
     time_rate: i32,
     time_synchronization_ticks: i32,
     view_distance: i32,
+    world_border: WorldBorder,
+    boss_bars: Vec<BossBar>,
     weather: Weather,
+    transitioning_weather: Weather,
+    remaining_rain_transition_ticks: i32,
+    remaining_thunder_transition_ticks: i32,
     tag_handler: TagHandler,
     scheduler: WorldScheduler,
     event_node: WorldEventNode,
@@ -153,12 +248,23 @@ impl World {
             entities: Vec::new(),
             entity_tracker: EntityTracker::new(),
             chunks: HashMap::new(),
+            block_handlers: BlockHandlerRegistry::default(),
+            block_placement_rules: BlockPlacementRuleRegistry::default(),
+            linked_shared_worlds: Vec::new(),
+            source_world: None,
+            last_block_change_time: current_time_nanos(),
+            currently_changing_blocks: HashMap::new(),
             pending_generation: HashMap::new(),
             loading_chunks: HashSet::new(),
+            async_chunk_loads: HashMap::new(),
+            async_chunk_load_handles: HashMap::new(),
+            completed_chunk_loads: HashSet::new(),
+            next_chunk_load_ticket_id: 0,
             pending_player_chunk_loads: VecDeque::new(),
             pending_player_chunk_load_keys: HashSet::new(),
             generator: None,
-            chunk_loader: Box::new(NoopChunkLoader),
+            explosion_supplier: None,
+            chunk_loader: Arc::new(NoopChunkLoader),
             chunk_supplier: ChunkSupplier::default(),
             registered: false,
             dimension_type: DimensionType::OVERWORLD,
@@ -170,7 +276,12 @@ impl World {
             time_rate: 1,
             time_synchronization_ticks: DEFAULT_TIME_SYNCHRONIZATION_TICKS,
             view_distance: DEFAULT_CHUNK_VIEW_DISTANCE,
+            world_border: WorldBorder::DEFAULT,
+            boss_bars: Vec::new(),
             weather: Weather::CLEAR,
+            transitioning_weather: Weather::CLEAR,
+            remaining_rain_transition_ticks: 0,
+            remaining_thunder_transition_ticks: 0,
             tag_handler: TagHandler::new_handler(),
             scheduler: WorldScheduler::default(),
             event_node: WorldEventNode::default(),
@@ -192,6 +303,14 @@ impl World {
 
     pub const fn uuid(&self) -> Uuid {
         self.uuid
+    }
+
+    pub const fn identity(&self) -> WorldIdentity {
+        WorldIdentity::new(self.uuid)
+    }
+
+    pub const fn pointers(&self) -> WorldPointers {
+        WorldPointers::new(self.uuid)
     }
 
     pub fn name(&self) -> &Identifier {
@@ -281,14 +400,183 @@ impl World {
         self.view_distance = view_distance;
     }
 
+    pub fn shared_worlds(&self) -> &[Uuid] {
+        &self.linked_shared_worlds
+    }
+
+    pub fn has_shared_worlds(&self) -> bool {
+        !self.linked_shared_worlds.is_empty()
+    }
+
+    pub(crate) fn add_shared_world(&mut self, world: Uuid) -> bool {
+        if self.linked_shared_worlds.contains(&world) {
+            return false;
+        }
+        self.linked_shared_worlds.push(world);
+        true
+    }
+
+    pub(crate) fn set_source_world(&mut self, world: Uuid) {
+        self.source_world = Some(world);
+    }
+
+    pub const fn source_world(&self) -> Option<Uuid> {
+        self.source_world
+    }
+
+    pub const fn last_block_change_time(&self) -> u128 {
+        self.last_block_change_time
+    }
+
+    pub fn refresh_last_block_change_time(&mut self) {
+        self.last_block_change_time = current_time_nanos();
+    }
+
+    #[cfg(test)]
+    pub(crate) fn block_change_guard_contains(
+        &self,
+        position: BlockPosition,
+        block: Block,
+    ) -> bool {
+        self.currently_changing_blocks
+            .get(&position)
+            .is_some_and(|changed_block| *changed_block == block)
+    }
+
+    pub fn copy(&self) -> Self {
+        let mut copied_world = Self::new_with_dimension(
+            self.name.clone(),
+            self.dimension_type.clone(),
+            self.cached_dimension_type.clone(),
+        );
+        copied_world.dimension_name = self.dimension_name.clone();
+        copied_world.source_world = Some(self.uuid);
+        copied_world.last_block_change_time = self.last_block_change_time;
+        copied_world.tag_handler = self.tag_handler.copy();
+        self.chunks.iter().for_each(|(position, chunk)| {
+            let mut copied_chunk = chunk.copy_for_position(*position);
+            copied_chunk.set_world(copied_world.uuid);
+            copied_world.chunks.insert(*position, copied_chunk);
+            copied_world
+                .entity_tracker
+                .create_chunk_partition(*position);
+        });
+        copied_world
+    }
+
+    pub const fn world_border(&self) -> WorldBorder {
+        self.world_border
+    }
+
+    pub fn set_world_border(&mut self, world_border: WorldBorder) -> Result<()> {
+        self.set_world_border_with_transition(world_border, 0)
+    }
+
+    pub fn set_world_border_with_transition(
+        &mut self,
+        world_border: WorldBorder,
+        transition_time: i64,
+    ) -> Result<()> {
+        self.world_border = world_border;
+        let packet = self.create_initialize_world_border_packet_with_transition(transition_time);
+        self.dispatch_packet_to_entered_players(packet)
+    }
+
+    pub fn create_initialize_world_border_packet(
+        &self,
+    ) -> spinel_core::network::clientbound::play::initialize_world_border::InitializeWorldBorderPacket
+    {
+        self.create_initialize_world_border_packet_with_transition(0)
+    }
+
+    fn create_initialize_world_border_packet_with_transition(
+        &self,
+        transition_time: i64,
+    ) -> spinel_core::network::clientbound::play::initialize_world_border::InitializeWorldBorderPacket
+    {
+        self.world_border
+            .initialize_packet(self.world_border.diameter(), transition_time)
+    }
+
+    pub fn show_boss_bar(&mut self, boss_bar: BossBar) -> Result<bool> {
+        if self
+            .boss_bars
+            .iter()
+            .any(|stored_bar| stored_bar.id() == boss_bar.id())
+        {
+            return Ok(false);
+        }
+        let packet = boss_bar.add_packet();
+        self.boss_bars.push(boss_bar);
+        self.dispatch_packet_to_entered_players(packet)?;
+        Ok(true)
+    }
+
+    pub fn hide_boss_bar(&mut self, boss_bar_id: Uuid) -> Result<bool> {
+        let Some(boss_bar_index) = self
+            .boss_bars
+            .iter()
+            .position(|boss_bar| boss_bar.id() == boss_bar_id)
+        else {
+            return Ok(false);
+        };
+        let boss_bar = self.boss_bars.remove(boss_bar_index);
+        self.dispatch_packet_to_entered_players(boss_bar.remove_packet())?;
+        Ok(true)
+    }
+
+    pub fn boss_bars(&self) -> &[BossBar] {
+        &self.boss_bars
+    }
+
     pub const fn weather(&self) -> Weather {
         self.weather
     }
 
     pub fn set_weather(&mut self, weather: Weather) -> Result<()> {
-        let previous_weather = self.weather;
         self.weather = weather;
-        self.broadcast_weather(previous_weather)
+        self.remaining_rain_transition_ticks = self.default_rain_transition_ticks(weather);
+        self.remaining_thunder_transition_ticks = self.default_thunder_transition_ticks(weather);
+        Ok(())
+    }
+
+    pub fn set_weather_with_transition(
+        &mut self,
+        weather: Weather,
+        transition_ticks: i32,
+    ) -> Result<()> {
+        if transition_ticks < 1 {
+            return Err(Error::new(
+                ErrorKind::InvalidInput,
+                "Transition ticks cannot be lower than 1",
+            ));
+        }
+        self.weather = weather;
+        self.remaining_rain_transition_ticks = transition_ticks;
+        self.remaining_thunder_transition_ticks = transition_ticks;
+        Ok(())
+    }
+
+    pub const fn transitioning_weather(&self) -> Weather {
+        self.transitioning_weather
+    }
+
+    pub const fn remaining_rain_transition_ticks(&self) -> i32 {
+        self.remaining_rain_transition_ticks
+    }
+
+    pub const fn remaining_thunder_transition_ticks(&self) -> i32 {
+        self.remaining_thunder_transition_ticks
+    }
+
+    fn default_rain_transition_ticks(&self, weather: Weather) -> i32 {
+        ((weather.rain_level() - self.transitioning_weather.rain_level()).abs() / 0.01).max(1.0)
+            as i32
+    }
+
+    fn default_thunder_transition_ticks(&self, weather: Weather) -> i32 {
+        ((weather.thunder_level() - self.transitioning_weather.thunder_level()).abs() / 0.01)
+            .max(1.0) as i32
     }
 
     pub fn scheduler(&mut self) -> &mut WorldScheduler {
@@ -333,8 +621,58 @@ impl World {
     pub fn clear_generator(&mut self) {
         self.generator = None;
     }
+
+    pub fn register_block_handler(&mut self, block: Block, handler: impl BlockHandler + 'static) {
+        self.block_handlers.register(block, handler);
+    }
+
+    pub fn register_block_placement_rule(&mut self, rule: impl BlockPlacementRule + 'static) {
+        self.block_placement_rules.register(rule);
+    }
+
+    pub fn explosion_supplier(&self) -> Option<&dyn ExplosionSupplier> {
+        self.explosion_supplier.as_deref()
+    }
+
+    pub fn set_explosion_supplier(&mut self, supplier: impl ExplosionSupplier + 'static) {
+        self.explosion_supplier = Some(Box::new(supplier));
+    }
+
+    pub fn clear_explosion_supplier(&mut self) {
+        self.explosion_supplier = None;
+    }
+
+    pub fn explode(&mut self, center: EntityPosition, strength: f32) -> Result<Vec<BlockPosition>> {
+        self.explode_with_data(center, strength, None)
+    }
+
+    pub fn explode_with_data(
+        &mut self,
+        center: EntityPosition,
+        strength: f32,
+        additional_data: Option<&NbtCompound>,
+    ) -> Result<Vec<BlockPosition>> {
+        let Some(explosion_supplier) = self.explosion_supplier() else {
+            return Err(Error::new(
+                ErrorKind::InvalidInput,
+                "No explosion supplier was set",
+            ));
+        };
+        let explosion =
+            explosion_supplier.create_explosion_with_data(center, strength, additional_data);
+        explosion.apply(self)
+    }
+
+    pub fn update_snapshot(&self) -> WorldSnapshot {
+        WorldSnapshot::from_world(self)
+    }
+
     pub fn set_chunk_loader(&mut self, chunk_loader: impl ChunkLoader + 'static) {
-        self.chunk_loader = Box::new(chunk_loader);
+        self.chunk_loader = Arc::new(chunk_loader);
+    }
+
+    pub fn chunk_loader(&self) -> &dyn ChunkLoader {
+        self.chunk_loader.as_ref()
     }
 
     pub fn set_chunk_supplier(
@@ -433,13 +771,103 @@ impl World {
         self.load_chunk(position).map(Some)
     }
 
+    pub fn load_chunk_future(&mut self, position: ChunkPosition) -> Result<ChunkLoadTicket> {
+        self.load_chunk_future_with_optional_flag(position, true)
+            .and_then(|ticket| {
+                ticket.ok_or_else(|| Error::new(ErrorKind::NotFound, "Chunk was not loaded"))
+            })
+    }
+
+    pub fn load_optional_chunk_future(
+        &mut self,
+        position: ChunkPosition,
+    ) -> Result<Option<ChunkLoadTicket>> {
+        self.load_chunk_future_with_optional_flag(position, self.auto_chunk_load)
+    }
+
+    pub fn complete_chunk_load(&mut self, ticket: ChunkLoadTicket) -> Result<bool> {
+        if self.completed_chunk_loads.contains(&ticket.id) {
+            return Ok(true);
+        }
+        if self.chunks.contains_key(&ticket.position) {
+            self.completed_chunk_loads.insert(ticket.id);
+            self.async_chunk_loads.remove(&ticket.position);
+            return Ok(true);
+        }
+        let Some(async_load) = self.async_chunk_load_handles.get(&ticket.id) else {
+            return Ok(false);
+        };
+        if !async_load.handle.is_finished() {
+            return Ok(false);
+        }
+        let Some(async_load) = self.async_chunk_load_handles.remove(&ticket.id) else {
+            return Ok(false);
+        };
+        let load_result = async_load
+            .handle
+            .join()
+            .map_err(|_| Error::new(ErrorKind::Other, "Chunk load task panicked"))?;
+        self.async_chunk_loads.remove(&ticket.position);
+        let mut chunk = match load_result? {
+            Some(chunk) => chunk,
+            None => self.chunk_supplier.create_chunk(ticket.position),
+        };
+        chunk.set_world(self.uuid);
+        self.chunks.insert(ticket.position, chunk);
+        self.entity_tracker.create_chunk_partition(ticket.position);
+        self.generate_chunk_result(ticket.position)?;
+        self.dispatch_instance_chunk_load_event(ticket.position);
+        self.completed_chunk_loads.insert(ticket.id);
+        Ok(true)
+    }
+
+    pub fn chunk_load_in_progress(&self, position: ChunkPosition) -> bool {
+        self.async_chunk_loads.contains_key(&position)
+    }
+
+    pub fn save_instance_future(&self) -> WorldIoTask {
+        self.optional_io_task(self.chunk_loader.supports_parallel_saving(), {
+            let chunk_loader = self.chunk_loader.clone();
+            move || chunk_loader.save_instance()
+        })
+    }
+
+    pub fn save_chunk_future(&self, position: ChunkPosition) -> WorldIoTask {
+        let Some(chunk) = self
+            .chunks
+            .get(&position)
+            .map(|chunk| chunk.copy_for_position(position))
+        else {
+            return WorldIoTask::completed(Ok(()));
+        };
+        self.optional_io_task(self.chunk_loader.supports_parallel_saving(), {
+            let chunk_loader = self.chunk_loader.clone();
+            move || chunk_loader.save_chunk(&chunk)
+        })
+    }
+
+    pub fn save_chunks_future(&self) -> WorldIoTask {
+        let chunks = self
+            .chunks
+            .values()
+            .map(|chunk| chunk.copy_for_position(ChunkPosition::new(chunk.x(), chunk.z())))
+            .collect::<Vec<_>>();
+        self.optional_io_task(self.chunk_loader.supports_parallel_saving(), {
+            let chunk_loader = self.chunk_loader.clone();
+            move || {
+                let chunk_refs = chunks.iter().collect::<Vec<_>>();
+                chunk_loader.save_chunks(&chunk_refs)
+            }
+        })
+    }
+
     pub fn unload_chunk(&mut self, position: ChunkPosition) -> Result<bool> {
         if !self.chunks.contains_key(&position) {
             return Ok(false);
         }
         self.send_chunk_unload_to_players(position)?;
         self.dispatch_instance_chunk_unload_event(position);
-        self.remove_generic_entities_in_chunk(position);
+        self.remove_entities_in_chunk(position);
         self.entity_tracker.delete_chunk_partition(position);
         let Some(mut chunk) = self.chunks.remove(&position) else {
             return Ok(false);
@@ -447,6 +875,14 @@ impl World {
         chunk.unload();
         self.chunk_loader.unload_chunk(&mut chunk)?;
         Ok(true)
+    }
+
+    pub fn tick_chunks(&self, time: u64) -> usize {
+        self.chunks
+            .values()
+            .filter(|chunk| chunk.is_loaded())
+            .map(|chunk| chunk.tick(self.uuid, &self.block_handlers, time))
+            .sum()
     }
 
     fn dispatch_instance_chunk_load_event(&mut self, position: ChunkPosition) {
@@ -467,6 +903,26 @@ impl World {
         InstanceChunkUnloadEvent::new(world, position).dispatch(server);
     }
 
+    pub(crate) fn dispatch_instance_register_event(&mut self) {
+        self.dispatch_world_event_node("InstanceRegisterEvent");
+        let Some(server_ptr) = self.event_dispatcher else {
+            return;
+        };
+        let server = unsafe { &mut *(server_ptr as *mut crate::server::MinecraftServer) };
+        let world = self as *mut World;
+        InstanceRegisterEvent::new(world).dispatch(server);
+    }
+
+    pub(crate) fn dispatch_instance_unregister_event(&mut self) {
+        self.dispatch_world_event_node("InstanceUnregisterEvent");
+        let Some(server_ptr) = self.event_dispatcher else {
+            return;
+        };
+        let server = unsafe { &mut *(server_ptr as *mut crate::server::MinecraftServer) };
+        let world = self as *mut World;
+        InstanceUnregisterEvent::new(world).dispatch(server);
+    }
+
     fn dispatch_instance_section_invalidate_event(
         &mut self,
         section_x: i32,
@@ -481,6 +937,16 @@ impl World {
         let world = self as *mut World;
         InstanceSectionInvalidateEvent::new(world, section_x, section_y, section_z)
             .dispatch(server);
+    }
+
+    fn dispatch_instance_block_update_event(&mut self, position: BlockPosition, block: Block) {
+        self.dispatch_world_event_node("InstanceBlockUpdateEvent");
+        let Some(server_ptr) = self.event_dispatcher else {
+            return;
+        };
+        let server = unsafe { &mut *(server_ptr as *mut crate::server::MinecraftServer) };
+        let world = self as *mut World;
+        InstanceBlockUpdateEvent::new(world, position, block).dispatch(server);
     }
 
     fn dispatch_instance_tick_event(&mut self) {
@@ -535,28 +1001,18 @@ impl World {
             })
     }
 
-    fn remove_generic_entities_in_chunk(&mut self, position: ChunkPosition) {
+    fn remove_entities_in_chunk(&mut self, position: ChunkPosition) {
         let removed_entity_ids = self
             .entities
             .iter()
-            .filter_map(|entity| match entity {
-                Entity::Generic(entity)
-                    if chunk_position_for_entity_position(entity.position()) == position =>
-                {
-                    Some(entity.entity_id())
-                }
-                _ => None,
-            })
+            .filter(|entity| chunk_position_for_entity_position(entity.position()) == position)
+            .map(Entity::entity_id)
             .collect::<Vec<_>>();
         removed_entity_ids.into_iter().for_each(|entity_id| {
             self.entity_tracker.unregister(entity_id);
         });
-        self.entities.retain(|entity| match entity {
-            Entity::Generic(entity) => {
-                chunk_position_for_entity_position(entity.position()) != position
-            }
-            Entity::Player(_) => true,
-        });
+        self.entities
+            .retain(|entity| chunk_position_for_entity_position(entity.position()) != position);
     }
     pub fn regenerate_chunk(&mut self, position: ChunkPosition) {
         if let Some(chunk) = self.chunks.get_mut(&position) {
@@ -582,6 +1038,27 @@ impl World {
         entity.set_world(self.uuid);
         self.entity_tracker.register(&entity);
         self.entities.push(entity);
+    }
+
+    pub(crate) fn take_entity(&mut self, entity_id: EntityId) -> Option<Entity> {
+        let entity_index = self
+            .entities
+            .iter()
+            .position(|entity| entity.entity_id() == entity_id)?;
+        self.entity_tracker.unregister(entity_id);
+        Some(self.entities.remove(entity_index))
+    }
+
+    pub(crate) fn take_player_by_uuid(&mut self, player_uuid: Uuid) -> Option<Player> {
+        let entity_index = self.entities.iter().position(|entity| match entity {
+            Entity::Player(player) => player.uuid() == player_uuid,
+            Entity::Generic(_) => false,
+        })?;
+        let Entity::Player(player) = self.entities.remove(entity_index) else {
+            return None;
+        };
+        self.entity_tracker.unregister(player.entity_id());
+        Some(player)
     }
 
     pub fn entity_tracker(&self) -> &EntityTracker {
@@ -800,6 +1277,14 @@ impl World {
         let time_packet = self.time_packet();
         let world_name = self.name.clone();
         let world_uuid = self.uuid;
+        let world_border_packet = self
+            .world_border
+            .initialize_packet(self.world_border.diameter(), 0);
+        let boss_bar_packets = self
+            .boss_bars
+            .iter()
+            .map(BossBar::add_packet)
+            .collect::<Vec<_>>();
         let (player, first_spawn, player_id, player_position) = {
             let Some(player) = self.player_by_addr_mut(&client.addr) else {
                 return Err(Error::new(ErrorKind::NotFound, "Player not found."));
@@ -813,6 +1298,10 @@ impl World {
                 chunks,
                 time_packet,
             )?;
+            world_border_packet.dispatch(client)?;
+            boss_bar_packets
+                .into_iter()
+                .try_for_each(|packet| packet.dispatch(client))?;
             (
                 player as *mut Player,
                 first_spawn,
@@ -1402,19 +1891,23 @@ impl World {
     pub(crate) fn tick_with_registries(&mut self, registries: &Registries) {
         self.process_next_tick_scheduler();
         self.tick_time();
+        self.tick_weather();
         self.dispatch_instance_tick_event();
         let mut player_addresses = Vec::new();
+        let mut entity_touches = Vec::new();
         let item_use_completions = self
             .entities
             .iter_mut()
             .filter_map(|entity| match entity {
                 Entity::Generic(entity) => {
                     entity.tick();
+                    entity_touches.push((entity.entity_id(), entity.position()));
                     None
                 }
                 Entity::Player(player) => {
                     dispatch_player_tick_event(player);
                     let item_use_completion = player.tick();
+                    entity_touches.push((player.entity_id(), player.position()));
                     if player.has_entered_world() {
                         player_addresses.push(player.addr);
                     }
@@ -1423,7 +1916,11 @@ impl World {
                 }
             })
             .collect::<Vec<_>>();
+        entity_touches
+            .into_iter()
+            .for_each(|(entity_id, position)| self.touch_entity_blocks(entity_id, position));
         let _ = self.process_pending_player_chunk_loads();
+        self.tick_chunks(self.world_age as u64);
         player_addresses.into_iter().for_each(|address| {
             let _ = self.send_pending_chunks_for_player_address(address, registries);
         });
@@ -1432,6 +1929,7 @@ impl World {
         });
         self.process_tick_end_scheduler();
         self.dispatch_instance_tick_end_event();
+        self.currently_changing_blocks.clear();
     }
 
     fn process_next_tick_scheduler(&mut self) {
@@ -1442,6 +1940,26 @@ impl World {
     fn process_tick_end_scheduler(&mut self) {
         let callbacks = self.scheduler.take_tick_end_callbacks();
         callbacks.into_iter().for_each(|callback| callback(self));
+    }
+
+    fn touch_entity_blocks(&self, entity_id: EntityId, position: EntityPosition) {
+        let block_position = BlockPosition::new(
+            position.x().floor() as i32,
+            position.y().floor() as i32,
+            position.z().floor() as i32,
+        );
+        let Some(block) = self.loaded_block_at(block_position) else {
+            return;
+        };
+        let Some(handler) = self.block_handlers.handler(block) else {
+            return;
+        };
+        handler.on_touch(BlockHandlerTouch::new(
+            block,
+            self.uuid,
+            block_position,
+            entity_id,
+        ));
     }
 
     fn tick_time(&mut self) {
@@ -1476,7 +1994,7 @@ impl World {
     }
 
     fn broadcast_weather(&mut self, previous_weather: Weather) -> Result<()> {
-        let weather = self.weather;
+        let weather = self.transitioning_weather;
         self.entities
             .iter_mut()
             .filter_map(|entity| match entity {
@@ -1498,6 +2016,24 @@ impl World {
                 GameEventPacket::from(GameEvent::ThunderLevelChange(weather.thunder_level()))
                     .dispatch(client)
             })
+    }
+
+    fn tick_weather(&mut self) {
+        if self.remaining_rain_transition_ticks <= 0 && self.remaining_thunder_transition_ticks <= 0
+        {
+            return;
+        }
+        let previous_weather = self.transitioning_weather;
+        self.transitioning_weather = transition_weather(
+            self.weather,
+            self.transitioning_weather,
+            self.remaining_rain_transition_ticks,
+            self.remaining_thunder_transition_ticks,
+        );
+        let _ = self.broadcast_weather(previous_weather);
+        self.remaining_rain_transition_ticks = (self.remaining_rain_transition_ticks - 1).max(0);
+        self.remaining_thunder_transition_ticks =
+            (self.remaining_thunder_transition_ticks - 1).max(0);
     }
 
     fn finish_player_item_use(
@@ -1609,7 +2145,25 @@ impl World {
             .map(|player| player as *mut Player)
     }
 
-    fn synchronize_player_visibility(&mut self, client: &mut Client) -> Result<()> {
+    pub(crate) fn send_player_remove_to_viewers(
+        &mut self,
+        player_id: EntityId,
+        player_uuid: Uuid,
+    ) -> Result<()> {
+        self.entities
+            .iter_mut()
+            .filter_map(|entity| match entity {
+                Entity::Player(player) if player.has_entered_world() => Some(player),
+                _ => None,
+            })
+            .filter_map(Player::client_mut)
+            .try_for_each(|viewer_client| {
+                PlayerInfoRemovePacket::new(player_uuid).dispatch(viewer_client)?;
+                RemoveEntitiesPacket::new(vec![player_id.value()]).dispatch(viewer_client)
+            })
+    }
+
+    pub(crate) fn synchronize_player_visibility(&mut self, client: &mut Client) -> Result<()> {
         let client_address = client.addr;
         let Some(joining_player) = self.player_by_addr(&client_address) else {
             return Err(Error::new(ErrorKind::NotFound, "Player not found."));
@@ -1658,10 +2212,39 @@ impl World {
         Ok(())
     }
 
+    pub(crate) fn dispatch_player_spawn(
+        &mut self,
+        player_uuid: Uuid,
+        first_spawn: bool,
+        client: &mut Client,
+    ) {
+        let world_name = self.name.clone();
+        let Some(player) = self.entities.iter_mut().find_map(|entity| match entity {
+            Entity::Player(player) if player.uuid() == player_uuid => Some(player),
+            _ => None,
+        }) else {
+            return;
+        };
+        dispatch_player_spawn_event(player as *mut Player, world_name, first_spawn, client);
+    }
+
     pub fn block_at(&mut self, position: BlockPosition) -> Result<Block> {
         let chunk_position =
             ChunkPosition::new(position.x.div_euclid(16), position.z.div_euclid(16));
         Ok(self.load_chunk(chunk_position)?.block(position))
+    }
+
+    pub fn block_at_with_condition(
+        &mut self,
+        position: BlockPosition,
+        condition: BlockLookupCondition,
+    ) -> Result<Option<Block>> {
+        match condition {
+            BlockLookupCondition::None => self.block_at(position).map(Some),
+            BlockLookupCondition::Cached | BlockLookupCondition::Type => {
+                Ok(self.loaded_block_at(position))
+            }
+        }
     }
 
     pub fn biome_at(&mut self, position: BlockPosition) -> Result<RegistryKey<Biome>> {
@@ -1670,15 +2253,184 @@ impl World {
         Ok(self.load_chunk(chunk_position)?.biome(position))
     }
 
-    pub fn set_block(&mut self, position: BlockPosition, block: Block) -> Result<bool> {
+    pub fn set_biome(
+        &mut self,
+        position: BlockPosition,
+        biome: RegistryKey<Biome>,
+    ) -> Result<bool> {
         let chunk_position =
             ChunkPosition::new(position.x.div_euclid(16), position.z.div_euclid(16));
-        let chunk = self.load_chunk(chunk_position)?;
-        if !chunk.set_block(position, block) {
+        let biome_was_set = self.load_chunk(chunk_position)?.set_biome(position, biome);
+        if biome_was_set {
+            self.refresh_last_block_change_time();
+        }
+        Ok(biome_was_set)
+    }
+
+    pub fn set_block(&mut self, position: BlockPosition, block: Block) -> Result<bool> {
+        self.set_block_with_handler(position, block, None, None)
+    }
+
+    fn set_block_with_handler(
+        &mut self,
+        position: BlockPosition,
+        block: Block,
+        placement: Option<BlockHandlerPlacement>,
+        destroy: Option<BlockHandlerDestroy>,
+    ) -> Result<bool> {
+        let chunk_position =
+            ChunkPosition::new(position.x.div_euclid(16), position.z.div_euclid(16));
+        self.load_chunk(chunk_position)?;
+        self.set_loaded_block_with_handler(position, block, placement, destroy, true, 0)
+    }
+
+    fn set_loaded_block_with_handler(
+        &mut self,
+        position: BlockPosition,
+        mut block: Block,
+        placement: Option<BlockHandlerPlacement>,
+        destroy: Option<BlockHandlerDestroy>,
+        do_block_updates: bool,
+        update_distance: i32,
+    ) -> Result<bool> {
+        block =
+            self.block_after_placement_rule(block, position, placement.as_ref(), do_block_updates);
+        if self
+            .currently_changing_blocks
+            .get(&position)
+            .is_some_and(|changed_block| *changed_block == block)
+        {
             return Ok(false);
         }
+        self.currently_changing_blocks.insert(position, block);
+        let chunk_position =
+            ChunkPosition::new(position.x.div_euclid(16), position.z.div_euclid(16));
+        let Some(mut chunk) = self.chunks.remove(&chunk_position) else {
+            return Ok(false);
+        };
+        let block_was_set = chunk
+            .try_set_block_with_handler(
+                position,
+                block,
+                Some(&self.block_handlers),
+                placement,
+                destroy,
+            )
+            .block_was_set();
+        self.chunks.insert(chunk_position, chunk);
+        if !block_was_set {
+            return Ok(false);
+        }
+        self.refresh_last_block_change_time();
+        if do_block_updates {
+            self.execute_neighbor_block_placement_rules(position, update_distance)?;
+        }
         self.broadcast_block_update(position, block)?;
+        self.broadcast_block_entity_update(position, block)?;
+        self.dispatch_instance_block_update_event(position, block);
         Ok(true)
+    }
+
+    fn block_after_placement_rule(
+        &self,
+        block: Block,
+        position: BlockPosition,
+        placement: Option<&BlockHandlerPlacement>,
+        do_block_updates: bool,
+    ) -> Block {
+        if !do_block_updates {
+            return block;
+        }
+        let Some(placement) = placement else {
+            return block;
+        };
+        let Some(rule) = self.block_placement_rules.rule(block) else {
+            return block;
+        };
+        let player = placement
+            .player()
+            .and_then(|player_id| self.entity_by_id(player_id))
+            .and_then(|entity| match entity {
+                Entity::Player(player) => Some(player),
+                Entity::Generic(_) => None,
+            });
+        rule.block_place(BlockPlacementState::new(
+            block,
+            placement.block_face(),
+            position,
+            placement.cursor_position(),
+            player.map(Player::position),
+            placement.player(),
+            placement.hand(),
+            player.is_some_and(Player::is_sneaking),
+        ))
+        .unwrap_or(Block::AIR)
+    }
+
+    fn execute_neighbor_block_placement_rules(
+        &mut self,
+        position: BlockPosition,
+        update_distance: i32,
+    ) -> Result<()> {
+        crate::events::player_block_interact::BlockFace::update_faces()
+            .into_iter()
+            .try_for_each(|update_face| {
+                let (normal_x, normal_y, normal_z) = update_face.normal();
+                let neighbor_position = BlockPosition::new(
+                    position.x + normal_x,
+                    position.y + normal_y,
+                    position.z + normal_z,
+                );
+                self.update_neighbor_block_from_rule(
+                    neighbor_position,
+                    update_face.opposite(),
+                    update_distance,
+                )
+            })
+    }
+
+    fn update_neighbor_block_from_rule(
+        &mut self,
+        neighbor_position: BlockPosition,
+        from_face: crate::events::player_block_interact::BlockFace,
+        update_distance: i32,
+    ) -> Result<()> {
+        let Some(neighbor_block) = self.loaded_block_at(neighbor_position) else {
+            return Ok(());
+        };
+        if block_is_air(neighbor_block) {
+            return Ok(());
+        }
+        let Some(rule) = self.block_placement_rules.rule(neighbor_block) else {
+            return Ok(());
+        };
+        if update_distance >= rule.max_update_distance() {
+            return Ok(());
+        }
+        let new_neighbor_block = rule.block_update(BlockUpdateState::new(
+            neighbor_position,
+            neighbor_block,
+            from_face,
+        ));
+        if neighbor_block == new_neighbor_block {
+            return Ok(());
+        }
+        let chunk_position = ChunkPosition::new(
+            neighbor_position.x.div_euclid(16),
+            neighbor_position.z.div_euclid(16),
+        );
+        if !self.is_chunk_loaded(chunk_position) {
+            return Ok(());
+        }
+        self.set_loaded_block_with_handler(
+            neighbor_position,
+            new_neighbor_block,
+            None,
+            None,
+            true,
+            update_distance + 1,
+        )?;
+        Ok(())
     }
 
     pub fn loaded_block_at(&self, position: BlockPosition) -> Option<Block> {
@@ -1757,6 +2509,136 @@ impl World {
         self.dispatch_packet_to_chunk_viewers(chunk_position, packet)
     }
 
+    pub fn play_sound_except(
+        &mut self,
+        excluded_player: Option<Uuid>,
+        sound_event: SoundEvent,
+        source_id: i32,
+        position: EntityPosition,
+        volume: f32,
+        pitch: f32,
+        seed: i64,
+    ) -> Result<()> {
+        self.entities
+            .iter_mut()
+            .filter_map(|entity| match entity {
+                Entity::Player(player) if player.has_entered_world() => Some(player),
+                _ => None,
+            })
+            .filter(|player| Some(player.uuid()) != excluded_player)
+            .filter_map(Player::client_mut)
+            .try_for_each(|client| {
+                SoundEffectPacket {
+                    sound_event: NetworkPositionedSoundEvent(sound_event.clone()),
+                    source_id,
+                    position: Vector3d {
+                        x: position.x(),
+                        y: position.y(),
+                        z: position.z(),
+                    },
+                    volume,
+                    pitch,
+                    seed,
+                }
+                .dispatch(client)
+            })
+    }
+
+    pub fn play_sound_except_emitter(
+        &mut self,
+        excluded_player: Option<Uuid>,
+        sound_event: SoundEvent,
+        source_id: i32,
+        emitter: WorldSoundEmitter,
+        volume: f32,
+        pitch: f32,
+        seed: i64,
+    ) -> Result<()> {
+        match emitter {
+            WorldSoundEmitter::Entity(entity_id) => self.play_entity_sound_except(
+                excluded_player,
+                sound_event,
+                source_id,
+                entity_id,
+                volume,
+                pitch,
+                seed,
+            ),
+            WorldSoundEmitter::SelfPlayer => self.play_self_emitter_sound_except(
+                excluded_player,
+                sound_event,
+                source_id,
+                volume,
+                pitch,
+                seed,
+            ),
+        }
+    }
+
+    fn play_entity_sound_except(
+        &mut self,
+        excluded_player: Option<Uuid>,
+        sound_event: SoundEvent,
+        source_id: i32,
+        entity_id: EntityId,
+        volume: f32,
+        pitch: f32,
+        seed: i64,
+    ) -> Result<()> {
+        self.entities
+            .iter_mut()
+            .filter_map(|entity| match entity {
+                Entity::Player(player) if player.has_entered_world() => Some(player),
+                _ => None,
+            })
+            .filter(|player| Some(player.uuid()) != excluded_player)
+            .filter_map(Player::client_mut)
+            .try_for_each(|client| {
+                EntitySoundEffectPacket {
+                    sound_event: NetworkSoundEvent(sound_event.clone()),
+                    source_id,
+                    entity_id: entity_id.value() as i32,
+                    volume,
+                    pitch,
+                    seed,
+                }
+                .dispatch(client)
+            })
+    }
+
+    fn play_self_emitter_sound_except(
+        &mut self,
+        excluded_player: Option<Uuid>,
+        sound_event: SoundEvent,
+        source_id: i32,
+        volume: f32,
+        pitch: f32,
+        seed: i64,
+    ) -> Result<()> {
+        self.entities
+            .iter_mut()
+            .filter_map(|entity| match entity {
+                Entity::Player(player) if player.has_entered_world() => Some(player),
+                _ => None,
+            })
+            .filter(|player| Some(player.uuid()) != excluded_player)
+            .try_for_each(|player| {
+                let entity_id = player.entity_id().value() as i32;
+                let Some(client) = player.client_mut() else {
+                    return Ok(());
+                };
+                EntitySoundEffectPacket {
+                    sound_event: NetworkSoundEvent(sound_event.clone()),
+                    source_id,
+                    entity_id,
+                    volume,
+                    pitch,
+                    seed,
+                }
+                .dispatch(client)
+            })
+    }
+
     pub fn send_chunk_to_viewers(
         &mut self,
         position: ChunkPosition,
@@ -1814,6 +2696,29 @@ impl World {
             })
     }
 
+    fn dispatch_packet_to_entered_players<P>(&mut self, packet: P) -> Result<()>
+    where
+        P: DataType + PacketStruct,
+    {
+        self.dispatch_packet_to_players(packet)
+    }
+
+    pub(crate) fn dispatch_packet_to_players<P>(&mut self, packet: P) -> Result<()>
+    where
+        P: DataType + PacketStruct,
+    {
+        let mut payload = Vec::new();
+        packet.encode(&mut payload)?;
+        self.entities
+            .iter_mut()
+            .filter_map(|entity| match entity {
+                Entity::Player(player) if player.has_entered_world() => Some(player),
+                _ => None,
+            })
+            .filter_map(Player::client_mut)
+            .try_for_each(|client| client.send_packet(P::get_id(), &payload))
+    }
+
     pub(crate) fn refresh_block_for_player(
         &mut self,
         client: &mut Client,
@@ -1831,16 +2736,246 @@ impl World {
         .dispatch(client)
     }
 
-    pub(crate) fn set_block_for_player(
+    pub(crate) fn refresh_block_entity_for_player(
         &mut self,
-        client: &Client,
+        client: &mut Client,
+        position: BlockPosition,
+    ) -> Result<()> {
+        let Some(block) = self.loaded_block_at(position) else {
+            return Ok(());
+        };
+        if !ChunkSection::block_can_own_block_entity(block) {
+            return Ok(());
+        }
+        let Some(block_entity_type) = self.block_entity_packet_type(block) else {
+            return Ok(());
+        };
+        BlockEntityDataPacket::new(
+            Position {
+                x: position.x,
+                y: position.y,
+                z: position.z,
+            },
+            block_entity_type,
+            self.client_block_entity_nbt(position, block),
+        )
+        .dispatch(client)
+    }
+
+    pub fn place_block(&mut self, placement: BlockHandlerPlacement) -> bool {
+        self.place_block_with_updates(placement, true)
+    }
+
+    pub fn place_block_with_updates(
+        &mut self,
+        placement: BlockHandlerPlacement,
+        do_block_updates: bool,
+    ) -> bool {
+        let chunk_position = ChunkPosition::new(
+            placement.block_position().x.div_euclid(16),
+            placement.block_position().z.div_euclid(16),
+        );
+        if !self.is_chunk_loaded(chunk_position) {
+            return false;
+        }
+        self.set_loaded_block_with_handler(
+            placement.block_position(),
+            placement.block(),
+            Some(placement),
+            None,
+            do_block_updates,
+            0,
+        )
+        .unwrap_or(false)
+    }
+
+    pub fn break_block(
+        &mut self,
+        player_id: EntityId,
+        position: BlockPosition,
+        block_face: crate::events::player_block_interact::BlockFace,
+    ) -> bool {
+        self.break_block_with_updates(player_id, position, block_face, true)
+    }
+
+    pub fn break_block_with_updates(
+        &mut self,
+        player_id: EntityId,
+        position: BlockPosition,
+        block_face: crate::events::player_block_interact::BlockFace,
+        do_block_updates: bool,
+    ) -> bool {
+        let chunk_position =
+            ChunkPosition::new(position.x.div_euclid(16), position.z.div_euclid(16));
+        let Some(chunk) = self.chunks.get(&chunk_position) else {
+            return false;
+        };
+        if chunk.is_read_only() || !chunk.is_loaded() {
+            return false;
+        }
+        let Some(block) = self.loaded_block_at(position) else {
+            return false;
+        };
+        if block == Block::AIR {
+            self.send_loaded_chunk_to_player(player_id, chunk_position);
+            return false;
+        }
+        let Some(player) = self.player_pointer_for_block_break(player_id) else {
+            return false;
+        };
+        let Some(result_block) =
+            self.dispatch_player_block_break_event(player, block, position, block_face)
+        else {
+            return false;
+        };
+        let destroy =
+            BlockHandlerDestroy::new(block, result_block, self.uuid, position, Some(player_id));
+        let block_was_broken = self
+            .set_loaded_block_with_handler(
+                position,
+                result_block,
+                None,
+                Some(destroy),
+                do_block_updates,
+                0,
+            )
+            .unwrap_or(false);
+        if !block_was_broken {
+            return false;
+        }
+        if do_block_updates {
+            let _ =
+                self.dispatch_block_break_effect_except(chunk_position, position, block, player_id);
+        }
+        true
+    }
+
+    pub fn interact_block_handler(
+        &self,
+        player_id: EntityId,
+        hand: crate::entity::PlayerHand,
+        block_face: crate::events::player_block_interact::BlockFace,
+        position: BlockPosition,
+        cursor_position: (f32, f32, f32),
+    ) -> bool {
+        let Some(block) = self.loaded_block_at(position) else {
+            return true;
+        };
+        let Some(handler) = self.block_handlers.handler(block) else {
+            return true;
+        };
+        handler.on_interact(BlockHandlerInteraction::new(
+            block,
+            self.uuid,
+            block_face,
+            position,
+            EntityPosition::new(
+                f64::from(cursor_position.0),
+                f64::from(cursor_position.1),
+                f64::from(cursor_position.2),
+                0.0,
+                0.0,
+            ),
+            player_id,
+            hand,
+        ))
+    }
+
+    fn player_pointer_for_block_break(&mut self, player_id: EntityId) -> Option<*mut Player> {
+        self.entities.iter_mut().find_map(|entity| match entity {
+            Entity::Player(player) if player.entity_id() == player_id => {
+                Some(player as *mut Player)
+            }
+            _ => None,
+        })
+    }
+
+    fn dispatch_player_block_break_event(
+        &mut self,
+        player: *mut Player,
+        block: Block,
+        position: BlockPosition,
+        block_face: crate::events::player_block_interact::BlockFace,
+    ) -> Option<Block> {
+        let Some(server_ptr) = self.event_dispatcher else {
+            return Some(Block::AIR);
+        };
+        let Some(client) = (unsafe { &mut *player })
+            .client_mut()
+            .map(|client| client as *mut Client)
+        else {
+            return Some(Block::AIR);
+        };
+        let mut event = PlayerBlockBreakEvent::new(player, block, Block::AIR, position, block_face);
+        let server = unsafe { &mut *(server_ptr as *mut crate::server::MinecraftServer) };
+        let client = unsafe { &mut *client };
+        event.dispatch(server, client);
+        if event.is_cancelled() {
+            return None;
+        }
+        Some(event.result_block())
+    }
+
+    fn send_loaded_chunk_to_player(&mut self, player_id: EntityId, position: ChunkPosition) {
+        self.entities
+            .iter_mut()
+            .filter_map(|entity| match entity {
+                Entity::Player(player) if player.entity_id() == player_id => Some(player),
+                _ => None,
+            })
+            .for_each(|player| {
+                player.send_loaded_chunk_position(PlayerChunk::new(position.x, position.z));
+            });
+    }
+
+    fn dispatch_block_break_effect_except(
+        &mut self,
+        chunk_position: ChunkPosition,
         position: BlockPosition,
         block: Block,
-    ) -> Result<bool> {
-        if self.player_by_addr(&client.addr).is_none() {
-            return Err(Error::new(ErrorKind::NotFound, "Player not found."));
-        }
-        self.set_block(position, block)
+        excluded_player: EntityId,
+    ) -> Result<()> {
+        let packet = WorldEventPacket::new(
+            DESTROY_BLOCK_WORLD_EVENT_ID,
+            Position {
+                x: position.x,
+                y: position.y,
+                z: position.z,
+            },
+            block.state_id(),
+            false,
+        );
+        self.dispatch_packet_to_chunk_viewers_except(chunk_position, packet, excluded_player)
+    }
+
+    fn dispatch_packet_to_chunk_viewers_except<P>(
+        &mut self,
+        position: ChunkPosition,
+        packet: P,
+        excluded_player: EntityId,
+    ) -> Result<()>
+    where
+        P: DataType + PacketStruct,
+    {
+        let Some(chunk) = self.chunks.get(&position) else {
+            return Ok(());
+        };
+        let viewer_ids = chunk.viewers().collect::<HashSet<_>>();
+        let mut payload = Vec::new();
+        packet.encode(&mut payload)?;
+        self.entities
+            .iter_mut()
+            .filter_map(|entity| match entity {
+                Entity::Player(player)
+                    if player.entity_id() != excluded_player
+                        && viewer_ids.contains(&player.entity_id().value()) =>
+                {
+                    Some(player)
+                }
+                _ => None,
+            })
+            .filter_map(Player::client_mut)
+            .try_for_each(|client| client.send_packet(P::get_id(), &payload))
     }
 
     fn broadcast_block_update(&mut self, position: BlockPosition, block: Block) -> Result<()> {
@@ -1859,6 +2994,64 @@ impl World {
             .try_for_each(|viewer_client| {
                 BlockUpdatePacket::new(block_position, block.state_id()).dispatch(viewer_client)
             })
+    }
+
+    fn broadcast_block_entity_update(
+        &mut self,
+        position: BlockPosition,
+        block: Block,
+    ) -> Result<()> {
+        if !ChunkSection::block_can_own_block_entity(block) {
+            return Ok(());
+        }
+        let Some(block_entity_type) = self.block_entity_packet_type(block) else {
+            return Ok(());
+        };
+        let chunk_position =
+            ChunkPosition::new(position.x.div_euclid(16), position.z.div_euclid(16));
+        let block_entity_nbt = self.client_block_entity_nbt(position, block);
+        let packet = BlockEntityDataPacket::new(
+            Position {
+                x: position.x,
+                y: position.y,
+                z: position.z,
+            },
+            block_entity_type,
+            block_entity_nbt,
+        );
+        self.dispatch_packet_to_chunk_viewers(chunk_position, packet)
+    }
+
+    fn block_entity_packet_type(&self, block: Block) -> Option<BlockEntityType> {
+        self.block_handlers
+            .handler(block)
+            .and_then(|handler| BlockEntityType::from_id(handler.block_entity_action().into()))
+            .or_else(|| block_entity_type_for_block(block))
+    }
+
+    fn client_block_entity_nbt(
+        &self,
+        position: BlockPosition,
+        block: Block,
+    ) -> Option<NbtCompound> {
+        let chunk_position =
+            ChunkPosition::new(position.x.div_euclid(16), position.z.div_euclid(16));
+        let block_entity = self
+            .chunks
+            .get(&chunk_position)
+            .and_then(|chunk| chunk.block_entity(position))?;
+        let Some(handler) = self.block_handlers.handler(block) else {
+            return Some(block_entity.nbt().clone());
+        };
+        let tags = handler.block_entity_tags();
+        if tags.is_empty() {
+            return Some(NbtCompound::new());
+        }
+        let mut filtered_nbt = NbtCompound::new();
+        tags.into_iter().for_each(|tag| {
+            tag.write(&mut filtered_nbt, tag.read(block_entity.nbt()));
+        });
+        Some(filtered_nbt)
     }
 
     fn apply_generator(&mut self, chunk: &mut Chunk) -> Result<()> {
@@ -1959,7 +3152,7 @@ impl World {
         )))
     }
 
-    fn send_pending_chunks_for_client(
+    pub(crate) fn send_pending_chunks_for_client(
         &mut self,
         client: &mut Client,
         registries: &Registries,
@@ -2029,6 +3222,61 @@ impl World {
 
     pub(crate) fn use_server_event_dispatcher(&mut self, server_ptr: usize) {
         self.event_dispatcher = Some(server_ptr);
+    }
+
+    fn load_chunk_future_with_optional_flag(
+        &mut self,
+        position: ChunkPosition,
+        should_load_missing_chunk: bool,
+    ) -> Result<Option<ChunkLoadTicket>> {
+        if self.chunks.contains_key(&position) {
+            let ticket = self.next_completed_chunk_load_ticket(position);
+            return Ok(Some(ticket));
+        }
+        if !should_load_missing_chunk {
+            return Ok(None);
+        }
+        if let Some(ticket) = self.async_chunk_loads.get(&position).copied() {
+            return Ok(Some(ticket));
+        }
+        let ticket = self.next_chunk_load_ticket(position);
+        if !self.chunk_loader.supports_parallel_loading() {
+            self.load_chunk(position)?;
+            self.completed_chunk_loads.insert(ticket.id);
+            self.async_chunk_loads.remove(&position);
+            return Ok(Some(ticket));
+        }
+        let chunk_loader = self.chunk_loader.clone();
+        let handle = std::thread::spawn(move || chunk_loader.load_chunk(position));
+        self.async_chunk_loads.insert(position, ticket);
+        self.async_chunk_load_handles
+            .insert(ticket.id, AsyncChunkLoad { handle });
+        Ok(Some(ticket))
+    }
+
+    fn next_completed_chunk_load_ticket(&mut self, position: ChunkPosition) -> ChunkLoadTicket {
+        let ticket = self.next_chunk_load_ticket(position);
+        self.completed_chunk_loads.insert(ticket.id);
+        ticket
+    }
+
+    fn next_chunk_load_ticket(&mut self, position: ChunkPosition) -> ChunkLoadTicket {
+        self.next_chunk_load_ticket_id += 1;
+        ChunkLoadTicket {
+            id: self.next_chunk_load_ticket_id,
+            position,
+        }
+    }
+
+    fn optional_io_task(
+        &self,
+        should_run_parallel: bool,
+        task: impl FnOnce() -> Result<()> + Send + 'static,
+    ) -> WorldIoTask {
+        if !should_run_parallel {
+            return WorldIoTask::completed(task());
+        }
+        WorldIoTask::running(std::thread::spawn(task))
     }
 
     fn load_chunk_with_event_flag(
@@ -2102,6 +3350,95 @@ fn chunk_position_for_entity_position(position: EntityPosition) -> ChunkPosition
         (position.x().floor() as i32).div_euclid(16),
         (position.z().floor() as i32).div_euclid(16),
     )
+}
+
+fn block_entity_type_for_block(block: Block) -> Option<BlockEntityType> {
+    let block_name = format!("{block:?}").to_ascii_lowercase();
+    let block_name = block_name.as_str();
+    if block_name.ends_with("_bed") {
+        return Some(BlockEntityType::Bed);
+    }
+    if block_name.ends_with("_banner") || block_name.ends_with("_wall_banner") {
+        return Some(BlockEntityType::Banner);
+    }
+    if block_name.ends_with("_hanging_sign") || block_name.ends_with("_wall_hanging_sign") {
+        return Some(BlockEntityType::HangingSign);
+    }
+    if block_name.ends_with("_sign") || block_name.ends_with("_wall_sign") {
+        return Some(BlockEntityType::Sign);
+    }
+    if block_name.ends_with("_shulker_box") {
+        return Some(BlockEntityType::ShulkerBox);
+    }
+    if block_name.ends_with("_head")
+        || block_name.ends_with("_wall_head")
+        || block_name.ends_with("_skull")
+        || block_name.ends_with("_wall_skull")
+    {
+        return Some(BlockEntityType::Skull);
+    }
+    match block_name {
+        "barrel" => Some(BlockEntityType::Barrel),
+        "beacon" => Some(BlockEntityType::Beacon),
+        "beehive" | "bee_nest" => Some(BlockEntityType::Beehive),
+        "bell" => Some(BlockEntityType::Bell),
+        "blast_furnace" => Some(BlockEntityType::BlastFurnace),
+        "brewing_stand" => Some(BlockEntityType::BrewingStand),
+        "calibrated_sculk_sensor" => Some(BlockEntityType::CalibratedSculkSensor),
+        "campfire" => Some(BlockEntityType::Campfire),
+        "chest" => Some(BlockEntityType::Chest),
+        "chiseled_bookshelf" => Some(BlockEntityType::ChiseledBookshelf),
+        "comparator" => Some(BlockEntityType::Comparator),
+        "conduit" => Some(BlockEntityType::Conduit),
+        "crafter" => Some(BlockEntityType::Crafter),
+        "decorated_pot" => Some(BlockEntityType::DecoratedPot),
+        "dispenser" => Some(BlockEntityType::Dispenser),
+        "dropper" => Some(BlockEntityType::Dropper),
+        "enchanting_table" => Some(BlockEntityType::EnchantingTable),
+        "ender_chest" => Some(BlockEntityType::EnderChest),
+        "end_gateway" => Some(BlockEntityType::EndGateway),
+        "end_portal" => Some(BlockEntityType::EndPortal),
+        "furnace" => Some(BlockEntityType::Furnace),
+        "hopper" => Some(BlockEntityType::Hopper),
+        "jigsaw" => Some(BlockEntityType::Jigsaw),
+        "jukebox" => Some(BlockEntityType::Jukebox),
+        "lectern" => Some(BlockEntityType::Lectern),
+        "mob_spawner" => Some(BlockEntityType::MobSpawner),
+        "piston" => Some(BlockEntityType::Piston),
+        "sculk_catalyst" => Some(BlockEntityType::SculkCatalyst),
+        "sculk_sensor" => Some(BlockEntityType::SculkSensor),
+        "sculk_shrieker" => Some(BlockEntityType::SculkShrieker),
+        "smoker" => Some(BlockEntityType::Smoker),
+        "structure_block" => Some(BlockEntityType::StructureBlock),
+        "trapped_chest" => Some(BlockEntityType::TrappedChest),
+        _ => None,
+    }
+}
+
+fn block_is_air(block: Block) -> bool {
+    matches!(block, Block::AIR | Block::CAVE_AIR | Block::VOID_AIR)
+}
+
+fn current_time_nanos() -> u128 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|duration| duration.as_nanos())
+        .unwrap_or_default()
+}
+
+fn transition_weather(
+    target_weather: Weather,
+    current_weather: Weather,
+    remaining_rain_transition_ticks: i32,
+    remaining_thunder_transition_ticks: i32,
+) -> Weather {
+    let rain_level = current_weather.rain_level()
+        + (target_weather.rain_level() - current_weather.rain_level())
+            * (1.0 / remaining_rain_transition_ticks.max(1) as f32);
+    let thunder_level = current_weather.thunder_level()
+        + (target_weather.thunder_level() - current_weather.thunder_level())
+            * (1.0 / remaining_thunder_transition_ticks.max(1) as f32);
+    Weather::new(rain_level, thunder_level)
 }
 
 fn dispatch_player_spawn_event(

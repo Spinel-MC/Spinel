@@ -7,9 +7,11 @@ use spinel_network::types::Identifier;
 use spinel_registry::{EntityType, Registries};
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, Ordering};
+use uuid::Uuid;
 
 static INSTANCE_TICK_EVENT_TEST_ENABLED: AtomicBool = AtomicBool::new(false);
 static INSTANCE_TICK_EVENT_TEST_SEQUENCE: Mutex<Vec<&'static str>> = Mutex::new(Vec::new());
+static INSTANCE_TICK_EVENT_TEST_WORLD: Mutex<Option<Uuid>> = Mutex::new(None);
 static INSTANCE_TICK_EVENT_TEST_LOCK: Mutex<()> = Mutex::new(());
 
 #[event_listener]
@@ -18,6 +20,9 @@ fn instance_tick_test_listener(event: &mut InstanceTickEvent, _server: &mut Mine
         return;
     }
     let world = event.world();
+    if *INSTANCE_TICK_EVENT_TEST_WORLD.lock().unwrap() != Some(world.uuid()) {
+        return;
+    }
     let creature_ticks = world
         .creatures()
         .first()
@@ -42,6 +47,9 @@ fn instance_tick_end_test_listener(
         return;
     }
     let world = event.world();
+    if *INSTANCE_TICK_EVENT_TEST_WORLD.lock().unwrap() != Some(world.uuid()) {
+        return;
+    }
     let creature_ticks = world
         .creatures()
         .first()
@@ -66,6 +74,7 @@ fn instance_tick_events_surround_world_tick_work() {
     let world_uuid = server
         .world_manager
         .create_world(Identifier::minecraft("overworld"));
+    *INSTANCE_TICK_EVENT_TEST_WORLD.lock().unwrap() = Some(world_uuid);
     server
         .world_manager
         .world_mut(world_uuid)
@@ -77,6 +86,7 @@ fn instance_tick_events_surround_world_tick_work() {
     server.world_manager.tick(&registries, server_ptr);
 
     INSTANCE_TICK_EVENT_TEST_ENABLED.store(false, Ordering::SeqCst);
+    *INSTANCE_TICK_EVENT_TEST_WORLD.lock().unwrap() = None;
     assert_eq!(
         INSTANCE_TICK_EVENT_TEST_SEQUENCE.lock().unwrap().as_slice(),
         ["tick_before_entity", "tick_end_after_entity"]

@@ -289,6 +289,12 @@ impl Player {
         )
     }
 
+    pub(super) fn prepare_instance_spawn(&mut self, world_name: Identifier) {
+        self.pending_spawning_world = None;
+        self.is_dead = false;
+        self.world_name = Some(world_name);
+    }
+
     pub fn start_configuration_phase(&mut self) -> io::Result<()> {
         let Some(client) = self.client_mut() else {
             return Ok(());

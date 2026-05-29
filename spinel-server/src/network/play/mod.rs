@@ -17,5 +17,7 @@ pub mod player_loaded;
 pub mod set_carried_item;
 pub mod set_creative_mode_slot;
 pub mod swing;
+#[cfg(test)]
+mod test;
 pub mod use_item;
 pub mod use_item_on;

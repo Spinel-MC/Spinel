@@ -2,6 +2,8 @@ use crate::data_components::nbt_reader::{
     compound_from_nbt, string_field, string_map_from_compound,
 };
 use crate::data_components::{DataComponentValue, RegistryTagReference};
+use crate::vanilla_world_blocks::Block;
+use crate::{Identifier, Registries};
 use spinel_nbt::{Nbt, NbtCompound};
 use std::collections::HashMap;
 
@@ -45,6 +47,12 @@ impl BlockPredicates {
     pub fn predicates(&self) -> &[BlockPredicate] {
         &self.predicates
     }
+
+    pub fn test(&self, block: Block, registries: &Registries) -> bool {
+        self.predicates
+            .iter()
+            .any(|predicate| predicate.test(block, registries))
+    }
 }
 
 impl BlockPredicate {
@@ -82,6 +90,38 @@ impl BlockPredicate {
     pub const fn components(&self) -> &DataComponentPredicates {
         &self.components
     }
+
+    pub fn test(&self, block: Block, registries: &Registries) -> bool {
+        if self
+            .blocks
+            .as_ref()
+            .is_some_and(|blocks| !block_reference_contains(blocks, block, registries))
+        {
+            return false;
+        }
+        if self.state.is_some() || self.nbt.is_some() {
+            return false;
+        }
+        true
+    }
+}
+
+fn block_reference_contains(
+    blocks: &RegistryTagReference,
+    block: Block,
+    registries: &Registries,
+) -> bool {
+    match blocks {
+        RegistryTagReference::Backed(tag_name) => registries.block_tag_contains(tag_name, &block),
+        RegistryTagReference::Direct(block_names) => registries
+            .block_key(&block)
+            .is_some_and(|block_key| identifiers_contain(block_names, block_key)),
+        RegistryTagReference::Empty => false,
+    }
+}
+
+fn identifiers_contain(identifiers: &[Identifier], target: &Identifier) -> bool {
+    identifiers.iter().any(|identifier| identifier == target)
 }
 
 impl PropertiesPredicate {
