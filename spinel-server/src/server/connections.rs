@@ -1,5 +1,6 @@
 use crate::events::connection::ConnectionEvent;
 use crate::events::disconnection::DisconnectionEvent;
+use crate::events::player_disconnect::PlayerDisconnectEvent;
 use crate::network::client::instance::Client;
 use crate::server::MinecraftServer;
 use std::net::SocketAddr;
@@ -29,9 +30,46 @@ impl MinecraftServer {
             return;
         }
 
+        let client_arc = self.connection_manager.client(&address);
+        if let Some(client_arc) = client_arc
+            && let Ok(mut client) = client_arc.lock()
+        {
+            self.on_disconnect_with_client(address, &mut client);
+            return;
+        }
+
+        self.remove_disconnected_client(address);
+    }
+
+    pub(crate) fn on_disconnect_with_client(&mut self, address: SocketAddr, client: &mut Client) {
+        if !self.connection_manager.has_connection(&address) {
+            return;
+        }
+
+        self.dispatch_player_disconnect_event_with_client(address, client);
+        self.remove_disconnected_client(address);
+    }
+
+    fn remove_disconnected_client(&mut self, address: SocketAddr) {
         DisconnectionEvent::new(address).dispatch(self);
-        self.world_manager.remove_entity_by_addr(&address);
+        if let Err(error) = self.world_manager.remove_entity_by_addr(&address) {
+            eprintln!("Failed to despawn disconnected player {address}: {error}");
+        }
         self.connection_manager.remove_connection(&address);
+    }
+
+    fn dispatch_player_disconnect_event_with_client(
+        &mut self,
+        address: SocketAddr,
+        client: &mut Client,
+    ) {
+        let Some(player) = self
+            .world_manager
+            .player_pointer_for_client_address(&address)
+        else {
+            return;
+        };
+        PlayerDisconnectEvent::new(player).dispatch(self, client);
     }
 
     fn assign_server_pointer(&mut self, client: &Arc<Mutex<Client>>) -> Option<SocketAddr> {
@@ -40,6 +78,7 @@ impl MinecraftServer {
         };
 
         connection.server_ptr = Some(self as *mut MinecraftServer as usize);
+        connection.enable_outbound_packet_queue();
         Some(connection.addr)
     }
 

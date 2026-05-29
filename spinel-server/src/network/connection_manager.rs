@@ -24,7 +24,7 @@ impl ConnectionManager {
         self.clients.remove(addr);
     }
 
-    pub fn get_client(&self, addr: &SocketAddr) -> Option<Arc<Mutex<Client>>> {
+    pub fn client(&self, addr: &SocketAddr) -> Option<Arc<Mutex<Client>>> {
         self.clients.get(addr).cloned()
     }
 
@@ -32,7 +32,7 @@ impl ConnectionManager {
         self.clients.contains_key(addr)
     }
 
-    pub fn get_all_clients(&self) -> Vec<Arc<Mutex<Client>>> {
+    pub fn clients(&self) -> Vec<Arc<Mutex<Client>>> {
         self.clients.values().cloned().collect()
     }
 }

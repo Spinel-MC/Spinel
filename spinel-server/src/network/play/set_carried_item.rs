@@ -9,8 +9,7 @@ fn on_set_carried_item(
     packet: SetCarriedItemPacket,
     server: &mut MinecraftServer,
 ) -> bool {
-    let Some(player) = server.world_manager.player_pointer_for_client(client) else {
-        return false;
-    };
-    unsafe { &mut *player }.set_held_slot(packet.slot as i32)
+    server
+        .set_player_held_slot_in_world(client, packet.slot as i32)
+        .unwrap_or(false)
 }

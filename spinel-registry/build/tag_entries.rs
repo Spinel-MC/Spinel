@@ -9,77 +9,67 @@ const STATIC_REGISTRY_TAGS_FILE: &str = "static_registry_tags.json";
 pub(crate) fn dynamic_tags() -> io::Result<String> {
     let dynamic_tag_assets = RegistryTagAssets::load(DYNAMIC_REGISTRY_TAGS_FILE)?;
     let static_tag_assets = RegistryTagAssets::load(STATIC_REGISTRY_TAGS_FILE)?;
-    let dynamic_registries = tag_registry_specs()
+    let dynamic_tables = tag_registry_specs()
         .iter()
-        .map(|registry| dynamic_registry_tags(registry, &dynamic_tag_assets))
-        .collect::<Vec<_>>()
-        .join(",\n");
-    let static_registries = static_registry_specs()
+        .map(|registry| {
+            tag_table(
+                registry.table_const(),
+                &dynamic_tag_assets.tags(registry.tag_path),
+            )
+        })
+        .collect::<String>();
+    let static_tables = static_registry_specs()
         .iter()
-        .map(|registry| static_registry_tags(registry, &static_tag_assets))
-        .collect::<Vec<_>>()
-        .join(",\n");
+        .map(|registry| {
+            tag_table(
+                registry.table_const(),
+                &static_tag_assets.tags(registry.tag_path),
+            )
+        })
+        .collect::<String>();
+    let dynamic_entries = tag_registry_specs()
+        .iter()
+        .map(dynamic_registry_entry)
+        .collect::<String>();
+    let static_entries = static_registry_specs()
+        .iter()
+        .map(static_registry_entry)
+        .collect::<String>();
     Ok(format!(
-        "use crate::registry_tags::{{dynamic_registry_tag, static_registry_tag}};\nimpl Registries {{\n    pub fn dynamic_tag_entries(&self) -> Result<Vec<RegistryTags>, RegistryTagError> {{\n        Ok(vec![\n{dynamic_registries}\n        ])\n    }}\n\n    pub fn static_tag_entries(&self) -> Result<Vec<RegistryTags>, RegistryTagError> {{\n        Ok(vec![\n{static_registries}\n        ])\n    }}\n}}\n"
+        "use crate::registry_tags::{{dynamic_registry_tags, static_registry_tags}};\n\ntype GeneratedTagTable = &'static [(&'static str, &'static [&'static str])];\n\n{dynamic_tables}{static_tables}impl Registries {{\n    pub fn dynamic_tag_entries(&self) -> Result<Vec<RegistryTags>, RegistryTagError> {{\n        Ok(vec![\n{dynamic_entries}        ])\n    }}\n\n    pub fn static_tag_entries(&self) -> Result<Vec<RegistryTags>, RegistryTagError> {{\n        Ok(vec![\n{static_entries}        ])\n    }}\n}}\n"
     ))
 }
 
-fn dynamic_registry_tags(registry: &TagRegistrySpec, tag_assets: &RegistryTagAssets) -> String {
-    let tags = tag_assets
-        .tags(registry.tag_path)
-        .iter()
-        .map(|tag| dynamic_tag_entry(registry, tag))
-        .collect::<Vec<_>>()
-        .join(",\n");
-    format!(
-        "            RegistryTags::new({registry_const}, vec![\n{tags}\n            ])",
-        registry_const = registry.registry_const
-    )
+fn tag_table(table_const: String, tags: &[TagEntry]) -> String {
+    let entries = tags.iter().map(tag_table_entry).collect::<String>();
+    format!("const {table_const}: GeneratedTagTable = &[\n{entries}];\n\n")
 }
 
-fn static_registry_tags(
-    registry: &StaticTagRegistrySpec,
-    tag_assets: &RegistryTagAssets,
-) -> String {
-    let tags = tag_assets
-        .tags(registry.tag_path)
-        .iter()
-        .map(|tag| static_tag_entry(registry, tag))
-        .collect::<Vec<_>>()
-        .join(",\n");
-    format!(
-        "            RegistryTags::new({registry_const}, vec![\n{tags}\n            ])",
-        registry_const = registry.registry_const
-    )
-}
-
-fn dynamic_tag_entry(registry: &TagRegistrySpec, tag: &TagEntry) -> String {
-    let entries = tag
+fn tag_table_entry(tag: &TagEntry) -> String {
+    let values = tag
         .values
         .iter()
-        .map(|entry| format!("\"{entry}\""))
+        .map(|value| format!("\"{value}\""))
         .collect::<Vec<_>>()
-        .join(", ");
+        .join(",\n");
+    format!("    (\"{}\", &[\n        {values}\n    ]),\n", tag.name)
+}
+
+fn dynamic_registry_entry(registry: &TagRegistrySpec) -> String {
     format!(
-        "                dynamic_registry_tag(&self.{field_name}, {registry_const}, \"{tag_name}\", &[{entries}])?",
+        "            RegistryTags::new({registry_const}, dynamic_registry_tags(&self.{field_name}, {registry_const}, {table_const})?),\n",
         field_name = registry.field_name,
         registry_const = registry.registry_const,
-        tag_name = tag.name
+        table_const = registry.table_const()
     )
 }
 
-fn static_tag_entry(registry: &StaticTagRegistrySpec, tag: &TagEntry) -> String {
-    let entries = tag
-        .values
-        .iter()
-        .map(|entry| format!("\"{entry}\""))
-        .collect::<Vec<_>>()
-        .join(", ");
+fn static_registry_entry(registry: &StaticTagRegistrySpec) -> String {
     format!(
-        "                static_registry_tag(&self.{field_name}, {registry_const}, \"{tag_name}\", &[{entries}])?",
+        "            RegistryTags::new({registry_const}, static_registry_tags(&self.{field_name}, {registry_const}, {table_const})?),\n",
         field_name = registry.field_name,
         registry_const = registry.registry_const,
-        tag_name = tag.name
+        table_const = registry.table_const()
     )
 }
 
@@ -115,6 +105,12 @@ struct StaticTagRegistrySpec {
     registry_const: &'static str,
     field_name: &'static str,
     tag_path: &'static str,
+}
+
+impl StaticTagRegistrySpec {
+    fn table_const(&self) -> String {
+        format!("{}_TAGS", self.registry_const)
+    }
 }
 
 fn static_registry_specs() -> &'static [StaticTagRegistrySpec] {

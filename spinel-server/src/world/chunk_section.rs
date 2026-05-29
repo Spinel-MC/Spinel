@@ -31,6 +31,8 @@ pub struct ChunkSection {
     block_writes: SectionBlockWrites,
     sky_light: Vec<u8>,
     block_light: Vec<u8>,
+    sky_light_invalidated: bool,
+    block_light_invalidated: bool,
     special_blocks: HashMap<usize, Block>,
     non_air_block_count: i16,
 }
@@ -67,15 +69,30 @@ impl ChunkSection {
         Self::block_index(x, y, z).and_then(|block_index| self.blocks.get(block_index))
     }
 
+    pub(crate) fn is_empty(&self) -> bool {
+        self.non_air_block_count == 0
+    }
+
+    pub(crate) fn is_filled_with_blocks(&self) -> bool {
+        self.non_air_block_count == CHUNK_SECTION_BLOCK_COUNT as i16
+    }
+
+    pub(crate) fn biome(&self, x: i32, y: i32, z: i32) -> Option<RegistryKey<Biome>> {
+        Self::biome_index(x, y, z).and_then(|biome_index| self.biomes.get(biome_index))
+    }
+
     pub(crate) fn set_block(&mut self, x: i32, y: i32, z: i32, block: Block) -> bool {
         let Some(block_index) = Self::block_index(x, y, z) else {
             return false;
         };
         let previous_block = self.blocks.get(block_index).unwrap_or(Block::AIR);
         self.block_writes.record(block_index);
+        if previous_block == block {
+            return true;
+        }
         self.special_blocks.remove(&block_index);
         let block_was_set = self.blocks.set(block_index, block);
-        if Self::requires_special_cache(block) {
+        if Self::block_can_own_block_entity(block) {
             self.cache_special_block(x, y, z, block);
         }
         self.update_non_air_block_count(previous_block, block);
@@ -91,6 +108,22 @@ impl ChunkSection {
 
     pub(crate) fn fill_biome(&mut self, biome: RegistryKey<Biome>) {
         self.biomes.fill(biome);
+    }
+
+    pub(crate) fn fill_block(&mut self, block: Block) {
+        self.blocks.fill(block);
+        self.block_writes.record_all();
+        self.special_blocks.clear();
+        if Self::block_can_own_block_entity(block) {
+            (0..CHUNK_SECTION_BLOCK_COUNT).for_each(|block_index| {
+                self.special_blocks.insert(block_index, block);
+            });
+        }
+        self.non_air_block_count = if Self::block_is_air(block) {
+            0
+        } else {
+            CHUNK_SECTION_BLOCK_COUNT as i16
+        };
     }
 
     pub(crate) fn merge_from_fork(&mut self, fork_section: &ChunkSection) {
@@ -120,6 +153,30 @@ impl ChunkSection {
         &self.block_light
     }
 
+    pub(crate) fn sky_light_level(&self, x: i32, y: i32, z: i32) -> u8 {
+        Self::light_level(&self.sky_light, x, y, z)
+    }
+
+    pub(crate) fn block_light_level(&self, x: i32, y: i32, z: i32) -> u8 {
+        Self::light_level(&self.block_light, x, y, z)
+    }
+
+    pub(crate) fn invalidate_sky_light(&mut self) {
+        self.sky_light_invalidated = true;
+    }
+
+    pub(crate) fn invalidate_block_light(&mut self) {
+        self.block_light_invalidated = true;
+    }
+
+    pub fn sky_light_is_invalidated(&self) -> bool {
+        self.sky_light_invalidated
+    }
+
+    pub fn block_light_is_invalidated(&self) -> bool {
+        self.block_light_invalidated
+    }
+
     fn with_block_writes(y: i32, block_writes: SectionBlockWrites) -> Self {
         Self {
             y,
@@ -128,6 +185,8 @@ impl ChunkSection {
             block_writes,
             sky_light: vec![255; CHUNK_SECTION_LIGHT_BYTES],
             block_light: vec![0; CHUNK_SECTION_LIGHT_BYTES],
+            sky_light_invalidated: false,
+            block_light_invalidated: false,
             special_blocks: HashMap::new(),
             non_air_block_count: 0,
         }
@@ -173,7 +232,24 @@ impl ChunkSection {
         block.state_id() == Block::AIR.state_id()
     }
 
-    fn requires_special_cache(block: Block) -> bool {
+    pub(crate) fn block_can_own_block_entity(block: Block) -> bool {
+        let block_is_common_non_special = matches!(
+            block,
+            Block::AIR
+                | Block::CAVE_AIR
+                | Block::VOID_AIR
+                | Block::STONE
+                | Block::BEDROCK
+                | Block::GRASS_BLOCK
+                | Block::DIRT
+                | Block::DEEPSLATE
+                | Block::DARK_PRISMARINE
+                | Block::WATER
+                | Block::LAVA
+        );
+        if block_is_common_non_special {
+            return false;
+        }
         let name = format!("{block:?}").to_ascii_lowercase();
         let name = name.as_str();
         matches!(
@@ -240,6 +316,17 @@ impl ChunkSection {
         (x, y, z)
     }
 
+    fn light_level(light: &[u8], x: i32, y: i32, z: i32) -> u8 {
+        let Some(block_index) = Self::block_index(x, y, z) else {
+            return 0;
+        };
+        let light_byte = light.get(block_index / 2).copied().unwrap_or_default();
+        if block_index % 2 == 0 {
+            return light_byte & 15;
+        }
+        light_byte >> 4
+    }
+
     fn biome_index(x: i32, y: i32, z: i32) -> Option<usize> {
         let local_coordinates_are_valid =
             (0..4).contains(&x) && (0..4).contains(&y) && (0..4).contains(&z);
@@ -256,5 +343,14 @@ impl SectionBlockWrites {
         if let Some(block_was_written) = block_writes.get_mut(block_index) {
             *block_was_written = SectionBlockWrite::Written;
         }
+    }
+
+    fn record_all(&mut self) {
+        let Self::Sparse(block_writes) = self else {
+            return;
+        };
+        block_writes
+            .iter_mut()
+            .for_each(|block_was_written| *block_was_written = SectionBlockWrite::Written);
     }
 }

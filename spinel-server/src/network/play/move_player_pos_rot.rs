@@ -9,12 +9,15 @@ fn on_move_player_pos_rot(
     packet: MovePlayerPosRotPacket,
     server: &mut MinecraftServer,
 ) -> bool {
-    let Some(player) = server.world_manager.player_mut_for_client(client) else {
-        return false;
-    };
-
-    player.look(packet.y_rot, packet.x_rot);
     server
-        .move_player_in_world(client, packet.x, packet.y, packet.z)
+        .move_player_with_view_in_world(
+            client,
+            packet.x,
+            packet.y,
+            packet.z,
+            packet.y_rot,
+            packet.x_rot,
+            packet.on_ground(),
+        )
         .is_ok()
 }

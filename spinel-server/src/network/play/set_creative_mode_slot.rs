@@ -34,5 +34,13 @@ fn on_set_creative_mode_slot(
     if event.is_cancelled() {
         return false;
     }
-    player.inventory().set_item_stack(slot as usize, item_stack)
+    if !player.inventory().set_item_stack(slot as usize, item_stack) {
+        return false;
+    }
+    if player.slot_is_held_main_hand(slot) && player.sync_main_hand_attributes(client).is_err() {
+        return false;
+    }
+    server
+        .refresh_player_visible_equipment_in_world(client)
+        .is_ok()
 }

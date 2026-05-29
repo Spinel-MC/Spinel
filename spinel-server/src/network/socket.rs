@@ -3,6 +3,8 @@ use crate::events::network::inbound_packet_error::{
 };
 use crate::network::client::instance::Client;
 use crate::server::MinecraftServer;
+use spinel_core::network::serverbound::play::keep_alive::KeepAlivePacket;
+use spinel_network::ConnectionState;
 use spinel_network::DataType;
 use spinel_network::VarIntWrapper;
 use spinel_network::packet_names::PacketNameRegistry;
@@ -152,6 +154,9 @@ impl ServerSocketRuntime {
         let mut decoder = spinel_network::decoder::PacketDecoder::new();
 
         loop {
+            if Self::client_is_offline(&client) {
+                break;
+            }
             let Ok(packet_bytes) =
                 Self::read_frame(&server_arc, &client, &mut decoder, &mut read_stream)
             else {
@@ -189,6 +194,9 @@ impl ServerSocketRuntime {
                     eprintln!("Failed to lock client while reading frame");
                     return Err(());
                 };
+                if !client.is_online() {
+                    return Err(());
+                }
                 Self::dispatch_inbound_packet_error_event(
                     &mut server,
                     &mut client,
@@ -217,11 +225,18 @@ impl ServerSocketRuntime {
             return;
         };
 
-        if server.has_listener_for(packet_id, &client.state) {
+        let packet_has_listener = server.has_listener_for(packet_id, &client.state);
+        if packet_has_listener && Self::packet_should_be_queued(&client, packet_id) {
+            server.queue_player_packet(packet_id, &mut client, payload);
+        } else if packet_has_listener {
             server.dispatch_packet(packet_id, &mut client, payload);
         }
 
         Self::sync_decoder_state(decoder, &mut client);
+    }
+
+    fn packet_should_be_queued(client: &Client, packet_id: i32) -> bool {
+        client.state == ConnectionState::Play && packet_id != KeepAlivePacket::get_id()
     }
 
     fn sync_decoder_state(
@@ -235,5 +250,12 @@ impl ServerSocketRuntime {
         if let Some(threshold) = client.pending_compression.take() {
             decoder.set_compression(threshold);
         }
+    }
+
+    fn client_is_offline(client: &Arc<Mutex<Client>>) -> bool {
+        client
+            .lock()
+            .map(|client| !client.is_online())
+            .unwrap_or(true)
     }
 }

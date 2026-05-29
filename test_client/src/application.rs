@@ -89,8 +89,49 @@ impl TestClientApplication {
             "login start packet",
         );
 
+        self.wait_for_play_state().await;
+        self.run_fast_movement_probe().await;
         tokio::time::sleep(tokio::time::Duration::from_secs(10)).await;
         self.client.disconnect().await;
         println!("--- JOIN END ---");
+    }
+
+    async fn wait_for_play_state(&mut self) {
+        for _ in 0..200 {
+            if self.client.refresh_state_from_server() == Some(ConnectionState::Play) {
+                return;
+            }
+            tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
+        }
+    }
+
+    async fn run_fast_movement_probe(&mut self) {
+        if self.client.refresh_state_from_server() != Some(ConnectionState::Play) {
+            println!("Fast movement probe skipped because the client did not reach play state.");
+            return;
+        }
+
+        report_dispatch_result(
+            self.client.acknowledge_chunk_batch(64.0),
+            "initial chunk batch acknowledgement",
+        );
+
+        for movement_step in 0..160 {
+            report_dispatch_result(
+                self.client.move_by(24.0, 0.0, 0.0, true),
+                "fast movement packet",
+            );
+
+            if movement_step % 4 == 0 {
+                report_dispatch_result(
+                    self.client.acknowledge_chunk_batch(64.0),
+                    "chunk batch acknowledgement",
+                );
+            }
+
+            tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
+        }
+
+        println!("Fast movement probe ended at {:?}", self.client.position());
     }
 }

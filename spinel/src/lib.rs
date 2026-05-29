@@ -9,6 +9,7 @@ pub use spinel_utils as utils;
 pub mod server {
     pub use spinel_server::MinecraftServer;
     pub use spinel_server::ServerPacketListener;
+    pub use spinel_server::command;
     pub use spinel_server::entity;
     pub use spinel_server::events;
     pub use spinel_server::inventory;
@@ -21,6 +22,7 @@ pub mod server {
 #[cfg(feature = "client")]
 pub mod client {
     pub use spinel_client::ClientPacketListener;
+    pub use spinel_client::ClientPosition;
     pub use spinel_client::MinecraftClient;
     pub use spinel_client::entity;
     pub use spinel_client::events;

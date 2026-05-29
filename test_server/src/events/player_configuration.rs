@@ -1,6 +1,7 @@
 use spinel::{
     core::entity::game_mode::GameMode,
     macros::event_listener,
+    registry::{ItemStack, Material},
     server::{
         MinecraftServer, entity::PlayerSpawnPoint,
         events::player_configuration::AsyncPlayerConfigurationEvent,
@@ -23,5 +24,18 @@ fn on_player_configuration(
 
     event.player().set_game_mode(GameMode::Survival);
 
-    event.player().inventory();
+    event
+        .player()
+        .inventory()
+        .add_item_stack(ItemStack::of(Material::DIAMOND_PICKAXE));
+
+    event
+        .player()
+        .inventory()
+        .add_item_stack(ItemStack::of(Material::DIAMOND_HELMET));
+
+    event
+        .player()
+        .inventory()
+        .add_item_stack(ItemStack::of(Material::DIRT));
 }

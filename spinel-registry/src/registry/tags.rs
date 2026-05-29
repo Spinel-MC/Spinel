@@ -37,9 +37,33 @@ pub enum RegistryTagError {
     },
 }
 
-pub(crate) fn dynamic_registry_tag<T>(
+pub(crate) fn dynamic_registry_tags<T>(
     registry: &DynamicRegistry<T>,
     registry_name: Identifier,
+    generated_tags: &'static [(&'static str, &'static [&'static str])],
+) -> Result<Vec<RegistryTag>, RegistryTagError> {
+    generated_tags
+        .iter()
+        .map(|(tag_name, entries)| {
+            dynamic_registry_tag(registry, &registry_name, tag_name, entries)
+        })
+        .collect()
+}
+
+pub(crate) fn static_registry_tags<T>(
+    registry: &StaticRegistry<T>,
+    registry_name: Identifier,
+    generated_tags: &'static [(&'static str, &'static [&'static str])],
+) -> Result<Vec<RegistryTag>, RegistryTagError> {
+    generated_tags
+        .iter()
+        .map(|(tag_name, entries)| static_registry_tag(registry, &registry_name, tag_name, entries))
+        .collect()
+}
+
+fn dynamic_registry_tag<T>(
+    registry: &DynamicRegistry<T>,
+    registry_name: &Identifier,
     tag_name: &'static str,
     entries: &'static [&'static str],
 ) -> Result<RegistryTag, RegistryTagError> {
@@ -47,24 +71,22 @@ pub(crate) fn dynamic_registry_tag<T>(
     let entries = entries
         .iter()
         .map(|entry_name| {
-            dynamic_registry_tag_entry(registry, &registry_name, &tag_name, entry_name)
+            dynamic_registry_tag_entry(registry, registry_name, &tag_name, entry_name)
         })
         .collect::<Result<Vec<_>, _>>()?;
     Ok(RegistryTag::new(tag_name, entries))
 }
 
-pub(crate) fn static_registry_tag<T>(
+fn static_registry_tag<T>(
     registry: &StaticRegistry<T>,
-    registry_name: Identifier,
+    registry_name: &Identifier,
     tag_name: &'static str,
     entries: &'static [&'static str],
 ) -> Result<RegistryTag, RegistryTagError> {
     let tag_name = parse_entry(tag_name)?;
     let entries = entries
         .iter()
-        .map(|entry_name| {
-            static_registry_tag_entry(registry, &registry_name, &tag_name, entry_name)
-        })
+        .map(|entry_name| static_registry_tag_entry(registry, registry_name, &tag_name, entry_name))
         .collect::<Result<Vec<_>, _>>()?;
     Ok(RegistryTag::new(tag_name, entries))
 }

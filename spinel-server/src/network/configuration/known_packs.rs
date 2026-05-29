@@ -5,6 +5,7 @@ use crate::entity::{Entity, Player};
 use crate::events::player_configuration::AsyncPlayerConfigurationEvent;
 use crate::network::client::instance::Client;
 use crate::server::MinecraftServer;
+use ::spinel_core::network::clientbound::configuration::disconnect::ConfigurationDisconnectPacket;
 use ::spinel_core::network::clientbound::configuration::finish_configuration::FinishConfigurationPacket;
 use ::spinel_core::network::serverbound::configuration::known_packs::KnownPacksPacket;
 use ::spinel_macros::packet_listener;
@@ -27,7 +28,7 @@ impl<'a, 'b> ConfigurationCompletion<'a, 'b> {
         self.dispatch_registry_packets()?;
         self.server
             .registry_cache
-            .get_tag_packet()
+            .tag_packet()
             .clone()
             .dispatch(self.client)?;
         sleep(Duration::from_millis(100));
@@ -36,9 +37,11 @@ impl<'a, 'b> ConfigurationCompletion<'a, 'b> {
 
     fn configure_player(&mut self) -> bool {
         let Some(player) = create_player(self.client) else {
-            let _ = self
-                .server
-                .disconnect(self.client, Component::text("Invalid login sequence."));
+            let _ = ConfigurationDisconnectPacket::new(Component::text("Invalid login sequence."))
+                .dispatch(self.client);
+            let client_address = self.client.addr;
+            self.client.disconnect();
+            self.server.on_disconnect(client_address);
             return false;
         };
 
@@ -54,32 +57,33 @@ impl<'a, 'b> ConfigurationCompletion<'a, 'b> {
             return false;
         };
 
-        place_player(
-            self.client,
-            self.server,
-            spawning_world,
-            event.into_player(),
-        )
+        let is_hardcore = event.is_hardcore();
+        let mut player = event.into_player();
+        player.set_pending_options(spawning_world, is_hardcore);
+
+        place_player(self.client, self.server, spawning_world, player)
     }
 
     fn dispatch_registry_packets(&mut self) -> io::Result<()> {
         self.server
             .registry_cache
-            .get_packets()
+            .packets()
             .iter()
             .cloned()
             .try_for_each(|packet| packet.dispatch(self.client))
     }
 }
 
-fn create_player(client: &Client) -> Option<Player> {
+fn create_player(client: &mut Client) -> Option<Player> {
     let login_metadata = client.login_metadata.as_ref()?;
-    Some(Player::new(
+    let mut player = Player::new(
         login_metadata.uuid?,
         login_metadata.username.clone()?,
         login_metadata.protocol_version,
         client.addr,
-    ))
+    );
+    player.set_client(client);
+    Some(player)
 }
 
 fn place_player(
@@ -107,7 +111,10 @@ fn place_player(
 
 fn fail_player_join(client: &mut Client, server: &mut MinecraftServer, log_message: String) {
     eprintln!("{log_message}");
-    let _ = server.disconnect(client, error_during_login());
+    let _ = ConfigurationDisconnectPacket::new(error_during_login()).dispatch(client);
+    let client_address = client.addr;
+    client.disconnect();
+    server.on_disconnect(client_address);
 }
 
 fn error_during_login() -> TextComponent {

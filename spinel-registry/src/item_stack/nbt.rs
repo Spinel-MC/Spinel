@@ -26,7 +26,7 @@ impl ItemStack {
         };
         let component_patch = match compound.get("components") {
             Some(Nbt::Compound(component_patch)) => {
-                DataComponentMap::from_nbt_patch(component_patch.clone())
+                DataComponentMap::from_nbt_patch(component_patch.clone()).ok()?
             }
             _ => DataComponentMap::new(),
         };

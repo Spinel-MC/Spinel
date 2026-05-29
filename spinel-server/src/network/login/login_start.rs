@@ -7,6 +7,7 @@ use crate::server::MinecraftServer;
 use rsa::RsaPrivateKey;
 use rsa::pkcs8::EncodePublicKey;
 use rsa::rand_core::{OsRng, RngCore};
+use spinel_core::network::clientbound::login::disconnect::LoginDisconnectPacket;
 use spinel_core::network::clientbound::login::encryption_request::EncryptionRequestPacket;
 use spinel_core::network::serverbound::login::login_start::LoginStartPacket;
 use spinel_macros::{event_listener, packet_listener};
@@ -84,10 +85,13 @@ impl<'a> LoginStartHandler<'a> {
                 "Error: Client {} sent Login Start Packet without prior Intention Packet.",
                 self.client.addr
             );
-            if let Err(error) = self
-                .server
-                .disconnect(self.client, Component::text("Invalid login sequence."))
-            {
+            let disconnect_result =
+                LoginDisconnectPacket::new(Component::text("Invalid login sequence."))
+                    .dispatch(self.client);
+            let client_address = self.client.addr;
+            self.client.disconnect();
+            self.server.on_disconnect(client_address);
+            if let Err(error) = disconnect_result {
                 eprintln!(
                     "Failed to send disconnect packet to {}: {}",
                     self.client.addr, error

@@ -5,7 +5,7 @@ use std::collections::HashMap;
 
 use crate::module_manager::ServerModuleManager;
 
-pub fn get_listeners() -> (
+pub fn listeners() -> (
     HashMap<(ConnectionState, i32), Vec<&'static ServerPacketListener>>,
     HashMap<ConnectionState, Vec<&'static ServerPacketListener>>,
 ) {

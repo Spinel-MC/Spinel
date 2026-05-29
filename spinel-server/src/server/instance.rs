@@ -1,3 +1,6 @@
+use crate::command::CommandManager;
+use crate::entity::PlayerHand;
+use crate::entity::player::QueuedPlayerPacket;
 use crate::events::shutdown::ShutdownEvent;
 use crate::events::signal::{ServerSignal, SignalEvent};
 use crate::events::startup::StartupEvent;
@@ -21,6 +24,7 @@ pub struct MinecraftServer {
     pub world_manager: WorldManager,
     pub registry_cache: RegistryCache,
     pub registries: Registries,
+    pub command_manager: CommandManager,
     pub ticks_per_second: u32,
     pub current_tick: u64,
     pub is_ticking: Arc<AtomicBool>,
@@ -37,6 +41,7 @@ impl MinecraftServer {
             world_manager: WorldManager::new(),
             registry_cache,
             registries,
+            command_manager: CommandManager::new(),
             ticks_per_second: DEFAULT_TICKS_PER_SECOND,
             current_tick: 0,
             is_ticking: Arc::new(AtomicBool::new(false)),
@@ -59,7 +64,7 @@ impl MinecraftServer {
         let mut shutdown_event = ShutdownEvent::new();
         shutdown_event.dispatch(self);
 
-        for client_arc in self.connection_manager.get_all_clients() {
+        for client_arc in self.connection_manager.clients() {
             let Ok(mut client) = client_arc.lock() else {
                 continue;
             };
@@ -88,6 +93,23 @@ impl MinecraftServer {
             .dispatch_packet(server_pointer, packet_id, client, payload)
     }
 
+    pub(crate) fn queue_player_packet(
+        &mut self,
+        packet_id: i32,
+        client: &mut Client,
+        payload: Vec<u8>,
+    ) -> bool {
+        let Some(player) = self.world_manager.player_pointer_for_client(client) else {
+            return self.dispatch_packet(packet_id, client, payload);
+        };
+        client.server_ptr = Some(self as *mut Self as usize);
+        unsafe { &mut *player }.add_packet_to_queue(QueuedPlayerPacket::new(
+            client.state,
+            packet_id,
+            payload,
+        ))
+    }
+
     pub fn set_tick_rate(&mut self, ticks_per_second: u32) {
         self.ticks_per_second = ticks_per_second.max(1);
         self.sync_client_tick_rate();
@@ -95,7 +117,7 @@ impl MinecraftServer {
 
     pub(crate) fn sync_client_tick_rate(&mut self) {
         self.connection_manager
-            .get_all_clients()
+            .clients()
             .into_iter()
             .for_each(|client_arc| self.sync_client(client_arc));
     }
@@ -131,15 +153,152 @@ impl MinecraftServer {
         x: f64,
         y: f64,
         z: f64,
+        on_ground: bool,
     ) -> io::Result<()> {
         self.world_manager
-            .move_player(client, x, y, z, &self.registries)
+            .move_player(client, x, y, z, on_ground, &self.registries)
+    }
+
+    pub(crate) fn move_player_with_view_in_world(
+        &mut self,
+        client: &mut Client,
+        x: f64,
+        y: f64,
+        z: f64,
+        yaw: f32,
+        pitch: f32,
+        on_ground: bool,
+    ) -> io::Result<()> {
+        self.world_manager.move_player_with_view(
+            client,
+            x,
+            y,
+            z,
+            yaw,
+            pitch,
+            on_ground,
+            &self.registries,
+        )
+    }
+
+    pub(crate) fn look_player_in_world(
+        &mut self,
+        client: &Client,
+        yaw: f32,
+        pitch: f32,
+        on_ground: bool,
+    ) -> io::Result<()> {
+        self.world_manager
+            .look_player(client, yaw, pitch, on_ground)
+    }
+
+    pub(crate) fn refresh_player_status_in_world(
+        &mut self,
+        client: &Client,
+        on_ground: bool,
+    ) -> io::Result<()> {
+        self.world_manager.refresh_player_status(client, on_ground)
+    }
+
+    pub(crate) fn animate_player_hand_in_world(
+        &mut self,
+        client: &Client,
+        hand: PlayerHand,
+    ) -> io::Result<()> {
+        self.world_manager.animate_player_hand(client, hand)
+    }
+
+    pub(crate) fn refresh_player_input_in_world(
+        &mut self,
+        client: &Client,
+        forward: bool,
+        backward: bool,
+        left: bool,
+        right: bool,
+        jump: bool,
+        shift: bool,
+        sprint: bool,
+    ) -> io::Result<()> {
+        self.world_manager
+            .refresh_player_input(client, forward, backward, left, right, jump, shift, sprint)
+    }
+
+    pub(crate) fn set_player_sprinting_in_world(
+        &mut self,
+        client: &Client,
+        sprinting: bool,
+    ) -> io::Result<()> {
+        self.world_manager.set_player_sprinting(client, sprinting)
+    }
+
+    pub(crate) fn start_player_flying_with_elytra_in_world(
+        &mut self,
+        client: &Client,
+    ) -> io::Result<()> {
+        self.world_manager.start_player_flying_with_elytra(client)
+    }
+
+    pub(crate) fn set_player_held_slot_in_world(
+        &mut self,
+        client: &mut Client,
+        held_slot: i32,
+    ) -> io::Result<bool> {
+        let server = self as *mut Self;
+        self.world_manager
+            .set_player_held_slot(client, held_slot, server)
+    }
+
+    pub(crate) fn refresh_player_visible_equipment_in_world(
+        &mut self,
+        client: &Client,
+    ) -> io::Result<()> {
+        self.world_manager.refresh_player_visible_equipment(client)
+    }
+
+    pub(crate) fn refresh_player_metadata_in_world(&mut self, client: &Client) -> io::Result<()> {
+        self.world_manager.refresh_player_metadata(client)
+    }
+
+    pub(crate) fn set_block_in_world(
+        &mut self,
+        client: &Client,
+        position: crate::world::BlockPosition,
+        block: crate::world::Block,
+    ) -> io::Result<bool> {
+        self.world_manager
+            .set_block_for_client(client, position, block)
+    }
+
+    pub(crate) fn loaded_block_in_world(
+        &self,
+        client: &Client,
+        position: crate::world::BlockPosition,
+    ) -> Option<crate::world::Block> {
+        self.world_manager.loaded_block_for_client(client, position)
+    }
+
+    pub(crate) fn block_position_is_loaded_in_world(
+        &self,
+        client: &Client,
+        position: crate::world::BlockPosition,
+    ) -> bool {
+        self.world_manager
+            .block_position_is_loaded_for_client(client, position)
+    }
+
+    pub(crate) fn refresh_block_in_world(
+        &mut self,
+        client: &mut Client,
+        position: crate::world::BlockPosition,
+    ) -> io::Result<()> {
+        self.world_manager
+            .refresh_block_for_client(client, position)
     }
 
     pub(crate) fn tick_connections(&mut self) {
         let timed_out_clients = self
             .connection_manager
-            .get_all_clients()
+            .clients()
             .into_iter()
             .filter_map(|client_arc| self.tick_client(client_arc))
             .collect();
@@ -156,7 +315,9 @@ impl MinecraftServer {
         if client.state != ConnectionState::Play {
             return None;
         }
+        let _ = client.flush_outbound_packets();
         if client.tick() {
+            let _ = client.flush_outbound_packets();
             return None;
         }
         Some(client.addr)
@@ -164,13 +325,18 @@ impl MinecraftServer {
 
     fn disconnect_timed_out_clients(&mut self, client_addresses: Vec<SocketAddr>) {
         client_addresses.into_iter().for_each(|client_address| {
-            let Some(client_arc) = self.connection_manager.get_client(&client_address) else {
+            let Some(client_arc) = self.connection_manager.client(&client_address) else {
                 return;
             };
             let Ok(mut client) = client_arc.lock() else {
                 return;
             };
-            let _ = self.disconnect(&mut client, Component::text("Timed out"));
+            let Some(player) = self.world_manager.player_pointer_for_client(&client) else {
+                client.disconnect();
+                self.on_disconnect(client_address);
+                return;
+            };
+            let _ = unsafe { &mut *player }.kick(Component::text("Timed out"));
         });
     }
 }

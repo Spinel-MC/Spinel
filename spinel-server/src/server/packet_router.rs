@@ -1,6 +1,6 @@
 use crate::ServerPacketListener;
 use crate::events::network::inbound_packet::InboundPacketEvent;
-use crate::listeners::get_listeners;
+use crate::listeners::listeners;
 use crate::network::client::instance::Client;
 use crate::server::MinecraftServer;
 use spinel_network::ConnectionState;
@@ -15,7 +15,7 @@ pub struct PacketRouter {
 
 impl PacketRouter {
     pub fn new() -> Self {
-        let (assigned_packet_listeners, generic_packet_listeners) = get_listeners();
+        let (assigned_packet_listeners, generic_packet_listeners) = listeners();
         Self {
             assigned_packet_listeners,
             generic_packet_listeners,

@@ -2,18 +2,38 @@ pub mod biome;
 pub mod blocks;
 pub mod data_components;
 pub mod dimension_type;
+pub mod entity;
 pub mod generated;
 pub mod identifier;
 pub mod item_stack;
 pub mod material;
 pub mod registry;
 pub mod registry_values;
+pub mod sound;
 
 pub use biome::{Biome, BiomeAttribute, BiomeAttributes, BiomeEffects, Color, GrassColorModifier};
-pub use data_components::{DataComponentMap, DataComponentType, DataComponentValue};
+pub use data_components::{
+    ArmorTrim, AttackRange, AttributeList, AttributeModifierDisplay, AttributeModifierEntry,
+    AttributeOperation, BannerPatternLayer, BannerPatterns, Bee, BlockPredicate, BlockPredicates,
+    BlocksAttacks, Consumable, ConsumeEffect, CustomModelData, CustomPotionEffect, DamageReduction,
+    DamageResistant, DataComponentDescriptor, DataComponentMap, DataComponentMapBuilder,
+    DataComponentPatchBuilder, DataComponentPredicates, DataComponentType, DataComponentValue,
+    DeathProtection, DebugStickState, DecodeDataComponentMapError, EnchantmentList,
+    EquipmentSlotGroup, Equippable, EquippableSlot, FilteredComponent, FilteredString,
+    FireworkExplosion, FireworkExplosionShape, FireworkList, Food, GameProfileProperty,
+    InstrumentComponent, ItemAnimation, ItemBlockState, ItemDamageFunction, ItemRarity,
+    KineticWeapon, KineticWeaponCondition, LodestoneTracker, MapDecorationEntry, MapDecorations,
+    MapPostProcessing, PiercingWeapon, PotDecorations, PotionContents, PotionEffectSettings,
+    PropertiesPredicate, PropertyValuePredicate, RegistryTagReference, ResolvableProfile,
+    SeededContainerLoot, SuspiciousStewEffect, SuspiciousStewEffects, SwingAnimation,
+    SwingAnimationType, Tool, ToolRule, TooltipDisplay, TypedCustomData, UnitComponent,
+    UseCooldown, UseEffects, Weapon, WorldPosition, WritableBookContent, WrittenBookContent,
+    dye_color_from_nbt_name, dye_color_nbt_name, dye_color_protocol_id,
+};
+pub use entity::{EntityAttachmentOffset, EntityBoundingBox, EntityPacketType, EntityType};
 pub use generated::{
-    vanilla_biomes, vanilla_blocks, vanilla_dimension_types, vanilla_items, vanilla_materials,
-    vanilla_world_blocks,
+    vanilla_biomes, vanilla_blocks, vanilla_dimension_types, vanilla_entity_types, vanilla_items,
+    vanilla_materials, vanilla_sound_events, vanilla_world_blocks,
 };
 pub use identifier::{Axis, BlockStateId, Identifier, Todo};
 pub use item_stack::{ItemStack, ItemStackBuilder};
@@ -34,6 +54,11 @@ pub use registry::{
     vanilla_trim_materials, vanilla_trim_patterns, vanilla_wolf_sound_variants,
     vanilla_wolf_variants, vanilla_zombie_nautilus_variants,
 };
+pub use sound::BuiltinSoundEvent;
+
+pub mod sound_event {
+    pub use crate::sound::BuiltinSoundEvent;
+}
 
 pub mod block_entity_type {
     pub use crate::blocks::BlockEntityType;
@@ -83,6 +108,12 @@ pub mod enchantment {
     pub use crate::registry_values::enchantment::*;
 }
 
+pub mod entity_type {
+    pub use crate::entity::{
+        EntityAttachmentOffset, EntityBoundingBox, EntityPacketType, EntityType,
+    };
+}
+
 pub mod frog_variant {
     pub use crate::registry_values::frog_variant::*;
 }
@@ -116,7 +147,7 @@ pub mod registry_key {
 }
 
 pub mod registry_tags {
-    pub(crate) use crate::registry::tags::{dynamic_registry_tag, static_registry_tag};
+    pub(crate) use crate::registry::tags::{dynamic_registry_tags, static_registry_tags};
     pub use crate::registry::{RegistryTag, RegistryTagError, RegistryTags};
 }
 

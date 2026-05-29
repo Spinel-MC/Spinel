@@ -4,6 +4,12 @@ pub(crate) struct TagRegistrySpec {
     pub(crate) tag_path: &'static str,
 }
 
+impl TagRegistrySpec {
+    pub(crate) fn table_const(&self) -> String {
+        format!("{}_TAGS", self.registry_const)
+    }
+}
+
 pub(crate) fn tag_registry_specs() -> &'static [TagRegistrySpec] {
     TAG_REGISTRY_SPECS
 }

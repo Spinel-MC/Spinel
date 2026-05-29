@@ -10,6 +10,6 @@ fn on_move_player_pos(
     server: &mut MinecraftServer,
 ) -> bool {
     server
-        .move_player_in_world(client, packet.x, packet.y, packet.z)
+        .move_player_in_world(client, packet.x, packet.y, packet.z, packet.on_ground())
         .is_ok()
 }

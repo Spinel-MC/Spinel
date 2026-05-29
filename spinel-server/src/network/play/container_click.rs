@@ -12,5 +12,11 @@ fn on_container_click(
     let Some(player) = server.world_manager.player_pointer_for_client(client) else {
         return false;
     };
-    unsafe { &mut *player }.handle_container_click(&packet, server, client)
+    let click_result = unsafe { &mut *player }.handle_container_click(&packet, server, client);
+    if !click_result {
+        return false;
+    }
+    server
+        .refresh_player_visible_equipment_in_world(client)
+        .is_ok()
 }

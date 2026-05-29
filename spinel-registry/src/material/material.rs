@@ -6,17 +6,11 @@ pub struct Material {
     id: i32,
     key: Identifier,
     block: Option<Block>,
-    max_stack_size: i32,
 }
 
 impl Material {
-    pub const fn new(id: i32, key: Identifier, block: Option<Block>, max_stack_size: i32) -> Self {
-        Self {
-            id,
-            key,
-            block,
-            max_stack_size,
-        }
+    pub const fn new(id: i32, key: Identifier, block: Option<Block>) -> Self {
+        Self { id, key, block }
     }
 
     pub const fn id(&self) -> i32 {
@@ -35,13 +29,9 @@ impl Material {
         self.block
     }
 
-    pub const fn max_stack_size(&self) -> i32 {
-        self.max_stack_size
-    }
-
-    pub fn prototype(&self) -> DataComponentMap {
-        let mut components = DataComponentMap::new();
-        components.set(MAX_STACK_SIZE, self.max_stack_size);
-        components
+    pub fn max_stack_size(&self) -> i32 {
+        let empty_prototype = DataComponentMap::new();
+        self.prototype()
+            .get_or(&empty_prototype, MAX_STACK_SIZE, 64)
     }
 }

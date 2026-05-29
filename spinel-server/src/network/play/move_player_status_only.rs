@@ -5,9 +5,11 @@ use spinel_macros::packet_listener;
 
 #[packet_listener]
 fn on_move_player_status_only(
-    _client: &mut Client,
-    _packet: MovePlayerStatusOnlyPacket,
-    _server: &mut MinecraftServer,
+    client: &mut Client,
+    packet: MovePlayerStatusOnlyPacket,
+    server: &mut MinecraftServer,
 ) -> bool {
-    true
+    server
+        .refresh_player_status_in_world(client, packet.on_ground())
+        .is_ok()
 }

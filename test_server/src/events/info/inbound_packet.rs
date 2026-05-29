@@ -5,12 +5,19 @@ use spinel::{
 
 #[event_listener]
 fn on_inbound_packet(event: &mut InboundPacketEvent, _server: &mut MinecraftServer) {
-    if event.packet_name == "client_tick_end"
-        || event.packet_name == "keep_alive"
-        || event.packet_name == "move_player_pos_rot"
-        || event.packet_name == "move_player_pos"
-        || event.packet_name == "move_player_rot"
-    {
+    let packet_blacklist = vec![
+        "client_tick_end",
+        "keep_alive",
+        "move_player_pos_rot",
+        "move_player_pos",
+        "move_player_rot",
+        "move_entity_pos_rot",
+        "rotate_head",
+        "block_changed_ack",
+        "swing",
+    ];
+
+    if packet_blacklist.contains(&event.packet_name.as_str()) {
         return;
     }
 

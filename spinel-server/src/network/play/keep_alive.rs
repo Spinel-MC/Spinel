@@ -13,9 +13,11 @@ fn on_keep_alive(
         return true;
     }
 
-    let _ = server.disconnect(
-        client,
-        spinel_utils::component::Component::text("Timed out"),
-    );
+    let Some(player) = server.world_manager.player_pointer_for_client(client) else {
+        client.disconnect();
+        server.on_disconnect(client.addr);
+        return false;
+    };
+    let _ = unsafe { &mut *player }.kick(spinel_utils::component::Component::text("Timed out"));
     false
 }

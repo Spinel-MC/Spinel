@@ -1,23 +1,11 @@
 use crate::{ASSETS_DIRECTORY, vanilla_path};
 use serde::Deserialize;
-use std::{fs, io};
+use std::{collections::BTreeMap, fs, io};
 
 pub(crate) fn item_entries() -> io::Result<Vec<ItemEntry>> {
     let json = fs::read_to_string(format!("{ASSETS_DIRECTORY}/items.json"))?;
     let extraction: ItemExtraction = serde_json::from_str(&json).map_err(io::Error::other)?;
-    let mut items = extraction
-        .items
-        .into_iter()
-        .map(|item| ItemEntry {
-            path: vanilla_path(&item.name).to_string(),
-            id: item.id,
-            block_item: item
-                .block_item
-                .as_ref()
-                .map(|block_item| vanilla_path(block_item).to_string()),
-            max_stack_size: item.max_stack_size(),
-        })
-        .collect::<Vec<_>>();
+    let mut items = extraction.into_item_entries();
     items.sort_by_key(|item| item.id);
     Ok(items)
 }
@@ -26,12 +14,28 @@ pub(crate) struct ItemEntry {
     pub(crate) path: String,
     pub(crate) id: i32,
     pub(crate) block_item: Option<String>,
-    pub(crate) max_stack_size: i32,
 }
 
 #[derive(Deserialize)]
-struct ItemExtraction {
-    items: Vec<ExtractedItem>,
+#[serde(untagged)]
+enum ItemExtraction {
+    Spinel { items: Vec<ExtractedItem> },
+    Minestom(BTreeMap<String, MinestomItem>),
+}
+
+impl ItemExtraction {
+    fn into_item_entries(self) -> Vec<ItemEntry> {
+        match self {
+            Self::Spinel { items } => items
+                .into_iter()
+                .map(ExtractedItem::into_item_entry)
+                .collect(),
+            Self::Minestom(items) => items
+                .into_iter()
+                .map(|(key, item)| item.into_item_entry(&key))
+                .collect(),
+        }
+    }
 }
 
 #[derive(Deserialize)]
@@ -40,21 +44,37 @@ struct ExtractedItem {
     name: String,
     #[serde(rename = "blockItem")]
     block_item: Option<String>,
-    #[serde(rename = "maxStackSize")]
-    max_stack_size: Option<i32>,
-    components: Option<serde_json::Value>,
+}
+
+#[derive(Deserialize)]
+struct MinestomItem {
+    id: i32,
+    #[serde(rename = "correspondingBlock")]
+    corresponding_block: Option<String>,
 }
 
 impl ExtractedItem {
-    fn max_stack_size(&self) -> i32 {
-        if let Some(max_stack_size) = self.max_stack_size {
-            return max_stack_size;
+    fn into_item_entry(self) -> ItemEntry {
+        ItemEntry {
+            path: vanilla_path(&self.name).to_string(),
+            id: self.id,
+            block_item: self
+                .block_item
+                .as_ref()
+                .map(|block_item| vanilla_path(block_item).to_string()),
         }
-        self.components
-            .as_ref()
-            .and_then(|components| components.get("minecraft:max_stack_size"))
-            .and_then(serde_json::Value::as_i64)
-            .and_then(|value| i32::try_from(value).ok())
-            .unwrap_or_else(|| if self.name == "air" { 0 } else { 64 })
+    }
+}
+
+impl MinestomItem {
+    fn into_item_entry(self, key: &str) -> ItemEntry {
+        ItemEntry {
+            path: vanilla_path(key).to_string(),
+            id: self.id,
+            block_item: self
+                .corresponding_block
+                .as_ref()
+                .map(|block_item| vanilla_path(block_item).to_string()),
+        }
     }
 }

@@ -1,4 +1,5 @@
 mod material;
+mod prototype;
 
 #[cfg(test)]
 mod tests;

@@ -48,12 +48,10 @@ where
                 let mut entries = vec![current_entry; ENTRY_COUNT];
                 entries[entry_index] = entry;
                 *self = Self::Indirect(entries);
-                self.compress_if_single();
                 true
             }
             Self::Indirect(entries) => {
                 entries[entry_index] = entry;
-                self.compress_if_single();
                 true
             }
         }
@@ -76,6 +74,12 @@ where
         indirect_bits_limit: u8,
         palette_id: impl Fn(&T) -> Option<i32>,
     ) -> Result<PalettedContainer, SectionPaletteError> {
+        if let Self::Single(entry) = self {
+            let Some(entry_id) = palette_id(entry) else {
+                return Err(SectionPaletteError::MissingEntry);
+            };
+            return Ok(single_network_palette(entry_id));
+        }
         let entries = self.entries();
         network_palette(
             &entries,
@@ -83,18 +87,6 @@ where
             indirect_bits_limit,
             palette_id,
         )
-    }
-
-    fn compress_if_single(&mut self) {
-        let Self::Indirect(entries) = self else {
-            return;
-        };
-        let Some(first_entry) = entries.first().cloned() else {
-            return;
-        };
-        if entries.iter().all(|entry| *entry == first_entry) {
-            *self = Self::Single(first_entry);
-        }
     }
 }
 

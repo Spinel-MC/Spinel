@@ -1,4 +1,6 @@
 use crate::inventory::slot_conversion::{BOOTS_SLOT, CHESTPLATE_SLOT, HELMET_SLOT, LEGGINGS_SLOT};
+use spinel_core::network::clientbound::play::set_equipment::EntityEquipmentSlot;
+use spinel_registry::EquippableSlot;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum EquipmentSlot {
@@ -63,6 +65,16 @@ impl EquipmentSlot {
         )
     }
 
+    pub fn from_equippable_armor_slot(equippable_slot: EquippableSlot) -> Option<Self> {
+        match equippable_slot {
+            EquippableSlot::Feet => Some(Self::Boots),
+            EquippableSlot::Legs => Some(Self::Leggings),
+            EquippableSlot::Chest => Some(Self::Chestplate),
+            EquippableSlot::Head => Some(Self::Helmet),
+            _ => None,
+        }
+    }
+
     pub fn armor_slot(&self) -> i32 {
         match self {
             Self::Boots => BOOTS_SLOT,
@@ -70,6 +82,19 @@ impl EquipmentSlot {
             Self::Chestplate => CHESTPLATE_SLOT,
             Self::Helmet => HELMET_SLOT,
             _ => -1,
+        }
+    }
+
+    pub fn entity_equipment_slot(&self) -> EntityEquipmentSlot {
+        match self {
+            Self::MainHand => EntityEquipmentSlot::MainHand,
+            Self::OffHand => EntityEquipmentSlot::OffHand,
+            Self::Boots => EntityEquipmentSlot::Boots,
+            Self::Leggings => EntityEquipmentSlot::Leggings,
+            Self::Chestplate => EntityEquipmentSlot::Chestplate,
+            Self::Helmet => EntityEquipmentSlot::Helmet,
+            Self::Body => EntityEquipmentSlot::Body,
+            Self::Saddle => EntityEquipmentSlot::Saddle,
         }
     }
 }

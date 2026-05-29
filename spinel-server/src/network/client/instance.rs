@@ -6,9 +6,17 @@ use spinel_network::encoder::PacketEncoder;
 use spinel_network::types::{Position, Slot};
 use spinel_network::wrappers::JsonTextComponent;
 use spinel_utils::component::text::TextComponent;
+use std::collections::VecDeque;
 use std::io::{self, Cursor, Error, ErrorKind, Read};
 use std::net::{Shutdown, SocketAddr, TcpStream};
 use uuid::Uuid;
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) struct QueuedOutboundPacket {
+    pub(crate) state: ConnectionState,
+    pub(crate) packet_id: i32,
+    pub(crate) payload: Vec<u8>,
+}
 
 pub struct Client {
     pub stream: TcpStream,
@@ -20,10 +28,13 @@ pub struct Client {
     pub server_ptr: Option<usize>,
     pub pending_encryption: Option<Vec<u8>>,
     pub pending_compression: Option<i32>,
+    is_online: bool,
     pub(super) alive_time: u64,
     pub(super) alive_pending: bool,
     pub(super) alive_id: u64,
     pub(super) latency_millis: u32,
+    outbound_packet_queue: VecDeque<QueuedOutboundPacket>,
+    outbound_packet_queue_enabled: bool,
 }
 
 impl Client {
@@ -38,15 +49,30 @@ impl Client {
             server_ptr: None,
             pending_encryption: None,
             pending_compression: None,
+            is_online: true,
             alive_time: 0,
             alive_pending: false,
             alive_id: 0,
             latency_millis: 0,
+            outbound_packet_queue: VecDeque::new(),
+            outbound_packet_queue_enabled: false,
         }
     }
 
     pub fn disconnect(&mut self) {
+        let _ = self.flush_outbound_packets();
+        self.is_online = false;
         let _ = self.stream.shutdown(Shutdown::Both);
+    }
+
+    pub fn finish_disconnect_packet(&mut self) {
+        let _ = self.flush_outbound_packets();
+        self.is_online = false;
+        let _ = self.stream.shutdown(Shutdown::Write);
+    }
+
+    pub const fn is_online(&self) -> bool {
+        self.is_online
     }
 
     pub fn enable_encryption(&mut self, key: &[u8]) {
@@ -87,6 +113,41 @@ impl Client {
     pub fn send_raw_bytes(&mut self, bytes: &[u8]) -> io::Result<()> {
         use std::io::Write;
         self.stream.write_all(bytes)
+    }
+
+    pub(crate) fn enable_outbound_packet_queue(&mut self) {
+        self.outbound_packet_queue_enabled = true;
+    }
+
+    pub(crate) fn outbound_packet_queue_enabled(&self) -> bool {
+        self.outbound_packet_queue_enabled
+    }
+
+    #[cfg(test)]
+    pub(crate) fn queued_outbound_packet_count(&self) -> usize {
+        self.outbound_packet_queue.len()
+    }
+
+    pub(crate) fn enqueue_outbound_packet(&mut self, packet_id: i32, payload: Vec<u8>) {
+        self.outbound_packet_queue.push_back(QueuedOutboundPacket {
+            state: self.state,
+            packet_id,
+            payload,
+        });
+    }
+
+    pub(crate) fn flush_outbound_packets(&mut self) -> io::Result<usize> {
+        let mut flushed_packets = 0;
+        while let Some(packet) = self.outbound_packet_queue.pop_front() {
+            self.state = packet.state;
+            self.send_packet_immediately(packet.packet_id, &packet.payload)?;
+            flushed_packets += 1;
+        }
+        Ok(flushed_packets)
+    }
+
+    pub(crate) fn send_packet_immediately(&mut self, id: i32, payload: &[u8]) -> io::Result<()> {
+        self.encoder.write_frame(&mut self.stream, id, payload)
     }
 
     pub fn read_byte(&mut self) -> io::Result<i8> {

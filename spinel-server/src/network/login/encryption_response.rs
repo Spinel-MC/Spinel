@@ -1,6 +1,7 @@
 use crate::network::client::instance::Client;
 use crate::server::MinecraftServer;
 use ::rsa::Pkcs1v15Encrypt;
+use ::spinel_core::network::clientbound::login::disconnect::LoginDisconnectPacket;
 use ::spinel_core::network::clientbound::login::login_success::LoginSuccessPacket;
 use ::spinel_core::network::clientbound::login::set_compression::SetCompressionPacket;
 use ::spinel_core::network::serverbound::login::encryption_response::EncryptionResponsePacket;
@@ -121,10 +122,13 @@ impl<'a> EncryptionResponseHandler<'a> {
 
     fn disconnect_invalid_login_sequence(&mut self, log_message: String) -> bool {
         println!("{}", log_message);
-        if let Err(error) = self
-            .server
-            .disconnect(self.client, Component::text("Invalid login sequence."))
-        {
+        let disconnect_result =
+            LoginDisconnectPacket::new(Component::text("Invalid login sequence."))
+                .dispatch(self.client);
+        let client_address = self.client.addr;
+        self.client.disconnect();
+        self.server.on_disconnect(client_address);
+        if let Err(error) = disconnect_result {
             eprintln!(
                 "Failed to send disconnect packet to {}: {}",
                 self.client.addr, error

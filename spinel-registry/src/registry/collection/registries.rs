@@ -1,8 +1,8 @@
 use super::super::{dynamic::DynamicRegistry, static_registry::StaticRegistry};
 use crate::{
-    Identifier, Material, banner_pattern, biome, cat_variant, chat_type, chicken_variant,
-    cow_variant, damage_type, dialog, dimension_type, enchantment, frog_variant, instrument,
-    jukebox_song, painting_variant, pig_variant, timeline, trim_material, trim_pattern,
+    Identifier, Material, RegistryKey, banner_pattern, biome, cat_variant, chat_type,
+    chicken_variant, cow_variant, damage_type, dialog, dimension_type, enchantment, frog_variant,
+    instrument, jukebox_song, painting_variant, pig_variant, timeline, trim_material, trim_pattern,
     vanilla_biomes, vanilla_blocks, vanilla_dimension_types, vanilla_items, vanilla_world_blocks,
     wolf_sound_variant, wolf_variant, zombie_nautilus_variant,
 };
@@ -19,6 +19,7 @@ pub const DAMAGE_TYPE_REGISTRY: Identifier = Identifier::vanilla_static("damage_
 pub const DIALOG_REGISTRY: Identifier = Identifier::vanilla_static("dialog");
 pub const DIMENSION_TYPE_REGISTRY: Identifier = Identifier::vanilla_static("dimension_type");
 pub const ENCHANTMENT_REGISTRY: Identifier = Identifier::vanilla_static("enchantment");
+pub const ENTITY_TYPE_REGISTRY: Identifier = Identifier::vanilla_static("entity_type");
 pub const FROG_VARIANT_REGISTRY: Identifier = Identifier::vanilla_static("frog_variant");
 pub const INSTRUMENT_REGISTRY: Identifier = Identifier::vanilla_static("instrument");
 pub const JUKEBOX_SONG_REGISTRY: Identifier = Identifier::vanilla_static("jukebox_song");
@@ -105,6 +106,59 @@ impl Registries {
         &mut self.biomes
     }
 
+    pub fn dynamic_registry_id(
+        &self,
+        registry_name: &Identifier,
+        entry_name: &Identifier,
+    ) -> Option<i32> {
+        if registry_name == &DAMAGE_TYPE_REGISTRY {
+            return dynamic_registry_id_for(&self.damage_types, entry_name);
+        }
+        if registry_name == &BANNER_PATTERN_REGISTRY {
+            return dynamic_registry_id_for(&self.banner_patterns, entry_name);
+        }
+        if registry_name == &CAT_VARIANT_REGISTRY {
+            return dynamic_registry_id_for(&self.cat_variants, entry_name);
+        }
+        if registry_name == &CHICKEN_VARIANT_REGISTRY {
+            return dynamic_registry_id_for(&self.chicken_variants, entry_name);
+        }
+        if registry_name == &COW_VARIANT_REGISTRY {
+            return dynamic_registry_id_for(&self.cow_variants, entry_name);
+        }
+        if registry_name == &FROG_VARIANT_REGISTRY {
+            return dynamic_registry_id_for(&self.frog_variants, entry_name);
+        }
+        if registry_name == &INSTRUMENT_REGISTRY {
+            return dynamic_registry_id_for(&self.instruments, entry_name);
+        }
+        if registry_name == &JUKEBOX_SONG_REGISTRY {
+            return dynamic_registry_id_for(&self.jukebox_songs, entry_name);
+        }
+        if registry_name == &PAINTING_VARIANT_REGISTRY {
+            return dynamic_registry_id_for(&self.painting_variants, entry_name);
+        }
+        if registry_name == &PIG_VARIANT_REGISTRY {
+            return dynamic_registry_id_for(&self.pig_variants, entry_name);
+        }
+        if registry_name == &TRIM_MATERIAL_REGISTRY {
+            return dynamic_registry_id_for(&self.trim_materials, entry_name);
+        }
+        if registry_name == &TRIM_PATTERN_REGISTRY {
+            return dynamic_registry_id_for(&self.trim_patterns, entry_name);
+        }
+        if registry_name == &WOLF_SOUND_VARIANT_REGISTRY {
+            return dynamic_registry_id_for(&self.wolf_sound_variants, entry_name);
+        }
+        if registry_name == &WOLF_VARIANT_REGISTRY {
+            return dynamic_registry_id_for(&self.wolf_variants, entry_name);
+        }
+        if registry_name == &ZOMBIE_NAUTILUS_VARIANT_REGISTRY {
+            return dynamic_registry_id_for(&self.zombie_nautilus_variants, entry_name);
+        }
+        None
+    }
+
     pub fn freeze(&mut self) {
         self.blocks.freeze();
         self.items.freeze();
@@ -144,4 +198,11 @@ impl Default for Registries {
     fn default() -> Self {
         Self::new_vanilla()
     }
+}
+
+fn dynamic_registry_id_for<T>(
+    registry: &DynamicRegistry<T>,
+    entry_name: &Identifier,
+) -> Option<i32> {
+    registry.get_id(&RegistryKey::new(entry_name.clone()))
 }

@@ -1,4 +1,6 @@
 pub mod accept_teleportation;
+pub mod change_game_mode;
+pub mod chat_command;
 pub mod chunk_batch_received;
 pub mod client_tick_end;
 pub mod container_click;
@@ -9,7 +11,11 @@ pub mod move_player_pos_rot;
 pub mod move_player_rot;
 pub mod move_player_status_only;
 pub mod player_action;
+pub mod player_command;
+pub mod player_input;
 pub mod player_loaded;
 pub mod set_carried_item;
 pub mod set_creative_mode_slot;
+pub mod swing;
+pub mod use_item;
 pub mod use_item_on;

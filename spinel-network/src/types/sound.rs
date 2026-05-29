@@ -2,7 +2,7 @@ use crate::data_type::DataType;
 use crate::types::var_int::VarIntWrapper;
 use std::io::{self, Read, Write};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum SoundEvent {
     Id(i32),
     Named {

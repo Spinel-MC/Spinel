@@ -64,6 +64,9 @@ impl Player {
         )
         .dispatch(server, client);
         let _ = self.sync_slot(slot, client);
+        if self.slot_is_held_main_hand(slot) {
+            let _ = self.sync_main_hand_attributes(client);
+        }
         true
     }
 

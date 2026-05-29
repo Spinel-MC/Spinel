@@ -1,4 +1,4 @@
-use heck::{ToShoutySnakeCase, ToSnakeCase};
+use heck::{ToShoutySnakeCase, ToSnakeCase, ToUpperCamelCase};
 use std::{
     collections::{BTreeMap, BTreeSet},
     fs, io,
@@ -6,13 +6,17 @@ use std::{
 
 mod block_entries;
 mod dynamic_registry_assets;
+mod entity_entries;
 mod item_entries;
+mod sound_entries;
 mod tag_entries;
 mod tag_registry_specs;
 
 use block_entries::{block_entries_by_key, sorted_block_entries};
 use dynamic_registry_assets::DYNAMIC_REGISTRY_ASSETS;
+use entity_entries::entity_entries;
 use item_entries::item_entries;
+use sound_entries::sound_entries;
 
 const GENERATED_DIRECTORY: &str = "src/generated";
 const ASSETS_DIRECTORY: &str = "assets";
@@ -33,6 +37,8 @@ impl BuildScript {
         self.write("vanilla_world_blocks.rs", self.world_blocks()?);
         self.write("vanilla_blocks.rs", self.static_blocks()?);
         self.write("vanilla_items.rs", self.static_items()?);
+        self.write("vanilla_entity_types.rs", self.entity_types()?);
+        self.write("vanilla_sound_events.rs", self.sound_events()?);
         self.write("vanilla_materials.rs", self.materials()?);
         self.write(
             "vanilla_biomes.rs",
@@ -154,6 +160,109 @@ impl BuildScript {
         ))
     }
 
+    fn entity_types(&self) -> io::Result<String> {
+        let entity_types = entity_entries()?;
+        let constants = entity_types
+            .iter()
+            .map(|entity_type| {
+                format!(
+                    "    pub const {}: Self = Self::new({}, \"{}\", \"{}\", EntityPacketType::{}, {}, {}, {}, {}, {});\n",
+                    const_name(&entity_type.path),
+                    entity_type.id,
+                    entity_type.path,
+                    entity_type.translation_key,
+                    entity_type.packet_type.to_upper_camel_case(),
+                    rust_float(entity_type.width),
+                    rust_float(entity_type.height),
+                    rust_float(entity_type.eye_height),
+                    entity_type.client_tracking_range,
+                    entity_type.fire_immune
+                )
+            })
+            .collect::<String>();
+        let all = entity_types
+            .iter()
+            .map(|entity_type| format!("        Self::{},\n", const_name(&entity_type.path)))
+            .collect::<String>();
+        let attachment_tables = entity_types
+            .iter()
+            .map(|entity_type| self.entity_attachment_table(entity_type))
+            .collect::<String>();
+        let attachment_matches = entity_types
+            .iter()
+            .map(|entity_type| {
+                format!(
+                    "            Self::{} => {}_ATTACHMENTS,\n",
+                    const_name(&entity_type.path),
+                    const_name(&entity_type.path)
+                )
+            })
+            .collect::<String>();
+        Ok(format!(
+            "use crate::entity::{{EntityAttachmentOffset, EntityPacketType, EntityType}};\n{attachment_tables}impl EntityType {{\n{constants}    pub const ALL: &'static [Self] = &[\n{all}    ];\n    pub fn attachments(self) -> &'static [EntityAttachmentOffset] {{\n        match self {{\n{attachment_matches}            _ => &[],\n        }}\n    }}\n}}\n"
+        ))
+    }
+
+    fn sound_events(&self) -> io::Result<String> {
+        let sound_events = sound_entries()?;
+        let constants = sound_events
+            .iter()
+            .map(|sound_event| {
+                format!(
+                    "    pub const {}: Self = Self::new({}, Identifier::vanilla_static(\"{}\"));\n",
+                    const_name(&sound_event.name),
+                    sound_event.id,
+                    sound_event.name
+                )
+            })
+            .collect::<String>();
+        let id_matches = sound_events
+            .iter()
+            .map(|sound_event| {
+                format!(
+                    "            {} => Some(Self::{}),\n",
+                    sound_event.id,
+                    const_name(&sound_event.name)
+                )
+            })
+            .collect::<String>();
+        let key_matches = sound_events
+            .iter()
+            .map(|sound_event| {
+                format!(
+                    "            \"{}\" => Some(Self::{}),\n",
+                    sound_event.name,
+                    const_name(&sound_event.name)
+                )
+            })
+            .collect::<String>();
+        Ok(format!(
+            "use crate::{{BuiltinSoundEvent, Identifier}};\nimpl BuiltinSoundEvent {{\n{constants}    pub fn from_id(id: i32) -> Option<Self> {{\n        match id {{\n{id_matches}            _ => None,\n        }}\n    }}\n    pub fn from_key(key: &Identifier) -> Option<Self> {{\n        match key.path.as_ref() {{\n{key_matches}            _ => None,\n        }}\n    }}\n}}\n"
+        ))
+    }
+
+    fn entity_attachment_table(&self, entity_type: &entity_entries::EntityEntry) -> String {
+        let attachments = entity_type
+            .attachments
+            .iter()
+            .filter(|(_, offset)| offset.len() == 3)
+            .map(|(name, offset)| {
+                format!(
+                    "    EntityAttachmentOffset::new(\"{}\", {}, {}, {}),\n",
+                    name,
+                    rust_float(offset[0]),
+                    rust_float(offset[1]),
+                    rust_float(offset[2])
+                )
+            })
+            .collect::<String>();
+        format!(
+            "const {}_ATTACHMENTS: &'static [EntityAttachmentOffset] = &[\n{}];\n",
+            const_name(&entity_type.path),
+            attachments
+        )
+    }
+
     fn materials(&self) -> io::Result<String> {
         let items = item_entries()?;
         let block_paths = block_entries_by_key()?
@@ -170,21 +279,36 @@ impl BuildScript {
                     .map(|block| format!("Some(Block::{})", const_name(block)))
                     .unwrap_or_else(|| "None".to_string());
                 format!(
-                    "    pub const {}: Self = Self::new({}, Identifier::vanilla_static(\"{}\"), {}, {});\n",
+                    "    pub const {}: Self = Self::new({}, Identifier::vanilla_static(\"{}\"), {});\n",
                     const_name(&item.path),
                     item.id,
                     item.path,
-                    block,
-                    item.max_stack_size
+                    block
                 )
             })
             .collect::<String>();
-        let all = items
+        let id_matches = items
             .iter()
-            .map(|item| format!("        Self::{},\n", const_name(&item.path)))
+            .map(|item| {
+                format!(
+                    "            {} => Some(Self::{}),\n",
+                    item.id,
+                    const_name(&item.path)
+                )
+            })
+            .collect::<String>();
+        let key_matches = items
+            .iter()
+            .map(|item| {
+                format!(
+                    "            \"{}\" => Some(Self::{}),\n",
+                    item.path,
+                    const_name(&item.path)
+                )
+            })
             .collect::<String>();
         Ok(format!(
-            "use crate::{{Identifier, Material}};\nuse crate::vanilla_world_blocks::Block;\nimpl Material {{\n{constants}    pub const ALL: &'static [Self] = &[\n{all}    ];\n    pub fn from_id(id: i32) -> Option<Self> {{\n        Self::ALL.iter().find(|material| material.id() == id).cloned()\n    }}\n    pub fn from_key(key: &str) -> Option<Self> {{\n        Self::ALL.iter().find(|material| material.key().path == key || material.key().to_string() == key).cloned()\n    }}\n}}\n"
+            "use crate::{{Identifier, Material}};\nuse crate::vanilla_world_blocks::Block;\nimpl Material {{\n{constants}    pub fn from_id(id: i32) -> Option<Self> {{\n        match id {{\n{id_matches}            _ => None,\n        }}\n    }}\n    pub fn from_key(key: &str) -> Option<Self> {{\n        let material_path = key.strip_prefix(\"minecraft:\").unwrap_or(key);\n        match material_path {{\n{key_matches}            _ => None,\n        }}\n    }}\n}}\n"
         ))
     }
 
@@ -232,4 +356,12 @@ fn const_name(key: &str) -> String {
         return format!("_{name}");
     }
     name
+}
+
+fn rust_float(value: f64) -> String {
+    let value_text = value.to_string();
+    if value_text.contains('.') {
+        return value_text;
+    }
+    format!("{value_text}.0")
 }

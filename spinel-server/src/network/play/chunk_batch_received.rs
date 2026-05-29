@@ -5,9 +5,12 @@ use spinel_macros::packet_listener;
 
 #[packet_listener]
 fn on_chunk_batch_received(
-    _client: &mut Client,
-    _packet: ChunkBatchReceivedPacket,
-    _server: &mut MinecraftServer,
+    client: &mut Client,
+    packet: ChunkBatchReceivedPacket,
+    server: &mut MinecraftServer,
 ) -> bool {
+    if let Some(player) = server.world_manager.player_mut_for_client(client) {
+        player.on_chunk_batch_received(packet.desired_chunks_per_tick);
+    }
     true
 }

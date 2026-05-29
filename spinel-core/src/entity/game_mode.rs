@@ -1,3 +1,5 @@
+use spinel_network::DataType;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum GameMode {
     Survival,
@@ -24,5 +26,33 @@ impl GameMode {
             3 => Some(Self::Spectator),
             _ => None,
         }
+    }
+
+    pub const fn allows_flying(self) -> bool {
+        matches!(self, Self::Creative | Self::Spectator)
+    }
+
+    pub const fn has_instant_break(self) -> bool {
+        matches!(self, Self::Creative)
+    }
+
+    pub const fn is_invulnerable(self) -> bool {
+        matches!(self, Self::Creative | Self::Spectator)
+    }
+}
+
+impl DataType for GameMode {
+    fn encode<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
+        self.id().encode(writer)
+    }
+
+    fn decode<R: std::io::Read>(reader: &mut R) -> std::io::Result<Self> {
+        let game_mode_id = u8::decode(reader)?;
+        Self::from_id(game_mode_id).ok_or_else(|| {
+            std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                format!("invalid game mode id {game_mode_id}"),
+            )
+        })
     }
 }

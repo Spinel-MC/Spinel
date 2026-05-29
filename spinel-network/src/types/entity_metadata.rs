@@ -7,13 +7,13 @@ use crate::types::var_int::VarIntWrapper;
 use crate::types::{GlobalPos, Position, Quaternionf, Slot, Vector3f};
 use crate::wrappers::JsonTextComponent;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct MetadataEntry {
     pub index: u8,
     pub value: MetadataValue,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum MetadataValue {
     Byte(i8),
     VarInt(i32),

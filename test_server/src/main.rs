@@ -7,9 +7,10 @@ use spinel::{
     },
 };
 
-use crate::biomes::example_biome::ExampleBiome;
+use crate::{biomes::example_biome::ExampleBiome, commands::spawn_command::SpawnCommand};
 
 pub mod biomes;
+pub mod commands;
 pub mod events;
 
 import_module!("minecraft:server_list_ping");
@@ -18,6 +19,7 @@ import_module!("minecraft:login");
 #[tokio::main]
 async fn main() {
     let mut server = MinecraftServer::new();
+    server.command_manager.register(SpawnCommand::command());
 
     let custom_biome_key = match server.register_biome(
         Identifier::minecraft("custom_biome"),

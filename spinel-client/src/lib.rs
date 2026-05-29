@@ -8,7 +8,7 @@ pub mod registry_manager;
 mod listeners;
 
 pub use entity::player::Player;
-pub use instance::MinecraftClient;
+pub use instance::{ClientPosition, MinecraftClient};
 
 use spinel_network::ConnectionState;
 use spinel_utils::Priority;

@@ -12,11 +12,7 @@ spinel-utils = { path = "../spinel-utils" }
 spinel-nbt = { path = "../spinel-nbt" }
 
 [build-dependencies]
-proc-macro2 = "1.0"
-quote = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 heck = "0.5.0"
-reqwest = { version = "0.13.1", features = ["blocking"] }
-zip = "0.6"
 spinel-utils = { path = "../spinel-utils" }
