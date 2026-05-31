@@ -108,8 +108,10 @@ impl MinecraftServer {
 
     fn tick(&mut self) {
         self.current_tick += 1;
+        self.scheduler().process_tick();
         let server_ptr = self as *mut Self as usize;
-        self.world_manager.tick(&self.registries, server_ptr);
         self.tick_connections();
+        self.world_manager.tick(&self.registries, server_ptr);
+        self.scheduler().process_tick_end();
     }
 }

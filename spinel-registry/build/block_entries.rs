@@ -26,6 +26,9 @@ fn extracted_block_entries() -> io::Result<Vec<BlockEntry>> {
             path: vanilla_path(&key).to_string(),
             id: block.id,
             state_id: block.default_state_id,
+            is_air: block.flags.air,
+            is_solid: block.flags.solid,
+            is_liquid: block.flags.liquid,
         })
         .collect())
 }
@@ -35,6 +38,9 @@ pub(crate) struct BlockEntry {
     pub(crate) path: String,
     pub(crate) id: i32,
     pub(crate) state_id: i32,
+    pub(crate) is_air: bool,
+    pub(crate) is_solid: bool,
+    pub(crate) is_liquid: bool,
 }
 
 #[derive(Deserialize)]
@@ -46,4 +52,12 @@ struct BlockExtraction {
 struct ExtractedBlock {
     id: i32,
     default_state_id: i32,
+    flags: ExtractedBlockFlags,
+}
+
+#[derive(Deserialize)]
+struct ExtractedBlockFlags {
+    air: bool,
+    solid: bool,
+    liquid: bool,
 }

@@ -88,12 +88,44 @@ impl BuildScript {
                 )
             })
             .collect::<String>();
+        let air_flags = blocks
+            .iter()
+            .map(|block| format!("            Self::{} => {},\n", block.variant, block.is_air))
+            .collect::<String>();
+        let solid_flags = blocks
+            .iter()
+            .map(|block| {
+                format!(
+                    "            Self::{} => {},\n",
+                    block.variant, block.is_solid
+                )
+            })
+            .collect::<String>();
+        let liquid_flags = blocks
+            .iter()
+            .map(|block| {
+                format!(
+                    "            Self::{} => {},\n",
+                    block.variant, block.is_liquid
+                )
+            })
+            .collect::<String>();
+        let emitted_light_levels = blocks
+            .iter()
+            .map(|block| {
+                format!(
+                    "            Self::{} => {},\n",
+                    block.variant,
+                    emitted_light_level(&block.path)
+                )
+            })
+            .collect::<String>();
         let all = blocks
             .iter()
             .map(|block| format!("            Self::{},\n", block.variant))
             .collect::<String>();
         Ok(format!(
-            "#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]\npub enum Block {{\n{variants}}}\nimpl Block {{\n    pub const ALL: &'static [Self] = &[\n{all}    ];\n    pub const fn state_id(self) -> i32 {{\n        match self {{\n{state_ids}        }}\n    }}\n    pub const fn path(self) -> &'static str {{\n        match self {{\n{paths}        }}\n    }}\n    pub const fn from_state_id(state_id: i32) -> Option<Self> {{\n        let mut block_index = 0usize;\n        while block_index < Self::ALL.len() {{\n            let block = Self::ALL[block_index];\n            if block.state_id() == state_id {{\n                return Some(block);\n            }}\n            block_index += 1;\n        }}\n        None\n    }}\n}}\n"
+            "#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]\npub enum Block {{\n{variants}}}\nimpl Block {{\n    pub const ALL: &'static [Self] = &[\n{all}    ];\n    pub const fn state_id(self) -> i32 {{\n        match self {{\n{state_ids}        }}\n    }}\n    pub const fn path(self) -> &'static str {{\n        match self {{\n{paths}        }}\n    }}\n    pub const fn is_air(self) -> bool {{\n        match self {{\n{air_flags}        }}\n    }}\n    pub const fn is_solid(self) -> bool {{\n        match self {{\n{solid_flags}        }}\n    }}\n    pub const fn is_liquid(self) -> bool {{\n        match self {{\n{liquid_flags}        }}\n    }}\n    pub const fn emitted_light_level(self) -> u8 {{\n        match self {{\n{emitted_light_levels}        }}\n    }}\n    pub const fn from_state_id(state_id: i32) -> Option<Self> {{\n        let mut block_index = 0usize;\n        while block_index < Self::ALL.len() {{\n            let block = Self::ALL[block_index];\n            if block.state_id() == state_id {{\n                return Some(block);\n            }}\n            block_index += 1;\n        }}\n        None\n    }}\n}}\n"
         ))
     }
 
@@ -344,6 +376,23 @@ fn vanilla_path(key: &str) -> &str {
 
 fn plural_snake(type_name: &str) -> String {
     format!("{}s", type_name.to_snake_case())
+}
+
+fn emitted_light_level(path: &str) -> u8 {
+    match path {
+        "beacon" | "conduit" | "end_gateway" | "end_portal" | "fire" | "glowstone"
+        | "jack_o_lantern" | "lantern" | "lava" | "sea_lantern" | "shroomlight" | "soul_fire"
+        | "campfire" | "soul_campfire" => 15,
+        "end_rod" | "torch" | "wall_torch" => 14,
+        "furnace" | "blast_furnace" | "smoker" | "respawn_anchor" => 13,
+        "redstone_torch" | "redstone_wall_torch" => 7,
+        "magma_block" | "brewing_stand" => 3,
+        "brown_mushroom" | "dragon_egg" | "ender_chest" => 1,
+        _ if path.ends_with("_froglight") => 15,
+        _ if path.ends_with("_candle") || path.ends_with("_candle_cake") => 3,
+        _ if path == "light" => 15,
+        _ => 0,
+    }
 }
 
 fn const_name(key: &str) -> String {

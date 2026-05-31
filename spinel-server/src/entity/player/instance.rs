@@ -13,6 +13,7 @@ use crate::events::player_game_mode_change::PlayerGameModeChangeEvent;
 use crate::events::player_swap_item::PlayerSwapItemEvent;
 use crate::inventory::{ClickPreprocessor, Inventory, PlayerInventory};
 use crate::network::client::instance::Client;
+use crate::scheduler::{ContextScheduler, Task, TaskSchedule};
 use crate::world::WorldHandle;
 use spinel_core::entity::game_mode::GameMode;
 use spinel_core::network::clientbound::play::chunk_data::ChunkDataAndUpdateLightPacket;
@@ -117,6 +118,7 @@ pub struct Player {
     pub(super) chunk_batch_lead: i32,
     pub(super) target_chunks_per_tick: f32,
     pub(super) pending_chunk_count: f32,
+    scheduler: ContextScheduler<Player>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -223,6 +225,7 @@ impl Player {
             chunk_batch_lead: 0,
             target_chunks_per_tick: 9.0,
             pending_chunk_count: 0.0,
+            scheduler: ContextScheduler::new(),
         }
     }
 
@@ -233,6 +236,17 @@ impl Player {
 
     pub const fn pending_spawning_world(&self) -> Option<Uuid> {
         self.pending_spawning_world
+    }
+
+    pub fn scheduler(&mut self) -> &mut ContextScheduler<Player> {
+        &mut self.scheduler
+    }
+
+    pub fn schedule_next_tick(
+        &mut self,
+        callback: impl FnMut(&mut Player) -> TaskSchedule + Send + 'static,
+    ) -> Task {
+        self.scheduler.schedule_next_tick(callback)
     }
 
     pub const fn current_world(&self) -> Option<Uuid> {
@@ -971,11 +985,26 @@ impl Player {
     }
 
     pub(crate) fn tick(&mut self) -> Option<crate::entity::player::PlayerItemUseCompletion> {
+        self.process_scheduler_tick_start();
         self.process_queued_packets_from_connection();
         let current_tick = self.last_completed_client_tick;
         self.item_cooldowns
             .retain(|_, cooldown_expires_at| *cooldown_expires_at > current_tick);
-        self.tick_item_use()
+        let item_use_completion = self.tick_item_use();
+        self.process_scheduler_tick_end();
+        item_use_completion
+    }
+
+    fn process_scheduler_tick_start(&mut self) {
+        let mut scheduler = std::mem::take(&mut self.scheduler);
+        scheduler.process_tick(self);
+        self.scheduler = scheduler;
+    }
+
+    fn process_scheduler_tick_end(&mut self) {
+        let mut scheduler = std::mem::take(&mut self.scheduler);
+        scheduler.process_tick_end(self);
+        self.scheduler = scheduler;
     }
 
     fn process_queued_packets_from_connection(&mut self) {

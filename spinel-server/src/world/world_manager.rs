@@ -16,6 +16,7 @@ use uuid::Uuid;
 pub struct WorldManager {
     worlds: Vec<World>,
     shared_worlds: Vec<SharedWorld>,
+    inactive_players: Vec<Player>,
     pending_player_world_transitions: VecDeque<PendingPlayerWorldTransition>,
     completed_player_world_transitions: Vec<u64>,
     next_player_world_transition_id: u64,
@@ -25,6 +26,7 @@ pub struct WorldManager {
 struct PendingPlayerWorldTransition {
     id: u64,
     player_uuid: Uuid,
+    current_world: Option<Uuid>,
     target_world: Uuid,
     position: EntityPosition,
     should_refresh_chunks: bool,
@@ -40,6 +42,7 @@ impl WorldManager {
         Self {
             worlds: Vec::new(),
             shared_worlds: Vec::new(),
+            inactive_players: Vec::new(),
             pending_player_world_transitions: VecDeque::new(),
             completed_player_world_transitions: Vec::new(),
             next_player_world_transition_id: 0,
@@ -209,6 +212,27 @@ impl WorldManager {
         self.set_entity_world_at_position(entity_id, target_world, position)
     }
 
+    pub fn add_inactive_player(&mut self, player: Player) -> bool {
+        if self
+            .inactive_players
+            .iter()
+            .any(|stored_player| stored_player.uuid() == player.uuid())
+        {
+            return false;
+        }
+        if self.player_world_uuid(player.uuid()).is_some() {
+            return false;
+        }
+        self.inactive_players.push(player);
+        true
+    }
+
+    pub fn inactive_player(&self, player_uuid: Uuid) -> Option<&Player> {
+        self.inactive_players
+            .iter()
+            .find(|player| player.uuid() == player_uuid)
+    }
+
     pub fn set_entity_world_at_point(
         &mut self,
         entity_id: EntityId,
@@ -288,16 +312,18 @@ impl WorldManager {
         position: EntityPosition,
     ) -> io::Result<PlayerWorldTransitionTicket> {
         self.ensure_world_is_registered(target_world)?;
-        let current_world = self
-            .player_world_uuid(player_uuid)
-            .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "Player not found."))?;
-        if current_world == target_world {
+        let current_world = self.player_world_uuid(player_uuid);
+        if current_world == Some(target_world) {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidInput,
                 "Instance should be different than the current one",
             ));
         }
-        let should_refresh_chunks = !self.worlds_are_linked(current_world, target_world)
+        if current_world.is_none() && self.inactive_player(player_uuid).is_none() {
+            return Err(io::Error::new(io::ErrorKind::NotFound, "Player not found."));
+        }
+        let should_refresh_chunks = current_world.is_none()
+            || !self.worlds_are_linked(current_world.unwrap(), target_world)
             || !player_position_is_in_same_chunk(
                 self.player_position(player_uuid).unwrap_or(position),
                 position,
@@ -311,6 +337,7 @@ impl WorldManager {
             .push_back(PendingPlayerWorldTransition {
                 id: ticket.id,
                 player_uuid,
+                current_world,
                 target_world,
                 position,
                 should_refresh_chunks,
@@ -350,25 +377,21 @@ impl WorldManager {
         transition: PendingPlayerWorldTransition,
         registries: &Registries,
     ) -> io::Result<()> {
-        let current_world = self
-            .player_world_uuid(transition.player_uuid)
-            .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "Player not found."))?;
-        if current_world == transition.target_world {
+        let current_world = transition.current_world;
+        if current_world == Some(transition.target_world) {
             self.completed_player_world_transitions.push(transition.id);
             return Ok(());
         }
         if let Some((player_id, player_uuid)) = self
-            .world(current_world)
+            .world(current_world.unwrap_or(transition.target_world))
             .and_then(|world| world.player_by_uuid(transition.player_uuid))
             .map(|player| (player.entity_id(), player.uuid()))
         {
-            self.world_mut(current_world)
+            self.world_mut(current_world.unwrap())
                 .unwrap()
                 .send_player_remove_to_viewers(player_id, player_uuid)?;
         }
-        let Some(mut player) = self
-            .world_mut(current_world)
-            .and_then(|world| world.take_player_by_uuid(transition.player_uuid))
+        let Some(mut player) = self.take_transition_player(transition.player_uuid, current_world)
         else {
             return Err(io::Error::new(io::ErrorKind::NotFound, "Player not found."));
         };
@@ -380,10 +403,8 @@ impl WorldManager {
             .world(transition.target_world)
             .map(|world| world.name().clone())
             .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "Target world not found."))?;
-        let current_world_name = self
-            .world(current_world)
-            .map(|world| world.name().clone())
-            .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "Current world not found."))?;
+        let current_world_name =
+            current_world.and_then(|world| self.world(world).map(|world| world.name().clone()));
         let target_time_packet = self
             .world(transition.target_world)
             .map(World::time_packet)
@@ -404,7 +425,9 @@ impl WorldManager {
                 .filter(|client| client.state == spinel_network::ConnectionState::Play)
                 .map(|client| client as *mut Client);
             if let Some(client_ptr) = client_ptr {
-                let dimension_change = current_world_name != target_world_name;
+                let dimension_change = current_world_name
+                    .as_ref()
+                    .is_some_and(|current_world_name| current_world_name != &target_world_name);
                 player.spawn_after_instance_transition(
                     unsafe { &mut *client_ptr },
                     target_world_name,
@@ -457,24 +480,53 @@ impl WorldManager {
     }
 
     fn player_set_instance_default_position(&self, player_uuid: Uuid) -> Option<EntityPosition> {
-        self.worlds
+        if let Some(position) = self
+            .worlds
             .iter()
             .chain(self.shared_worlds.iter().map(SharedWorld::world))
             .find_map(|world| {
-                world.player_by_uuid(player_uuid).map(|player| {
-                    if player.current_world().is_some() {
-                        return player.position();
-                    }
-                    let respawn_point = player.respawn_point();
-                    EntityPosition::new(
-                        respawn_point.x,
-                        respawn_point.y,
-                        respawn_point.z,
-                        respawn_point.yaw,
-                        respawn_point.pitch,
-                    )
-                })
+                world
+                    .player_by_uuid(player_uuid)
+                    .map(|player| player.position())
             })
+        {
+            return Some(position);
+        }
+        self.inactive_player(player_uuid).map(|player| {
+            let respawn_point = player.respawn_point();
+            EntityPosition::new(
+                respawn_point.x,
+                respawn_point.y,
+                respawn_point.z,
+                respawn_point.yaw,
+                respawn_point.pitch,
+            )
+        })
+    }
+
+    fn take_transition_player(
+        &mut self,
+        player_uuid: Uuid,
+        current_world: Option<Uuid>,
+    ) -> Option<Player> {
+        if let Some(current_world) = current_world {
+            return self
+                .world_mut(current_world)
+                .and_then(|world| world.take_player_by_uuid(player_uuid));
+        }
+        let player_index = self
+            .inactive_players
+            .iter()
+            .position(|player| player.uuid() == player_uuid)?;
+        Some(self.inactive_players.remove(player_index))
+    }
+
+    fn player_for_target_chunks(&self, player_uuid: Uuid) -> Option<&Player> {
+        self.worlds
+            .iter()
+            .chain(self.shared_worlds.iter().map(SharedWorld::world))
+            .find_map(|world| world.player_by_uuid(player_uuid))
+            .or_else(|| self.inactive_player(player_uuid))
     }
 
     fn player_target_chunks(
@@ -484,10 +536,7 @@ impl WorldManager {
         position: EntityPosition,
     ) -> io::Result<Vec<PlayerChunk>> {
         let player = self
-            .worlds
-            .iter()
-            .chain(self.shared_worlds.iter().map(SharedWorld::world))
-            .find_map(|world| world.player_by_uuid(player_uuid))
+            .player_for_target_chunks(player_uuid)
             .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "Player not found."))?;
         let target_view_distance = self
             .world(target_world)

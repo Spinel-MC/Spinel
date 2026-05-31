@@ -169,6 +169,39 @@ impl ChunkSection {
         self.block_light_invalidated = true;
     }
 
+    pub(crate) fn relight_block_light(&mut self) -> bool {
+        if !self.block_light_invalidated {
+            return false;
+        }
+        let mut light = vec![0; CHUNK_SECTION_LIGHT_BYTES];
+        (0..CHUNK_SECTION_BLOCK_COUNT).for_each(|block_index| {
+            let block = self.blocks.get(block_index).unwrap_or(Block::AIR);
+            Self::set_light_level(&mut light, block_index, block.emitted_light_level());
+        });
+        self.block_light = light;
+        self.block_light_invalidated = false;
+        true
+    }
+
+    pub(crate) fn relight_sky_light(&mut self) -> bool {
+        if !self.sky_light_invalidated {
+            return false;
+        }
+        let mut light = vec![0; CHUNK_SECTION_LIGHT_BYTES];
+        (0..CHUNK_SECTION_BLOCK_COUNT).for_each(|block_index| {
+            let block = self.blocks.get(block_index).unwrap_or(Block::AIR);
+            let light_level = if block.is_solid() && !block.is_liquid() {
+                0
+            } else {
+                15
+            };
+            Self::set_light_level(&mut light, block_index, light_level);
+        });
+        self.sky_light = light;
+        self.sky_light_invalidated = false;
+        true
+    }
+
     pub fn sky_light_is_invalidated(&self) -> bool {
         self.sky_light_invalidated
     }
@@ -325,6 +358,18 @@ impl ChunkSection {
             return light_byte & 15;
         }
         light_byte >> 4
+    }
+
+    fn set_light_level(light: &mut [u8], block_index: usize, level: u8) {
+        let Some(light_byte) = light.get_mut(block_index / 2) else {
+            return;
+        };
+        let level = level.min(15);
+        if block_index % 2 == 0 {
+            *light_byte = (*light_byte & 240) | level;
+            return;
+        }
+        *light_byte = (*light_byte & 15) | (level << 4);
     }
 
     fn biome_index(x: i32, y: i32, z: i32) -> Option<usize> {

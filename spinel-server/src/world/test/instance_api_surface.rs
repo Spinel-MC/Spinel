@@ -1,4 +1,4 @@
-use crate::entity::{Entity, EntityPosition, Player};
+use crate::entity::{Entity, EntityPosition, Player, PlayerSpawnPoint};
 use crate::network::client::instance::Client;
 use crate::server::MinecraftServer;
 use crate::world::{
@@ -12,6 +12,7 @@ use spinel_core::network::clientbound::play::block_update::BlockUpdatePacket;
 use spinel_core::network::clientbound::play::boss_bar::BossBarPacket;
 use spinel_core::network::clientbound::play::entity_sound_effect::EntitySoundEffectPacket;
 use spinel_core::network::clientbound::play::explosion::ExplosionPacket;
+use spinel_core::network::clientbound::play::game_event::GameEventPacket;
 use spinel_core::network::clientbound::play::initialize_world_border::InitializeWorldBorderPacket;
 use spinel_core::network::clientbound::play::login_play::LoginPlayPacket;
 use spinel_core::network::clientbound::play::player_info_remove::PlayerInfoRemovePacket;
@@ -125,6 +126,28 @@ fn world_light_reads_match_loaded_chunk_and_missing_chunk_edges() {
 
     assert_eq!(world.block_light(BlockPosition::new(-1, 64, -1)), 0);
     assert_eq!(world.sky_light(BlockPosition::new(-1, 64, -1)), 15);
+}
+
+#[test]
+fn invalidated_light_relights_before_reading_levels() {
+    let mut world = World::new(Identifier::minecraft("overworld"));
+    let lit_position = BlockPosition::new(0, 64, 0);
+    let solid_position = BlockPosition::new(1, 64, 0);
+    let chunk_position = ChunkPosition::new(0, 0);
+
+    world.load_chunk(chunk_position).unwrap();
+    world.set_block(lit_position, Block::GLOWSTONE).unwrap();
+    world.set_block(solid_position, Block::STONE).unwrap();
+
+    assert_eq!(world.block_light(lit_position), 15);
+    assert_eq!(world.sky_light(solid_position), 0);
+
+    let chunk = world.chunk(chunk_position).unwrap();
+    let section = chunk.section_at_block_y(64).unwrap();
+
+    assert!(!section.block_light_is_invalidated());
+    assert!(!section.sky_light_is_invalidated());
+    assert!(chunk.is_invalidated());
 }
 
 #[test]
@@ -1487,6 +1510,66 @@ fn player_set_instance_rejects_same_world_and_completes_on_next_manager_tick() {
 }
 
 #[test]
+fn inactive_player_set_instance_default_uses_respawn_point() {
+    let mut server = MinecraftServer::new();
+    let target_world = server
+        .world_manager
+        .create_world(Identifier::minecraft("target"));
+    server
+        .world_manager
+        .world_mut(target_world)
+        .unwrap()
+        .set_view_distance(0);
+    let mut client = test_client();
+    client.state = ConnectionState::Play;
+    client.enable_outbound_packet_queue();
+    let mut player = Player::new(Uuid::new_v4(), "Inactive".to_string(), 0, client.addr);
+    let player_uuid = player.uuid();
+    player.set_client(&mut client);
+    player.set_respawn_point(PlayerSpawnPoint::new(32.0, 70.0, -16.0, 45.0, 20.0));
+
+    assert!(server.world_manager.add_inactive_player(player));
+
+    let ticket = server
+        .world_manager
+        .set_player_world_future(player_uuid, target_world)
+        .unwrap();
+    let registries = Registries::new_vanilla();
+    let server_ptr = &mut server as *mut MinecraftServer as usize;
+    server.world_manager.tick(&registries, server_ptr);
+
+    let player = server
+        .world_manager
+        .world(target_world)
+        .unwrap()
+        .player_by_uuid(player_uuid)
+        .unwrap();
+
+    assert!(
+        server
+            .world_manager
+            .player_world_transition_is_complete(ticket)
+    );
+    assert_eq!(player.position().x(), 32.0);
+    assert_eq!(player.position().y(), 70.0);
+    assert_eq!(player.position().z(), -16.0);
+    assert_eq!(player.position().yaw(), 45.0);
+    assert_eq!(player.position().pitch(), 20.0);
+    assert!(server.world_manager.inactive_player(player_uuid).is_none());
+
+    let packet_ids = client.queued_outbound_packet_ids();
+    assert!(!packet_ids.contains(&RespawnPacket::get_id()));
+    assert_packet_order(
+        &packet_ids,
+        &[
+            SetChunkCacheCenterPacket::get_id(),
+            SyncPlayerPositionPacket::get_id(),
+            GameEventPacket::get_id(),
+        ],
+    );
+}
+
+#[test]
 fn player_set_instance_future_completes_after_spawn_packets_and_viewer_refresh() {
     let mut server = MinecraftServer::new();
     let first_world = server
@@ -1587,6 +1670,54 @@ fn player_set_instance_future_completes_after_spawn_packets_and_viewer_refresh()
             SetDefaultSpawnPositionPacket::get_id(),
             InitializeWorldBorderPacket::get_id(),
             SetTimePacket::get_id(),
+        ],
+    );
+}
+
+#[test]
+fn same_dimension_player_set_instance_does_not_send_respawn_packet() {
+    let mut server = MinecraftServer::new();
+    let first_world = server
+        .world_manager
+        .create_world(Identifier::minecraft("same_dimension"));
+    let second_world = server
+        .world_manager
+        .create_world(Identifier::minecraft("same_dimension"));
+    server
+        .world_manager
+        .world_mut(second_world)
+        .unwrap()
+        .set_view_distance(0);
+    let mut client = test_client();
+    client.state = ConnectionState::Play;
+    client.enable_outbound_packet_queue();
+    let mut player = Player::new(Uuid::new_v4(), "Moving".to_string(), 0, client.addr);
+    let player_uuid = player.uuid();
+    player.set_client(&mut client);
+    player.mark_entered_world();
+    server
+        .world_manager
+        .add_entity(first_world, Entity::Player(player));
+
+    server
+        .world_manager
+        .set_player_world_at_position(
+            player_uuid,
+            second_world,
+            EntityPosition::new(1.0, 65.0, 1.0, 0.0, 0.0),
+        )
+        .unwrap();
+    let registries = Registries::new_vanilla();
+    let server_ptr = &mut server as *mut MinecraftServer as usize;
+    server.world_manager.tick(&registries, server_ptr);
+
+    let packet_ids = client.queued_outbound_packet_ids();
+    assert!(!packet_ids.contains(&RespawnPacket::get_id()));
+    assert_packet_order(
+        &packet_ids,
+        &[
+            SetChunkCacheCenterPacket::get_id(),
+            SyncPlayerPositionPacket::get_id(),
         ],
     );
 }

@@ -212,6 +212,8 @@ impl Chunk {
             block,
         );
         if block_was_set {
+            section.invalidate_sky_light();
+            section.invalidate_block_light();
             self.update_tickable_block(position, block, handlers);
             if !ChunkSection::block_can_own_block_entity(block) {
                 self.remove_block_entity(position);
@@ -301,6 +303,28 @@ impl Chunk {
                 )
             })
             .unwrap_or_default()
+    }
+
+    pub fn relight_block_light_at(&mut self, block_y: i32) -> bool {
+        let Some(section) = self.section_at_block_y_mut(block_y) else {
+            return false;
+        };
+        let light_was_recalculated = section.relight_block_light();
+        if light_was_recalculated {
+            self.invalidate();
+        }
+        light_was_recalculated
+    }
+
+    pub fn relight_sky_light_at(&mut self, block_y: i32) -> bool {
+        let Some(section) = self.section_at_block_y_mut(block_y) else {
+            return false;
+        };
+        let light_was_recalculated = section.relight_sky_light();
+        if light_was_recalculated {
+            self.invalidate();
+        }
+        light_was_recalculated
     }
 
     pub fn invalidate_section(&mut self, section_y: i32) -> bool {

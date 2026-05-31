@@ -1,6 +1,7 @@
 use crate::entity::metadata::MetadataHolder;
 use crate::entity::{EntityId, EntityView, EquipmentSlot};
 use crate::network::client::instance::Client;
+use crate::scheduler::{ContextScheduler, Task, TaskSchedule};
 use spinel_core::network::clientbound::play::entity_head_look::EntityHeadLookPacket;
 use spinel_core::network::clientbound::play::entity_position::EntityPositionPacket;
 use spinel_core::network::clientbound::play::entity_position_and_rotation::EntityPositionAndRotationPacket;
@@ -34,6 +35,7 @@ pub struct GenericEntity {
     world: Option<Uuid>,
     removed: bool,
     ticks: u64,
+    scheduler: ContextScheduler<GenericEntity>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -82,6 +84,7 @@ impl GenericEntity {
             world: None,
             removed: false,
             ticks: 0,
+            scheduler: ContextScheduler::new(),
         }
     }
 
@@ -175,6 +178,17 @@ impl GenericEntity {
 
     pub const fn ticks(&self) -> u64 {
         self.ticks
+    }
+
+    pub fn scheduler(&mut self) -> &mut ContextScheduler<GenericEntity> {
+        &mut self.scheduler
+    }
+
+    pub fn schedule_next_tick(
+        &mut self,
+        callback: impl FnMut(&mut GenericEntity) -> TaskSchedule + Send + 'static,
+    ) -> Task {
+        self.scheduler.schedule_next_tick(callback)
     }
 
     pub fn switch_entity_type(&mut self, entity_type: EntityType) {
@@ -323,7 +337,21 @@ impl GenericEntity {
         if self.removed {
             return;
         }
+        self.process_scheduler_tick_start();
         self.ticks += 1;
+        self.process_scheduler_tick_end();
+    }
+
+    fn process_scheduler_tick_start(&mut self) {
+        let mut scheduler = std::mem::take(&mut self.scheduler);
+        scheduler.process_tick(self);
+        self.scheduler = scheduler;
+    }
+
+    fn process_scheduler_tick_end(&mut self) {
+        let mut scheduler = std::mem::take(&mut self.scheduler);
+        scheduler.process_tick_end(self);
+        self.scheduler = scheduler;
     }
 }
 

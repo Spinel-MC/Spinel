@@ -7,6 +7,7 @@ use crate::events::startup::StartupEvent;
 use crate::network::client::instance::Client;
 use crate::network::connection_manager::ConnectionManager;
 use crate::registry_cache::RegistryCache;
+use crate::scheduler::{Scheduler, Task, TaskSchedule};
 use crate::server::packet_router::PacketRouter;
 use crate::world::WorldManager;
 use spinel_network::ConnectionState;
@@ -28,6 +29,7 @@ pub struct MinecraftServer {
     pub ticks_per_second: u32,
     pub current_tick: u64,
     pub is_ticking: Arc<AtomicBool>,
+    scheduler: Scheduler,
     packet_router: PacketRouter,
 }
 
@@ -45,8 +47,36 @@ impl MinecraftServer {
             ticks_per_second: DEFAULT_TICKS_PER_SECOND,
             current_tick: 0,
             is_ticking: Arc::new(AtomicBool::new(false)),
+            scheduler: Scheduler::new(),
             packet_router: PacketRouter::new(),
         }
+    }
+
+    pub fn scheduler(&mut self) -> &mut Scheduler {
+        &mut self.scheduler
+    }
+
+    pub fn schedule_next_tick(&mut self, callback: impl FnMut() + Send + 'static) -> Task {
+        self.scheduler
+            .schedule_next_tick(callback, crate::scheduler::ExecutionType::TickStart)
+    }
+
+    pub fn schedule_end_of_tick(&mut self, callback: impl FnMut() + Send + 'static) -> Task {
+        self.scheduler.schedule_end_of_tick(callback)
+    }
+
+    pub fn schedule_task(
+        &mut self,
+        task: impl FnMut() + Send + 'static,
+        delay: TaskSchedule,
+        repeat: TaskSchedule,
+    ) -> Task {
+        self.scheduler.schedule_task(
+            task,
+            delay,
+            repeat,
+            crate::scheduler::ExecutionType::TickStart,
+        )
     }
 
     pub fn stop(&mut self) {

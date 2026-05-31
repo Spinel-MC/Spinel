@@ -587,12 +587,18 @@ impl World {
         &mut self.event_node
     }
 
-    pub fn schedule_next_tick(&mut self, callback: impl FnOnce(&mut World) + Send + 'static) {
-        self.scheduler.schedule_next_tick(callback);
+    pub fn schedule_next_tick(
+        &mut self,
+        callback: impl FnMut(&mut World) + Send + 'static,
+    ) -> crate::scheduler::Task {
+        self.scheduler.schedule_next_tick(callback)
     }
 
-    pub fn schedule_tick_end(&mut self, callback: impl FnOnce(&mut World) + Send + 'static) {
-        self.scheduler.schedule_tick_end(callback);
+    pub fn schedule_tick_end(
+        &mut self,
+        callback: impl FnMut(&mut World) + Send + 'static,
+    ) -> crate::scheduler::Task {
+        self.scheduler.schedule_tick_end(callback)
     }
 
     pub const fn time_packet(&self) -> SetTimePacket {
@@ -1933,13 +1939,15 @@ impl World {
     }
 
     fn process_next_tick_scheduler(&mut self) {
-        let callbacks = self.scheduler.take_next_tick_callbacks();
-        callbacks.into_iter().for_each(|callback| callback(self));
+        let mut scheduler = std::mem::take(&mut self.scheduler);
+        scheduler.process_tick(self);
+        self.scheduler = scheduler;
     }
 
     fn process_tick_end_scheduler(&mut self) {
-        let callbacks = self.scheduler.take_tick_end_callbacks();
-        callbacks.into_iter().for_each(|callback| callback(self));
+        let mut scheduler = std::mem::take(&mut self.scheduler);
+        scheduler.process_tick_end(self);
+        self.scheduler = scheduler;
     }
 
     fn touch_entity_blocks(&self, entity_id: EntityId, position: EntityPosition) {
@@ -2442,9 +2450,12 @@ impl World {
             .map(|chunk| chunk.block(position))
     }
 
-    pub fn block_light(&self, position: BlockPosition) -> u8 {
+    pub fn block_light(&mut self, position: BlockPosition) -> u8 {
         let chunk_position =
             ChunkPosition::new(position.x.div_euclid(16), position.z.div_euclid(16));
+        if let Some(chunk) = self.chunks.get_mut(&chunk_position) {
+            chunk.relight_block_light_at(position.y);
+        }
         self.chunks
             .get(&chunk_position)
             .filter(|chunk| chunk.is_loaded())
@@ -2452,9 +2463,12 @@ impl World {
             .unwrap_or_default()
     }
 
-    pub fn sky_light(&self, position: BlockPosition) -> u8 {
+    pub fn sky_light(&mut self, position: BlockPosition) -> u8 {
         let chunk_position =
             ChunkPosition::new(position.x.div_euclid(16), position.z.div_euclid(16));
+        if let Some(chunk) = self.chunks.get_mut(&chunk_position) {
+            chunk.relight_sky_light_at(position.y);
+        }
         self.chunks
             .get(&chunk_position)
             .filter(|chunk| chunk.is_loaded())

@@ -6,6 +6,7 @@ pub mod module_manager;
 pub mod modules;
 pub mod network;
 pub mod registry_cache;
+pub mod scheduler;
 pub mod server;
 pub mod world;
 
