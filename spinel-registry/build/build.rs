@@ -5,6 +5,7 @@ use std::{
 };
 
 mod block_entries;
+mod damage_type_entries;
 mod dynamic_registry_assets;
 mod entity_entries;
 mod item_entries;
@@ -110,6 +111,25 @@ impl BuildScript {
                 )
             })
             .collect::<String>();
+        let hardness_values = blocks
+            .iter()
+            .map(|block| {
+                format!(
+                    "            Self::{} => {},\n",
+                    block.variant,
+                    rust_f32(block.hardness)
+                )
+            })
+            .collect::<String>();
+        let requires_tool_flags = blocks
+            .iter()
+            .map(|block| {
+                format!(
+                    "            Self::{} => {},\n",
+                    block.variant, block.requires_tool
+                )
+            })
+            .collect::<String>();
         let emitted_light_levels = blocks
             .iter()
             .map(|block| {
@@ -125,7 +145,7 @@ impl BuildScript {
             .map(|block| format!("            Self::{},\n", block.variant))
             .collect::<String>();
         Ok(format!(
-            "#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]\npub enum Block {{\n{variants}}}\nimpl Block {{\n    pub const ALL: &'static [Self] = &[\n{all}    ];\n    pub const fn state_id(self) -> i32 {{\n        match self {{\n{state_ids}        }}\n    }}\n    pub const fn path(self) -> &'static str {{\n        match self {{\n{paths}        }}\n    }}\n    pub const fn is_air(self) -> bool {{\n        match self {{\n{air_flags}        }}\n    }}\n    pub const fn is_solid(self) -> bool {{\n        match self {{\n{solid_flags}        }}\n    }}\n    pub const fn is_liquid(self) -> bool {{\n        match self {{\n{liquid_flags}        }}\n    }}\n    pub const fn emitted_light_level(self) -> u8 {{\n        match self {{\n{emitted_light_levels}        }}\n    }}\n    pub const fn from_state_id(state_id: i32) -> Option<Self> {{\n        let mut block_index = 0usize;\n        while block_index < Self::ALL.len() {{\n            let block = Self::ALL[block_index];\n            if block.state_id() == state_id {{\n                return Some(block);\n            }}\n            block_index += 1;\n        }}\n        None\n    }}\n}}\n"
+            "#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]\npub enum Block {{\n{variants}}}\nimpl Block {{\n    pub const ALL: &'static [Self] = &[\n{all}    ];\n    pub const fn state_id(self) -> i32 {{\n        match self {{\n{state_ids}        }}\n    }}\n    pub const fn path(self) -> &'static str {{\n        match self {{\n{paths}        }}\n    }}\n    pub const fn is_air(self) -> bool {{\n        match self {{\n{air_flags}        }}\n    }}\n    pub const fn is_solid(self) -> bool {{\n        match self {{\n{solid_flags}        }}\n    }}\n    pub const fn is_liquid(self) -> bool {{\n        match self {{\n{liquid_flags}        }}\n    }}\n    pub const fn hardness(self) -> f32 {{\n        match self {{\n{hardness_values}        }}\n    }}\n    pub const fn requires_tool(self) -> bool {{\n        match self {{\n{requires_tool_flags}        }}\n    }}\n    pub const fn emitted_light_level(self) -> u8 {{\n        match self {{\n{emitted_light_levels}        }}\n    }}\n    pub const fn from_state_id(state_id: i32) -> Option<Self> {{\n        let mut block_index = 0usize;\n        while block_index < Self::ALL.len() {{\n            let block = Self::ALL[block_index];\n            if block.state_id() == state_id {{\n                return Some(block);\n            }}\n            block_index += 1;\n        }}\n        None\n    }}\n}}\n"
         ))
     }
 
@@ -151,7 +171,41 @@ impl BuildScript {
     }
 
     fn dynamic_registry_asset(&self, registry_path: &str, type_name: &str) -> io::Result<String> {
+        if type_name == "DamageType" {
+            return self.damage_types();
+        }
         Ok(self.dynamic_module(type_name, &self.dynamic_registry_keys(registry_path)?))
+    }
+
+    fn damage_types(&self) -> io::Result<String> {
+        let entries = damage_type_entries::damage_type_entries()?;
+        let constants = entries
+            .iter()
+            .map(|entry| {
+                format!(
+                    "    pub const {}: RegistryKey<Self> = RegistryKey::vanilla_static(\"{}\");\n",
+                    const_name(&entry.path),
+                    entry.path
+                )
+            })
+            .collect::<String>();
+        let registrations = entries
+            .iter()
+            .map(|entry| {
+                format!(
+                    "    let _ = registry.register_vanilla(DamageType::{}, DamageType::new(\"{}\", DamageScaling::{}, {}, DamageEffects::{}, DeathMessageType::{}));\n",
+                    const_name(&entry.path),
+                    entry.message_id,
+                    enum_variant(&entry.scaling),
+                    rust_f32(entry.exhaustion),
+                    enum_variant(&entry.effects),
+                    enum_variant(&entry.death_message_type),
+                )
+            })
+            .collect::<String>();
+        Ok(format!(
+            "use crate::{{DynamicRegistry, RegistryKey}};\nuse crate::damage_type::{{DamageEffects, DamageScaling, DamageType, DeathMessageType}};\nimpl DamageType {{\n{constants}}}\npub fn register_damage_types(registry: &mut DynamicRegistry<DamageType>) {{\n{registrations}}}\n"
+        ))
     }
 
     fn dynamic_module(&self, type_name: &str, keys: &[String]) -> String {
@@ -378,6 +432,10 @@ fn plural_snake(type_name: &str) -> String {
     format!("{}s", type_name.to_snake_case())
 }
 
+fn enum_variant(value: &str) -> String {
+    value.to_upper_camel_case()
+}
+
 fn emitted_light_level(path: &str) -> u8 {
     match path {
         "beacon" | "conduit" | "end_gateway" | "end_portal" | "fire" | "glowstone"
@@ -408,6 +466,14 @@ fn const_name(key: &str) -> String {
 }
 
 fn rust_float(value: f64) -> String {
+    let value_text = value.to_string();
+    if value_text.contains('.') {
+        return value_text;
+    }
+    format!("{value_text}.0")
+}
+
+fn rust_f32(value: f32) -> String {
     let value_text = value.to_string();
     if value_text.contains('.') {
         return value_text;

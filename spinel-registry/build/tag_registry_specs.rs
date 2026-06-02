@@ -27,6 +27,7 @@ const TAG_REGISTRY_SPECS: &[TagRegistrySpec] = &[
         "banner_pattern",
     ),
     spec("ENCHANTMENT_REGISTRY", "enchantments", "enchantment"),
+    spec("MOB_EFFECT_REGISTRY", "mob_effects", "mob_effect"),
     spec(
         "PAINTING_VARIANT_REGISTRY",
         "painting_variants",

@@ -91,6 +91,11 @@ pub(crate) const DYNAMIC_REGISTRY_ASSETS: &[DynamicRegistryAsset] = &[
         path: "enchantment",
     },
     DynamicRegistryAsset {
+        module_name: "vanilla_mob_effects.rs",
+        type_name: "MobEffect",
+        path: "mob_effect",
+    },
+    DynamicRegistryAsset {
         module_name: "vanilla_timelines.rs",
         type_name: "Timeline",
         path: "timeline",

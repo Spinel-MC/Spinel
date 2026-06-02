@@ -98,6 +98,12 @@ fn place_block(
     if !block_position_is_buildable(placement_position) {
         return rollback_block_change(interacted_position, sequence, server, client);
     }
+    if !server.block_position_is_inside_world_border(client, placement_position) {
+        return rollback_block_change(interacted_position, sequence, server, client);
+    }
+    if server.block_position_has_placement_collision(client, placement_position) {
+        return rollback_block_change(interacted_position, sequence, server, client);
+    }
     let Some(existing_block) = server.loaded_block_in_world(client, placement_position) else {
         return rollback_block_change(interacted_position, sequence, server, client);
     };

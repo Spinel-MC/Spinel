@@ -7,6 +7,7 @@ pub mod modules;
 pub mod network;
 pub mod registry_cache;
 pub mod scheduler;
+pub mod scoreboard;
 pub mod server;
 pub mod world;
 

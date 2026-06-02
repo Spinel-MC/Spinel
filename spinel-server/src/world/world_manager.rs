@@ -1,3 +1,4 @@
+use crate::entity::player::PlayerMessageType;
 use crate::entity::{Entity, EntityId, EntityPosition, PlayerChunk};
 use crate::entity::{Player, PlayerHand};
 use crate::network::client::instance::Client;
@@ -5,9 +6,10 @@ use crate::world::{
     BlockHandlerPlacement, BlockPosition, Chunk, ChunkLoader, ChunkPosition, SharedWorld, World,
     WorldHandle,
 };
-use spinel_network::types::Identifier;
+use spinel_network::types::{ClientInformation, Identifier};
 use spinel_registry::dimension_type::DimensionType;
 use spinel_registry::{Registries, RegistryKey};
+use spinel_utils::component::text::TextComponent;
 use std::collections::VecDeque;
 use std::io;
 use std::net::SocketAddr;
@@ -403,6 +405,10 @@ impl WorldManager {
             .world(transition.target_world)
             .map(|world| world.name().clone())
             .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "Target world not found."))?;
+        let target_dimension_type = self
+            .world(transition.target_world)
+            .map(|world| world.dimension_type().clone())
+            .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "Target world not found."))?;
         let current_world_name =
             current_world.and_then(|world| self.world(world).map(|world| world.name().clone()));
         let target_time_packet = self
@@ -418,6 +424,7 @@ impl WorldManager {
             target_view_distance,
             transition.should_refresh_chunks,
         );
+        player.set_dimension_type(target_dimension_type);
         let first_spawn = !player.has_entered_world();
         if transition.should_refresh_chunks {
             let client_ptr = player
@@ -729,6 +736,62 @@ impl WorldManager {
             .find_map(|world| world.player_pointer_by_addr(&client.addr))
     }
 
+    pub(crate) fn online_player_uuids(&self) -> Vec<Uuid> {
+        self.worlds
+            .iter()
+            .flat_map(World::players)
+            .filter(|player| player.is_online())
+            .map(Player::uuid)
+            .collect()
+    }
+
+    pub(crate) fn send_chat_message_to_recipients(
+        &mut self,
+        recipients: &[Uuid],
+        sender: Uuid,
+        message: TextComponent,
+    ) -> io::Result<()> {
+        self.worlds.iter_mut().try_for_each(|world| {
+            recipients.iter().try_for_each(|recipient| {
+                let Some(player) = world.player_by_uuid_mut(*recipient) else {
+                    return Ok(());
+                };
+                player.send_message_from(sender, message.clone(), PlayerMessageType::Chat)
+            })
+        })
+    }
+
+    pub(crate) fn client_world_contains_entity(
+        &self,
+        client: &Client,
+        entity_id: crate::entity::EntityId,
+    ) -> bool {
+        self.worlds
+            .iter()
+            .find(|world| world.player_by_addr(&client.addr).is_some())
+            .is_some_and(|world| world.entity_by_id(entity_id).is_some())
+    }
+
+    pub(crate) fn move_client_world_entity(
+        &mut self,
+        client: &Client,
+        entity_id: EntityId,
+        position: EntityPosition,
+    ) -> bool {
+        let Some(world) = self
+            .worlds
+            .iter_mut()
+            .find(|world| world.player_by_addr(&client.addr).is_some())
+        else {
+            return false;
+        };
+        let Some(entity) = world.entity_by_id_mut(entity_id) else {
+            return false;
+        };
+        entity.set_position(position);
+        true
+    }
+
     pub(crate) fn world_uuid_for_client(&self, client: &Client) -> Option<Uuid> {
         self.worlds
             .iter()
@@ -765,6 +828,28 @@ impl WorldManager {
             .iter()
             .find(|world| world.player_by_addr(&client.addr).is_some())
             .is_some_and(|world| world.block_position_is_loaded(position))
+    }
+
+    pub(crate) fn block_position_is_inside_world_border_for_client(
+        &self,
+        client: &Client,
+        position: crate::world::BlockPosition,
+    ) -> bool {
+        self.worlds
+            .iter()
+            .find(|world| world.player_by_addr(&client.addr).is_some())
+            .is_some_and(|world| world.block_position_is_inside_world_border(position))
+    }
+
+    pub(crate) fn block_position_has_placement_collision_for_client(
+        &self,
+        client: &Client,
+        position: crate::world::BlockPosition,
+    ) -> bool {
+        self.worlds
+            .iter()
+            .find(|world| world.player_by_addr(&client.addr).is_some())
+            .is_some_and(|world| world.block_position_has_placement_collision(position))
     }
 
     pub(crate) fn refresh_block_for_client(
@@ -1058,6 +1143,21 @@ impl WorldManager {
             return Err(io::Error::new(io::ErrorKind::NotFound, "Player not found."));
         };
         world.refresh_player_metadata(client)
+    }
+
+    pub(crate) fn refresh_player_settings(
+        &mut self,
+        client: &mut Client,
+        settings: ClientInformation,
+    ) -> io::Result<()> {
+        let Some(world) = self
+            .worlds
+            .iter_mut()
+            .find(|world| world.player_by_addr(&client.addr).is_some())
+        else {
+            return Err(io::Error::new(io::ErrorKind::NotFound, "Player not found."));
+        };
+        world.refresh_player_settings(client, settings)
     }
 }
 

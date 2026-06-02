@@ -1,0 +1,142 @@
+use spinel_network::network_buffer::NetworkBuffer;
+use spinel_network::{ConnectionState, DataType, PacketStruct, VarIntWrapper};
+use std::io::{self, Read, Write};
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct SignedCommandChatPacket {
+    pub command: String,
+    pub timestamp: i64,
+    pub salt: i64,
+    pub signatures: Vec<CommandArgumentSignature>,
+    pub ack_offset: i32,
+    pub ack_list: [u8; 3],
+    pub checksum: i8,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct CommandArgumentSignature {
+    pub argument_name: String,
+    pub signature: SignedCommandArgumentSignature,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct SignedCommandArgumentSignature(pub [u8; 256]);
+
+impl SignedCommandChatPacket {
+    pub const fn get_id() -> i32 {
+        0x07
+    }
+
+    pub const fn get_id_const() -> i32 {
+        Self::get_id()
+    }
+
+    pub const fn get_state_const() -> ConnectionState {
+        ConnectionState::Play
+    }
+
+    pub fn encode_to_buffer(&self) -> io::Result<NetworkBuffer> {
+        let mut buffer = NetworkBuffer::new();
+        buffer.encode(self)?;
+        Ok(buffer)
+    }
+}
+
+impl DataType for SignedCommandChatPacket {
+    fn encode<W: Write>(&self, writer: &mut W) -> io::Result<()> {
+        self.command.encode(writer)?;
+        self.timestamp.encode(writer)?;
+        self.salt.encode(writer)?;
+        self.signatures.encode(writer)?;
+        VarIntWrapper(self.ack_offset).encode(writer)?;
+        writer.write_all(&self.ack_list)?;
+        self.checksum.encode(writer)
+    }
+
+    fn decode<R: Read>(reader: &mut R) -> io::Result<Self> {
+        let command = String::decode(reader)?;
+        let timestamp = i64::decode(reader)?;
+        let salt = i64::decode(reader)?;
+        let signatures = Vec::<CommandArgumentSignature>::decode(reader)?;
+        let ack_offset = VarIntWrapper::decode(reader)?.0;
+        let mut ack_list = [0; 3];
+        reader.read_exact(&mut ack_list)?;
+        let checksum = i8::decode(reader)?;
+        Ok(Self {
+            command,
+            timestamp,
+            salt,
+            signatures,
+            ack_offset,
+            ack_list,
+            checksum,
+        })
+    }
+}
+
+impl DataType for CommandArgumentSignature {
+    fn encode<W: Write>(&self, writer: &mut W) -> io::Result<()> {
+        self.argument_name.encode(writer)?;
+        self.signature.encode(writer)
+    }
+
+    fn decode<R: Read>(reader: &mut R) -> io::Result<Self> {
+        Ok(Self {
+            argument_name: String::decode(reader)?,
+            signature: SignedCommandArgumentSignature::decode(reader)?,
+        })
+    }
+}
+
+impl DataType for SignedCommandArgumentSignature {
+    fn encode<W: Write>(&self, writer: &mut W) -> io::Result<()> {
+        writer.write_all(&self.0)
+    }
+
+    fn decode<R: Read>(reader: &mut R) -> io::Result<Self> {
+        let mut value = [0; 256];
+        reader.read_exact(&mut value)?;
+        Ok(Self(value))
+    }
+}
+
+impl PacketStruct for SignedCommandChatPacket {
+    fn get_id() -> i32 {
+        Self::get_id()
+    }
+
+    fn get_state() -> ConnectionState {
+        ConnectionState::Play
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        CommandArgumentSignature, SignedCommandArgumentSignature, SignedCommandChatPacket,
+    };
+    use spinel_network::DataType;
+
+    #[test]
+    fn signed_command_chat_packet_decodes_minestom_signature_and_ack_shape() {
+        let packet = SignedCommandChatPacket {
+            command: "spawn foo".to_owned(),
+            timestamp: 42,
+            salt: 99,
+            signatures: vec![CommandArgumentSignature {
+                argument_name: "foo".to_owned(),
+                signature: SignedCommandArgumentSignature([8; 256]),
+            }],
+            ack_offset: 2,
+            ack_list: [0, 1, 0],
+            checksum: 5,
+        };
+        let mut payload = Vec::new();
+
+        packet.encode(&mut payload).unwrap();
+        let decoded_packet = SignedCommandChatPacket::decode(&mut payload.as_slice()).unwrap();
+
+        assert_eq!(SignedCommandChatPacket::get_id(), 0x07);
+        assert_eq!(decoded_packet, packet);
+    }
+}

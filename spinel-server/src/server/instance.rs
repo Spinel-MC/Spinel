@@ -11,6 +11,7 @@ use crate::scheduler::{Scheduler, Task, TaskSchedule};
 use crate::server::packet_router::PacketRouter;
 use crate::world::WorldManager;
 use spinel_network::ConnectionState;
+use spinel_network::types::ClientInformation;
 use spinel_registry::Registries;
 use spinel_utils::component::Component;
 use std::io;
@@ -289,6 +290,14 @@ impl MinecraftServer {
         self.world_manager.refresh_player_metadata(client)
     }
 
+    pub(crate) fn refresh_player_settings_in_world(
+        &mut self,
+        client: &mut Client,
+        settings: ClientInformation,
+    ) -> io::Result<()> {
+        self.world_manager.refresh_player_settings(client, settings)
+    }
+
     pub(crate) fn world_uuid_for_client(&self, client: &Client) -> Option<uuid::Uuid> {
         self.world_manager.world_uuid_for_client(client)
     }
@@ -354,6 +363,24 @@ impl MinecraftServer {
     ) -> bool {
         self.world_manager
             .block_position_is_loaded_for_client(client, position)
+    }
+
+    pub(crate) fn block_position_is_inside_world_border(
+        &self,
+        client: &Client,
+        position: crate::world::BlockPosition,
+    ) -> bool {
+        self.world_manager
+            .block_position_is_inside_world_border_for_client(client, position)
+    }
+
+    pub(crate) fn block_position_has_placement_collision(
+        &self,
+        client: &Client,
+        position: crate::world::BlockPosition,
+    ) -> bool {
+        self.world_manager
+            .block_position_has_placement_collision_for_client(client, position)
     }
 
     pub(crate) fn refresh_block_in_world(

@@ -141,12 +141,27 @@ impl PlayerInventory {
         PlayerInventoryPacketSlot::Window(convert_minestom_slot_to_window_slot(slot))
     }
 
-    fn slot_for_equipment(&self, equipment_slot: EquipmentSlot, held_slot: i32) -> i32 {
+    pub fn slot_for_equipment(&self, equipment_slot: EquipmentSlot, held_slot: i32) -> i32 {
         match equipment_slot {
             EquipmentSlot::MainHand => held_slot,
             EquipmentSlot::OffHand => OFFHAND_SLOT,
             _ => equipment_slot.armor_slot(),
         }
+    }
+
+    pub fn equipment_slot_for_slot(&self, slot: i32, held_slot: i32) -> Option<EquipmentSlot> {
+        [
+            EquipmentSlot::MainHand,
+            EquipmentSlot::OffHand,
+            EquipmentSlot::Boots,
+            EquipmentSlot::Leggings,
+            EquipmentSlot::Chestplate,
+            EquipmentSlot::Helmet,
+            EquipmentSlot::Body,
+            EquipmentSlot::Saddle,
+        ]
+        .into_iter()
+        .find(|equipment_slot| self.slot_for_equipment(*equipment_slot, held_slot) == slot)
     }
 }
 

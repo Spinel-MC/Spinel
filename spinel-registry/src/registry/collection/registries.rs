@@ -2,9 +2,9 @@ use super::super::{dynamic::DynamicRegistry, static_registry::StaticRegistry};
 use crate::{
     Identifier, Material, RegistryKey, banner_pattern, biome, cat_variant, chat_type,
     chicken_variant, cow_variant, damage_type, dialog, dimension_type, enchantment, frog_variant,
-    instrument, jukebox_song, painting_variant, pig_variant, timeline, trim_material, trim_pattern,
-    vanilla_biomes, vanilla_blocks, vanilla_dimension_types, vanilla_items, vanilla_world_blocks,
-    wolf_sound_variant, wolf_variant, zombie_nautilus_variant,
+    instrument, jukebox_song, mob_effect, painting_variant, pig_variant, timeline, trim_material,
+    trim_pattern, vanilla_biomes, vanilla_blocks, vanilla_dimension_types, vanilla_items,
+    vanilla_world_blocks, wolf_sound_variant, wolf_variant, zombie_nautilus_variant,
 };
 
 pub const BLOCKS_REGISTRY: Identifier = Identifier::vanilla_static("block");
@@ -23,6 +23,7 @@ pub const ENTITY_TYPE_REGISTRY: Identifier = Identifier::vanilla_static("entity_
 pub const FROG_VARIANT_REGISTRY: Identifier = Identifier::vanilla_static("frog_variant");
 pub const INSTRUMENT_REGISTRY: Identifier = Identifier::vanilla_static("instrument");
 pub const JUKEBOX_SONG_REGISTRY: Identifier = Identifier::vanilla_static("jukebox_song");
+pub const MOB_EFFECT_REGISTRY: Identifier = Identifier::vanilla_static("mob_effect");
 pub const PAINTING_VARIANT_REGISTRY: Identifier = Identifier::vanilla_static("painting_variant");
 pub const PIG_VARIANT_REGISTRY: Identifier = Identifier::vanilla_static("pig_variant");
 pub const TIMELINE_REGISTRY: Identifier = Identifier::vanilla_static("timeline");
@@ -56,6 +57,7 @@ pub struct Registries {
     pub(super) wolf_sound_variants: DynamicRegistry<wolf_sound_variant::WolfSoundVariant>,
     pub(super) dialogs: DynamicRegistry<dialog::Dialog>,
     pub(super) enchantments: DynamicRegistry<enchantment::Enchantment>,
+    pub(super) mob_effects: DynamicRegistry<mob_effect::MobEffect>,
     pub(super) timelines: DynamicRegistry<timeline::Timeline>,
     pub(super) zombie_nautilus_variants:
         DynamicRegistry<zombie_nautilus_variant::ZombieNautilusVariant>,
@@ -93,6 +95,7 @@ impl Registries {
             wolf_sound_variants: DynamicRegistry::new(WOLF_SOUND_VARIANT_REGISTRY),
             dialogs: DynamicRegistry::new(DIALOG_REGISTRY),
             enchantments: DynamicRegistry::new(ENCHANTMENT_REGISTRY),
+            mob_effects: DynamicRegistry::new(MOB_EFFECT_REGISTRY),
             timelines: DynamicRegistry::new(TIMELINE_REGISTRY),
             zombie_nautilus_variants: DynamicRegistry::new(ZOMBIE_NAUTILUS_VARIANT_REGISTRY),
         }
@@ -104,6 +107,24 @@ impl Registries {
 
     pub fn biome_mut(&mut self) -> &mut DynamicRegistry<biome::Biome> {
         &mut self.biomes
+    }
+
+    pub fn damage_type(
+        &self,
+        key: &RegistryKey<damage_type::DamageType>,
+    ) -> Option<&damage_type::DamageType> {
+        self.damage_types.get(key)
+    }
+
+    pub fn mob_effect_id(&self, key: &RegistryKey<mob_effect::MobEffect>) -> Option<i32> {
+        self.mob_effects.get_id(key)
+    }
+
+    pub fn mob_effect_key(&self, effect_id: i32) -> Option<&Identifier> {
+        self.mob_effects
+            .iter()
+            .find(|(entry_id, _)| *entry_id as i32 == effect_id)
+            .map(|(_, entry)| entry.key().key())
     }
 
     pub fn block_id(&self, block: &vanilla_world_blocks::Block) -> Option<i32> {
@@ -142,6 +163,9 @@ impl Registries {
         }
         if registry_name == &JUKEBOX_SONG_REGISTRY {
             return dynamic_registry_id_for(&self.jukebox_songs, entry_name);
+        }
+        if registry_name == &MOB_EFFECT_REGISTRY {
+            return dynamic_registry_id_for(&self.mob_effects, entry_name);
         }
         if registry_name == &PAINTING_VARIANT_REGISTRY {
             return dynamic_registry_id_for(&self.painting_variants, entry_name);
@@ -189,6 +213,7 @@ impl Registries {
         self.wolf_sound_variants.freeze();
         self.dialogs.freeze();
         self.enchantments.freeze();
+        self.mob_effects.freeze();
         self.timelines.freeze();
         self.zombie_nautilus_variants.freeze();
     }

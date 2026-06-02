@@ -2,7 +2,7 @@ use crate::inventory::slot_conversion::{BOOTS_SLOT, CHESTPLATE_SLOT, HELMET_SLOT
 use spinel_core::network::clientbound::play::set_equipment::EntityEquipmentSlot;
 use spinel_registry::EquippableSlot;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum EquipmentSlot {
     MainHand,
     OffHand,

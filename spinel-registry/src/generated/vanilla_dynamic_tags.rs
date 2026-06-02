@@ -2129,6 +2129,9 @@ const ENCHANTMENT_REGISTRY_TAGS: GeneratedTagTable = &[
     ]),
 ];
 
+const MOB_EFFECT_REGISTRY_TAGS: GeneratedTagTable = &[
+];
+
 const PAINTING_VARIANT_REGISTRY_TAGS: GeneratedTagTable = &[
     ("minecraft:placeable", &[
         "minecraft:alban",
@@ -12076,6 +12079,7 @@ impl Registries {
             RegistryTags::new(TRIM_PATTERN_REGISTRY, dynamic_registry_tags(&self.trim_patterns, TRIM_PATTERN_REGISTRY, TRIM_PATTERN_REGISTRY_TAGS)?),
             RegistryTags::new(BANNER_PATTERN_REGISTRY, dynamic_registry_tags(&self.banner_patterns, BANNER_PATTERN_REGISTRY, BANNER_PATTERN_REGISTRY_TAGS)?),
             RegistryTags::new(ENCHANTMENT_REGISTRY, dynamic_registry_tags(&self.enchantments, ENCHANTMENT_REGISTRY, ENCHANTMENT_REGISTRY_TAGS)?),
+            RegistryTags::new(MOB_EFFECT_REGISTRY, dynamic_registry_tags(&self.mob_effects, MOB_EFFECT_REGISTRY, MOB_EFFECT_REGISTRY_TAGS)?),
             RegistryTags::new(PAINTING_VARIANT_REGISTRY, dynamic_registry_tags(&self.painting_variants, PAINTING_VARIANT_REGISTRY, PAINTING_VARIANT_REGISTRY_TAGS)?),
             RegistryTags::new(JUKEBOX_SONG_REGISTRY, dynamic_registry_tags(&self.jukebox_songs, JUKEBOX_SONG_REGISTRY, JUKEBOX_SONG_REGISTRY_TAGS)?),
             RegistryTags::new(INSTRUMENT_REGISTRY, dynamic_registry_tags(&self.instruments, INSTRUMENT_REGISTRY, INSTRUMENT_REGISTRY_TAGS)?),

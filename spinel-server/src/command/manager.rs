@@ -1,6 +1,6 @@
 use crate::command::{
     Command, CommandExecutionResult, CommandParseResult, CommandParser, CommandResult,
-    CommandResultType, CommandSender,
+    CommandResultType, CommandSender, CommandSenderKind, Suggestion, SuggestionEntry,
 };
 use crate::network::client::instance::Client;
 use crate::server::MinecraftServer;
@@ -44,6 +44,84 @@ impl CommandManager {
 
     pub fn command_exists(&self, command_name: &str) -> bool {
         self.command(command_name).is_some()
+    }
+
+    pub fn suggest(&self, sender_kind: CommandSenderKind, input: &str) -> Suggestion {
+        let command_input = Self::normalized_suggestion_input(input);
+        let command_text = command_input.trim_start_matches('/');
+        let command_ends_with_space = input.ends_with(char::is_whitespace);
+        let command_parts = command_text.split_whitespace().collect::<Vec<_>>();
+        if command_parts.len() <= 1 && !command_ends_with_space {
+            return self.suggest_root_commands(command_text);
+        }
+        self.suggest_command_arguments(
+            sender_kind,
+            command_text,
+            command_ends_with_space,
+            &command_parts,
+        )
+    }
+
+    fn normalized_suggestion_input(input: &str) -> String {
+        input.to_string()
+    }
+
+    fn suggest_root_commands(&self, typed_command_name: &str) -> Suggestion {
+        let typed_command_start = 0;
+        let typed_command_length = typed_command_name.len();
+        let mut suggestion = Suggestion::new(
+            typed_command_name,
+            typed_command_start,
+            typed_command_length,
+        );
+        self.commands
+            .iter()
+            .flat_map(Command::names)
+            .filter(|command_name| command_name.starts_with(typed_command_name))
+            .map(SuggestionEntry::new)
+            .for_each(|entry| suggestion.add_entry(entry));
+        suggestion
+    }
+
+    fn suggest_command_arguments(
+        &self,
+        sender_kind: CommandSenderKind,
+        command_text: &str,
+        command_ends_with_space: bool,
+        command_parts: &[&str],
+    ) -> Suggestion {
+        let command_name = command_parts.first().copied().unwrap_or_default();
+        let Some(command) = self.command(command_name) else {
+            return Suggestion::new(command_text, command_text.len(), 0);
+        };
+        let current_argument_index = if command_ends_with_space {
+            command_parts.len().saturating_sub(1)
+        } else {
+            command_parts.len().saturating_sub(2)
+        };
+        let current_argument_text = if command_ends_with_space {
+            ""
+        } else {
+            command_parts.last().copied().unwrap_or_default()
+        };
+        let current_argument_start = command_text
+            .len()
+            .saturating_sub(current_argument_text.len());
+        let mut suggestion = Suggestion::new(
+            command_text,
+            current_argument_start,
+            current_argument_text.len(),
+        );
+        command
+            .syntaxes()
+            .iter()
+            .filter_map(|syntax| syntax.arguments().get(current_argument_index))
+            .filter_map(crate::command::CommandArgument::suggestion_callback)
+            .for_each(|callback| {
+                let context = crate::command::CommandContext::empty(command_text);
+                callback(sender_kind, &context, &mut suggestion);
+            });
+        suggestion
     }
 
     pub fn execute(

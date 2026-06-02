@@ -1,3 +1,13 @@
 mod entity_tracker;
 mod instance_api_surface;
+mod living_damage;
+mod living_death;
+mod living_effects;
+mod living_equipment;
+mod living_fire;
+mod living_pickup;
+mod placement_rules;
+mod pose;
+mod team;
 mod tick_events;
+mod visibility;

@@ -1,25 +1,13 @@
-use crate::entity::{EquipmentSlot, Player, PlayerHand};
+use crate::entity::{EquipmentSlot, Player};
 use crate::network::client::instance::Client;
-use spinel_core::network::clientbound::play::update_attributes::{
-    EntityAttribute, EntityAttributeModifier, UpdateAttributesPacket,
-};
-use spinel_registry::AttributeOperation;
-use spinel_registry::data_components::vanilla_components::ATTRIBUTE_MODIFIERS;
-use spinel_registry::{Identifier, ItemStack};
+use spinel_core::network::clientbound::play::update_attributes::UpdateAttributesPacket;
+use spinel_registry::{Attribute, ItemStack};
 use std::io;
 
-const BASE_ATTACK_SPEED: f64 = 4.0;
-
 impl Player {
-    pub(crate) fn sync_main_hand_attributes(&self, client: &mut Client) -> io::Result<()> {
-        UpdateAttributesPacket {
-            entity_id: self.entity_id().value(),
-            attributes: vec![EntityAttribute::attack_speed(
-                BASE_ATTACK_SPEED,
-                self.main_hand_attack_speed_modifiers(),
-            )],
-        }
-        .dispatch(client)
+    pub(crate) fn sync_main_hand_attributes(&mut self, client: &mut Client) -> io::Result<()> {
+        self.refresh_current_equipment_attributes();
+        self.update_attributes_packet().dispatch(client)
     }
 
     pub(crate) fn set_held_slot_with_client(
@@ -37,88 +25,57 @@ impl Player {
         slot - self.open_inventory_size() == self.held_slot()
     }
 
-    fn main_hand_attack_speed_modifiers(&self) -> Vec<EntityAttributeModifier> {
-        attack_speed_modifiers(
-            &self.item_in_hand(PlayerHand::Main),
-            EquipmentSlot::MainHand,
-        )
-        .into_iter()
-        .map(|modifier| EntityAttributeModifier::attack_speed(modifier.id, modifier.amount))
-        .collect()
-    }
-}
-
-struct AttackSpeedModifier {
-    id: Identifier,
-    amount: f64,
-}
-
-fn attack_speed_modifiers(
-    item_stack: &ItemStack,
-    equipment_slot: EquipmentSlot,
-) -> Vec<AttackSpeedModifier> {
-    item_stack
-        .get(ATTRIBUTE_MODIFIERS)
-        .map(|attribute_list| {
-            attribute_list
-                .modifiers()
-                .iter()
-                .filter(|modifier| {
-                    modifier.attribute_type().to_string() == "minecraft:attack_speed"
-                })
-                .filter(|modifier| modifier.operation() == AttributeOperation::AddValue)
-                .filter(|modifier| {
-                    modifier
-                        .slot()
-                        .contains_slot_name(equipment_slot.nbt_name())
-                })
-                .map(|modifier| AttackSpeedModifier {
-                    id: modifier.id().clone(),
-                    amount: modifier.amount(),
-                })
-                .collect()
-        })
-        .unwrap_or_default()
-}
-
-#[cfg(test)]
-mod tests {
-    use super::{EquipmentSlot, attack_speed_modifiers};
-    use spinel_registry::AttributeList;
-    use spinel_registry::data_components::vanilla_components::ATTRIBUTE_MODIFIERS;
-    use spinel_registry::data_components::{
-        AttributeModifierDisplay, AttributeModifierEntry, AttributeOperation, EquipmentSlotGroup,
-    };
-    use spinel_registry::{ItemStack, Material};
-
-    #[test]
-    fn main_hand_attack_speed_reads_default_pickaxe_attribute_modifier() {
-        let item_stack = ItemStack::of(Material::DIAMOND_PICKAXE);
-
-        let modifiers = attack_speed_modifiers(&item_stack, EquipmentSlot::MainHand);
-
-        assert!(modifiers.iter().any(|modifier| {
-            modifier.id.to_string() == "minecraft:base_attack_speed"
-                && modifier.amount == -2.799999952316284
-        }));
-    }
-
-    #[test]
-    fn attack_speed_ignores_modifiers_for_other_slots() {
-        let item_stack = ItemStack::of(Material::DIAMOND_PICKAXE).with(
-            ATTRIBUTE_MODIFIERS,
-            AttributeList::new(vec![AttributeModifierEntry::new(
-                "minecraft:attack_speed".parse().unwrap(),
-                "minecraft:base_attack_speed".parse().unwrap(),
-                -2.8,
-                AttributeOperation::AddValue,
-                EquipmentSlotGroup::OffHand,
-                AttributeModifierDisplay::Default,
-            )]),
+    pub(crate) fn update_inventory_slot_attributes(
+        &mut self,
+        slot: i32,
+        previous_item_stack: &ItemStack,
+        current_item_stack: &ItemStack,
+    ) -> bool {
+        let Some(equipment_slot) = self
+            .inventory_ref()
+            .equipment_slot_for_slot(slot, self.held_slot())
+        else {
+            return false;
+        };
+        self.living.attributes_mut().update_equipment_attributes(
+            previous_item_stack,
+            current_item_stack,
+            equipment_slot,
         );
+        true
+    }
 
-        let modifiers = attack_speed_modifiers(&item_stack, EquipmentSlot::MainHand);
+    pub fn attribute_value(&self, attribute: Attribute) -> f64 {
+        self.living.attribute_value(attribute)
+    }
 
-        assert!(modifiers.is_empty());
+    pub fn update_attributes_packet(&self) -> UpdateAttributesPacket {
+        self.living.update_attributes_packet(self.entity_id())
+    }
+
+    pub(crate) fn refresh_current_equipment_attributes(&mut self) {
+        [
+            EquipmentSlot::MainHand,
+            EquipmentSlot::OffHand,
+            EquipmentSlot::Boots,
+            EquipmentSlot::Leggings,
+            EquipmentSlot::Chestplate,
+            EquipmentSlot::Helmet,
+        ]
+        .into_iter()
+        .for_each(|equipment_slot| {
+            let current_item_stack = self
+                .inventory_ref()
+                .equipment(equipment_slot, self.held_slot());
+            let previous_item_stack = self
+                .attribute_equipment
+                .insert(equipment_slot, current_item_stack.clone())
+                .unwrap_or_else(ItemStack::air);
+            self.living.attributes_mut().update_equipment_attributes(
+                &previous_item_stack,
+                &current_item_stack,
+                equipment_slot,
+            );
+        });
     }
 }

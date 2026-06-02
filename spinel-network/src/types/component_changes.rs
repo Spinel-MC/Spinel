@@ -2252,44 +2252,8 @@ fn encode_attribute_modifier_display(
 }
 
 fn attribute_protocol_id(attribute: &spinel_registry::Identifier) -> Option<i32> {
-    static ATTRIBUTES: &[&str] = &[
-        "armor",
-        "armor_toughness",
-        "attack_damage",
-        "attack_knockback",
-        "attack_speed",
-        "block_break_speed",
-        "block_interaction_range",
-        "burning_time",
-        "camera_distance",
-        "explosion_knockback_resistance",
-        "entity_interaction_range",
-        "fall_damage_multiplier",
-        "flying_speed",
-        "follow_range",
-        "gravity",
-        "jump_strength",
-        "knockback_resistance",
-        "luck",
-        "max_absorption",
-        "max_health",
-        "mining_efficiency",
-        "movement_efficiency",
-        "movement_speed",
-        "oxygen_bonus",
-        "safe_fall_distance",
-        "scale",
-        "sneaking_speed",
-        "spawn_reinforcements",
-        "step_height",
-        "submerged_mining_speed",
-        "sweeping_damage_ratio",
-        "tempt_range",
-        "water_movement_efficiency",
-        "waypoint_transmit_range",
-        "waypoint_receive_range",
-    ];
-    protocol_id_from_identifier_path(attribute, ATTRIBUTES)
+    spinel_registry::Attribute::from_identifier(attribute)
+        .map(spinel_registry::Attribute::protocol_id)
 }
 
 fn encode_enchantment_list_component(component_nbt: &Nbt, data: &mut Vec<u8>) -> Option<()> {

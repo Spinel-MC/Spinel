@@ -1,10 +1,16 @@
 use crate::entity::metadata::{MetadataHolder, definitions};
+use crate::entity::player::BelowNameTag;
 use crate::entity::player::ChunkUpdateLimitChecker;
+use crate::entity::player::PendingResourcePacks;
+use crate::entity::player::PlayerPose;
 use crate::entity::player::chunks::PlayerChunk;
 use crate::entity::player::input::PlayerInputs;
 use crate::entity::player::position::PlayerPosition;
 use crate::entity::player::skin::PlayerSkin;
-use crate::entity::{EntityId, EntityPosition, EquipmentSlot, PlayerSpawnPoint};
+use crate::entity::{
+    Damage, EntityId, EntityIdentity, EntityPointers, EntityPosition, EntityView, EquipmentSlot,
+    LivingState, PlayerSnapshot, PlayerSpawnPoint,
+};
 use crate::events::inventory_close::InventoryCloseEvent;
 use crate::events::item_drop::ItemDropEvent;
 use crate::events::player_change_held_slot::PlayerChangeHeldSlotEvent;
@@ -14,21 +20,37 @@ use crate::events::player_swap_item::PlayerSwapItemEvent;
 use crate::inventory::{ClickPreprocessor, Inventory, PlayerInventory};
 use crate::network::client::instance::Client;
 use crate::scheduler::{ContextScheduler, Task, TaskSchedule};
-use crate::world::WorldHandle;
+use crate::scoreboard::Team;
+use crate::world::{BossBar, WorldHandle};
 use spinel_core::entity::game_mode::GameMode;
+use spinel_core::network::clientbound::play::advancements::Notification;
 use spinel_core::network::clientbound::play::chunk_data::ChunkDataAndUpdateLightPacket;
+use spinel_core::network::clientbound::play::clear_dialog::ClearDialogPacket;
+use spinel_core::network::clientbound::play::clear_titles::ClearTitlesPacket;
 use spinel_core::network::clientbound::play::container_close::ContainerClosePacket;
 use spinel_core::network::clientbound::play::entity_animation::{
     EntityAnimation, EntityAnimationPacket,
 };
 use spinel_core::network::clientbound::play::entity_head_look::EntityHeadLookPacket;
-use spinel_core::network::clientbound::play::game_event::{GameEvent, GameEventPacket};
+use spinel_core::network::clientbound::play::entity_sound_effect::{
+    EntitySoundEffectPacket, NetworkSoundEvent,
+};
+use spinel_core::network::clientbound::play::entity_status::EntityStatusPacket;
+use spinel_core::network::clientbound::play::entity_velocity::EntityVelocityPacket;
+use spinel_core::network::clientbound::play::game_event::{
+    GameEvent, GameEventPacket, RespawnScreenState,
+};
+use spinel_core::network::clientbound::play::open_book::OpenBookPacket;
 use spinel_core::network::clientbound::play::player_abilities::PlayerAbilitiesPacket;
 use spinel_core::network::clientbound::play::player_combat_kill::PlayerCombatKillPacket;
+use spinel_core::network::clientbound::play::player_info_remove::PlayerInfoRemovePacket;
 use spinel_core::network::clientbound::play::player_info_update::PlayerInfoUpdatePacket;
+use spinel_core::network::clientbound::play::player_look_at::{FacePoint, PlayerLookAtPacket};
+use spinel_core::network::clientbound::play::plugin_message::PlayCustomPayloadPacket;
 use spinel_core::network::clientbound::play::recipe_book_add::RecipeBookAddPacket;
 use spinel_core::network::clientbound::play::respawn::RespawnPacket;
 use spinel_core::network::clientbound::play::server_difficulty::ServerDifficultyPacket;
+use spinel_core::network::clientbound::play::set_camera::SetCameraPacket;
 use spinel_core::network::clientbound::play::set_entity_data::SetEntityDataPacket;
 use spinel_core::network::clientbound::play::set_equipment::{
     EntityEquipmentEntry, SetEquipmentPacket,
@@ -36,21 +58,38 @@ use spinel_core::network::clientbound::play::set_equipment::{
 use spinel_core::network::clientbound::play::set_experience::SetExperiencePacket;
 use spinel_core::network::clientbound::play::set_health::SetHealthPacket;
 use spinel_core::network::clientbound::play::set_held_slot::SetHeldSlotPacket;
+use spinel_core::network::clientbound::play::set_passengers::SetPassengersPacket;
+use spinel_core::network::clientbound::play::set_subtitle_text::SetSubtitleTextPacket;
+use spinel_core::network::clientbound::play::set_title_text::SetTitleTextPacket;
+use spinel_core::network::clientbound::play::set_titles_animation::SetTitlesAnimationPacket;
+use spinel_core::network::clientbound::play::show_dialog::ShowDialogPacket;
+use spinel_core::network::clientbound::play::sound_effect::{
+    NetworkPositionedSoundEvent, SoundEffectPacket,
+};
 use spinel_core::network::clientbound::play::spawn_entity::{EntityAngle, SpawnEntityPacket};
 use spinel_core::network::clientbound::play::start_configuration::StartConfigurationPacket;
+use spinel_core::network::clientbound::play::stop_sound::StopSoundPacket;
 use spinel_core::network::clientbound::play::sync_player_pos::SyncPlayerPositionPacket;
 use spinel_core::network::clientbound::play::system_chat::SystemChatPacket;
+use spinel_core::network::clientbound::play::tab_list::TabListPacket;
 use spinel_core::network::clientbound::play::ticking_state::TickingStatePacket;
 use spinel_core::network::clientbound::play::ticking_step::TickingStepPacket;
 use spinel_core::network::clientbound::play::update_recipes::UpdateRecipesPacket;
+use spinel_core::network::clientbound::play::world_event::WorldEventPacket;
 use spinel_nbt::{TagHandler, Taggable};
-use spinel_network::ConnectionState;
 use spinel_network::types::entity_metadata::MetadataValue;
-use spinel_network::types::{Identifier, Slot, TeleportFlags, Vector3d, Velocity};
-use spinel_registry::{EntityType, ItemStack};
+use spinel_network::types::sound::SoundEvent;
+use spinel_network::types::{
+    ClientInformation, Identifier, IntList, Position, Slot, TeleportFlags, Vector3d, Velocity,
+};
+use spinel_network::{ConnectionState, PacketSender, PacketStruct};
+use spinel_registry::dialog::Dialog;
+use spinel_registry::dimension_type::DimensionType;
+use spinel_registry::{EntityType, ItemStack, RegistryKey};
 use spinel_utils::component::color::{NamedTextColor, TextColor};
+use spinel_utils::component::events::{HoverEntity, HoverEvent};
 use spinel_utils::component::text::TextComponent;
-use std::collections::{BTreeMap, HashSet, VecDeque};
+use std::collections::{BTreeMap, BTreeSet, HashSet, VecDeque};
 use std::io;
 use std::net::SocketAddr;
 use uuid::Uuid;
@@ -69,6 +108,7 @@ pub struct Player {
     pub addr: SocketAddr,
     skin: Option<PlayerSkin>,
     display_name: Option<TextComponent>,
+    below_name_tag: Option<BelowNameTag>,
     listed: bool,
     latency: i32,
     pub(crate) loaded_chunk: PlayerChunk,
@@ -79,20 +119,39 @@ pub struct Player {
     game_mode: GameMode,
     pending_spawning_world: Option<Uuid>,
     current_world: Option<Uuid>,
+    dimension_type: RegistryKey<DimensionType>,
     world_name: Option<Identifier>,
     hardcore: bool,
-    is_dead: bool,
-    can_pickup_item: bool,
+    pub(super) living: LivingState,
+    food: i32,
+    food_saturation: f32,
+    death_location: Option<PlayerDeathLocation>,
+    enable_respawn_screen: bool,
+    experience: f32,
+    experience_level: i32,
+    total_experience: i32,
+    portal_cooldown: i32,
+    reduced_debug_screen_information: bool,
+    settings: ClientInformation,
+    permission_level: i32,
     respawn_point: PlayerSpawnPoint,
     inventory: PlayerInventory,
+    pub(super) attribute_equipment: BTreeMap<EquipmentSlot, ItemStack>,
     open_inventory: Option<Inventory>,
+    anvil_rename_text: Option<String>,
+    debug_subscriptions: BTreeSet<i32>,
+    vehicle: Option<EntityId>,
+    velocity: Velocity,
+    passengers: BTreeSet<EntityId>,
+    vanished: bool,
     pub(super) click_preprocessor: ClickPreprocessor,
     held_slot: i32,
     inputs: PlayerInputs,
     flying: bool,
     allow_flying: bool,
     instant_break: bool,
-    invulnerable: bool,
+    has_entity_collision: bool,
+    prevents_block_placement: bool,
     flying_speed: f32,
     field_view_modifier: f32,
     pub(super) metadata: MetadataHolder,
@@ -101,15 +160,19 @@ pub struct Player {
     on_ground: bool,
     last_sent_teleport_id: i32,
     last_received_teleport_id: i32,
+    last_keep_alive: i64,
+    answer_keep_alive: bool,
     pub(super) last_completed_client_tick: u64,
     did_close_inventory: bool,
     pub(super) client: Option<usize>,
     pub(super) item_cooldowns: BTreeMap<String, u64>,
+    statistics: BTreeMap<String, i32>,
     pub(super) alive_ticks: u64,
     pub(super) item_use_hand: Option<PlayerHand>,
     pub(super) start_item_use_time: u64,
     pub(super) item_use_time: u64,
     packet_queue: VecDeque<QueuedPlayerPacket>,
+    pub(super) pending_resource_packs: PendingResourcePacks,
     pub(super) chunk_queue: VecDeque<QueuedPlayerChunk>,
     pub(super) queued_client_chunks: HashSet<PlayerChunk>,
     pub(super) client_sent_chunks: HashSet<PlayerChunk>,
@@ -119,6 +182,13 @@ pub struct Player {
     pub(super) target_chunks_per_tick: f32,
     pub(super) pending_chunk_count: f32,
     scheduler: ContextScheduler<Player>,
+    view: EntityView,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct PlayerDeathLocation {
+    dimension: Identifier,
+    position: EntityPosition,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -149,6 +219,23 @@ impl QueuedPlayerChunk {
     }
 }
 
+impl PlayerDeathLocation {
+    pub fn new(dimension: Identifier, position: EntityPosition) -> Self {
+        Self {
+            dimension,
+            position,
+        }
+    }
+
+    pub fn dimension(&self) -> &Identifier {
+        &self.dimension
+    }
+
+    pub const fn position(&self) -> EntityPosition {
+        self.position
+    }
+}
+
 impl QueuedPlayerPacket {
     pub fn new(state: ConnectionState, packet_id: i32, payload: Vec<u8>) -> Self {
         Self {
@@ -166,14 +253,16 @@ impl Player {
     pub fn new(uuid: Uuid, username: String, protocol_version: i32, addr: SocketAddr) -> Self {
         let respawn_point = PlayerSpawnPoint::default();
         let position = PlayerPosition::from(respawn_point);
+        let entity_id = EntityId::next();
         Self {
-            entity_id: EntityId::next(),
+            entity_id,
             uuid,
             username,
             protocol_version,
             addr,
             skin: None,
             display_name: None,
+            below_name_tag: None,
             listed: true,
             latency: 0,
             loaded_chunk: PlayerChunk::from_position(position),
@@ -186,20 +275,43 @@ impl Player {
             game_mode: GameMode::Survival,
             pending_spawning_world: None,
             current_world: None,
+            dimension_type: DimensionType::OVERWORLD,
             world_name: None,
             hardcore: false,
-            is_dead: false,
-            can_pickup_item: true,
+            living: LivingState::new(EntityType::PLAYER.bounding_box()),
+            food: 20,
+            food_saturation: 5.0,
+            death_location: None,
+            enable_respawn_screen: true,
+            experience: 0.0,
+            experience_level: 0,
+            total_experience: 0,
+            portal_cooldown: 0,
+            reduced_debug_screen_information: false,
+            settings: ClientInformation::default(),
+            permission_level: 0,
             respawn_point,
             inventory: PlayerInventory::new(),
+            attribute_equipment: BTreeMap::new(),
             open_inventory: None,
+            anvil_rename_text: None,
+            debug_subscriptions: BTreeSet::new(),
+            vehicle: None,
+            velocity: Velocity(Vector3d {
+                x: 0.0,
+                y: 0.0,
+                z: 0.0,
+            }),
+            passengers: BTreeSet::new(),
+            vanished: false,
             click_preprocessor: ClickPreprocessor::default(),
             held_slot: 0,
             inputs: PlayerInputs::default(),
             flying: false,
             allow_flying: false,
             instant_break: false,
-            invulnerable: false,
+            has_entity_collision: true,
+            prevents_block_placement: true,
             flying_speed: 0.05,
             field_view_modifier: 0.1,
             metadata: MetadataHolder::default(),
@@ -208,15 +320,19 @@ impl Player {
             on_ground: false,
             last_sent_teleport_id: 0,
             last_received_teleport_id: 0,
+            last_keep_alive: 0,
+            answer_keep_alive: false,
             last_completed_client_tick: 0,
             did_close_inventory: false,
             client: None,
             item_cooldowns: BTreeMap::new(),
+            statistics: BTreeMap::new(),
             alive_ticks: 0,
             item_use_hand: None,
             start_item_use_time: 0,
             item_use_time: 0,
             packet_queue: VecDeque::new(),
+            pending_resource_packs: PendingResourcePacks::new(),
             chunk_queue: VecDeque::new(),
             queued_client_chunks: HashSet::new(),
             client_sent_chunks: HashSet::new(),
@@ -226,6 +342,7 @@ impl Player {
             target_chunks_per_tick: 9.0,
             pending_chunk_count: 0.0,
             scheduler: ContextScheduler::new(),
+            view: EntityView::new(entity_id),
         }
     }
 
@@ -257,6 +374,14 @@ impl Player {
         self.current_world = Some(world);
     }
 
+    pub(crate) fn set_dimension_type(&mut self, dimension_type: RegistryKey<DimensionType>) {
+        self.dimension_type = dimension_type;
+    }
+
+    pub fn dimension_type(&self) -> &RegistryKey<DimensionType> {
+        &self.dimension_type
+    }
+
     pub const fn is_hardcore(&self) -> bool {
         self.hardcore
     }
@@ -272,7 +397,7 @@ impl Player {
         time_packet: spinel_core::network::clientbound::play::set_time::SetTimePacket,
     ) -> io::Result<()> {
         self.pending_spawning_world = None;
-        self.is_dead = false;
+        self.living.revive();
         self.world_name = Some(world_name.clone());
         self.enter_world(
             client,
@@ -292,7 +417,7 @@ impl Player {
         time_packet: spinel_core::network::clientbound::play::set_time::SetTimePacket,
     ) -> io::Result<()> {
         self.pending_spawning_world = None;
-        self.is_dead = false;
+        self.living.revive();
         self.world_name = Some(world_name.clone());
         self.enter_world_with_chunk_positions(
             client,
@@ -305,7 +430,7 @@ impl Player {
 
     pub(super) fn prepare_instance_spawn(&mut self, world_name: Identifier) {
         self.pending_spawning_world = None;
-        self.is_dead = false;
+        self.living.revive();
         self.world_name = Some(world_name);
     }
 
@@ -326,19 +451,233 @@ impl Player {
     }
 
     pub const fn is_dead(&self) -> bool {
-        self.is_dead
+        self.living.is_dead()
+    }
+
+    pub fn last_damage(&self) -> Option<&Damage> {
+        self.living.last_damage()
+    }
+
+    pub const fn health(&self) -> f32 {
+        self.living.health()
+    }
+
+    pub const fn fire_ticks(&self) -> i32 {
+        self.living.fire_ticks()
+    }
+
+    pub fn is_on_fire(&self) -> bool {
+        self.metadata.flag(&definitions::is_on_fire())
+    }
+
+    pub fn set_fire_ticks(&mut self, fire_ticks: i32) {
+        self.living.set_fire_ticks(fire_ticks);
+        self.set_on_fire(self.living.fire_ticks() > 0);
+    }
+
+    pub(crate) fn set_fire_ticks_after_cancelled_extinguish(&mut self, fire_ticks: i32) {
+        self.living.set_fire_ticks(fire_ticks);
+    }
+
+    pub(crate) fn tick_fire_ticks(&mut self) {
+        self.living.tick_fire_ticks();
+        self.set_on_fire(self.living.fire_ticks() > 0);
+    }
+
+    pub fn set_health(&mut self, health: f32) -> io::Result<()> {
+        self.living.set_health(health);
+        self.sync_health()?;
+        if self.living.health() <= 0.0 {
+            self.kill()?;
+        }
+        Ok(())
+    }
+
+    pub(crate) fn apply_damage(&mut self, damage: Damage) -> io::Result<()> {
+        let mut remaining_damage = damage.amount();
+        let additional_hearts = self.additional_hearts();
+        if additional_hearts > 0.0 {
+            if remaining_damage > additional_hearts {
+                remaining_damage -= additional_hearts;
+                self.set_additional_hearts(0.0);
+            } else {
+                self.set_additional_hearts(additional_hearts - remaining_damage);
+                remaining_damage = 0.0;
+            }
+        }
+        self.living.store_last_damage(damage);
+        self.living
+            .set_health(self.living.health() - remaining_damage);
+        self.sync_health()
+    }
+
+    pub fn player_metadata(&self) -> &MetadataHolder {
+        &self.metadata
+    }
+
+    pub fn additional_hearts(&self) -> f32 {
+        match self.metadata.value(&definitions::additional_hearts()) {
+            MetadataValue::Float(additional_hearts) => additional_hearts,
+            _ => 0.0,
+        }
+    }
+
+    pub fn set_additional_hearts(&mut self, additional_hearts: f32) {
+        self.metadata.set(
+            &definitions::additional_hearts(),
+            MetadataValue::Float(additional_hearts.max(0.0)),
+        );
+    }
+
+    pub const fn food(&self) -> i32 {
+        self.food
+    }
+
+    pub fn set_food(&mut self, food: i32) -> io::Result<()> {
+        self.food = food.clamp(0, 20);
+        self.sync_health()
+    }
+
+    pub const fn food_saturation(&self) -> f32 {
+        self.food_saturation
+    }
+
+    pub fn set_food_saturation(&mut self, food_saturation: f32) -> io::Result<()> {
+        self.food_saturation = food_saturation.clamp(0.0, self.food as f32);
+        self.sync_health()
+    }
+
+    pub fn set_death_location(&mut self, position: EntityPosition) {
+        let dimension = self
+            .world_name
+            .clone()
+            .unwrap_or_else(|| Identifier::minecraft("overworld"));
+        self.death_location = Some(PlayerDeathLocation::new(dimension, position));
+    }
+
+    pub fn set_death_location_in_dimension(
+        &mut self,
+        dimension: Identifier,
+        position: EntityPosition,
+    ) {
+        self.death_location = Some(PlayerDeathLocation::new(dimension, position));
+    }
+
+    pub fn death_location(&self) -> Option<&PlayerDeathLocation> {
+        self.death_location.as_ref()
+    }
+
+    pub const fn is_respawn_screen_enabled(&self) -> bool {
+        self.enable_respawn_screen
+    }
+
+    pub fn set_respawn_screen_enabled(&mut self, enable_respawn_screen: bool) -> io::Result<()> {
+        self.enable_respawn_screen = enable_respawn_screen;
+        let state = if enable_respawn_screen {
+            RespawnScreenState::Enabled
+        } else {
+            RespawnScreenState::ImmediateRespawn
+        };
+        self.dispatch_game_event(GameEvent::SetRespawnScreen(state))
+    }
+
+    pub const fn experience(&self) -> f32 {
+        self.experience
+    }
+
+    pub fn set_experience(&mut self, experience: f32) -> io::Result<()> {
+        self.experience = experience.clamp(0.0, 1.0);
+        self.sync_experience()
+    }
+
+    pub const fn experience_level(&self) -> i32 {
+        self.experience_level
+    }
+
+    pub fn set_experience_level(&mut self, experience_level: i32) -> io::Result<()> {
+        self.experience_level = experience_level.max(0);
+        self.sync_experience()
+    }
+
+    pub const fn total_experience(&self) -> i32 {
+        self.total_experience
+    }
+
+    pub fn set_total_experience(&mut self, total_experience: i32) -> io::Result<()> {
+        self.total_experience = total_experience.max(0);
+        self.sync_experience()
+    }
+
+    pub const fn portal_cooldown(&self) -> i32 {
+        self.portal_cooldown
+    }
+
+    pub fn set_portal_cooldown(&mut self, portal_cooldown: i32) {
+        self.portal_cooldown = portal_cooldown.max(0);
+    }
+
+    pub const fn has_reduced_debug_screen_information(&self) -> bool {
+        self.reduced_debug_screen_information
+    }
+
+    pub fn set_reduced_debug_screen_information(
+        &mut self,
+        reduced_debug_screen_information: bool,
+    ) -> io::Result<()> {
+        self.reduced_debug_screen_information = reduced_debug_screen_information;
+        let status = if reduced_debug_screen_information {
+            22
+        } else {
+            23
+        };
+        self.send_packet(EntityStatusPacket {
+            entity_id: self.entity_id().value(),
+            status,
+        })
+    }
+
+    pub const fn settings(&self) -> &ClientInformation {
+        &self.settings
+    }
+
+    pub fn refresh_settings(&mut self, settings: ClientInformation) -> bool {
+        let previous_view_distance = self.client_chunk_view_distance;
+        self.client_chunk_view_distance = settings.view_distance.clamp(2, 32) as i32;
+        self.settings = settings;
+        self.settings.view_distance = self.settings.view_distance.clamp(2, 32);
+        previous_view_distance != self.client_chunk_view_distance
+    }
+
+    pub fn locale(&self) -> &str {
+        &self.settings.locale
+    }
+
+    pub fn set_locale(&mut self, locale: impl Into<String>) {
+        let mut settings = self.settings.clone();
+        settings.locale = locale.into();
+        self.refresh_settings(settings);
     }
 
     pub fn kill(&mut self) -> io::Result<()> {
-        if self.is_dead {
+        if self.living.is_dead() {
             return Ok(());
         }
-        self.is_dead = true;
-        let default_death_text = TextComponent::literal("Killed by poor programming.");
-        let default_chat_message = TextComponent::literal(format!(
-            "{} was killed by poor programming.",
-            self.username()
-        ));
+        self.living.kill();
+        let default_death_text = self
+            .living
+            .last_damage()
+            .and_then(Damage::build_death_screen_text)
+            .unwrap_or_else(|| TextComponent::literal("Killed by poor programming."));
+        let default_chat_message = self
+            .living
+            .last_damage()
+            .and_then(|damage| damage.build_death_message(self.username()))
+            .unwrap_or_else(|| {
+                TextComponent::literal(format!(
+                    "{} was killed by poor programming.",
+                    self.username()
+                ))
+            });
         let (death_text, chat_message) =
             self.dispatch_player_death_event(default_death_text, default_chat_message);
         let entity_id = self.entity_id.value();
@@ -350,14 +689,17 @@ impl Player {
             }
         }
         self.broadcast_death_message(chat_message)?;
+        if self.current_world.is_some() {
+            self.set_death_location(self.position());
+        }
         Ok(())
     }
 
     pub fn respawn(&mut self) -> io::Result<bool> {
-        if !self.is_dead {
+        if !self.living.is_dead() {
             return Ok(false);
         }
-        self.is_dead = false;
+        self.living.revive();
         self.refresh_pose();
         let respawn_dimension = self
             .world_name
@@ -382,11 +724,31 @@ impl Player {
     }
 
     pub const fn can_pickup_item(&self) -> bool {
-        self.can_pickup_item
+        self.living.can_pickup_item()
     }
 
     pub fn set_can_pickup_item(&mut self, can_pickup_item: bool) {
-        self.can_pickup_item = can_pickup_item;
+        self.living.set_can_pickup_item(can_pickup_item);
+    }
+
+    pub const fn has_entity_collision(&self) -> bool {
+        self.has_entity_collision
+    }
+
+    pub const fn prevents_block_placement(&self) -> bool {
+        self.prevents_block_placement
+    }
+
+    pub const fn permission_level(&self) -> i32 {
+        self.permission_level
+    }
+
+    pub fn set_permission_level(&mut self, permission_level: i32) -> io::Result<()> {
+        self.permission_level = permission_level.clamp(0, 4);
+        self.send_packet(EntityStatusPacket {
+            entity_id: self.entity_id().value(),
+            status: (24 + self.permission_level) as i8,
+        })
     }
 
     pub fn refresh_recipes(&mut self) -> io::Result<()> {
@@ -395,6 +757,282 @@ impl Player {
         };
         UpdateRecipesPacket.dispatch(client)?;
         RecipeBookAddPacket::reset_empty().dispatch(client)
+    }
+
+    pub fn send_packet<P>(&mut self, packet: P) -> io::Result<()>
+    where
+        P: PacketStruct,
+    {
+        let Some(client) = self.client_mut() else {
+            return Ok(());
+        };
+        if client.state != P::get_state() {
+            return Ok(());
+        }
+
+        let mut payload = Vec::new();
+        packet.encode(&mut payload)?;
+        client.send_packet(P::get_id(), &payload)
+    }
+
+    pub fn send_packets<P>(&mut self, packets: impl IntoIterator<Item = P>) -> io::Result<()>
+    where
+        P: PacketStruct,
+    {
+        packets
+            .into_iter()
+            .try_for_each(|packet| self.send_packet(packet))
+    }
+
+    pub fn send_raw_packet(&mut self, packet_id: i32, payload: &[u8]) -> io::Result<()> {
+        let Some(client) = self.client_mut() else {
+            return Ok(());
+        };
+
+        client.send_packet(packet_id, payload)
+    }
+
+    pub fn send_plugin_message(
+        &mut self,
+        channel: impl Into<String>,
+        data: Vec<u8>,
+    ) -> io::Result<()> {
+        self.send_packet(PlayCustomPayloadPacket::new(channel, data))
+    }
+
+    pub fn send_plugin_message_string(
+        &mut self,
+        channel: impl Into<String>,
+        data: impl Into<String>,
+    ) -> io::Result<()> {
+        self.send_plugin_message(channel, data.into().into_bytes())
+    }
+
+    pub fn send_system_message(&mut self, message: TextComponent) -> io::Result<()> {
+        self.send_packet(SystemChatPacket::new(message, false))
+    }
+
+    pub fn send_action_bar(&mut self, message: TextComponent) -> io::Result<()> {
+        self.send_packet(SystemChatPacket::new(message, true))
+    }
+
+    pub fn send_message_from(
+        &mut self,
+        _source: Uuid,
+        message: TextComponent,
+        message_type: PlayerMessageType,
+    ) -> io::Result<()> {
+        if !message_type.is_accepted_by_chat_mode(self.settings.chat_mode) {
+            return Ok(());
+        }
+        self.send_packet(SystemChatPacket::new(
+            message,
+            message_type == PlayerMessageType::ActionBar,
+        ))
+    }
+
+    pub fn can_receive_chat_message(&self) -> bool {
+        self.settings.chat_mode == 0
+    }
+
+    pub fn can_receive_chat_command(&self) -> bool {
+        self.settings.chat_mode != 2
+    }
+
+    pub fn send_chat_rejection_message(&mut self) -> io::Result<()> {
+        self.send_packet(SystemChatPacket::new(
+            TextComponent::translatable("chat.cannotSend")
+                .color(spinel_utils::component::color::TextColor::from_named(
+                    spinel_utils::component::color::NamedTextColor::Red,
+                ))
+                .build(),
+            false,
+        ))
+    }
+
+    pub fn open_book(&mut self, hand: PlayerHand) -> io::Result<()> {
+        self.send_packet(OpenBookPacket::new(hand.protocol_id()))
+    }
+
+    pub fn show_dialog(&mut self, dialog: &RegistryKey<Dialog>) -> io::Result<()> {
+        let packet = ShowDialogPacket::from_vanilla_dialog(dialog).ok_or_else(|| {
+            io::Error::new(io::ErrorKind::InvalidInput, "unknown registered dialog")
+        })?;
+        self.send_packet(packet)
+    }
+
+    pub fn send_player_list_header_and_footer(
+        &mut self,
+        header: TextComponent,
+        footer: TextComponent,
+    ) -> io::Result<()> {
+        self.send_packet(TabListPacket::new(header, footer))
+    }
+
+    pub fn send_title(&mut self, title: TextComponent) -> io::Result<()> {
+        self.send_packet(SetTitleTextPacket::new(title))
+    }
+
+    pub fn send_subtitle(&mut self, subtitle: TextComponent) -> io::Result<()> {
+        self.send_packet(SetSubtitleTextPacket::new(subtitle))
+    }
+
+    pub fn set_title_animation(
+        &mut self,
+        fade_in: i32,
+        stay: i32,
+        fade_out: i32,
+    ) -> io::Result<()> {
+        self.send_packet(SetTitlesAnimationPacket::new(fade_in, stay, fade_out))
+    }
+
+    pub fn clear_title(&mut self) -> io::Result<()> {
+        self.send_packet(ClearTitlesPacket::clear())
+    }
+
+    pub fn close_dialog(&mut self) -> io::Result<()> {
+        self.send_packet(ClearDialogPacket)
+    }
+
+    pub fn send_notification(&mut self, notification: Notification) -> io::Result<()> {
+        let timestamp_millis = self.alive_ticks as i64 * 50;
+        self.send_packet(notification.add_packet(timestamp_millis))?;
+        self.send_packet(notification.remove_packet())
+    }
+
+    pub fn below_name_tag(&self) -> Option<&BelowNameTag> {
+        self.below_name_tag.as_ref()
+    }
+
+    pub fn set_below_name_tag(&mut self, below_name_tag: Option<BelowNameTag>) -> io::Result<()> {
+        if self.below_name_tag == below_name_tag {
+            return Ok(());
+        }
+
+        if let Some(previous_below_name_tag) = self.below_name_tag.take() {
+            self.send_packet(previous_below_name_tag.remove_packet())?;
+        }
+
+        self.below_name_tag = below_name_tag;
+        if let Some(current_below_name_tag) = self.below_name_tag.clone() {
+            self.send_packet(current_below_name_tag.create_packet())?;
+            self.send_packet(current_below_name_tag.display_packet())?;
+        }
+
+        Ok(())
+    }
+
+    pub fn team(&self) -> Option<&str> {
+        self.living.team()
+    }
+
+    pub fn set_scoreboard_team(
+        &mut self,
+        mut previous_team: Option<&mut Team>,
+        mut new_team: Option<&mut Team>,
+    ) -> Vec<spinel_core::network::clientbound::play::set_player_team::SetPlayerTeamPacket> {
+        let member = self.username.clone();
+        let mut packets = Vec::new();
+        if let Some(previous_team_name) = self.living.team().map(str::to_owned) {
+            self.living.set_team(None);
+            let should_remove_previous_member = new_team
+                .as_ref()
+                .is_none_or(|current_team| current_team.name() != previous_team_name);
+            if should_remove_previous_member {
+                if let Some(previous_team) = previous_team.as_mut() {
+                    if let Some(packet) = previous_team.remove_member(&member) {
+                        packets.push(packet);
+                    }
+                } else {
+                    packets.push(
+                        spinel_core::network::clientbound::play::set_player_team::SetPlayerTeamPacket {
+                            team_name: previous_team_name,
+                            action: spinel_core::network::clientbound::play::set_player_team::TeamAction::RemoveEntities(vec![member.clone()]),
+                        },
+                    );
+                }
+            }
+        }
+        if let Some(current_team) = new_team.as_mut() {
+            self.living.set_team(Some(current_team.name().to_owned()));
+            if let Some(packet) = current_team.add_member(member) {
+                packets.push(packet);
+            }
+        }
+        packets
+    }
+
+    pub fn reset_title(&mut self) -> io::Result<()> {
+        self.send_packet(ClearTitlesPacket::reset())
+    }
+
+    pub fn play_sound(&mut self, sound_event: SoundEvent) -> io::Result<()> {
+        self.play_sound_at_position(sound_event, self.position().as_vector())
+    }
+
+    pub fn play_sound_at_position(
+        &mut self,
+        sound_event: SoundEvent,
+        position: Vector3d,
+    ) -> io::Result<()> {
+        self.send_packet(SoundEffectPacket {
+            sound_event: NetworkPositionedSoundEvent(sound_event),
+            source_id: 0,
+            position,
+            volume: 1.0,
+            pitch: 1.0,
+            seed: 0,
+        })
+    }
+
+    pub fn play_sound_from_entity(
+        &mut self,
+        sound_event: SoundEvent,
+        entity_id: EntityId,
+    ) -> io::Result<()> {
+        self.send_packet(EntitySoundEffectPacket {
+            sound_event: NetworkSoundEvent(sound_event),
+            source_id: 0,
+            entity_id: entity_id.value(),
+            volume: 1.0,
+            pitch: 1.0,
+            seed: 0,
+        })
+    }
+
+    pub fn stop_sound(&mut self, source: Option<i32>, sound: Option<Identifier>) -> io::Result<()> {
+        self.send_packet(StopSoundPacket::new(source, sound))
+    }
+
+    pub fn play_effect(
+        &mut self,
+        effect_id: i32,
+        position: Position,
+        data: i32,
+        global_event: bool,
+    ) -> io::Result<()> {
+        self.send_packet(WorldEventPacket::new(
+            effect_id,
+            position,
+            data,
+            global_event,
+        ))
+    }
+
+    pub fn show_boss_bar(&mut self, boss_bar: &BossBar) -> io::Result<()> {
+        self.send_packet(boss_bar.add_packet())
+    }
+
+    pub fn hide_boss_bar(&mut self, boss_bar: &BossBar) -> io::Result<()> {
+        self.send_packet(boss_bar.remove_packet())
+    }
+
+    pub fn spectate(&mut self, entity_id: EntityId) -> io::Result<()> {
+        self.send_packet(SetCameraPacket::new(entity_id.value()))
+    }
+
+    pub fn stop_spectating(&mut self) -> io::Result<()> {
+        self.send_packet(SetCameraPacket::new(self.entity_id().value()))
     }
 
     pub fn add_packet_to_queue(&mut self, packet: QueuedPlayerPacket) -> bool {
@@ -482,12 +1120,85 @@ impl Player {
         self.entity_id
     }
 
+    pub const fn view(&self) -> &EntityView {
+        &self.view
+    }
+
+    pub const fn view_mut(&mut self) -> &mut EntityView {
+        &mut self.view
+    }
+
+    pub fn viewers(&self) -> BTreeSet<EntityId> {
+        self.view.viewers()
+    }
+
+    pub fn is_viewer(&self, viewer_id: EntityId) -> bool {
+        self.view.is_viewer(viewer_id)
+    }
+
     pub const fn uuid(&self) -> Uuid {
         self.uuid
     }
 
+    pub const fn identity(&self) -> EntityIdentity {
+        EntityIdentity::new(self.uuid)
+    }
+
+    pub const fn pointers(&self) -> EntityPointers {
+        EntityPointers::new(self.uuid, self.entity_id)
+    }
+
     pub fn username(&self) -> &str {
         &self.username
+    }
+
+    pub fn as_hover_event(&self) -> HoverEvent {
+        HoverEvent::ShowEntity(HoverEntity {
+            entity_type: EntityType::PLAYER.key().to_string(),
+            id: self.uuid.to_string(),
+            name: Some(Box::new(TextComponent::literal(self.username()))),
+        })
+    }
+
+    pub fn update_snapshot(&self, updater: impl FnOnce(&mut PlayerSnapshot)) -> PlayerSnapshot {
+        let mut snapshot = PlayerSnapshot::new(
+            self.entity_id,
+            self.uuid,
+            self.username.clone(),
+            self.position(),
+            self.current_world,
+            self.game_mode,
+            self.skin.clone(),
+            self.display_name.clone(),
+            self.statistics
+                .iter()
+                .map(|(statistic, value)| (statistic.clone(), *value))
+                .collect(),
+        );
+        updater(&mut snapshot);
+        snapshot
+    }
+
+    pub fn statistic_value_map(&self) -> &BTreeMap<String, i32> {
+        &self.statistics
+    }
+
+    pub fn statistic_value(&self, statistic: &str) -> i32 {
+        self.statistics.get(statistic).copied().unwrap_or_default()
+    }
+
+    pub fn set_statistic_value(&mut self, statistic: impl Into<String>, value: i32) {
+        self.statistics.insert(statistic.into(), value.max(0));
+    }
+
+    pub fn increment_statistic_value(&mut self, statistic: impl Into<String>, amount: i32) -> i32 {
+        let statistic = statistic.into();
+        let value = self
+            .statistic_value(&statistic)
+            .saturating_add(amount)
+            .max(0);
+        self.statistics.insert(statistic, value);
+        value
     }
 
     pub fn skin(&self) -> Option<&PlayerSkin> {
@@ -496,7 +1207,12 @@ impl Player {
 
     pub fn set_skin(&mut self, skin: Option<PlayerSkin>) -> io::Result<()> {
         self.skin = skin;
-        self.dispatch_player_info_update(self.player_info_packet())
+        self.dispatch_player_info_update(self.player_info_packet())?;
+        self.refresh_player_info_to_viewers()
+    }
+
+    pub(crate) fn apply_skin(&mut self, skin: Option<PlayerSkin>) {
+        self.skin = skin;
     }
 
     pub fn display_name(&self) -> Option<&TextComponent> {
@@ -561,7 +1277,9 @@ impl Player {
         if !self.has_entered_world() || client.state != ConnectionState::Play {
             return true;
         }
-        self.sync_game_mode_state(client).is_ok()
+        let self_sync_succeeded = self.sync_game_mode_state(client).is_ok();
+        let viewer_sync_succeeded = self.refresh_game_mode_to_viewers();
+        self_sync_succeeded && viewer_sync_succeeded
     }
 
     pub fn game_mode(&self) -> GameMode {
@@ -581,7 +1299,7 @@ impl Player {
     }
 
     pub const fn is_invulnerable(&self) -> bool {
-        self.invulnerable
+        self.living.is_invulnerable()
     }
 
     pub fn is_sneaking(&self) -> bool {
@@ -640,7 +1358,7 @@ impl Player {
     }
 
     pub fn set_invulnerable(&mut self, invulnerable: bool) -> io::Result<()> {
-        self.invulnerable = invulnerable;
+        self.living.set_invulnerable(invulnerable);
         self.refresh_abilities()
     }
 
@@ -650,13 +1368,42 @@ impl Player {
         if !self.is_flying() {
             self.refresh_pose();
         }
+        self.refresh_dirty_metadata_to_viewers();
+    }
+
+    pub fn set_on_fire(&mut self, on_fire: bool) {
+        self.metadata.set_flag(&definitions::is_on_fire(), on_fire);
+        self.refresh_dirty_metadata_to_viewers();
+    }
+
+    pub fn pose(&self) -> PlayerPose {
+        match self.metadata.value(&definitions::pose()) {
+            MetadataValue::Pose(pose) => {
+                PlayerPose::from_protocol_id(pose).unwrap_or(PlayerPose::Standing)
+            }
+            _ => PlayerPose::Standing,
+        }
+    }
+
+    pub fn set_pose(&mut self, pose: PlayerPose) {
+        self.metadata.set(
+            &definitions::pose(),
+            MetadataValue::Pose(pose.protocol_id()),
+        );
+        self.refresh_dirty_metadata_to_viewers();
     }
 
     pub fn set_sprinting(&mut self, sprinting: bool) -> bool {
         let old_sprint = self.is_sprinting();
         self.metadata
             .set_flag(&definitions::is_sprinting(), sprinting);
+        self.refresh_dirty_metadata_to_viewers();
         old_sprint != sprinting
+    }
+
+    pub fn leave_bed(&mut self) {
+        self.metadata
+            .set(&definitions::pose(), MetadataValue::Pose(0));
     }
 
     pub fn set_flying_speed(&mut self, flying_speed: f32) -> io::Result<()> {
@@ -754,12 +1501,104 @@ impl Player {
         self.open_inventory.as_ref()
     }
 
+    pub fn anvil_rename_text(&self) -> Option<&str> {
+        self.anvil_rename_text.as_deref()
+    }
+
+    pub fn set_anvil_rename_text(&mut self, anvil_rename_text: impl Into<String>) {
+        self.anvil_rename_text = Some(anvil_rename_text.into());
+    }
+
+    pub fn debug_subscriptions(&self) -> &BTreeSet<i32> {
+        &self.debug_subscriptions
+    }
+
+    pub fn set_debug_subscriptions(&mut self, debug_subscriptions: BTreeSet<i32>) {
+        self.debug_subscriptions = debug_subscriptions;
+    }
+
+    pub const fn vehicle(&self) -> Option<EntityId> {
+        self.vehicle
+    }
+
+    pub fn set_vehicle(&mut self, vehicle: EntityId) {
+        self.vehicle = Some(vehicle);
+    }
+
+    pub fn clear_vehicle(&mut self) {
+        self.vehicle = None;
+    }
+
+    pub const fn velocity(&self) -> Velocity {
+        self.velocity
+    }
+
+    pub fn set_velocity(&mut self, velocity: Velocity) {
+        self.velocity = velocity;
+    }
+
+    pub fn has_velocity(&self) -> bool {
+        self.velocity.0.x != 0.0 || self.velocity.0.y != 0.0 || self.velocity.0.z != 0.0
+    }
+
+    pub fn velocity_packet(&self) -> EntityVelocityPacket {
+        EntityVelocityPacket {
+            entity_id: self.entity_id().value(),
+            velocity: self.velocity,
+        }
+    }
+
+    pub fn add_passenger(&mut self, passenger_id: EntityId) -> bool {
+        self.passengers.insert(passenger_id)
+    }
+
+    pub fn remove_passenger(&mut self, passenger_id: EntityId) -> bool {
+        self.passengers.remove(&passenger_id)
+    }
+
+    pub fn has_passenger(&self) -> bool {
+        !self.passengers.is_empty()
+    }
+
+    pub fn passengers(&self) -> &BTreeSet<EntityId> {
+        &self.passengers
+    }
+
+    pub fn passenger_packet(&self) -> SetPassengersPacket {
+        SetPassengersPacket {
+            vehicle_entity_id: self.entity_id().value(),
+            passenger_entity_ids: IntList(
+                self.passengers
+                    .iter()
+                    .map(|passenger_id| passenger_id.value())
+                    .collect(),
+            ),
+        }
+    }
+
+    pub const fn is_vanished(&self) -> bool {
+        self.vanished
+    }
+
+    pub fn set_vanished(&mut self, vanished: bool) {
+        self.vanished = vanished;
+    }
+
+    #[cfg(test)]
+    pub(crate) fn mark_chunk_sent_to_client(&mut self, chunk: PlayerChunk) {
+        self.client_sent_chunks.insert(chunk);
+    }
+
     pub(crate) fn opened_inventory_mut(&mut self) -> Option<&mut Inventory> {
         self.open_inventory.as_mut()
     }
 
     pub(crate) fn click_preprocessor(&mut self) -> &mut ClickPreprocessor {
         &mut self.click_preprocessor
+    }
+
+    pub fn click_preprocessor_ref(&self) -> &ClickPreprocessor {
+        &self.click_preprocessor
     }
 
     pub fn did_close_inventory(&self) -> bool {
@@ -891,6 +1730,24 @@ impl Player {
         packet.dispatch(client)
     }
 
+    pub fn teleport_with_chunks_and_flags(
+        &mut self,
+        position: EntityPosition,
+        chunks: Option<Vec<i64>>,
+        flags: TeleportFlags,
+    ) -> io::Result<crate::entity::EntityTeleport> {
+        let velocity = Velocity(Vector3d {
+            x: 0.0,
+            y: 0.0,
+            z: 0.0,
+        });
+        self.set_position(position);
+        self.synchronize_position_after_teleport(position, velocity.0, flags, true)?;
+        Ok(crate::entity::EntityTeleport::new(
+            position, velocity, chunks, flags,
+        ))
+    }
+
     pub fn item_in_hand(&self, hand: PlayerHand) -> ItemStack {
         let equipment_slot = match hand {
             PlayerHand::Main => EquipmentSlot::MainHand,
@@ -913,8 +1770,20 @@ impl Player {
     }
 
     pub fn set_equipment(&mut self, equipment_slot: EquipmentSlot, item_stack: ItemStack) -> bool {
-        self.inventory
+        let previous_item_stack = self.equipment(equipment_slot);
+        if !self
+            .inventory
             .set_equipment(equipment_slot, self.held_slot, item_stack)
+        {
+            return false;
+        }
+        let current_item_stack = self.equipment(equipment_slot);
+        self.living.attributes_mut().update_equipment_attributes(
+            &previous_item_stack,
+            &current_item_stack,
+            equipment_slot,
+        );
+        true
     }
 
     pub(crate) fn swap_item_hands(
@@ -1086,6 +1955,42 @@ impl Player {
         self.position = self.position.looking_at(yaw, pitch);
     }
 
+    pub fn look_at_position(&mut self, target: Vector3d) -> io::Result<()> {
+        self.face_position(FacePoint::Eyes, target)
+    }
+
+    pub fn look_at_entity(
+        &mut self,
+        entity_id: EntityId,
+        target: EntityPosition,
+    ) -> io::Result<()> {
+        self.face_entity(
+            FacePoint::Eyes,
+            target.as_vector(),
+            entity_id,
+            FacePoint::Eyes,
+        )
+    }
+
+    pub fn face_position(&mut self, face_point: FacePoint, target: Vector3d) -> io::Result<()> {
+        self.send_packet(PlayerLookAtPacket::at_position(face_point, target))
+    }
+
+    pub fn face_entity(
+        &mut self,
+        face_point: FacePoint,
+        target: Vector3d,
+        entity_id: EntityId,
+        target_point: FacePoint,
+    ) -> io::Result<()> {
+        self.send_packet(PlayerLookAtPacket::at_entity(
+            face_point,
+            target,
+            entity_id.value(),
+            target_point,
+        ))
+    }
+
     pub(crate) fn refresh_input(
         &mut self,
         forward: bool,
@@ -1102,6 +2007,30 @@ impl Player {
         self.metadata.set_flag(&definitions::is_crouching(), shift);
         self.refresh_pose();
         old_shift != shift
+    }
+
+    pub const fn inputs(&self) -> PlayerInputs {
+        self.inputs
+    }
+
+    pub fn eye_height(&self) -> f64 {
+        EntityType::PLAYER.eye_height()
+    }
+
+    pub const fn last_keep_alive(&self) -> i64 {
+        self.last_keep_alive
+    }
+
+    pub fn refresh_keep_alive(&mut self, last_keep_alive: i64) {
+        self.last_keep_alive = last_keep_alive;
+    }
+
+    pub const fn did_answer_keep_alive(&self) -> bool {
+        self.answer_keep_alive
+    }
+
+    pub fn refresh_answer_keep_alive(&mut self, answer_keep_alive: bool) {
+        self.answer_keep_alive = answer_keep_alive;
     }
 
     pub(crate) fn set_flying_with_elytra(&mut self, flying_with_elytra: bool) -> bool {
@@ -1157,7 +2086,7 @@ impl Player {
 
     pub(crate) fn abilities_packet(&self) -> PlayerAbilitiesPacket {
         let mut flags = 0;
-        if self.invulnerable {
+        if self.living.is_invulnerable() {
             flags |= PlayerAbilitiesPacket::INVULNERABLE;
         }
         if self.flying {
@@ -1234,23 +2163,27 @@ impl Player {
 
     pub(super) fn refresh_pose(&mut self) {
         let pose = if self.metadata.flag(&definitions::is_flying_with_elytra()) {
-            1
+            PlayerPose::FallFlying
         } else if self.metadata.flag(&definitions::is_swimming()) {
-            3
+            PlayerPose::Swimming
         } else if self.metadata.flag(&definitions::is_crouching()) {
-            5
+            PlayerPose::Sneaking
         } else {
-            0
+            PlayerPose::Standing
         };
-        self.metadata
-            .set(&definitions::pose(), MetadataValue::Pose(pose));
+        self.metadata.set(
+            &definitions::pose(),
+            MetadataValue::Pose(pose.protocol_id()),
+        );
     }
 
     fn apply_game_mode(&mut self, game_mode: GameMode) {
         self.game_mode = game_mode;
         self.allow_flying = game_mode.allows_flying();
         self.instant_break = game_mode.has_instant_break();
-        self.invulnerable = game_mode.is_invulnerable();
+        self.living.set_invulnerable(game_mode.is_invulnerable());
+        self.has_entity_collision = game_mode != GameMode::Spectator;
+        self.prevents_block_placement = game_mode != GameMode::Spectator;
         if game_mode == GameMode::Spectator || !game_mode.allows_flying() {
             self.flying = game_mode.allows_flying();
         }
@@ -1260,6 +2193,43 @@ impl Player {
         self.game_mode_packet().dispatch(client)?;
         PlayerInfoUpdatePacket::update_game_mode(self.uuid, self.game_mode).dispatch(client)?;
         self.abilities_packet().dispatch(client)
+    }
+
+    pub(super) fn sync_health(&mut self) -> io::Result<()> {
+        let packet = SetHealthPacket::new(self.living.health(), self.food, self.food_saturation);
+        let Some(client) = self.client_mut() else {
+            return Ok(());
+        };
+        if client.state != ConnectionState::Play {
+            return Ok(());
+        }
+        packet.dispatch(client)
+    }
+
+    fn sync_experience(&mut self) -> io::Result<()> {
+        let packet = SetExperiencePacket::new(
+            self.experience,
+            self.experience_level,
+            self.total_experience,
+        );
+        let Some(client) = self.client_mut() else {
+            return Ok(());
+        };
+        if client.state != ConnectionState::Play {
+            return Ok(());
+        }
+        packet.dispatch(client)
+    }
+
+    fn dispatch_game_event(&mut self, game_event: GameEvent) -> io::Result<()> {
+        let packet = GameEventPacket::from(game_event);
+        let Some(client) = self.client_mut() else {
+            return Ok(());
+        };
+        if client.state != ConnectionState::Play {
+            return Ok(());
+        }
+        packet.dispatch(client)
     }
 
     fn refresh_abilities(&mut self) -> io::Result<()> {
@@ -1288,6 +2258,63 @@ impl Player {
         }
         packet.dispatch(client)
     }
+
+    fn refresh_dirty_metadata_to_viewers(&mut self) {
+        if !self.has_entered_world() {
+            return;
+        }
+        let Some(metadata_packet) = self.dirty_metadata_packet() else {
+            return;
+        };
+        let metadata_entity_id = metadata_packet.entity_id;
+        let metadata_entries = metadata_packet.entries.0;
+        let _ = self.dispatch_to_other_play_clients(|viewer_client| {
+            SetEntityDataPacket::new(metadata_entity_id, metadata_entries.clone())
+                .dispatch(viewer_client)
+        });
+    }
+
+    fn refresh_game_mode_to_viewers(&mut self) -> bool {
+        let packet = PlayerInfoUpdatePacket::update_game_mode(self.uuid, self.game_mode);
+        self.dispatch_to_other_play_clients(|viewer_client| packet.clone().dispatch(viewer_client))
+            .is_ok()
+    }
+
+    fn refresh_player_info_to_viewers(&mut self) -> io::Result<()> {
+        let add_packet = self.player_info_packet();
+        let player_uuid = self.uuid;
+        self.dispatch_to_other_play_clients(|viewer_client| {
+            PlayerInfoRemovePacket::new(player_uuid).dispatch(viewer_client)?;
+            add_packet.clone().dispatch(viewer_client)
+        })
+    }
+
+    fn dispatch_to_other_play_clients(
+        &mut self,
+        mut dispatch_packet: impl FnMut(&mut Client) -> io::Result<()>,
+    ) -> io::Result<()> {
+        let Some(client_ptr) = self.client else {
+            return Ok(());
+        };
+        let client = unsafe { &mut *(client_ptr as *mut Client) };
+        let Some(server_ptr) = client.server_ptr else {
+            return Ok(());
+        };
+        let server = unsafe { &mut *(server_ptr as *mut crate::server::MinecraftServer) };
+        server
+            .connection_manager
+            .clients()
+            .into_iter()
+            .try_for_each(|viewer_client| {
+                let Ok(mut viewer_client) = viewer_client.lock() else {
+                    return Ok(());
+                };
+                if viewer_client.addr == self.addr || viewer_client.state != ConnectionState::Play {
+                    return Ok(());
+                }
+                dispatch_packet(&mut viewer_client)
+            })
+    }
 }
 
 impl Taggable for Player {
@@ -1306,7 +2333,32 @@ pub enum PlayerHand {
     Off,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PlayerMessageType {
+    Chat,
+    System,
+    ActionBar,
+}
+
+impl PlayerMessageType {
+    const fn is_accepted_by_chat_mode(self, chat_mode: i32) -> bool {
+        match (chat_mode, self) {
+            (_, Self::ActionBar) => true,
+            (0, Self::Chat | Self::System) => true,
+            (1, Self::System) => true,
+            _ => false,
+        }
+    }
+}
+
 impl PlayerHand {
+    pub const fn protocol_id(self) -> i32 {
+        match self {
+            Self::Main => 0,
+            Self::Off => 1,
+        }
+    }
+
     pub fn from_protocol_id(protocol_id: i32) -> Option<Self> {
         match protocol_id {
             0 => Some(Self::Main),

@@ -29,6 +29,8 @@ fn extracted_block_entries() -> io::Result<Vec<BlockEntry>> {
             is_air: block.flags.air,
             is_solid: block.flags.solid,
             is_liquid: block.flags.liquid,
+            hardness: block.hardness,
+            requires_tool: block.requires_tool,
         })
         .collect())
 }
@@ -41,6 +43,8 @@ pub(crate) struct BlockEntry {
     pub(crate) is_air: bool,
     pub(crate) is_solid: bool,
     pub(crate) is_liquid: bool,
+    pub(crate) hardness: f32,
+    pub(crate) requires_tool: bool,
 }
 
 #[derive(Deserialize)]
@@ -52,6 +56,8 @@ struct BlockExtraction {
 struct ExtractedBlock {
     id: i32,
     default_state_id: i32,
+    hardness: f32,
+    requires_tool: bool,
     flags: ExtractedBlockFlags,
 }
 

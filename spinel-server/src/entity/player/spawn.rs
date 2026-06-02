@@ -405,6 +405,21 @@ impl Player {
         self.queue_chunk(chunk)
     }
 
+    pub(crate) fn update_chunks_after_view_distance_change(
+        &mut self,
+        client: &mut Client,
+        arriving: Vec<PlayerChunk>,
+        departing: Vec<PlayerChunk>,
+        world_view_distance: i32,
+    ) -> io::Result<()> {
+        let current_center = self.chunks_loaded_by_client;
+        let effective_view_distance = self.effective_chunk_view_distance(world_view_distance);
+        self.forget_chunks(client, departing, current_center, effective_view_distance)?;
+        self.queue_chunks(arriving);
+        self.prune_queued_chunks_outside_view(current_center, effective_view_distance);
+        Ok(())
+    }
+
     fn queue_chunk(&mut self, chunk: PlayerChunk) -> bool {
         if !self.queued_client_chunks.insert(chunk) {
             return false;

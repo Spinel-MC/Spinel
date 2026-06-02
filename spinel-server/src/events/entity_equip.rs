@@ -2,7 +2,7 @@ use crate::entity::{EntityId, EquipmentSlot};
 use spinel_macros::event_dispatcher;
 use spinel_registry::ItemStack;
 
-#[event_dispatcher(with_client: true)]
+#[event_dispatcher]
 pub struct EntityEquipEvent {
     entity_id: EntityId,
     equipped_item: ItemStack,
@@ -15,7 +15,6 @@ impl EntityEquipEvent {
             entity_id,
             equipped_item,
             slot,
-            connection_ptr: None,
         }
     }
 

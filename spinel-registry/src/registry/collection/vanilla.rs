@@ -2,10 +2,10 @@ use crate::registry::{
     BANNER_PATTERN_REGISTRY, BIOME_REGISTRY, BLOCKS_REGISTRY, CAT_VARIANT_REGISTRY,
     CHAT_TYPE_REGISTRY, CHICKEN_VARIANT_REGISTRY, COW_VARIANT_REGISTRY, DAMAGE_TYPE_REGISTRY,
     DIALOG_REGISTRY, DIMENSION_TYPE_REGISTRY, ENCHANTMENT_REGISTRY, FROG_VARIANT_REGISTRY,
-    INSTRUMENT_REGISTRY, ITEM_REGISTRY, JUKEBOX_SONG_REGISTRY, PAINTING_VARIANT_REGISTRY,
-    PIG_VARIANT_REGISTRY, Registries, TIMELINE_REGISTRY, TRIM_MATERIAL_REGISTRY,
-    TRIM_PATTERN_REGISTRY, WOLF_SOUND_VARIANT_REGISTRY, WOLF_VARIANT_REGISTRY,
-    ZOMBIE_NAUTILUS_VARIANT_REGISTRY,
+    INSTRUMENT_REGISTRY, ITEM_REGISTRY, JUKEBOX_SONG_REGISTRY, MOB_EFFECT_REGISTRY,
+    PAINTING_VARIANT_REGISTRY, PIG_VARIANT_REGISTRY, Registries, TIMELINE_REGISTRY,
+    TRIM_MATERIAL_REGISTRY, TRIM_PATTERN_REGISTRY, WOLF_SOUND_VARIANT_REGISTRY,
+    WOLF_VARIANT_REGISTRY, ZOMBIE_NAUTILUS_VARIANT_REGISTRY,
 };
 use crate::{Identifier, RegistryTagError, RegistryTags};
 
@@ -79,6 +79,10 @@ pub mod vanilla_dialogs;
 pub mod vanilla_enchantments;
 #[allow(warnings)]
 #[rustfmt::skip]
+#[path = "../../generated/vanilla_mob_effects.rs"]
+pub mod vanilla_mob_effects;
+#[allow(warnings)]
+#[rustfmt::skip]
 #[path = "../../generated/vanilla_timelines.rs"]
 pub mod vanilla_timelines;
 #[allow(warnings)]
@@ -103,6 +107,36 @@ impl Registries {
                     && registry_tags.tags.into_iter().any(|registry_tag| {
                         registry_tag.tag_name == *tag_name
                             && registry_tag.entries.contains(&block_id)
+                    })
+            })
+        })
+    }
+
+    pub fn item_tag_contains(&self, tag_name: &Identifier, material: &crate::Material) -> bool {
+        let Some(material_key) = self.items.key_for(material) else {
+            return false;
+        };
+        let Some(item_id) = self.items.get_id(material_key) else {
+            return false;
+        };
+        self.static_tag_entries().is_ok_and(|registry_tags| {
+            registry_tags.into_iter().any(|registry_tags| {
+                registry_tags.registry_name == ITEM_REGISTRY
+                    && registry_tags.tags.into_iter().any(|registry_tag| {
+                        registry_tag.tag_name == *tag_name
+                            && registry_tag.entries.contains(&item_id)
+                    })
+            })
+        })
+    }
+
+    pub fn mob_effect_tag_contains(&self, tag_name: &Identifier, effect_id: i32) -> bool {
+        self.static_tag_entries().is_ok_and(|registry_tags| {
+            registry_tags.into_iter().any(|registry_tags| {
+                registry_tags.registry_name == MOB_EFFECT_REGISTRY
+                    && registry_tags.tags.into_iter().any(|registry_tag| {
+                        registry_tag.tag_name == *tag_name
+                            && registry_tag.entries.contains(&effect_id)
                     })
             })
         })
@@ -203,6 +237,10 @@ impl Registries {
                 self.timelines.registry_packet_entries(exclude_vanilla),
             ),
             (
+                MOB_EFFECT_REGISTRY,
+                self.mob_effects.registry_packet_entries(exclude_vanilla),
+            ),
+            (
                 ENCHANTMENT_REGISTRY,
                 self.enchantments.registry_packet_entries(exclude_vanilla),
             ),
@@ -227,6 +265,7 @@ impl Registries {
         vanilla_wolf_sound_variants::register_wolf_sound_variants(&mut self.wolf_sound_variants);
         vanilla_dialogs::register_dialogs(&mut self.dialogs);
         vanilla_enchantments::register_enchantments(&mut self.enchantments);
+        vanilla_mob_effects::register_mob_effects(&mut self.mob_effects);
         vanilla_timelines::register_timelines(&mut self.timelines);
         vanilla_zombie_nautilus_variants::register_zombie_nautilus_variants(
             &mut self.zombie_nautilus_variants,

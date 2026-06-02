@@ -55,6 +55,13 @@ impl Player {
         if !self.set_item_at(slot, item_stack.clone()) {
             return false;
         }
+        if !in_open_inventory {
+            self.update_inventory_slot_attributes(
+                slot - self.open_inventory_size(),
+                &previous_item,
+                &item_stack,
+            );
+        }
         InventoryItemChangeEvent::new(
             player,
             in_open_inventory,

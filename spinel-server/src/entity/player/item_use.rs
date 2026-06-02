@@ -1,5 +1,5 @@
 use crate::entity::metadata::definitions;
-use crate::entity::{Player, PlayerHand};
+use crate::entity::{EntityPosition, Player, PlayerHand, TimedPotionEffect};
 use crate::events::player_begin_item_use::PlayerBeginItemUseEvent;
 use crate::events::player_cancel_item_use::PlayerCancelItemUseEvent;
 use crate::events::player_finish_item_use::PlayerFinishItemUseEvent;
@@ -11,10 +11,14 @@ use spinel_core::network::clientbound::play::entity_sound_effect::{
     EntitySoundEffectPacket, NetworkSoundEvent,
 };
 use spinel_network::types::sound::SoundEvent;
+use spinel_network::types::{TeleportFlags, Vector3d};
 use spinel_registry::data_components::vanilla_components::{
     BLOCKS_ATTACKS, CONSUMABLE, EQUIPPABLE, FOOD, INSTRUMENT, USE_REMAINDER,
 };
-use spinel_registry::{ConsumeEffect, ItemAnimation, ItemStack, Material};
+use spinel_registry::{
+    ConsumeEffect, CustomPotionEffect, Identifier, ItemAnimation, ItemStack, Material,
+    RegistryTagReference,
+};
 use std::io;
 
 const MARK_ITEM_FINISHED: i8 = 9;
@@ -192,6 +196,9 @@ impl Player {
             self.current_item_use_time(),
         );
         cancel_item_use_event.dispatch(server, client);
+        if cancel_item_use_event.is_cancelled() {
+            return false;
+        }
         self.refresh_active_hand(
             false,
             hand == PlayerHand::Off,
@@ -234,19 +241,24 @@ impl Player {
         let mut event =
             PlayerFinishItemUseEvent::new(self as *mut Player, hand, item_stack.clone(), duration);
         event.dispatch(server, client);
-        self.apply_consumed_item(hand, item_stack, client)
+        self.apply_consumed_item(hand, item_stack, server, client)
     }
 
     fn apply_consumed_item(
         &mut self,
         hand: PlayerHand,
         item_stack: ItemStack,
+        server: &mut MinecraftServer,
         client: &mut Client,
     ) -> io::Result<()> {
         let Some(consumable) = item_stack.get(CONSUMABLE) else {
             return Ok(());
         };
-        self.apply_consumable_effects(consumable.effects(), client)?;
+        self.apply_consumable_effects(consumable.effects(), server, client)?;
+        self.increment_statistic_value(
+            format!("minecraft:used:{}", item_stack.material().key()),
+            1,
+        );
         let replacement_item = item_stack.get(USE_REMAINDER);
         let updated_item = replacement_item.unwrap_or_else(|| item_stack.consume(1));
         self.set_item_in_hand(hand, updated_item);
@@ -257,21 +269,122 @@ impl Player {
     fn apply_consumable_effects(
         &mut self,
         effects: &[ConsumeEffect],
+        server: &mut MinecraftServer,
         client: &mut Client,
     ) -> io::Result<()> {
         effects
             .iter()
-            .try_for_each(|effect| self.apply_consumable_effect(effect, client))
+            .try_for_each(|effect| self.apply_consumable_effect(effect, server, client))
     }
 
     fn apply_consumable_effect(
         &mut self,
         effect: &ConsumeEffect,
+        server: &mut MinecraftServer,
         client: &mut Client,
     ) -> io::Result<()> {
-        let ConsumeEffect::PlaySound { sound } = effect else {
+        match effect {
+            ConsumeEffect::ApplyEffects {
+                effects,
+                probability,
+            } => self.apply_consumable_potion_effects(effects, *probability, server, client),
+            ConsumeEffect::RemoveEffects { effects } => {
+                self.remove_consumable_potion_effects(effects, server, client)
+            }
+            ConsumeEffect::ClearAllEffects => self.clear_consumable_potion_effects(client),
+            ConsumeEffect::TeleportRandomly { diameter } => {
+                self.teleport_randomly_after_consuming(*diameter)
+            }
+            ConsumeEffect::PlaySound { sound } => self.play_consumable_sound(sound, client),
+        }
+    }
+
+    fn apply_consumable_potion_effects(
+        &mut self,
+        effects: &[CustomPotionEffect],
+        probability: f32,
+        server: &MinecraftServer,
+        client: &mut Client,
+    ) -> io::Result<()> {
+        if probability <= 0.0 {
             return Ok(());
-        };
+        }
+        if probability < 1.0 && !probability_succeeds(probability, self.alive_ticks) {
+            return Ok(());
+        }
+        effects.iter().try_for_each(|effect| {
+            let Some(effect_id) = server
+                .registries
+                .dynamic_registry_id(&spinel_registry::MOB_EFFECT_REGISTRY, effect.effect_id())
+            else {
+                return Ok(());
+            };
+            let settings = effect.settings();
+            let packet = self.add_effect(TimedPotionEffect::new(
+                effect_id,
+                settings.amplifier(),
+                settings.duration(),
+                potion_effect_flags(settings),
+                self.alive_ticks,
+            ));
+            packet.dispatch(client)
+        })
+    }
+
+    fn remove_consumable_potion_effects(
+        &mut self,
+        effects: &RegistryTagReference,
+        server: &MinecraftServer,
+        client: &mut Client,
+    ) -> io::Result<()> {
+        let removable_effect_ids = self
+            .active_effects()
+            .into_iter()
+            .filter_map(|effect| {
+                effect_reference_contains(effects, effect.effect_id(), server)
+                    .then_some(effect.effect_id())
+            })
+            .collect::<Vec<_>>();
+        removable_effect_ids.into_iter().try_for_each(|effect_id| {
+            let Some(packet) = self.remove_effect(effect_id) else {
+                return Ok(());
+            };
+            packet.dispatch(client)
+        })
+    }
+
+    fn clear_consumable_potion_effects(&mut self, client: &mut Client) -> io::Result<()> {
+        self.clear_effects()
+            .into_iter()
+            .try_for_each(|packet| packet.dispatch(client))
+    }
+
+    fn teleport_randomly_after_consuming(&mut self, diameter: f32) -> io::Result<()> {
+        let radius = f64::from(diameter.max(0.0)) / 2.0;
+        let (offset_x, offset_z) = random_teleport_offsets(radius, self.alive_ticks);
+        let position = self.position();
+        let target_position = EntityPosition::new(
+            position.x() + offset_x,
+            position.y(),
+            position.z() + offset_z,
+            position.yaw(),
+            position.pitch(),
+        );
+        self.set_position(target_position);
+        self.synchronize_position_after_teleport(
+            target_position,
+            Vector3d {
+                x: 0.0,
+                y: 0.0,
+                z: 0.0,
+            },
+            TeleportFlags::absolute(),
+            true,
+        )
+        .map(|_| ())
+    }
+
+    fn play_consumable_sound(&mut self, sound: &Identifier, client: &mut Client) -> io::Result<()> {
         EntitySoundEffectPacket {
             sound_event: NetworkSoundEvent(SoundEvent::Named {
                 name: sound.to_string(),
@@ -285,6 +398,51 @@ impl Player {
         }
         .dispatch(client)
     }
+}
+
+fn effect_reference_contains(
+    reference: &RegistryTagReference,
+    effect_id: i32,
+    server: &MinecraftServer,
+) -> bool {
+    match reference {
+        RegistryTagReference::Backed(tag_name) => server
+            .registries
+            .mob_effect_tag_contains(tag_name, effect_id),
+        RegistryTagReference::Direct(effect_names) => server
+            .registries
+            .mob_effect_key(effect_id)
+            .is_some_and(|effect_key| {
+                effect_names
+                    .iter()
+                    .any(|effect_name| effect_name == effect_key)
+            }),
+        RegistryTagReference::Empty => false,
+    }
+}
+
+fn potion_effect_flags(settings: &spinel_registry::PotionEffectSettings) -> i8 {
+    i8::from(settings.is_ambient())
+        | (i8::from(settings.show_particles()) << 1)
+        | (i8::from(settings.show_icon()) << 2)
+}
+
+fn probability_succeeds(probability: f32, tick: u64) -> bool {
+    random_unit(tick, 0) < probability.clamp(0.0, 1.0)
+}
+
+fn random_teleport_offsets(radius: f64, tick: u64) -> (f64, f64) {
+    let offset_x = (random_unit(tick, 1) as f64 * 2.0 - 1.0) * radius;
+    let offset_z = (random_unit(tick, 2) as f64 * 2.0 - 1.0) * radius;
+    (offset_x, offset_z)
+}
+
+fn random_unit(tick: u64, salt: u64) -> f32 {
+    let mixed = tick
+        .wrapping_mul(0x9E37_79B9_7F4A_7C15)
+        .wrapping_add(salt.wrapping_mul(0xBF58_476D_1CE4_E5B9));
+    let value = mixed ^ (mixed >> 33);
+    (value as f64 / u64::MAX as f64) as f32
 }
 
 fn player_hand_item_is_food(item_stack: ItemStack) -> bool {
@@ -323,9 +481,10 @@ fn item_use_state(item_stack: &ItemStack) -> Option<ItemUseState> {
             animation: ItemAnimation::Spyglass,
         });
     }
-    if material == &Material::GOAT_HORN && item_stack.has(INSTRUMENT) {
+    if material == &Material::GOAT_HORN {
+        let instrument_use_duration = goat_horn_instrument_use_duration(item_stack)?;
         return Some(ItemUseState {
-            duration: 0,
+            duration: instrument_use_duration,
             animation: ItemAnimation::TootHorn,
         });
     }
@@ -347,20 +506,132 @@ fn item_use_state(item_stack: &ItemStack) -> Option<ItemUseState> {
     })
 }
 
+fn goat_horn_instrument_use_duration(item_stack: &ItemStack) -> Option<u64> {
+    item_stack.get(INSTRUMENT)?;
+    Some(spinel_registry::instrument::Instrument::default().use_duration_ticks() as u64)
+}
+
 #[cfg(test)]
 mod tests {
-    use super::Player;
-    use crate::entity::{EquipmentSlot, PlayerHand};
+    use super::{Player, item_use_state};
+    use crate::entity::{EntityPosition, EquipmentSlot, PlayerHand, TimedPotionEffect};
     use crate::network::client::instance::Client;
     use crate::server::MinecraftServer;
-    use spinel_registry::data_components::vanilla_components::{CONSUMABLE, USE_REMAINDER};
+    use spinel_registry::data_components::vanilla_components::{
+        CONSUMABLE, INSTRUMENT, USE_REMAINDER,
+    };
     use spinel_registry::{
-        Consumable, ConsumeEffect, Identifier, ItemAnimation, ItemStack, Material,
+        Consumable, ConsumeEffect, CustomPotionEffect, Identifier, InstrumentComponent,
+        ItemAnimation, ItemStack, Material, PotionEffectSettings, RegistryTagReference,
     };
     use std::net::TcpListener;
     use std::net::TcpStream;
     use std::net::{IpAddr, Ipv4Addr, SocketAddr};
     use uuid::Uuid;
+
+    #[test]
+    fn goat_horn_use_duration_comes_from_instrument_component_shape() {
+        let goat_horn = ItemStack::of(Material::GOAT_HORN).with(
+            INSTRUMENT,
+            InstrumentComponent::new(Identifier::minecraft("seek_goat_horn")),
+        );
+        let stone = ItemStack::of(Material::STONE).with(
+            INSTRUMENT,
+            InstrumentComponent::new(Identifier::minecraft("seek_goat_horn")),
+        );
+        let goat_horn_state = item_use_state(&goat_horn).unwrap();
+
+        assert_eq!(goat_horn_state.duration, 140);
+        assert_eq!(goat_horn_state.animation, ItemAnimation::TootHorn);
+        assert!(item_use_state(&stone).is_none());
+    }
+
+    #[test]
+    fn finished_consumable_applies_removes_clears_random_teleports_and_updates_statistics() {
+        let mut player = test_player();
+        let mut server = MinecraftServer::new();
+        let (mut client, _peer_stream) = test_client();
+        let haste_id = server
+            .registries
+            .dynamic_registry_id(
+                &spinel_registry::MOB_EFFECT_REGISTRY,
+                &Identifier::minecraft("haste"),
+            )
+            .unwrap();
+        let poison_id = server
+            .registries
+            .dynamic_registry_id(
+                &spinel_registry::MOB_EFFECT_REGISTRY,
+                &Identifier::minecraft("poison"),
+            )
+            .unwrap();
+        player.add_effect(TimedPotionEffect::new(poison_id, 0, 200, 0, 0));
+        player.set_position(EntityPosition::new(10.0, 64.0, 10.0, 0.0, 0.0));
+        let consumable_stack = ItemStack::of(Material::APPLE).with(
+            CONSUMABLE,
+            Consumable::new(
+                1.6,
+                ItemAnimation::Eat,
+                Identifier::minecraft("entity.generic.eat"),
+                true,
+                vec![
+                    ConsumeEffect::ApplyEffects {
+                        effects: vec![CustomPotionEffect::new(
+                            Identifier::minecraft("haste"),
+                            PotionEffectSettings::new(1, 40, false, true, true, None),
+                        )],
+                        probability: 1.0,
+                    },
+                    ConsumeEffect::RemoveEffects {
+                        effects: RegistryTagReference::direct(vec![Identifier::minecraft(
+                            "poison",
+                        )]),
+                    },
+                    ConsumeEffect::TeleportRandomly { diameter: 8.0 },
+                ],
+            ),
+        );
+
+        player
+            .finish_item_use(
+                PlayerHand::Main,
+                consumable_stack.clone(),
+                32,
+                &mut server,
+                &mut client,
+            )
+            .unwrap();
+
+        assert!(player.has_effect(haste_id));
+        assert!(!player.has_effect(poison_id));
+        assert_eq!(player.statistic_value("minecraft:used:minecraft:apple"), 1);
+        assert_ne!(
+            player.position(),
+            EntityPosition::new(10.0, 64.0, 10.0, 0.0, 0.0)
+        );
+
+        let clearing_stack = ItemStack::of(Material::APPLE).with(
+            CONSUMABLE,
+            Consumable::new(
+                1.6,
+                ItemAnimation::Eat,
+                Identifier::minecraft("entity.generic.eat"),
+                true,
+                vec![ConsumeEffect::ClearAllEffects],
+            ),
+        );
+        player
+            .finish_item_use(
+                PlayerHand::Main,
+                clearing_stack,
+                32,
+                &mut server,
+                &mut client,
+            )
+            .unwrap();
+
+        assert!(!player.has_effect(haste_id));
+    }
 
     #[test]
     fn right_click_swappable_armor_matches_minestom_equipment_swap() {

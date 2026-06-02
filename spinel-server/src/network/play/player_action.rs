@@ -3,6 +3,7 @@ use crate::events::player_cancel_digging::PlayerCancelDiggingEvent;
 use crate::events::player_finish_digging::PlayerFinishDiggingEvent;
 use crate::events::player_start_digging::PlayerStartDiggingEvent;
 use crate::network::client::instance::Client;
+use crate::network::play::block_break_calculation;
 use crate::server::MinecraftServer;
 use crate::world::{Block, BlockPosition};
 use spinel_core::entity::game_mode::GameMode;
@@ -88,7 +89,28 @@ fn finish_digging(
     };
     let player = unsafe { &mut *digging_input.player };
     if should_prevent_breaking(player, digging_input.block, &server.registries) {
-        return rollback_digging(
+        return fail_digging(
+            digging_input.block_position,
+            packet.sequence,
+            server,
+            client,
+        );
+    }
+    let player_is_in_water = player_is_in_water(player, server, client);
+    let break_ticks = block_break_calculation::break_ticks(
+        digging_input.block,
+        player,
+        &server.registries,
+        player_is_in_water,
+    );
+    if break_ticks == block_break_calculation::UNBREAKABLE {
+        let mut event = PlayerCancelDiggingEvent::new(
+            digging_input.player,
+            digging_input.block,
+            digging_input.block_position,
+        );
+        event.dispatch(server, client);
+        return fail_digging(
             digging_input.block_position,
             packet.sequence,
             server,
@@ -97,7 +119,7 @@ fn finish_digging(
     }
     let mut event = PlayerFinishDiggingEvent::new(
         digging_input.player,
-        Block::AIR,
+        digging_input.block,
         digging_input.block_position,
     );
     event.dispatch(server, client);
@@ -122,25 +144,16 @@ fn start_digging(
 ) -> bool {
     let player = unsafe { &mut *digging_input.player };
     if should_prevent_breaking(player, digging_input.block, &server.registries) {
-        return rollback_digging(digging_input.block_position, sequence, server, client);
+        return fail_digging(digging_input.block_position, sequence, server, client);
     }
-    let mut event = PlayerStartDiggingEvent::new(
-        digging_input.player,
+    let player_is_in_water = player_is_in_water(player, server, client);
+    let break_ticks = block_break_calculation::break_ticks(
         digging_input.block,
-        digging_input.block_position,
-        digging_input.block_face,
+        player,
+        &server.registries,
+        player_is_in_water,
     );
-    event.dispatch(server, client);
-    if event.is_cancelled() {
-        return rollback_digging(digging_input.block_position, sequence, server, client);
-    }
-    if player.has_instant_break() {
-        let mut finish_event = PlayerFinishDiggingEvent::new(
-            digging_input.player,
-            Block::AIR,
-            digging_input.block_position,
-        );
-        finish_event.dispatch(server, client);
+    if break_ticks == 0 {
         let block_was_broken = server
             .break_block_in_world(
                 client,
@@ -151,6 +164,16 @@ fn start_digging(
             )
             .unwrap_or(false);
         return block_was_broken && acknowledge_block_change(sequence, client);
+    }
+    let mut event = PlayerStartDiggingEvent::new(
+        digging_input.player,
+        digging_input.block,
+        digging_input.block_position,
+        digging_input.block_face,
+    );
+    event.dispatch(server, client);
+    if event.is_cancelled() {
+        return fail_digging(digging_input.block_position, sequence, server, client);
     }
     acknowledge_block_change(sequence, client)
 }
@@ -194,57 +217,39 @@ fn digging_event_input(
     })
 }
 
-fn rollback_digging(
+fn fail_digging(
     position: BlockPosition,
     sequence: i32,
     server: &mut MinecraftServer,
     client: &mut Client,
 ) -> bool {
-    let block_is_refreshed = server.refresh_block_in_world(client, position).is_ok();
+    let block_change_is_acknowledged = acknowledge_block_change(sequence, client);
     let block_entity_is_refreshed = server
         .refresh_block_entity_in_world(client, position)
         .is_ok();
-    let player_is_corrected = correct_player_after_failed_digging(position, server, client);
-    block_is_refreshed
-        && block_entity_is_refreshed
-        && player_is_corrected
-        && acknowledge_block_change(sequence, client)
-}
-
-pub(crate) fn correct_player_after_failed_digging(
-    position: BlockPosition,
-    server: &mut MinecraftServer,
-    client: &mut Client,
-) -> bool {
-    let Some(player) = server.world_manager.player_pointer_for_client(client) else {
-        return false;
-    };
-    let player = unsafe { &mut *player };
-    let player_position = player.position();
-    let block_is_under_player = position.x == player_position.x().floor() as i32
-        && position.y + 1 == player_position.y().floor() as i32
-        && position.z == player_position.z().floor() as i32;
-    if !block_is_under_player {
-        return true;
-    }
-    player
-        .synchronize_position_after_teleport(
-            player_position,
-            spinel_network::types::Vector3d {
-                x: 0.0,
-                y: 0.0,
-                z: 0.0,
-            },
-            spinel_network::types::TeleportFlags::absolute(),
-            true,
-        )
-        .is_ok()
+    block_change_is_acknowledged && block_entity_is_refreshed
 }
 
 fn acknowledge_block_change(sequence: i32, client: &mut Client) -> bool {
     AcknowledgeBlockChangePacket { sequence }
         .dispatch(client)
         .is_ok()
+}
+
+fn player_is_in_water(
+    player: &crate::entity::Player,
+    server: &mut MinecraftServer,
+    client: &Client,
+) -> bool {
+    let player_position = player.position();
+    let eye_position = BlockPosition::new(
+        player_position.x().floor() as i32,
+        (player_position.y() + player.eye_height()).floor() as i32,
+        player_position.z().floor() as i32,
+    );
+    server
+        .loaded_block_in_world(client, eye_position)
+        .is_some_and(|block| block == Block::WATER)
 }
 
 pub(crate) fn should_prevent_breaking(

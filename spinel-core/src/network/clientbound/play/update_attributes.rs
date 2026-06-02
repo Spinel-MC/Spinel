@@ -5,6 +5,7 @@ use spinel_network::types::{Identifier, VarInt};
 use std::io::{self, Read, Write};
 
 #[packet(id: "update_attributes", state: ConnectionState::Play, recipient: Recipient::Client)]
+#[derive(Clone)]
 pub struct UpdateAttributesPacket {
     pub entity_id: VarInt,
     pub attributes: Vec<EntityAttribute>,

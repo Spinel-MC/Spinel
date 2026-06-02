@@ -10,6 +10,8 @@ pub mod ping;
 pub mod plugin_message;
 pub mod registry_data;
 pub mod registry_entry;
+pub mod resource_pack_pop;
+pub mod resource_pack_push;
 pub mod server_links;
 pub mod store_cookie;
 pub mod transfer;

@@ -83,6 +83,7 @@ fn create_player(client: &mut Client) -> Option<Player> {
         client.addr,
     );
     player.set_client(client);
+    player.refresh_settings(client.pending_client_settings.clone());
     Some(player)
 }
 

@@ -1,3 +1,4 @@
+pub mod attribute;
 pub mod banner_pattern;
 pub mod cat_variant;
 pub mod chat_type;
@@ -9,6 +10,7 @@ pub mod enchantment;
 pub mod frog_variant;
 pub mod instrument;
 pub mod jukebox_song;
+pub mod mob_effect;
 pub mod painting_variant;
 pub mod pig_variant;
 pub mod timeline;

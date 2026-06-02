@@ -12,6 +12,9 @@ mod sender;
 mod suggestion;
 mod syntax;
 
+#[cfg(test)]
+mod test;
+
 pub use argument::{
     CommandArgument, CommandArgumentKind, CommandArgumentValue, CoordinateType, RelativeCoordinate,
     RelativeVec3,

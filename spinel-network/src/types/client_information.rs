@@ -1,7 +1,7 @@
 use crate::data_type::DataType;
 use std::io::{self, Read, Write};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ClientInformation {
     pub locale: String,
     pub view_distance: i8,

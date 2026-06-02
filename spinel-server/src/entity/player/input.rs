@@ -1,5 +1,5 @@
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub(crate) struct PlayerInputs {
+pub struct PlayerInputs {
     pub forward: bool,
     pub backward: bool,
     pub left: bool,

@@ -180,6 +180,7 @@ impl EntityTracker {
             Entity::Generic(entity) if entity.entity_type() == EntityType::ITEM => {
                 vec![EntityTrackerTarget::Entities, EntityTrackerTarget::Items]
             }
+            Entity::Item(_) => vec![EntityTrackerTarget::Entities, EntityTrackerTarget::Items],
             Entity::Generic(entity) if entity.entity_type() == EntityType::EXPERIENCE_ORB => {
                 vec![
                     EntityTrackerTarget::Entities,

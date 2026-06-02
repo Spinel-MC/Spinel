@@ -18,9 +18,11 @@ fn on_set_creative_mode_slot(
     };
     let player = unsafe { &mut *player };
     if player.game_mode() != GameMode::Creative {
+        let _ = player.sync_inventory(client);
         return false;
     }
     if packet.slot < 1 || packet.slot as i32 > slot_conversion::OFFHAND_SLOT {
+        let _ = player.sync_inventory(client);
         return false;
     }
     let slot = slot_conversion::convert_window_0_slot_to_minestom_slot(packet.slot as i32);
@@ -34,9 +36,20 @@ fn on_set_creative_mode_slot(
     if event.is_cancelled() {
         return false;
     }
+    let previous_item_stack = player
+        .inventory_ref()
+        .item_stack(slot as usize)
+        .cloned()
+        .unwrap_or_else(spinel_registry::ItemStack::air);
     if !player.inventory().set_item_stack(slot as usize, item_stack) {
         return false;
     }
+    let current_item_stack = player
+        .inventory_ref()
+        .item_stack(slot as usize)
+        .cloned()
+        .unwrap_or_else(spinel_registry::ItemStack::air);
+    player.update_inventory_slot_attributes(slot, &previous_item_stack, &current_item_stack);
     if player.slot_is_held_main_hand(slot) && player.sync_main_hand_attributes(client).is_err() {
         return false;
     }

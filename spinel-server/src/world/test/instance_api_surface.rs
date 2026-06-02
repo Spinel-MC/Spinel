@@ -129,6 +129,49 @@ fn world_light_reads_match_loaded_chunk_and_missing_chunk_edges() {
 }
 
 #[test]
+fn world_entity_line_of_sight_matches_minestom_entity_raycast_surface() {
+    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut source = Entity::new(EntityType::ZOMBIE);
+    let mut target = Entity::new(EntityType::ZOMBIE);
+    let source_id = source.entity_id();
+    let target_id = target.entity_id();
+
+    source.set_position(EntityPosition::new(0.5, 64.0, 0.5, 0.0, 0.0));
+    target.set_position(EntityPosition::new(0.5, 64.0, 5.5, 0.0, 0.0));
+    world.load_chunk(ChunkPosition::new(0, 0)).unwrap();
+    world.add_entity(source);
+    world.add_entity(target);
+
+    assert_eq!(
+        world.line_of_sight(source_id, 8),
+        Vec::<BlockPosition>::new()
+    );
+    assert!(world.has_line_of_sight(source_id, target_id));
+    assert!(world.has_exact_line_of_sight(source_id, target_id, true));
+    assert_eq!(
+        world
+            .line_of_sight_entity(source_id, 8.0, |entity| entity.entity_id() == target_id)
+            .map(Entity::entity_id),
+        Some(target_id)
+    );
+
+    let blocking_position = BlockPosition::new(0, 65, 3);
+    world.set_block(blocking_position, Block::STONE).unwrap();
+
+    assert_eq!(
+        world.target_block_position(source_id, 8),
+        Some(blocking_position)
+    );
+    assert_eq!(world.line_of_sight(source_id, 8), vec![blocking_position]);
+    assert!(!world.has_line_of_sight(source_id, target_id));
+    assert!(
+        world
+            .line_of_sight_entity(source_id, 8.0, |entity| entity.entity_id() == target_id)
+            .is_none()
+    );
+}
+
+#[test]
 fn invalidated_light_relights_before_reading_levels() {
     let mut world = World::new(Identifier::minecraft("overworld"));
     let lit_position = BlockPosition::new(0, 64, 0);
@@ -422,6 +465,8 @@ fn world_play_sound_except_sends_positioned_sound_to_all_but_excluded_player() {
     included_player.mark_entered_world();
     world.add_entity(Entity::Player(excluded_player));
     world.add_entity(Entity::Player(included_player));
+    excluded_client.discard_queued_outbound_packets();
+    included_client.discard_queued_outbound_packets();
 
     world
         .play_sound_except(
@@ -471,6 +516,8 @@ fn world_play_sound_except_emitter_delegates_self_emitter_per_player() {
     included_player.mark_entered_world();
     world.add_entity(Entity::Player(excluded_player));
     world.add_entity(Entity::Player(included_player));
+    excluded_client.discard_queued_outbound_packets();
+    included_client.discard_queued_outbound_packets();
 
     world
         .play_sound_except_emitter(
@@ -1109,6 +1156,8 @@ fn break_block_sends_destroy_effect_to_chunk_viewers_except_breaker() {
         .add_viewer(viewer_id);
     world.add_entity(Entity::Player(breaker));
     world.add_entity(Entity::Player(viewer));
+    breaker_client.discard_queued_outbound_packets();
+    viewer_client.discard_queued_outbound_packets();
 
     assert!(world.break_block(
         breaker_id,
@@ -1622,6 +1671,9 @@ fn player_set_instance_future_completes_after_spawn_packets_and_viewer_refresh()
     server
         .world_manager
         .add_entity(second_world, Entity::Player(new_viewer));
+    moving_client.discard_queued_outbound_packets();
+    old_viewer_client.discard_queued_outbound_packets();
+    new_viewer_client.discard_queued_outbound_packets();
 
     let ticket = server
         .world_manager

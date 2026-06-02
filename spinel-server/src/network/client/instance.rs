@@ -3,7 +3,7 @@ use spinel_network::ConnectionState;
 use spinel_network::DataType;
 use spinel_network::VarIntWrapper;
 use spinel_network::encoder::PacketEncoder;
-use spinel_network::types::{Position, Slot};
+use spinel_network::types::{ClientInformation, Position, Slot};
 use spinel_network::wrappers::JsonTextComponent;
 use spinel_utils::component::text::TextComponent;
 use std::collections::VecDeque;
@@ -28,6 +28,7 @@ pub struct Client {
     pub server_ptr: Option<usize>,
     pub pending_encryption: Option<Vec<u8>>,
     pub pending_compression: Option<i32>,
+    pub pending_client_settings: ClientInformation,
     is_online: bool,
     pub(super) alive_time: u64,
     pub(super) alive_pending: bool,
@@ -49,6 +50,7 @@ impl Client {
             server_ptr: None,
             pending_encryption: None,
             pending_compression: None,
+            pending_client_settings: ClientInformation::default(),
             is_online: true,
             alive_time: 0,
             alive_pending: false,
@@ -142,6 +144,11 @@ impl Client {
             .iter()
             .map(|packet| (packet.packet_id, packet.payload.clone()))
             .collect()
+    }
+
+    #[cfg(test)]
+    pub(crate) fn discard_queued_outbound_packets(&mut self) {
+        self.outbound_packet_queue.clear();
     }
 
     pub(crate) fn enqueue_outbound_packet(&mut self, packet_id: i32, payload: Vec<u8>) {

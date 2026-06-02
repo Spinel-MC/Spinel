@@ -1,5 +1,6 @@
-use crate::Identifier;
 use crate::data_components::DataComponentValue;
+use crate::vanilla_world_blocks::Block;
+use crate::{Identifier, Material, Registries};
 use spinel_nbt::Nbt;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -70,6 +71,26 @@ impl RegistryTagReference {
                     .into_boxed_slice(),
             ),
             Self::Empty => Nbt::List(Vec::new().into_boxed_slice()),
+        }
+    }
+
+    pub fn contains_block(&self, block: Block, registries: &Registries) -> bool {
+        match self {
+            Self::Backed(tag_name) => registries.block_tag_contains(tag_name, &block),
+            Self::Direct(block_names) => registries.block_key(&block).is_some_and(|block_key| {
+                block_names.iter().any(|block_name| block_name == block_key)
+            }),
+            Self::Empty => false,
+        }
+    }
+
+    pub fn contains_material(&self, material: &Material, registries: &Registries) -> bool {
+        match self {
+            Self::Backed(tag_name) => registries.item_tag_contains(tag_name, material),
+            Self::Direct(material_names) => material_names
+                .iter()
+                .any(|material_name| material_name == material.key()),
+            Self::Empty => false,
         }
     }
 }

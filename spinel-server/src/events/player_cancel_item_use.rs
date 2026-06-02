@@ -9,6 +9,7 @@ pub struct PlayerCancelItemUseEvent {
     item_stack: ItemStack,
     item_use_duration: u64,
     riptide_spin_attack: bool,
+    cancelled: bool,
 }
 
 impl PlayerCancelItemUseEvent {
@@ -24,6 +25,7 @@ impl PlayerCancelItemUseEvent {
             item_stack,
             item_use_duration,
             riptide_spin_attack: false,
+            cancelled: false,
             connection_ptr: None,
         }
     }
@@ -50,5 +52,13 @@ impl PlayerCancelItemUseEvent {
 
     pub fn set_riptide_spin_attack(&mut self, riptide_spin_attack: bool) {
         self.riptide_spin_attack = riptide_spin_attack;
+    }
+
+    pub const fn is_cancelled(&self) -> bool {
+        self.cancelled
+    }
+
+    pub fn set_cancelled(&mut self, cancelled: bool) {
+        self.cancelled = cancelled;
     }
 }

@@ -79,6 +79,13 @@ impl ComponentBuilder {
         self
     }
 
+    pub fn argument(mut self, argument: impl Into<TextComponent>) -> Self {
+        if let ComponentType::Translatable { args, .. } = &mut self.content {
+            args.push(argument.into());
+        }
+        self
+    }
+
     pub fn build(self) -> TextComponent {
         self.into()
     }
