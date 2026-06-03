@@ -739,6 +739,10 @@ impl GenericEntity {
         self.living.update_attributes_packet(self.entity_id)
     }
 
+    pub fn has_attributes(&self) -> bool {
+        self.living.has_attributes()
+    }
+
     pub fn add_effect(&mut self, effect: TimedPotionEffect) -> EntityEffectPacket {
         self.living.add_effect(self.entity_id, effect)
     }
@@ -1151,9 +1155,10 @@ impl GenericEntity {
         if self.living.has_attributes() {
             self.update_attributes_packet().dispatch(client)?;
         }
-        self.effect_packets()
-            .into_iter()
-            .try_for_each(|packet| packet.dispatch(client))
+        for packet in self.effect_packets() {
+            packet.dispatch(client)?;
+        }
+        Ok(())
     }
 
     pub fn update_old_viewer(&self, client: &mut Client) -> io::Result<()> {

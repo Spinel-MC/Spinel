@@ -49,7 +49,7 @@ fn on_login_success(
 ) -> bool {
     println!("Login Success!");
     server.state = ConnectionState::Login;
-    client.set_state(ConnectionState::Login);
+    client.state = ConnectionState::Login;
 
     report_dispatch_result(
         LoginAcknowledgedPacket {}.dispatch(server),
@@ -57,7 +57,7 @@ fn on_login_success(
     );
 
     server.state = ConnectionState::Configuration;
-    client.set_state(ConnectionState::Configuration);
+    client.state = ConnectionState::Configuration;
     println!("Sent Login Acknowledged. Transitioning to Configuration.");
     println!("Sending Client Information...");
 

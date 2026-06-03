@@ -66,6 +66,7 @@ fn world_scoreboard_team_assignment_refreshes_current_viewers_in_minestom_order(
 
     world.add_entity(target);
     world.add_entity(Entity::Player(viewer));
+    world.process_pending_entity_visibility_refreshes().unwrap();
     world.register_scoreboard_team(Team::new("red")).unwrap();
     world.register_scoreboard_team(Team::new("blue")).unwrap();
     drain_available_packet_frames(&mut viewer_stream);
@@ -107,6 +108,7 @@ fn world_scoreboard_team_assignment_does_not_send_to_non_viewers() {
     ));
     world.add_entity(target);
     world.add_entity(Entity::Player(far_viewer));
+    world.process_pending_entity_visibility_refreshes().unwrap();
     world.register_scoreboard_team(Team::new("red")).unwrap();
     drain_available_packet_frames(&mut far_stream);
 

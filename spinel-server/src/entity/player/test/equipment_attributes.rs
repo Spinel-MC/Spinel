@@ -1,5 +1,6 @@
 use crate::entity::{EquipmentSlot, Player};
 use crate::network::client::instance::Client;
+use spinel_core::network::clientbound::play::set_player_inventory::SetPlayerInventoryPacket;
 use spinel_core::network::clientbound::play::update_attributes::UpdateAttributesPacket;
 use spinel_network::ConnectionState;
 use spinel_registry::data_components::vanilla_components::ATTRIBUTE_MODIFIERS;
@@ -78,6 +79,30 @@ fn login_attribute_sync_applies_preconfigured_selected_slot_item() {
     assert_eq!(
         client.queued_outbound_packet_ids(),
         vec![UpdateAttributesPacket::get_id()]
+    );
+}
+
+#[test]
+fn active_equipment_change_syncs_inventory_slot_and_attributes() {
+    let mut player = player();
+    let mut client = queued_client();
+    player.set_client(&mut client);
+
+    assert!(player.set_equipment(
+        EquipmentSlot::MainHand,
+        ItemStack::of(Material::DIAMOND_PICKAXE),
+    ));
+
+    assert_eq!(
+        player.attribute_value(Attribute::ATTACK_SPEED),
+        1.2000000476837158
+    );
+    assert_eq!(
+        client.queued_outbound_packet_ids(),
+        vec![
+            SetPlayerInventoryPacket::get_id(),
+            UpdateAttributesPacket::get_id(),
+        ]
     );
 }
 

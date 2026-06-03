@@ -1,6 +1,7 @@
 use spinel_network::data_type::DataType;
 use spinel_network::types::VarInt;
 use spinel_network::types::sound::SoundEvent;
+use spinel_network::types::var_int::VarIntWrapper;
 use spinel_network::{ConnectionState, PacketSender, PacketStruct};
 use std::io::{self, Read, Write};
 
@@ -39,8 +40,8 @@ impl EntitySoundEffectPacket {
 impl DataType for EntitySoundEffectPacket {
     fn encode<W: Write>(&self, writer: &mut W) -> io::Result<()> {
         self.sound_event.encode(writer)?;
-        self.source_id.encode(writer)?;
-        self.entity_id.encode(writer)?;
+        VarIntWrapper(self.source_id).encode(writer)?;
+        VarIntWrapper(self.entity_id).encode(writer)?;
         self.volume.encode(writer)?;
         self.pitch.encode(writer)?;
         self.seed.encode(writer)
@@ -49,8 +50,8 @@ impl DataType for EntitySoundEffectPacket {
     fn decode<R: Read>(reader: &mut R) -> io::Result<Self> {
         Ok(Self {
             sound_event: NetworkSoundEvent::decode(reader)?,
-            source_id: VarInt::decode(reader)?,
-            entity_id: VarInt::decode(reader)?,
+            source_id: VarIntWrapper::decode(reader)?.0,
+            entity_id: VarIntWrapper::decode(reader)?.0,
             volume: f32::decode(reader)?,
             pitch: f32::decode(reader)?,
             seed: i64::decode(reader)?,
@@ -100,6 +101,7 @@ mod tests {
         let decoded_packet = EntitySoundEffectPacket::decode(&mut payload.as_slice()).unwrap();
 
         assert_eq!(EntitySoundEffectPacket::get_id(), 0x72);
+        assert_eq!(payload.len(), 19);
         assert_eq!(
             decoded_packet.sound_event,
             NetworkSoundEvent(SoundEvent::Id(2))

@@ -1,5 +1,6 @@
 use spinel_network::data_type::DataType;
 use spinel_network::types::sound::SoundEvent;
+use spinel_network::types::var_int::VarIntWrapper;
 use spinel_network::types::{VarInt, Vector3d};
 use spinel_network::{ConnectionState, PacketSender, PacketStruct};
 use std::io::{self, Read, Write};
@@ -39,7 +40,7 @@ impl SoundEffectPacket {
 impl DataType for SoundEffectPacket {
     fn encode<W: Write>(&self, writer: &mut W) -> io::Result<()> {
         self.sound_event.encode(writer)?;
-        self.source_id.encode(writer)?;
+        VarIntWrapper(self.source_id).encode(writer)?;
         ((self.position.x * 8.0) as i32).encode(writer)?;
         ((self.position.y * 8.0) as i32).encode(writer)?;
         ((self.position.z * 8.0) as i32).encode(writer)?;
@@ -51,7 +52,7 @@ impl DataType for SoundEffectPacket {
     fn decode<R: Read>(reader: &mut R) -> io::Result<Self> {
         Ok(Self {
             sound_event: NetworkPositionedSoundEvent::decode(reader)?,
-            source_id: VarInt::decode(reader)?,
+            source_id: VarIntWrapper::decode(reader)?.0,
             position: Vector3d {
                 x: f64::from(i32::decode(reader)?) / 8.0,
                 y: f64::from(i32::decode(reader)?) / 8.0,
@@ -81,5 +82,38 @@ impl DataType for NetworkPositionedSoundEvent {
 
     fn decode<R: Read>(reader: &mut R) -> io::Result<Self> {
         Ok(Self(SoundEvent::decode(reader)?))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{NetworkPositionedSoundEvent, SoundEffectPacket};
+    use spinel_network::DataType;
+    use spinel_network::types::Vector3d;
+    use spinel_network::types::sound::SoundEvent;
+
+    #[test]
+    fn sound_effect_packet_source_is_var_int_like_minestom() {
+        let packet = SoundEffectPacket {
+            sound_event: NetworkPositionedSoundEvent(SoundEvent::Id(2)),
+            source_id: 0,
+            position: Vector3d {
+                x: 1.0,
+                y: 2.0,
+                z: 3.0,
+            },
+            volume: 1.0,
+            pitch: 1.0,
+            seed: 42,
+        };
+        let mut payload = Vec::new();
+
+        packet.encode(&mut payload).unwrap();
+        let decoded_packet = SoundEffectPacket::decode(&mut payload.as_slice()).unwrap();
+
+        assert_eq!(payload[1], 0);
+        assert_eq!(payload.len(), 30);
+        assert_eq!(decoded_packet.source_id, 0);
+        assert_eq!(decoded_packet.seed, 42);
     }
 }

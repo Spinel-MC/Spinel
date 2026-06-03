@@ -1671,6 +1671,18 @@ fn player_set_instance_future_completes_after_spawn_packets_and_viewer_refresh()
     server
         .world_manager
         .add_entity(second_world, Entity::Player(new_viewer));
+    server
+        .world_manager
+        .world_mut(first_world)
+        .unwrap()
+        .process_pending_entity_visibility_refreshes()
+        .unwrap();
+    server
+        .world_manager
+        .world_mut(second_world)
+        .unwrap()
+        .process_pending_entity_visibility_refreshes()
+        .unwrap();
     moving_client.discard_queued_outbound_packets();
     old_viewer_client.discard_queued_outbound_packets();
     new_viewer_client.discard_queued_outbound_packets();

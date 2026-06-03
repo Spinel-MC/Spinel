@@ -3,6 +3,7 @@ use crate::inventory::ClickType;
 use crate::inventory::slot_conversion::{CRAFT_RESULT, CRAFT_SLOT_1, CRAFT_SLOT_4, OFFHAND_SLOT};
 use crate::network::client::instance::Client;
 use crate::server::MinecraftServer;
+use spinel_registry::data_components::vanilla_components::EQUIPPABLE;
 use spinel_registry::{ITEM_REGISTRY, Identifier, ItemStack, Material, Registries};
 use std::collections::HashSet;
 use std::sync::LazyLock;
@@ -168,6 +169,9 @@ impl Player {
 }
 
 fn equipment_slot_for_item(item_stack: &ItemStack) -> Option<EquipmentSlot> {
+    if let Some(equippable) = item_stack.get(EQUIPPABLE) {
+        return EquipmentSlot::from_equippable_slot(equippable.slot());
+    }
     let material_id = item_stack.material().id();
     if HEAD_EQUIPMENT_ITEMS.contains(&material_id) {
         return Some(EquipmentSlot::Helmet);
@@ -247,6 +251,8 @@ mod tests {
     use crate::inventory::{Inventory, InventoryType};
     use crate::network::client::instance::Client;
     use crate::server::MinecraftServer;
+    use spinel_core::network::serverbound::play::container_click::ContainerClickPacket;
+    use spinel_network::types::{Array, ItemStackHash};
     use spinel_registry::{ItemStack, Material};
     use spinel_utils::component::Component;
     use std::net::TcpListener;
@@ -361,6 +367,51 @@ mod tests {
     }
 
     #[test]
+    fn player_inventory_shift_click_equips_extracted_component_helmet() {
+        let mut player = test_player();
+        player
+            .inventory()
+            .set_item_stack(0, ItemStack::of(Material::DIAMOND_HELMET));
+        let mut server = MinecraftServer::new();
+        let mut client = test_client();
+        let player_ptr = &mut player as *mut Player;
+
+        assert!(player.apply_shift_click(0, player_ptr, &mut server, &mut client));
+        assert!(player.inventory_ref().item_stack(0).unwrap().is_air());
+        assert_eq!(
+            player
+                .inventory_ref()
+                .equipment(crate::entity::EquipmentSlot::Helmet, player.held_slot())
+                .material(),
+            &Material::DIAMOND_HELMET
+        );
+    }
+
+    #[test]
+    fn window_zero_hotbar_shift_click_equips_extracted_component_helmet() {
+        let mut player = test_player();
+        player
+            .inventory()
+            .set_item_stack(0, ItemStack::of(Material::DIAMOND_HELMET));
+        let mut server = MinecraftServer::new();
+        let mut client = test_client();
+
+        assert!(player.handle_container_click(
+            &container_click_packet(36, 1, 0, 0),
+            &mut server,
+            &mut client
+        ));
+        assert!(player.inventory_ref().item_stack(0).unwrap().is_air());
+        assert_eq!(
+            player
+                .inventory_ref()
+                .equipment(crate::entity::EquipmentSlot::Helmet, player.held_slot())
+                .material(),
+            &Material::DIAMOND_HELMET
+        );
+    }
+
+    #[test]
     fn player_inventory_shift_click_equips_registry_backed_chest_items() {
         let mut player = test_player();
         player
@@ -397,5 +448,22 @@ mod tests {
         let stream = std::net::TcpStream::connect(addr).unwrap();
         let _ = listener.accept().unwrap();
         Client::new(stream, addr)
+    }
+
+    fn container_click_packet(
+        slot: i16,
+        click_type: i32,
+        button: i8,
+        container_id: i32,
+    ) -> ContainerClickPacket {
+        ContainerClickPacket {
+            container_id,
+            state_id: 0,
+            slot,
+            button,
+            click_type,
+            changed_slots: Array(Vec::new()),
+            carried_item: ItemStackHash::from_item_stack(&ItemStack::air()),
+        }
     }
 }

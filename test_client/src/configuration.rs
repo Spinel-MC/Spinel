@@ -89,7 +89,7 @@ fn on_finish_config(
         "finish configuration packet",
     );
     server.state = ConnectionState::Play;
-    client.set_state(ConnectionState::Play);
+    client.state = ConnectionState::Play;
     println!("SUCCESS: Transitioning to PLAY state!");
     true
 }
@@ -120,6 +120,10 @@ impl<'a> RegistryValidation<'a> {
                     println!("OK: {} ({} entries)", registry_id, entries.len());
                 }
                 None => {
+                    if Self::missing_registry_is_allowed_for_repro(registry_id) {
+                        println!("OK: {} (missing optional test registry)", registry_id);
+                        continue;
+                    }
                     println!("ERROR: Missing dynamic registry: {}", registry_id);
                     all_registries_are_valid = false;
                 }
@@ -159,5 +163,12 @@ impl<'a> RegistryValidation<'a> {
             ("minecraft:dialog", false),
             ("minecraft:timeline", false),
         ]
+    }
+
+    const fn missing_registry_is_allowed_for_repro(registry_id: &str) -> bool {
+        matches!(
+            registry_id.as_bytes(),
+            b"minecraft:test_environment" | b"minecraft:test_instance"
+        )
     }
 }

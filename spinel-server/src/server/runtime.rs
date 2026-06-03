@@ -111,6 +111,7 @@ impl MinecraftServer {
         self.scheduler().process_tick();
         let server_ptr = self as *mut Self as usize;
         self.tick_connections();
+        self.process_queued_player_packets();
         self.world_manager.tick(&self.registries, server_ptr);
         self.scheduler().process_tick_end();
     }

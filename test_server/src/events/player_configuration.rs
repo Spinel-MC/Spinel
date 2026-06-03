@@ -23,6 +23,7 @@ fn on_player_configuration(
         .set_respawn_point(PlayerSpawnPoint::new(0.0, 4.0, 0.0, 0.0, 0.0));
 
     event.player().set_game_mode(GameMode::Survival);
+    let _ = event.player().set_permission_level(4);
 
     event
         .player()

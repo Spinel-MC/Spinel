@@ -45,6 +45,7 @@ use spinel_core::network::clientbound::play::entity_effect::EntityEffectPacket;
 use spinel_core::network::clientbound::play::entity_head_look::EntityHeadLookPacket;
 use spinel_core::network::clientbound::play::entity_position::EntityPositionPacket;
 use spinel_core::network::clientbound::play::entity_position_and_rotation::EntityPositionAndRotationPacket;
+use spinel_core::network::clientbound::play::entity_rotation::EntityRotationPacket;
 use spinel_core::network::clientbound::play::entity_sound_effect::{
     EntitySoundEffectPacket, NetworkSoundEvent,
 };
@@ -242,6 +243,58 @@ impl PlayerViewerSnapshot {
     }
 }
 
+struct GenericEntityViewerSnapshot {
+    player_info_packet: Option<PlayerInfoUpdatePacket>,
+    spawn_packet: SpawnEntityPacket,
+    velocity_packet: Option<EntityVelocityPacket>,
+    metadata_packet: SetEntityDataPacket,
+    equipment_packet: SetEquipmentPacket,
+    head_look_packet: EntityHeadLookPacket,
+    attributes_packet: Option<UpdateAttributesPacket>,
+    effect_packets: Vec<EntityEffectPacket>,
+}
+
+impl GenericEntityViewerSnapshot {
+    fn from_entity(entity: &GenericEntity) -> Self {
+        Self {
+            player_info_packet: (entity.entity_type() == EntityType::PLAYER).then(|| {
+                PlayerInfoUpdatePacket::add_listed_player(
+                    entity.uuid(),
+                    format!("test_player_{}", entity.entity_id().value()),
+                )
+            }),
+            spawn_packet: entity.spawn_packet(),
+            velocity_packet: entity.has_velocity().then(|| entity.velocity_packet()),
+            metadata_packet: entity.metadata_packet(),
+            equipment_packet: entity.equipment_packet(),
+            head_look_packet: entity.head_look_packet(),
+            attributes_packet: entity
+                .has_attributes()
+                .then(|| entity.update_attributes_packet()),
+            effect_packets: entity.effect_packets(),
+        }
+    }
+
+    fn dispatch(self, client: &mut Client) -> Result<()> {
+        if let Some(player_info_packet) = self.player_info_packet {
+            player_info_packet.dispatch(client)?;
+        }
+        self.spawn_packet.dispatch(client)?;
+        if let Some(velocity_packet) = self.velocity_packet {
+            velocity_packet.dispatch(client)?;
+        }
+        self.metadata_packet.dispatch(client)?;
+        self.equipment_packet.dispatch(client)?;
+        self.head_look_packet.dispatch(client)?;
+        if let Some(attributes_packet) = self.attributes_packet {
+            attributes_packet.dispatch(client)?;
+        }
+        self.effect_packets
+            .into_iter()
+            .try_for_each(|packet| packet.dispatch(client))
+    }
+}
+
 pub struct World {
     pub uuid: Uuid,
     pub name: Identifier,
@@ -262,6 +315,8 @@ pub struct World {
     next_chunk_load_ticket_id: u64,
     pending_player_chunk_loads: VecDeque<PendingPlayerChunkLoad>,
     pending_player_chunk_load_keys: HashSet<(SocketAddr, PlayerChunk)>,
+    pending_entity_visibility_refreshes: VecDeque<EntityId>,
+    pending_entity_visibility_refresh_keys: HashSet<EntityId>,
     generator: Option<Box<dyn Generator + Send + Sync>>,
     explosion_supplier: Option<Box<dyn ExplosionSupplier>>,
     chunk_loader: Arc<dyn ChunkLoader>,
@@ -311,6 +366,8 @@ impl World {
             next_chunk_load_ticket_id: 0,
             pending_player_chunk_loads: VecDeque::new(),
             pending_player_chunk_load_keys: HashSet::new(),
+            pending_entity_visibility_refreshes: VecDeque::new(),
+            pending_entity_visibility_refresh_keys: HashSet::new(),
             generator: None,
             explosion_supplier: None,
             chunk_loader: Arc::new(NoopChunkLoader),
@@ -1220,7 +1277,7 @@ impl World {
         self.entity_tracker.register(&entity);
         let entity_id = entity.entity_id();
         self.entities.push(entity);
-        let _ = self.refresh_visibility_for_entity(entity_id);
+        self.schedule_entity_visibility_refresh(entity_id);
     }
 
     pub(crate) fn take_entity(&mut self, entity_id: EntityId) -> Option<Entity> {
@@ -1386,6 +1443,100 @@ impl World {
         let entity_id = item_entity.entity_id();
         self.add_entity(Entity::Item(item_entity));
         Ok(entity_id)
+    }
+
+    pub fn move_generic_entity(
+        &mut self,
+        entity_id: EntityId,
+        position: EntityPosition,
+        on_ground: bool,
+    ) -> Result<bool> {
+        let Some((previous_position, current_position, movement_packet, head_look_packet)) =
+            self.move_generic_entity_state(entity_id, position, on_ground)
+        else {
+            return Ok(false);
+        };
+        self.entity_tracker.move_entity(entity_id, current_position);
+        if chunk_position_for_entity_position(previous_position)
+            != chunk_position_for_entity_position(current_position)
+        {
+            self.schedule_entity_visibility_refresh(entity_id);
+        }
+        self.send_packet_to_entity_viewers(entity_id, movement_packet)?;
+        self.send_packet_to_entity_viewers(entity_id, head_look_packet)?;
+        Ok(true)
+    }
+
+    pub fn look_generic_entity_at_position(
+        &mut self,
+        entity_id: EntityId,
+        target: EntityPosition,
+        on_ground: bool,
+    ) -> Result<bool> {
+        let Some((rotation_packet, head_look_packet)) =
+            self.look_generic_entity_state_at_position(entity_id, target, on_ground)
+        else {
+            return Ok(false);
+        };
+        self.send_packet_to_entity_viewers(entity_id, rotation_packet)?;
+        self.send_packet_to_entity_viewers(entity_id, head_look_packet)?;
+        Ok(true)
+    }
+
+    pub fn swing_generic_entity_main_hand(&mut self, entity_id: EntityId) -> Result<bool> {
+        let Some(animation_packet) = self.generic_entity_main_hand_animation(entity_id) else {
+            return Ok(false);
+        };
+        self.send_packet_to_entity_viewers(entity_id, animation_packet)?;
+        Ok(true)
+    }
+
+    fn move_generic_entity_state(
+        &mut self,
+        entity_id: EntityId,
+        position: EntityPosition,
+        on_ground: bool,
+    ) -> Option<(
+        EntityPosition,
+        EntityPosition,
+        EntityPositionAndRotationPacket,
+        EntityHeadLookPacket,
+    )> {
+        let Some(Entity::Generic(entity)) = self.entity_by_id_mut(entity_id) else {
+            return None;
+        };
+        let previous_position = entity.position();
+        entity.set_position(position);
+        Some((
+            previous_position,
+            entity.position(),
+            entity.position_and_rotation_delta_packet(previous_position, on_ground),
+            entity.head_look_packet(),
+        ))
+    }
+
+    fn look_generic_entity_state_at_position(
+        &mut self,
+        entity_id: EntityId,
+        target: EntityPosition,
+        on_ground: bool,
+    ) -> Option<(EntityRotationPacket, EntityHeadLookPacket)> {
+        let Some(Entity::Generic(entity)) = self.entity_by_id_mut(entity_id) else {
+            return None;
+        };
+        entity.look_at_position(target);
+        Some((entity.rotation_packet(on_ground), entity.head_look_packet()))
+    }
+
+    fn generic_entity_main_hand_animation(
+        &self,
+        entity_id: EntityId,
+    ) -> Option<spinel_core::network::clientbound::play::entity_animation::EntityAnimationPacket>
+    {
+        let Some(Entity::Generic(entity)) = self.entity_by_id(entity_id) else {
+            return None;
+        };
+        Some(entity.swing_main_hand())
     }
 
     pub(crate) fn move_generic_entities_for_player(
@@ -1554,13 +1705,13 @@ impl World {
         if !player.has_entered_world() {
             return Ok(());
         }
+        let previous_position = player.position();
         if player_coordinate_is_too_large(x)
             || player_coordinate_is_too_large(y)
             || player_coordinate_is_too_large(z)
         {
             return player.kick(Component::text("You moved too far away!"));
         }
-        let previous_position = player.position();
         if previous_position.x() == x && previous_position.y() == y && previous_position.z() == z {
             return Ok(());
         }
@@ -1647,13 +1798,13 @@ impl World {
         if !player.has_entered_world() {
             return Ok(());
         }
+        let previous_position = player.position();
         if player_coordinate_is_too_large(x)
             || player_coordinate_is_too_large(y)
             || player_coordinate_is_too_large(z)
         {
             return player.kick(Component::text("You moved too far away!"));
         }
-        let previous_position = player.position();
         let packet_position = EntityPosition::new(x, y, z, yaw, pitch);
         if previous_position == packet_position {
             return Ok(());
@@ -2396,33 +2547,52 @@ impl World {
         viewed_entity_id: EntityId,
         viewer_player_id: EntityId,
     ) -> Result<()> {
-        let Some(viewed_entity) = self
-            .entity_by_id(viewed_entity_id)
-            .map(|entity| entity as *const Entity)
+        let Some(viewer_snapshot) = self.entity_viewer_snapshot(viewed_entity_id) else {
+            return Ok(());
+        };
+        let Some(client) =
+            self.entity_by_id_mut(viewer_player_id)
+                .and_then(|entity| match entity {
+                    Entity::Player(player) => player.client_mut(),
+                    _ => None,
+                })
         else {
             return Ok(());
         };
-        let Some(client) = self
-            .entity_by_id_mut(viewer_player_id)
-            .and_then(|entity| match entity {
-                Entity::Player(player) => player.client_mut(),
-                _ => None,
-            })
-            .map(|client| client as *mut Client)
-        else {
-            return Ok(());
-        };
-        unsafe {
-            match &*viewed_entity {
-                Entity::Generic(entity) => entity.update_new_viewer(&mut *client),
-                Entity::Item(entity) => entity.update_new_viewer(&mut *client),
-                Entity::Player(player) => {
-                    PlayerViewerSnapshot::from_player(player).dispatch(&mut *client)
-                }
+        viewer_snapshot.dispatch(client)
+    }
+
+    fn entity_viewer_snapshot(&self, viewed_entity_id: EntityId) -> Option<EntityViewerSnapshot> {
+        self.entity_by_id(viewed_entity_id)
+            .map(EntityViewerSnapshot::from_entity)
+    }
+}
+
+enum EntityViewerSnapshot {
+    Generic(GenericEntityViewerSnapshot),
+    Player(PlayerViewerSnapshot),
+}
+
+impl EntityViewerSnapshot {
+    fn from_entity(entity: &Entity) -> Self {
+        match entity {
+            Entity::Generic(entity) => {
+                Self::Generic(GenericEntityViewerSnapshot::from_entity(entity))
             }
+            Entity::Item(entity) => Self::Generic(GenericEntityViewerSnapshot::from_entity(entity)),
+            Entity::Player(player) => Self::Player(PlayerViewerSnapshot::from_player(player)),
         }
     }
 
+    fn dispatch(self, client: &mut Client) -> Result<()> {
+        match self {
+            Self::Generic(snapshot) => snapshot.dispatch(client),
+            Self::Player(snapshot) => snapshot.dispatch(client),
+        }
+    }
+}
+
+impl World {
     fn send_entity_remove_to_player(
         &mut self,
         viewed_entity_id: EntityId,
@@ -2546,6 +2716,7 @@ impl World {
             .into_iter()
             .for_each(|(entity_id, position)| self.touch_entity_blocks(entity_id, position));
         let _ = self.process_pending_player_chunk_loads();
+        let _ = self.process_pending_entity_visibility_refreshes();
         self.tick_chunks(self.world_age as u64);
         player_addresses.into_iter().for_each(|address| {
             let _ = self.send_pending_chunks_for_player_address(address, registries);
@@ -4402,6 +4573,29 @@ impl World {
                     });
             }
         });
+    }
+
+    fn schedule_entity_visibility_refresh(&mut self, entity_id: EntityId) {
+        if self
+            .pending_entity_visibility_refresh_keys
+            .insert(entity_id)
+        {
+            self.pending_entity_visibility_refreshes
+                .push_back(entity_id);
+        }
+    }
+
+    pub(crate) fn process_pending_entity_visibility_refreshes(&mut self) -> Result<()> {
+        let mut pending_entity_ids = VecDeque::new();
+        std::mem::swap(
+            &mut pending_entity_ids,
+            &mut self.pending_entity_visibility_refreshes,
+        );
+        self.pending_entity_visibility_refresh_keys.clear();
+        while let Some(entity_id) = pending_entity_ids.pop_front() {
+            self.refresh_visibility_for_entity(entity_id)?;
+        }
+        Ok(())
     }
 
     fn process_pending_player_chunk_loads(&mut self) -> Result<()> {

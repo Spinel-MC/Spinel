@@ -20,9 +20,9 @@ impl ExampleBiome {
     fn to_biome_effects() -> BiomeEffects {
         BiomeEffects {
             water_color: Some(Color::from_rgb_int(0x00ff00)),
-            foliage_color: Some(Color::BLACK),
+            foliage_color: Some(Color::from_rgb(30, 25, 255)),
             dry_foliage_color: Some(Color::BLACK),
-            grass_color: Some(Color::BLACK),
+            grass_color: Some(Color::from_rgb_int(0xFC0FC0)),
             grass_color_modifier: GrassColorModifier::None,
         }
     }

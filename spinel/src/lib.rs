@@ -16,6 +16,7 @@ pub mod server {
     pub use spinel_server::module_manager;
     pub use spinel_server::modules;
     pub use spinel_server::network;
+    pub use spinel_server::scheduler;
     pub use spinel_server::world;
 }
 

@@ -51,6 +51,7 @@ fn world_kill_entity_sends_death_status_and_applies_generic_death_state_once() {
 
     world.add_entity(Entity::Generic(entity));
     world.add_entity(Entity::Player(viewer));
+    world.process_pending_entity_visibility_refreshes().unwrap();
     viewer_client.discard_queued_outbound_packets();
 
     assert!(world.kill_entity(entity_id).unwrap());

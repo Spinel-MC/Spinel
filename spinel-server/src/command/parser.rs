@@ -26,12 +26,14 @@ impl CommandParser {
         let (command_name, command_arguments) = trimmed_command_line
             .split_once(char::is_whitespace)
             .unwrap_or((trimmed_command_line, ""));
-        let Some(command) = commands
+        let Some(root_command) = commands
             .iter()
             .find(|command| command.name_matches(command_name))
         else {
             return CommandParseResult::Unknown;
         };
+        let (command, command_arguments) =
+            Self::parse_subcommand(root_command, command_arguments.trim());
         let Some((context, syntax)) =
             Self::parse_context(command, trimmed_command_line, command_arguments)
         else {
@@ -46,6 +48,24 @@ impl CommandParser {
             syntax,
             context,
         })
+    }
+
+    fn parse_subcommand<'a, 'b>(
+        command: &'a Command,
+        command_arguments: &'b str,
+    ) -> (&'a Command, &'b str) {
+        let (next_word, remaining_input) = next_word(command_arguments);
+        if next_word.is_empty() {
+            return (command, command_arguments);
+        }
+        let Some(subcommand) = command
+            .subcommands()
+            .iter()
+            .find(|subcommand| subcommand.name_matches(next_word))
+        else {
+            return (command, command_arguments);
+        };
+        Self::parse_subcommand(subcommand, remaining_input.trim_start())
     }
 
     fn parse_context<'a>(
@@ -319,6 +339,18 @@ mod tests {
                 .get("HasVisualFire"),
             Some(&spinel_nbt::Nbt::Byte(1))
         );
+    }
+
+    #[test]
+    fn parser_executes_nested_subcommand_with_shared_root_prefix() {
+        let command = Command::new("showcase")
+            .with_subcommand(Command::new("player").with_default_executor(unused_executor));
+        let commands = [command];
+
+        let parsed_command = valid_command(CommandParser::parse(&commands, "showcase player"));
+
+        assert_eq!(parsed_command.command().name(), "player");
+        assert_eq!(parsed_command.context().input(), "showcase player");
     }
 
     fn spawn_command() -> Command {

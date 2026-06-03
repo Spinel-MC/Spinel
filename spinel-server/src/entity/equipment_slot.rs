@@ -75,6 +75,17 @@ impl EquipmentSlot {
         }
     }
 
+    pub fn from_equippable_slot(equippable_slot: EquippableSlot) -> Option<Self> {
+        match equippable_slot {
+            EquippableSlot::Feet => Some(Self::Boots),
+            EquippableSlot::Legs => Some(Self::Leggings),
+            EquippableSlot::Chest => Some(Self::Chestplate),
+            EquippableSlot::Head => Some(Self::Helmet),
+            EquippableSlot::OffHand => Some(Self::OffHand),
+            _ => None,
+        }
+    }
+
     pub fn armor_slot(&self) -> i32 {
         match self {
             Self::Boots => BOOTS_SLOT,

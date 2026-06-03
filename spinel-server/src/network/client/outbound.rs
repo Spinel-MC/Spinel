@@ -10,11 +10,11 @@ use std::io;
 impl PacketSender for Client {
     fn send_packet(&mut self, id: i32, payload: &[u8]) -> io::Result<()> {
         let packet_name = PacketNameRegistry::get_clientbound_packet_name(self.state, id);
-        self.dispatch_outbound_packet(id, &packet_name, payload.len());
         if self.should_queue_outbound_packet(id) {
             self.enqueue_outbound_packet(id, payload.to_vec());
             return Ok(());
         }
+        self.dispatch_outbound_packet(id, &packet_name, payload.len());
         self.write_outbound_packet(id, payload, packet_name)
     }
 }
@@ -41,7 +41,12 @@ impl Client {
         }
     }
 
-    fn dispatch_outbound_packet(&mut self, id: i32, packet_name: &str, payload_size: usize) {
+    pub(crate) fn dispatch_outbound_packet(
+        &mut self,
+        id: i32,
+        packet_name: &str,
+        payload_size: usize,
+    ) {
         let Some(server_ptr) = self.server_ptr else {
             return;
         };

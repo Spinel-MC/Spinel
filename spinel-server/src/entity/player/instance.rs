@@ -1044,6 +1044,10 @@ impl Player {
         true
     }
 
+    pub(crate) fn pop_next_packet_from_queue(&mut self) -> Option<QueuedPlayerPacket> {
+        self.packet_queue.pop_front()
+    }
+
     pub fn interpret_packet_queue(
         &mut self,
         server: &mut crate::server::MinecraftServer,
@@ -1434,6 +1438,11 @@ impl Player {
 
     pub fn open_inventory(&mut self, inventory: Inventory) {
         self.open_inventory = Some(inventory);
+        let Some(client) = self.client else {
+            return;
+        };
+        let client = unsafe { &mut *(client as *mut Client) };
+        let _ = self.sync_open_inventory(client);
     }
 
     pub fn close_inventory(&mut self) {
@@ -1783,7 +1792,22 @@ impl Player {
             &current_item_stack,
             equipment_slot,
         );
+        let slot = self
+            .inventory
+            .slot_for_equipment(equipment_slot, self.held_slot);
+        let _ = self.sync_active_equipment_change(slot);
         true
+    }
+
+    fn sync_active_equipment_change(&self, slot: i32) -> bool {
+        let Some(client) = self.client else {
+            return false;
+        };
+        let attributes_packet = self.update_attributes_packet();
+        let client = unsafe { &mut *(client as *mut Client) };
+        let slot_is_synced = self.sync_player_inventory_slot(slot, client).is_ok();
+        let attributes_are_synced = attributes_packet.dispatch(client).is_ok();
+        slot_is_synced && attributes_are_synced
     }
 
     pub(crate) fn swap_item_hands(
@@ -1855,7 +1879,6 @@ impl Player {
 
     pub(crate) fn tick(&mut self) -> Option<crate::entity::player::PlayerItemUseCompletion> {
         self.process_scheduler_tick_start();
-        self.process_queued_packets_from_connection();
         let current_tick = self.last_completed_client_tick;
         self.item_cooldowns
             .retain(|_, cooldown_expires_at| *cooldown_expires_at > current_tick);
@@ -1874,18 +1897,6 @@ impl Player {
         let mut scheduler = std::mem::take(&mut self.scheduler);
         scheduler.process_tick_end(self);
         self.scheduler = scheduler;
-    }
-
-    fn process_queued_packets_from_connection(&mut self) {
-        let Some(client_ptr) = self.client else {
-            return;
-        };
-        let client = unsafe { &mut *(client_ptr as *mut Client) };
-        let Some(server_ptr) = client.server_ptr else {
-            return;
-        };
-        let server = unsafe { &mut *(server_ptr as *mut crate::server::MinecraftServer) };
-        self.interpret_packet_queue(server, client);
     }
 
     fn dispatch_player_death_event(

@@ -144,6 +144,30 @@ impl Player {
         }
     }
 
+    pub(crate) fn sync_player_inventory_slot(
+        &self,
+        slot: i32,
+        client: &mut Client,
+    ) -> io::Result<()> {
+        let Some(item_stack) = self.inventory_ref().item_stack(slot as usize) else {
+            return Ok(());
+        };
+        match crate::inventory::PlayerInventory::packet_slot(slot) {
+            PlayerInventoryPacketSlot::PlayerInventory(packet_slot) => SetPlayerInventoryPacket {
+                slot: packet_slot,
+                item: Slot::from_item_stack(item_stack),
+            }
+            .dispatch(client),
+            PlayerInventoryPacketSlot::Window(packet_slot) => ContainerSetSlotPacket {
+                container_id: 0,
+                state_id: 0,
+                slot: packet_slot as i16,
+                item: Slot::from_item_stack(item_stack),
+            }
+            .dispatch(client),
+        }
+    }
+
     pub(crate) fn sync_cursor(&self, client: &mut Client) -> io::Result<()> {
         SetCursorItemPacket {
             item: Slot::from_item_stack(self.inventory_ref().cursor_item()),

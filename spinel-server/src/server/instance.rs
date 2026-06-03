@@ -1,6 +1,6 @@
 use crate::command::CommandManager;
-use crate::entity::PlayerHand;
 use crate::entity::player::QueuedPlayerPacket;
+use crate::entity::{Player, PlayerHand};
 use crate::events::shutdown::ShutdownEvent;
 use crate::events::signal::{ServerSignal, SignalEvent};
 use crate::events::startup::StartupEvent;
@@ -409,6 +409,53 @@ impl MinecraftServer {
             .filter_map(|client_arc| self.tick_client(client_arc))
             .collect();
         self.disconnect_timed_out_clients(timed_out_clients);
+    }
+
+    pub(crate) fn process_queued_player_packets(&mut self) {
+        self.connection_manager
+            .clients()
+            .into_iter()
+            .for_each(|client_arc| self.process_queued_player_packets_for_client(client_arc));
+    }
+
+    fn process_queued_player_packets_for_client(
+        &mut self,
+        client_arc: std::sync::Arc<std::sync::Mutex<Client>>,
+    ) {
+        let Ok(client) = client_arc.lock() else {
+            return;
+        };
+        if client.state != ConnectionState::Play {
+            return;
+        }
+        let client_address = client.addr;
+        drop(client);
+        let mut interpreted_packets = 0;
+        while interpreted_packets < Player::PLAYER_PACKET_PER_TICK {
+            let Some((client, queued_packet)) =
+                self.pop_next_queued_player_packet_for_client_address(&client_address)
+            else {
+                return;
+            };
+            let client = unsafe { &mut *client };
+            client.state = queued_packet.state;
+            self.dispatch_packet(queued_packet.packet_id, client, queued_packet.payload);
+            interpreted_packets += 1;
+        }
+    }
+
+    fn pop_next_queued_player_packet_for_client_address(
+        &mut self,
+        client_address: &SocketAddr,
+    ) -> Option<(*mut Client, QueuedPlayerPacket)> {
+        let player = self
+            .world_manager
+            .player_pointer_for_client_address(client_address)?;
+        let player = unsafe { &mut *player };
+        let queued_packet = player.pop_next_packet_from_queue()?;
+        player
+            .client_mut()
+            .map(|client| (client as *mut Client, queued_packet))
     }
 
     fn tick_client(

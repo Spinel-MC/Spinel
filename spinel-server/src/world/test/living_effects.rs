@@ -155,6 +155,7 @@ fn server_with_living_entity_and_viewer() -> (MinecraftServer, EntityId, Box<Cli
     let world = server.world_manager.world_mut(world_uuid).unwrap();
     world.add_entity(Entity::Generic(entity));
     world.add_entity(Entity::Player(viewer));
+    world.process_pending_entity_visibility_refreshes().unwrap();
     viewer_client.discard_queued_outbound_packets();
     (server, entity_id, viewer_client)
 }

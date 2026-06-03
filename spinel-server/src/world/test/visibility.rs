@@ -31,6 +31,7 @@ fn automatic_visibility_removes_stale_viewer_relationship_after_entity_moves_out
 
     world.add_entity(target);
     world.add_entity(Entity::Player(viewer));
+    world.process_pending_entity_visibility_refreshes().unwrap();
     viewer_client.discard_queued_outbound_packets();
     world.load_chunk(ChunkPosition::new(7, 0)).unwrap();
     world
@@ -80,6 +81,7 @@ fn player_spawn_snapshot_sends_living_packets_in_minestom_order() {
     world.add_entity(Entity::Player(viewer));
     viewer_client.discard_queued_outbound_packets();
     world.add_entity(Entity::Player(target));
+    world.process_pending_entity_visibility_refreshes().unwrap();
 
     assert_eq!(
         viewer_client.queued_outbound_packet_ids(),
@@ -107,6 +109,7 @@ fn vanished_player_refresh_removes_player_info_before_entity_removal() {
 
     world.add_entity(Entity::Player(viewer));
     world.add_entity(Entity::Player(target));
+    world.process_pending_entity_visibility_refreshes().unwrap();
     viewer_client.discard_queued_outbound_packets();
 
     assert!(world.set_player_vanished(target_id, true).unwrap());
@@ -134,6 +137,7 @@ fn skin_refresh_replays_player_to_current_viewers_only() {
     world.add_entity(Entity::Player(viewer));
     world.add_entity(Entity::Player(far_player));
     world.add_entity(Entity::Player(target));
+    world.process_pending_entity_visibility_refreshes().unwrap();
     viewer_client.discard_queued_outbound_packets();
     far_client.discard_queued_outbound_packets();
 
@@ -157,6 +161,36 @@ fn skin_refresh_replays_player_to_current_viewers_only() {
             SetEntityDataPacket::get_id(),
             EntityHeadLookPacket::get_id(),
             SetEquipmentPacket::get_id(),
+        ]
+    );
+}
+
+#[test]
+fn add_entity_defers_spawn_packets_until_pending_visibility_refresh() {
+    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut viewer_client = queued_client();
+    let viewer = entered_player(&mut viewer_client, "Viewer");
+    let target = Entity::new(EntityType::ZOMBIE);
+
+    world.add_entity(Entity::Player(viewer));
+    world.process_pending_entity_visibility_refreshes().unwrap();
+    viewer_client.discard_queued_outbound_packets();
+    world.add_entity(target);
+
+    assert_eq!(
+        viewer_client.queued_outbound_packet_ids(),
+        Vec::<i32>::new()
+    );
+
+    world.process_pending_entity_visibility_refreshes().unwrap();
+
+    assert_eq!(
+        viewer_client.queued_outbound_packet_ids(),
+        vec![
+            SpawnEntityPacket::get_id(),
+            SetEntityDataPacket::get_id(),
+            SetEquipmentPacket::get_id(),
+            EntityHeadLookPacket::get_id(),
         ]
     );
 }

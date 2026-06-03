@@ -156,6 +156,7 @@ fn world_damage_entity_dispatches_damage_event_packet_to_current_viewers() {
 
     world.add_entity(entity);
     world.add_entity(Entity::Player(viewer));
+    world.process_pending_entity_visibility_refreshes().unwrap();
     viewer_client.discard_queued_outbound_packets();
     let registries = Registries::new_vanilla();
     assert!(
@@ -212,6 +213,7 @@ fn lethal_world_damage_runs_living_death_after_damage_and_sound_packets() {
     let entity_id = entity.entity_id();
     world.add_entity(entity);
     world.add_entity(Entity::Player(viewer));
+    world.process_pending_entity_visibility_refreshes().unwrap();
     viewer_client.discard_queued_outbound_packets();
 
     assert!(
