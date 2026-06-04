@@ -1,3 +1,6 @@
+use crate::events::network::inbound_packet_error::{
+    InboundPacketErrorEvent, InboundPacketErrorStage,
+};
 use crate::instance::MinecraftClient;
 use crate::network::server::instance::Server;
 use spinel_network::DataType;
@@ -13,11 +16,9 @@ pub async fn connect_to_server(
     port: u16,
 ) -> Result<(), Error> {
     let addr_str = format!("{}:{}", address, port);
-    println!("Connecting to {}...", addr_str);
 
     let stream = TcpStream::connect(&addr_str).await?;
     let addr = stream.peer_addr()?;
-    println!("Connected to {}", addr);
 
     stream.set_nodelay(true)?;
 
@@ -36,7 +37,6 @@ pub async fn connect_to_server(
     let server_arc = client.server.0.clone();
 
     task::spawn_blocking(move || {
-        println!("Network loop started for server connection: {}", addr);
         let mut reader = read_stream;
         let mut decoder = spinel_network::decoder::PacketDecoder::new();
 
@@ -44,11 +44,22 @@ pub async fn connect_to_server(
             let packet_bytes = match decoder.read_frame(&mut reader) {
                 Ok(b) => b,
                 Err(e) if e.kind() == ErrorKind::UnexpectedEof => {
-                    println!("Disconnected from server.");
                     break;
                 }
                 Err(e) => {
-                    eprintln!("Error reading packet: {}", e);
+                    if let Ok(mut server_lock) = server_arc.lock() {
+                        if let Some(server) = server_lock.as_mut() {
+                            let mut inbound_packet_error_event = InboundPacketErrorEvent::new(
+                                InboundPacketErrorStage::FrameRead,
+                                server.state,
+                                None,
+                                None,
+                                e.to_string(),
+                            );
+                            let mut client_handle = client.clone();
+                            inbound_packet_error_event.dispatch(&mut client_handle, server);
+                        }
+                    }
                     break;
                 }
             };
@@ -57,7 +68,19 @@ pub async fn connect_to_server(
             let packet_id = match VarIntWrapper::decode(&mut cursor) {
                 Ok(id) => id.0,
                 Err(e) => {
-                    eprintln!("Error decoding packet ID: {}", e);
+                    if let Ok(mut server_lock) = server_arc.lock() {
+                        if let Some(server) = server_lock.as_mut() {
+                            let mut inbound_packet_error_event = InboundPacketErrorEvent::new(
+                                InboundPacketErrorStage::PacketIdDecode,
+                                server.state,
+                                None,
+                                None,
+                                e.to_string(),
+                            );
+                            let mut client_handle = client.clone();
+                            inbound_packet_error_event.dispatch(&mut client_handle, server);
+                        }
+                    }
                     break;
                 }
             };
@@ -80,6 +103,10 @@ pub async fn connect_to_server(
                     }
                 }
             }
+        }
+
+        if let Ok(mut lock) = server_arc.lock() {
+            *lock = None;
         }
 
         client.on_disconnect();

@@ -1,3 +1,4 @@
+pub mod common;
 pub mod server;
 pub mod socket;
 pub mod status;

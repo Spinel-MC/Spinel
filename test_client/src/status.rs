@@ -10,7 +10,6 @@ fn on_status_response(
     _packet: StatusResponsePacket,
     _client: &mut MinecraftClient,
 ) -> bool {
-    println!("Received Status Response!");
     true
 }
 
@@ -20,6 +19,5 @@ fn on_pong(
     _packet: PongResponsePacket,
     _client: &mut MinecraftClient,
 ) -> bool {
-    println!("Received Pong Response!");
     true
 }

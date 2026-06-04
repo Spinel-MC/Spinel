@@ -9,13 +9,10 @@ fn on_status_response(
     packet: StatusResponsePacket,
     _mc_client: &mut MinecraftClient,
 ) -> bool {
-    println!("Received Status Response:");
-    println!("{}", packet.json_response);
-
     if let Ok(json) = serde_json::from_str::<serde_json::Value>(&packet.json_response) {
         if let Some(version) = json.get("version") {
             println!(
-                "  Server Version: {}",
+                "Server Version: {}",
                 version
                     .get("name")
                     .and_then(|v| v.as_str())

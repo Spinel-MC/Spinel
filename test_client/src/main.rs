@@ -1,7 +1,10 @@
 mod application;
 mod configuration;
+mod disconnect;
 mod dispatch;
+mod events;
 mod login;
+mod play;
 mod status;
 
 pub use spinel::client::ClientPacketListener;

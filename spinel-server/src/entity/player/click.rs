@@ -15,7 +15,9 @@ impl Player {
         server: &mut MinecraftServer,
         client: &mut Client,
     ) -> bool {
-        let container_size = self.clicked_container_size(packet.container_id);
+        let Some(container_size) = self.clicked_container_size(packet.container_id) else {
+            return false;
+        };
         let Some(mut click) = self
             .click_preprocessor()
             .process_click(packet, container_size)
@@ -55,12 +57,15 @@ impl Player {
         true
     }
 
-    fn clicked_container_size(&self, container_id: i32) -> Option<usize> {
+    fn clicked_container_size(&self, container_id: i32) -> Option<Option<usize>> {
         if container_id == 0 {
+            return Some(None);
+        }
+        let inventory = self.opened_inventory()?;
+        if inventory.id() != container_id {
             return None;
         }
-        self.opened_inventory()
-            .map(|inventory| inventory.inventory_type().size())
+        Some(Some(inventory.inventory_type().size()))
     }
 
     fn click_is_creative_only(&self, click: &Click) -> bool {

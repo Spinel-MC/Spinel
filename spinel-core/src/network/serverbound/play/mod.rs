@@ -4,6 +4,7 @@ pub mod chat;
 pub mod chat_command;
 pub mod chat_command_signed;
 pub mod chunk_batch_received;
+pub mod client_command;
 pub mod client_information;
 pub mod client_tick_end;
 pub mod command_suggestions;

@@ -1,9 +1,15 @@
 use crate::ClientPacketListener;
+use crate::events::disconnect::DisconnectEvent;
+use crate::events::network::inbound_packet::InboundPacketEvent;
+use crate::events::network::outbound_packet::OutboundPacketEvent;
 use crate::network::server::instance::Server;
 use crate::network::socket::connect_to_server;
 use spinel_core::network::serverbound::play::chunk_batch_received::ChunkBatchReceivedPacket;
+use spinel_core::network::serverbound::play::client_command::ClientCommandPacket;
 use spinel_core::network::serverbound::play::move_player_pos::MovePlayerPosPacket;
+use spinel_network::packet_names::PacketNameRegistry;
 use spinel_network::{ConnectionState, PacketSender};
+use spinel_utils::component::text::TextComponent;
 use std::collections::HashMap;
 use std::io;
 use std::io::Cursor;
@@ -84,15 +90,18 @@ pub struct MinecraftClient {
 
 impl PacketSender for MinecraftClient {
     fn send_packet(&mut self, id: i32, payload: &[u8]) -> io::Result<()> {
-        let mut server_lock = self
-            .server
-            .0
+        let server_handle = self.server.0.clone();
+        let mut server_lock = server_handle
             .lock()
             .map_err(|_| io::Error::other("MinecraftClient server lock poisoned"))?;
         let server = server_lock
             .as_mut()
             .ok_or_else(|| io::Error::new(io::ErrorKind::NotConnected, "Server missing"))?;
         server.state = self.state;
+        let packet_name = PacketNameRegistry::get_serverbound_packet_name(server.state, id);
+        let mut outbound_packet_event =
+            OutboundPacketEvent::new(server.state, id, packet_name, payload.len());
+        outbound_packet_event.dispatch(self, server);
         server.send_packet(id, payload)
     }
 }
@@ -166,6 +175,13 @@ impl MinecraftClient {
         .dispatch(self)
     }
 
+    pub fn respawn(&mut self) -> io::Result<()> {
+        ClientCommandPacket {
+            action: ClientCommandPacket::PERFORM_RESPAWN,
+        }
+        .dispatch(self)
+    }
+
     const fn movement_flags(is_on_ground: bool, has_horizontal_collision: bool) -> u8 {
         let mut flags = 0;
         if is_on_ground {
@@ -177,19 +193,35 @@ impl MinecraftClient {
         flags
     }
 
-    pub async fn connect(&mut self, address: &str, port: u16) {
-        if let Err(e) = connect_to_server(self.clone(), address, port).await {
-            eprintln!("Failed to connect: {}", e);
-        }
+    pub async fn connect(&mut self, address: &str, port: u16) -> io::Result<()> {
+        connect_to_server(self.clone(), address, port).await
     }
 
     pub async fn disconnect(&self) {
         self.server.disconnect_sync();
     }
 
-    pub fn on_disconnect(&self) {
-        println!("Client disconnected.");
+    pub async fn disconnect_for_reason(&mut self, reason: impl Into<TextComponent>) {
+        self.disconnect_for_reason_sync(reason.into());
     }
+
+    pub fn disconnect_for_reason_sync(&mut self, reason: TextComponent) {
+        let server_handle = self.server.0.clone();
+        let Ok(mut server_lock) = server_handle.lock() else {
+            return;
+        };
+
+        let Some(server) = server_lock.as_mut() else {
+            return;
+        };
+
+        let mut disconnect_event = DisconnectEvent::new(server.state, reason);
+        disconnect_event.dispatch(self, server);
+        server.disconnect();
+        *server_lock = None;
+    }
+
+    pub fn on_disconnect(&self) {}
 
     pub fn has_listener_for(&self, packet_id: i32, state: &ConnectionState) -> bool {
         let key = (*state, packet_id);
@@ -222,6 +254,13 @@ impl MinecraftClient {
         if specific.is_empty() && generic.is_empty() {
             return false;
         }
+
+        let packet_name =
+            PacketNameRegistry::get_clientbound_packet_name(server_conn.state, packet_id);
+        let mut inbound_packet_event =
+            InboundPacketEvent::new(server_conn.state, packet_id, packet_name, payload.len());
+        let mut event_client_handle = self.clone();
+        inbound_packet_event.dispatch(&mut event_client_handle, server_conn);
 
         server_conn.payload_cursor = Some(Cursor::new(payload));
 

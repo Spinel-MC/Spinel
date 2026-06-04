@@ -18,7 +18,6 @@ fn on_select_known_packs(
     _packet: ServerKnownPacksPacket,
     _client: &mut MinecraftClient,
 ) -> bool {
-    println!("Server requested known packs (S2C 0x0E)");
     report_dispatch_result(
         ClientKnownPacksPacket {
             known_packs: vec![],
@@ -35,12 +34,6 @@ fn on_registry_data(
     packet: RegistryDataPacket,
     client: &mut MinecraftClient,
 ) -> bool {
-    println!(
-        "Received Registry: {} with {} entries (S2C 0x07)",
-        packet.registry_id,
-        packet.entries.len()
-    );
-
     let Ok(mut registries) = client.registries.lock() else {
         return false;
     };
@@ -67,7 +60,6 @@ fn on_update_tags(
     _packet: UpdateTagsPacket,
     _client: &mut MinecraftClient,
 ) -> bool {
-    println!("Received tags update (S2C 0x0D)");
     true
 }
 
@@ -77,8 +69,6 @@ fn on_finish_config(
     _packet: ServerFinishConfigurationPacket,
     client: &mut MinecraftClient,
 ) -> bool {
-    println!("Finish Configuration received! (S2C 0x03)");
-
     if !RegistryValidation::new(client).validate() {
         println!("Protocol error: registry loading failed.");
         return false;
@@ -90,7 +80,7 @@ fn on_finish_config(
     );
     server.state = ConnectionState::Play;
     client.state = ConnectionState::Play;
-    println!("SUCCESS: Transitioning to PLAY state!");
+    println!("Client entered Play state.");
     true
 }
 
@@ -104,7 +94,6 @@ impl<'a> RegistryValidation<'a> {
     }
 
     fn validate(&self) -> bool {
-        println!("--- VALIDATING REGISTRIES ---");
         let Ok(registries) = self.client.registries.lock() else {
             return false;
         };
@@ -116,12 +105,9 @@ impl<'a> RegistryValidation<'a> {
                     println!("ERROR: Registry must be non-empty: {}", registry_id);
                     all_registries_are_valid = false;
                 }
-                Some(entries) => {
-                    println!("OK: {} ({} entries)", registry_id, entries.len());
-                }
+                Some(_) => {}
                 None => {
                     if Self::missing_registry_is_allowed_for_repro(registry_id) {
-                        println!("OK: {} (missing optional test registry)", registry_id);
                         continue;
                     }
                     println!("ERROR: Missing dynamic registry: {}", registry_id);
@@ -131,7 +117,7 @@ impl<'a> RegistryValidation<'a> {
         }
 
         if all_registries_are_valid {
-            println!("--- REGISTRY VALIDATION PASSED ---");
+            println!("Registry validation passed.");
         }
 
         all_registries_are_valid
