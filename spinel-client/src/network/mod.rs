@@ -1,4 +1,5 @@
 pub mod common;
+pub mod play;
 pub mod server;
 pub mod socket;
 pub mod status;

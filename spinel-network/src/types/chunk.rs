@@ -11,6 +11,62 @@ pub struct PalettedContainer {
     pub data: Vec<u64>,
 }
 
+impl PalettedContainer {
+    pub fn entry(&self, entry_index: usize) -> Option<i32> {
+        if self.bits_per_entry == 0 {
+            return self
+                .palette
+                .as_ref()
+                .and_then(|palette| palette.first())
+                .copied();
+        }
+
+        if self.bits_per_entry > 32 {
+            return None;
+        }
+
+        let entries_per_long = 64 / self.bits_per_entry as usize;
+        let long = self.data.get(entry_index / entries_per_long)?;
+        let bit_offset = (entry_index % entries_per_long) * self.bits_per_entry as usize;
+        let palette_index = ((*long >> bit_offset) & bit_mask(self.bits_per_entry)) as i32;
+
+        if self.bits_per_entry <= 8 {
+            return self
+                .palette
+                .as_ref()
+                .and_then(|palette| palette.get(palette_index as usize))
+                .copied();
+        }
+
+        Some(palette_index)
+    }
+
+    fn decode_with_entry_count<R: Read>(r: &mut R, entry_count: usize) -> io::Result<Self> {
+        let bits_per_entry = u8::decode(r)?;
+
+        let palette = if bits_per_entry == 0 {
+            let single = VarIntWrapper::decode(r)?.0;
+            Some(vec![single])
+        } else if bits_per_entry <= 8 {
+            let len = VarIntWrapper::decode(r)?.0 as usize;
+            Some(ChunkDataCodec::decode_vec(len, || {
+                VarIntWrapper::decode(r).map(|value| value.0)
+            })?)
+        } else {
+            None
+        };
+
+        let data_len = ChunkDataCodec::storage_len(bits_per_entry, entry_count)?;
+        let data = ChunkDataCodec::decode_vec(data_len, || u64::decode(r))?;
+
+        Ok(PalettedContainer {
+            bits_per_entry,
+            palette,
+            data,
+        })
+    }
+}
+
 impl DataType for PalettedContainer {
     fn encode<W: Write>(&self, w: &mut W) -> io::Result<()> {
         self.bits_per_entry.encode(w)?;
@@ -37,29 +93,7 @@ impl DataType for PalettedContainer {
     }
 
     fn decode<R: Read>(r: &mut R) -> io::Result<Self> {
-        let bits_per_entry = u8::decode(r)?;
-
-        let palette = if bits_per_entry == 0 {
-            let single = VarIntWrapper::decode(r)?.0;
-            Some(vec![single])
-        } else if bits_per_entry <= 8 {
-            let len = VarIntWrapper::decode(r)?.0 as usize;
-            Some(ChunkDataCodec::decode_vec(len, || {
-                VarIntWrapper::decode(r).map(|value| value.0)
-            })?)
-        } else {
-            None
-        };
-
-        let entry_count = if bits_per_entry == 0 { 0 } else { 4096 };
-        let data_len = ChunkDataCodec::storage_len(bits_per_entry, entry_count);
-        let data = ChunkDataCodec::decode_vec(data_len, || u64::decode(r))?;
-
-        Ok(PalettedContainer {
-            bits_per_entry,
-            palette,
-            data,
-        })
+        Self::decode_with_entry_count(r, 4096)
     }
 }
 
@@ -68,6 +102,12 @@ pub struct ChunkSection {
     pub block_count: i16,
     pub block_states: PalettedContainer,
     pub biomes: PalettedContainer,
+}
+
+impl ChunkSection {
+    pub fn block_state_at(&self, x: i32, y: i32, z: i32) -> Option<i32> {
+        block_index(x, y, z).and_then(|block_index| self.block_states.entry(block_index))
+    }
 }
 
 impl DataType for ChunkSection {
@@ -80,8 +120,8 @@ impl DataType for ChunkSection {
     fn decode<R: Read>(r: &mut R) -> io::Result<Self> {
         Ok(ChunkSection {
             block_count: i16::decode(r)?,
-            block_states: PalettedContainer::decode(r)?,
-            biomes: PalettedContainer::decode(r)?,
+            block_states: PalettedContainer::decode_with_entry_count(r, 4096)?,
+            biomes: PalettedContainer::decode_with_entry_count(r, 64)?,
         })
     }
 }
@@ -212,6 +252,16 @@ impl DataType for ChunkData {
 
 struct ChunkDataCodec;
 
+fn block_index(x: i32, y: i32, z: i32) -> Option<usize> {
+    let local_coordinates_are_valid =
+        (0..16).contains(&x) && (0..16).contains(&y) && (0..16).contains(&z);
+    local_coordinates_are_valid.then_some(((y as usize) << 8) | ((z as usize) << 4) | x as usize)
+}
+
+fn bit_mask(bits_per_entry: u8) -> u64 {
+    (1u64 << bits_per_entry) - 1
+}
+
 impl ChunkDataCodec {
     fn decode_block_entities<R: Read>(
         r: &mut R,
@@ -239,11 +289,59 @@ impl ChunkDataCodec {
         (0..len).map(|_| decode_item()).collect()
     }
 
-    fn storage_len(bits_per_entry: u8, entry_count: usize) -> usize {
+    fn storage_len(bits_per_entry: u8, entry_count: usize) -> io::Result<usize> {
         if bits_per_entry == 0 {
-            return 0;
+            return Ok(0);
         }
+
+        if bits_per_entry > 32 {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "Paletted container bits per entry exceeds supported width",
+            ));
+        }
+
         let entries_per_long = 64 / bits_per_entry as usize;
-        entry_count.div_ceil(entries_per_long)
+        Ok(entry_count.div_ceil(entries_per_long))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::io::Cursor;
+
+    use crate::data_type::DataType;
+    use crate::types::chunk::{ChunkSection, PalettedContainer};
+
+    #[test]
+    fn chunk_section_decodes_biome_palette_with_sixty_four_entries() {
+        let section = ChunkSection {
+            block_count: 0,
+            block_states: PalettedContainer {
+                bits_per_entry: 0,
+                palette: Some(vec![0]),
+                data: Vec::new(),
+            },
+            biomes: PalettedContainer {
+                bits_per_entry: 1,
+                palette: Some(vec![0, 1]),
+                data: vec![0],
+            },
+        };
+        let mut encoded = Vec::new();
+        section.encode(&mut encoded).unwrap();
+        let mut cursor = Cursor::new(&encoded);
+
+        let decoded = ChunkSection::decode(&mut cursor).unwrap();
+
+        assert_eq!(decoded.biomes.data, vec![0]);
+        assert_eq!(cursor.position(), encoded.len() as u64);
+    }
+
+    #[test]
+    fn paletted_container_rejects_unsupported_width() {
+        let error = PalettedContainer::decode(&mut Cursor::new(vec![65])).unwrap_err();
+
+        assert_eq!(error.kind(), std::io::ErrorKind::InvalidData);
     }
 }

@@ -18,6 +18,7 @@ pub struct Server {
     pub payload_cursor: Option<Cursor<Vec<u8>>>,
     pub pending_encryption: Option<Vec<u8>>,
     pub pending_compression: Option<i32>,
+    is_connected: bool,
 }
 
 impl Server {
@@ -30,11 +31,17 @@ impl Server {
             payload_cursor: None,
             pending_encryption: None,
             pending_compression: None,
+            is_connected: true,
         }
     }
 
     pub fn disconnect(&mut self) {
+        self.is_connected = false;
         let _ = self.stream.shutdown(Shutdown::Both);
+    }
+
+    pub const fn is_connected(&self) -> bool {
+        self.is_connected
     }
 
     pub fn enable_encryption(&mut self, key: &[u8]) {

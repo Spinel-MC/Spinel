@@ -15,6 +15,7 @@ fn on_inbound_packet(event: &mut InboundPacketEvent, _server: &mut MinecraftServ
         "rotate_head",
         "block_changed_ack",
         "swing",
+        "chunk_batch_received",
     ];
 
     if packet_blacklist.contains(&event.packet_name.as_str()) {

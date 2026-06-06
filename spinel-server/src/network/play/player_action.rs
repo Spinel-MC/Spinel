@@ -13,27 +13,21 @@ use spinel_macros::packet_listener;
 use spinel_registry::data_components::vanilla_components::{CAN_BREAK, TOOL};
 use spinel_registry::{BlockPredicates, Registries, Tool};
 
-const STARTED_DIGGING: i32 = 0;
-const CANCELLED_DIGGING: i32 = 1;
-const FINISHED_DIGGING: i32 = 2;
-const DROP_ITEM_STACK: i32 = 3;
-const DROP_ITEM: i32 = 4;
-const UPDATE_ITEM_STATE: i32 = 5;
-const SWAP_ITEM_HAND: i32 = 6;
-
 #[packet_listener]
 fn on_player_action(
     client: &mut Client,
     packet: PlayerActionPacket,
     server: &mut MinecraftServer,
 ) -> bool {
-    if packet.status == STARTED_DIGGING || packet.status == CANCELLED_DIGGING {
+    if packet.status == PlayerActionPacket::START_DESTROY_BLOCK
+        || packet.status == PlayerActionPacket::ABORT_DESTROY_BLOCK
+    {
         return acknowledge_digging(packet, client, server);
     }
-    if packet.status == FINISHED_DIGGING {
+    if packet.status == PlayerActionPacket::STOP_DESTROY_BLOCK {
         return finish_digging(packet, server, client);
     }
-    if packet.status == UPDATE_ITEM_STATE {
+    if packet.status == PlayerActionPacket::RELEASE_USE_ITEM {
         return update_item_state(server, client);
     }
     let Some(player) = server.world_manager.player_pointer_for_client(client) else {
@@ -41,9 +35,9 @@ fn on_player_action(
     };
     let player = unsafe { &mut *player };
     let action_result = match packet.status {
-        DROP_ITEM_STACK => player.drop_main_hand_item(true, server, client),
-        DROP_ITEM => player.drop_main_hand_item(false, server, client),
-        SWAP_ITEM_HAND => player.swap_item_hands(server, client),
+        PlayerActionPacket::DROP_ITEM_STACK => player.drop_main_hand_item(true, server, client),
+        PlayerActionPacket::DROP_ITEM => player.drop_main_hand_item(false, server, client),
+        PlayerActionPacket::SWAP_ITEM_HAND => player.swap_item_hands(server, client),
         _ => true,
     };
     if !action_result {
@@ -73,8 +67,12 @@ fn acknowledge_digging(
         return acknowledge_block_change(packet.sequence, client);
     };
     match packet.status {
-        STARTED_DIGGING => start_digging(digging_input, packet.sequence, client, server),
-        CANCELLED_DIGGING => cancel_digging(digging_input, packet.sequence, client, server),
+        PlayerActionPacket::START_DESTROY_BLOCK => {
+            start_digging(digging_input, packet.sequence, client, server)
+        }
+        PlayerActionPacket::ABORT_DESTROY_BLOCK => {
+            cancel_digging(digging_input, packet.sequence, client, server)
+        }
         _ => acknowledge_block_change(packet.sequence, client),
     }
 }

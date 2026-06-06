@@ -2,12 +2,18 @@ use crate::ClientPacketListener;
 use crate::events::disconnect::DisconnectEvent;
 use crate::events::network::inbound_packet::InboundPacketEvent;
 use crate::events::network::outbound_packet::OutboundPacketEvent;
+use crate::hit_target::{BlockHitTarget, ClientHitTargetTracker, HitTarget, TrackedEntity};
 use crate::network::server::instance::Server;
 use crate::network::socket::connect_to_server;
 use spinel_core::network::serverbound::play::chunk_batch_received::ChunkBatchReceivedPacket;
 use spinel_core::network::serverbound::play::client_command::ClientCommandPacket;
+use spinel_core::network::serverbound::play::interact::{InteractAction, InteractPacket};
 use spinel_core::network::serverbound::play::move_player_pos::MovePlayerPosPacket;
+use spinel_core::network::serverbound::play::player_action::PlayerActionPacket;
+use spinel_core::network::serverbound::play::swing::SwingPacket;
+use spinel_core::network::serverbound::play::use_item::UseItemPacket;
 use spinel_network::packet_names::PacketNameRegistry;
+use spinel_network::types::{Position, Vector3d, chunk::ChunkData};
 use spinel_network::{ConnectionState, PacketSender};
 use spinel_utils::component::text::TextComponent;
 use std::collections::HashMap;
@@ -81,7 +87,11 @@ impl ClientPosition {
 pub struct MinecraftClient {
     pub state: ConnectionState,
     pub server: ServerHandle,
-    position: ClientPosition,
+    position: Arc<Mutex<ClientPosition>>,
+    yaw: Arc<Mutex<f32>>,
+    pitch: Arc<Mutex<f32>>,
+    hit_target_tracker: Arc<Mutex<ClientHitTargetTracker>>,
+    active_destroying_block: Arc<Mutex<Option<BlockHitTarget>>>,
     pub registries: Arc<Mutex<crate::registry_manager::ClientRegistries>>,
     assigned_packet_listeners:
         Arc<HashMap<(ConnectionState, i32), Vec<&'static ClientPacketListener>>>,
@@ -112,7 +122,11 @@ impl MinecraftClient {
         Self {
             state: ConnectionState::Handshaking,
             server: ServerHandle(Arc::new(Mutex::new(None))),
-            position: ClientPosition::new(0.0, 64.0, 0.0, true),
+            position: Arc::new(Mutex::new(ClientPosition::new(0.0, 64.0, 0.0, true))),
+            yaw: Arc::new(Mutex::new(0.0)),
+            pitch: Arc::new(Mutex::new(0.0)),
+            hit_target_tracker: Arc::new(Mutex::new(ClientHitTargetTracker::default())),
+            active_destroying_block: Arc::new(Mutex::new(None)),
             registries: Arc::new(Mutex::new(crate::registry_manager::ClientRegistries::new())),
             assigned_packet_listeners: Arc::new(assigned),
             generic_packet_listeners: Arc::new(generic),
@@ -129,11 +143,12 @@ impl MinecraftClient {
     }
 
     pub fn server_state(&self) -> Option<ConnectionState> {
-        self.server
-            .0
-            .lock()
-            .ok()
-            .and_then(|server_lock| server_lock.as_ref().map(|server| server.state))
+        self.server.0.lock().ok().and_then(|server_lock| {
+            server_lock
+                .as_ref()
+                .filter(|server| server.is_connected())
+                .map(|server| server.state)
+        })
     }
 
     pub fn refresh_state_from_server(&mut self) -> Option<ConnectionState> {
@@ -142,14 +157,51 @@ impl MinecraftClient {
         Some(state)
     }
 
-    pub const fn position(&self) -> ClientPosition {
+    pub fn position(&self) -> ClientPosition {
         self.position
+            .lock()
+            .map(|position| *position)
+            .unwrap_or(ClientPosition::new(0.0, 64.0, 0.0, true))
+    }
+
+    pub fn yaw(&self) -> f32 {
+        self.yaw.lock().map(|yaw| *yaw).unwrap_or(0.0)
+    }
+
+    pub fn pitch(&self) -> f32 {
+        self.pitch.lock().map(|pitch| *pitch).unwrap_or(0.0)
+    }
+
+    pub fn set_rotation(&mut self, yaw: f32, pitch: f32) {
+        if let Ok(mut current_yaw) = self.yaw.lock() {
+            *current_yaw = yaw;
+        }
+        if let Ok(mut current_pitch) = self.pitch.lock() {
+            *current_pitch = pitch;
+        }
+    }
+
+    pub fn synchronize_position(
+        &mut self,
+        x: f64,
+        y: f64,
+        z: f64,
+        yaw: f32,
+        pitch: f32,
+        is_on_ground: bool,
+    ) {
+        if let Ok(mut position) = self.position.lock() {
+            *position = ClientPosition::new(x, y, z, is_on_ground);
+        }
+        self.set_rotation(yaw, pitch);
     }
 
     pub fn move_to(&mut self, x: f64, y: f64, z: f64, is_on_ground: bool) -> io::Result<()> {
         let flags = Self::movement_flags(is_on_ground, false);
         MovePlayerPosPacket { x, y, z, flags }.dispatch(self)?;
-        self.position = ClientPosition::new(x, y, z, is_on_ground);
+        if let Ok(mut position) = self.position.lock() {
+            *position = ClientPosition::new(x, y, z, is_on_ground);
+        }
         Ok(())
     }
 
@@ -160,10 +212,11 @@ impl MinecraftClient {
         delta_z: f64,
         is_on_ground: bool,
     ) -> io::Result<()> {
+        let position = self.position();
         self.move_to(
-            self.position.x + delta_x,
-            self.position.y + delta_y,
-            self.position.z + delta_z,
+            position.x() + delta_x,
+            position.y() + delta_y,
+            position.z() + delta_z,
             is_on_ground,
         )
     }
@@ -180,6 +233,197 @@ impl MinecraftClient {
             action: ClientCommandPacket::PERFORM_RESPAWN,
         }
         .dispatch(self)
+    }
+
+    pub fn right_click(&mut self) -> io::Result<()> {
+        UseItemPacket {
+            hand: 0,
+            sequence: 0,
+            y_rot: 0.0,
+            x_rot: 0.0,
+        }
+        .dispatch(self)
+    }
+
+    pub fn swing(&mut self) -> io::Result<()> {
+        SwingPacket { hand: 0 }.dispatch(self)
+    }
+
+    pub fn left_click(&mut self) -> io::Result<()> {
+        match self.hit_target() {
+            HitTarget::Entity { entity_id } => {
+                self.clear_destroying_block();
+                self.attack_entity(entity_id)
+            }
+            HitTarget::Block(block) => self.start_destroying_block(block.position, block.face),
+            HitTarget::Miss => {
+                self.clear_destroying_block();
+                self.swing()
+            }
+        }
+    }
+
+    pub fn continue_left_click(&mut self) -> io::Result<()> {
+        if self.active_destroying_block().is_some() {
+            return self.swing();
+        }
+        Ok(())
+    }
+
+    pub fn release_left_click(&mut self) -> io::Result<()> {
+        let Some(block) = self.active_destroying_block() else {
+            return Ok(());
+        };
+
+        self.clear_destroying_block();
+        self.cancel_destroying_block(block.position, block.face)
+    }
+
+    pub fn active_destroying_block(&self) -> Option<BlockHitTarget> {
+        self.active_destroying_block
+            .lock()
+            .map(|active_destroying_block| *active_destroying_block)
+            .unwrap_or(None)
+    }
+
+    pub fn clear_destroying_block(&mut self) {
+        if let Ok(mut active_destroying_block) = self.active_destroying_block.lock() {
+            *active_destroying_block = None;
+        }
+    }
+
+    pub fn hit_target(&self) -> HitTarget {
+        self.hit_target_tracker
+            .lock()
+            .map(|tracker| tracker.hit_target(self.eye_position(), self.view_direction()))
+            .unwrap_or(HitTarget::Miss)
+    }
+
+    pub fn track_entity(&mut self, entity: TrackedEntity) {
+        if let Ok(mut tracker) = self.hit_target_tracker.lock() {
+            tracker.track_entity(entity);
+        }
+    }
+
+    pub fn remove_tracked_entities(&mut self, entity_ids: impl IntoIterator<Item = i32>) {
+        if let Ok(mut tracker) = self.hit_target_tracker.lock() {
+            tracker.remove_entities(entity_ids);
+        }
+    }
+
+    pub fn move_tracked_entity_by_protocol_delta(
+        &mut self,
+        entity_id: i32,
+        delta_x: i16,
+        delta_y: i16,
+        delta_z: i16,
+    ) {
+        if let Ok(mut tracker) = self.hit_target_tracker.lock() {
+            tracker.move_entity_by_protocol_delta(entity_id, delta_x, delta_y, delta_z);
+        }
+    }
+
+    pub fn set_tracked_entity_position(&mut self, entity_id: i32, position: Vector3d) {
+        if let Ok(mut tracker) = self.hit_target_tracker.lock() {
+            tracker.set_entity_position(entity_id, position);
+        }
+    }
+
+    pub fn set_tracked_block_state(&mut self, position: Position, block_state: i32) {
+        if let Ok(mut tracker) = self.hit_target_tracker.lock() {
+            tracker.set_block_state(position, block_state);
+        }
+    }
+
+    pub fn track_chunk(&mut self, chunk_x: i32, chunk_z: i32, chunk_data: ChunkData) {
+        if let Ok(mut tracker) = self.hit_target_tracker.lock() {
+            tracker.track_chunk(chunk_x, chunk_z, chunk_data);
+        }
+    }
+
+    pub fn remove_tracked_chunk(&mut self, chunk_x: i32, chunk_z: i32) {
+        if let Ok(mut tracker) = self.hit_target_tracker.lock() {
+            tracker.remove_chunk(chunk_x, chunk_z);
+        }
+    }
+
+    pub fn attack_entity(&mut self, entity_id: i32) -> io::Result<()> {
+        InteractPacket {
+            entity_id,
+            action: InteractAction::Attack,
+            using_secondary_action: false,
+        }
+        .dispatch(self)?;
+        self.swing()
+    }
+
+    pub fn start_destroying_block(
+        &mut self,
+        block_position: Position,
+        block_face: i8,
+    ) -> io::Result<()> {
+        if let Ok(mut active_destroying_block) = self.active_destroying_block.lock() {
+            *active_destroying_block = Some(BlockHitTarget {
+                position: block_position,
+                face: block_face,
+            });
+        }
+        PlayerActionPacket {
+            status: PlayerActionPacket::START_DESTROY_BLOCK,
+            block_position,
+            block_face,
+            sequence: 0,
+        }
+        .dispatch(self)?;
+        self.swing()
+    }
+
+    pub fn finish_destroying_block(
+        &mut self,
+        block_position: Position,
+        block_face: i8,
+    ) -> io::Result<()> {
+        PlayerActionPacket {
+            status: PlayerActionPacket::STOP_DESTROY_BLOCK,
+            block_position,
+            block_face,
+            sequence: 0,
+        }
+        .dispatch(self)
+    }
+
+    pub fn cancel_destroying_block(
+        &mut self,
+        block_position: Position,
+        block_face: i8,
+    ) -> io::Result<()> {
+        PlayerActionPacket {
+            status: PlayerActionPacket::ABORT_DESTROY_BLOCK,
+            block_position,
+            block_face,
+            sequence: 0,
+        }
+        .dispatch(self)
+    }
+
+    fn eye_position(&self) -> Vector3d {
+        let position = self.position();
+        Vector3d {
+            x: position.x(),
+            y: position.y() + 1.62,
+            z: position.z(),
+        }
+    }
+
+    fn view_direction(&self) -> Vector3d {
+        let yaw = self.yaw().to_radians() as f64;
+        let pitch = self.pitch().to_radians() as f64;
+        let pitch_cosine = pitch.cos();
+        Vector3d {
+            x: -yaw.sin() * pitch_cosine,
+            y: -pitch.sin(),
+            z: yaw.cos() * pitch_cosine,
+        }
     }
 
     const fn movement_flags(is_on_ground: bool, has_horizontal_collision: bool) -> u8 {

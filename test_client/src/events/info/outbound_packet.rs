@@ -3,21 +3,11 @@ use spinel::{
     macros::event_listener,
 };
 
+use crate::events::info::packet_filter::packet_is_filtered;
+
 #[event_listener]
 fn on_outbound_packet(event: &mut OutboundPacketEvent, _client: &mut MinecraftClient) {
-    let packet_blacklist = vec![
-        "client_tick_end",
-        "keep_alive",
-        "move_player_pos_rot",
-        "move_player_pos",
-        "move_player_rot",
-        "move_entity_pos_rot",
-        "rotate_head",
-        "block_changed_ack",
-        "swing",
-    ];
-
-    if packet_blacklist.contains(&event.packet_name.as_str()) {
+    if packet_is_filtered(&event.packet_name) {
         return;
     }
 

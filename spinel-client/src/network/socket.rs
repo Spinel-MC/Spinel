@@ -95,6 +95,10 @@ pub async fn connect_to_server(
                         client.dispatch_packet(packet_id, s, payload);
                     }
 
+                    if !s.is_connected() {
+                        break;
+                    }
+
                     if let Some(key) = s.pending_encryption.take() {
                         decoder.enable_encryption(&key);
                     }

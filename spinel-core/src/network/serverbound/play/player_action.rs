@@ -9,6 +9,16 @@ pub struct PlayerActionPacket {
     pub sequence: i32,
 }
 
+impl PlayerActionPacket {
+    pub const START_DESTROY_BLOCK: i32 = 0;
+    pub const ABORT_DESTROY_BLOCK: i32 = 1;
+    pub const STOP_DESTROY_BLOCK: i32 = 2;
+    pub const DROP_ITEM_STACK: i32 = 3;
+    pub const DROP_ITEM: i32 = 4;
+    pub const RELEASE_USE_ITEM: i32 = 5;
+    pub const SWAP_ITEM_HAND: i32 = 6;
+}
+
 #[cfg(test)]
 mod tests {
     use super::PlayerActionPacket;

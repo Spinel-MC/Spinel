@@ -72,6 +72,7 @@ use spinel_core::network::clientbound::play::spawn_entity::SpawnEntityPacket;
 use spinel_core::network::clientbound::play::take_item_entity::TakeItemEntityPacket;
 use spinel_core::network::clientbound::play::update_attributes::UpdateAttributesPacket;
 use spinel_core::network::clientbound::play::world_event::WorldEventPacket;
+use spinel_core::raycast::RaycastBoundingBox;
 use spinel_nbt::{Nbt, NbtCompound, TagHandler, Taggable};
 use spinel_network::types::entity_metadata::MetadataEntry;
 use spinel_network::types::sound::SoundEvent;
@@ -4991,20 +4992,20 @@ fn ray_reaches_entity(start: Vector3d, direction: Vector3d, entity: &Entity) -> 
     if target_distance == 0.0 {
         return true;
     }
-    let start_to_target = normalized_vector_between(start, target);
-    if !vectors_are_aligned(direction, start_to_target) {
-        return false;
-    }
     let bounding_box = entity.bounding_box();
-    let horizontal_radius = bounding_box.width().max(bounding_box.depth()) / 2.0;
-    let vertical_radius = bounding_box.height() / 2.0;
-    let reach_tolerance = horizontal_radius.max(vertical_radius).max(0.25);
-    let closest_point = Vector3d {
-        x: start.x + direction.x * target_distance,
-        y: start.y + direction.y * target_distance,
-        z: start.z + direction.z * target_distance,
+    let ray_direction = Vector3d {
+        x: direction.x * target_distance,
+        y: direction.y * target_distance,
+        z: direction.z * target_distance,
     };
-    vector_distance(closest_point, target) <= reach_tolerance
+    RaycastBoundingBox::from_center_dimensions(
+        entity.position().as_vector(),
+        bounding_box.width(),
+        bounding_box.height(),
+        bounding_box.depth(),
+    )
+    .ray_intersection(start, ray_direction)
+    .is_some()
 }
 
 fn player_intersects_block(

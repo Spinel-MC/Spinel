@@ -16,7 +16,6 @@ pub struct TestClientApplication {
     server_ip: String,
     player_name: String,
     port: u16,
-    should_run_fast_movement_probe: bool,
     should_click_entity_sign: bool,
 }
 
@@ -27,7 +26,6 @@ impl TestClientApplication {
             server_ip: configured_ip(),
             player_name: configured_name(),
             port: configured_port(),
-            should_run_fast_movement_probe: configured_fast_movement_probe(),
             should_click_entity_sign: configured_entity_sign_click(),
         }
     }
@@ -43,12 +41,7 @@ impl TestClientApplication {
     async fn run_join_sequence(&mut self) {
         if self.connect_to_play().await {
             self.send_player_loaded().await;
-            if self.should_click_entity_sign {
-                self.click_entity_sign().await;
-            }
-            if self.should_run_fast_movement_probe {
-                self.run_fast_movement_probe().await;
-            }
+            self.start_join_automation();
         }
 
         self.run_command_loop().await;
@@ -103,11 +96,22 @@ impl TestClientApplication {
             PlayerLoadedPacket {}.dispatch(&mut self.client),
             "player loaded packet",
         );
-        tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
     }
 
-    async fn click_entity_sign(&mut self) {
-        if self.client.refresh_state_from_server() != Some(ConnectionState::Play) {
+    fn start_join_automation(&self) {
+        let mut automation_client = self.client.clone();
+        let should_click_entity_sign = self.should_click_entity_sign;
+
+        tokio::spawn(async move {
+            tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
+            if should_click_entity_sign {
+                Self::click_entity_sign(&mut automation_client).await;
+            }
+        });
+    }
+
+    async fn click_entity_sign(client: &mut MinecraftClient) {
+        if client.refresh_state_from_server() != Some(ConnectionState::Play) {
             println!("Entity sign click skipped: client did not reach Play state.");
             return;
         }
@@ -124,7 +128,7 @@ impl TestClientApplication {
                 hit_world_border: false,
                 sequence: 1,
             }
-            .dispatch(&mut self.client),
+            .dispatch(client),
             "entity sign use item on packet",
         );
         tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
@@ -139,37 +143,8 @@ impl TestClientApplication {
         }
     }
 
-    async fn run_fast_movement_probe(&mut self) {
-        if self.client.refresh_state_from_server() != Some(ConnectionState::Play) {
-            println!("Fast movement probe skipped: client did not reach Play state.");
-            return;
-        }
-
-        report_dispatch_result(
-            self.client.acknowledge_chunk_batch(64.0),
-            "initial chunk batch acknowledgement",
-        );
-
-        for movement_step in 0..160 {
-            report_dispatch_result(
-                self.client.move_by(24.0, 0.0, 0.0, true),
-                "fast movement packet",
-            );
-
-            if movement_step % 4 == 0 {
-                report_dispatch_result(
-                    self.client.acknowledge_chunk_batch(64.0),
-                    "chunk batch acknowledgement",
-                );
-            }
-
-            tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
-        }
-        println!("Fast movement probe ended at {:?}", self.client.position());
-    }
-
     async fn run_command_loop(&mut self) {
-        println!("Commands: respawn, reconnect, quit");
+        println!("Commands: respawn, right_click, swing, left_click <ticks>, reconnect, quit");
 
         let mut stdin_lines = Some(BufReader::new(tokio::io::stdin()).lines());
         let mut reconnect_interval = tokio::time::interval(tokio::time::Duration::from_secs(5));
@@ -197,9 +172,27 @@ impl TestClientApplication {
             return true;
         };
 
-        match command.trim() {
+        let mut command_parts = command.split_whitespace();
+        let Some(command_name) = command_parts.next() else {
+            return true;
+        };
+
+        match command_name {
             "respawn" => {
                 report_dispatch_result(self.client.respawn(), "respawn command packet");
+            }
+            "right_click" => {
+                report_dispatch_result(self.client.right_click(), "right click packet");
+            }
+            "swing" => {
+                report_dispatch_result(self.client.left_click(), "left click packet");
+            }
+            "left_click" => {
+                let Some(ticks) = parse_left_click_ticks(command_parts.next()) else {
+                    println!("Usage: left_click <ticks>");
+                    return true;
+                };
+                self.hold_left_click_for_ticks(ticks).await;
             }
             "reconnect" => {
                 self.reconnect().await;
@@ -217,6 +210,19 @@ impl TestClientApplication {
         }
 
         true
+    }
+
+    async fn hold_left_click_for_ticks(&mut self, ticks: u32) {
+        report_dispatch_result(self.client.left_click(), "left click packet");
+
+        for _ in 1..ticks {
+            report_dispatch_result(self.client.continue_left_click(), "left click hold packet");
+            tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
+        }
+        report_dispatch_result(
+            self.client.release_left_click(),
+            "left click release packet",
+        );
     }
 
     async fn reconnect(&mut self) {
@@ -263,12 +269,6 @@ fn configured_port() -> u16 {
         .unwrap_or(25565)
 }
 
-fn configured_fast_movement_probe() -> bool {
-    std::env::var("SPINEL_TEST_CLIENT_FAST_MOVEMENT")
-        .map(|value| value != "0")
-        .unwrap_or(true)
-}
-
 fn configured_entity_sign_click() -> bool {
     std::env::var("SPINEL_TEST_CLIENT_CLICK_ENTITY_SIGN")
         .map(|value| value != "0")
@@ -306,4 +306,10 @@ async fn read_next_command(
     }
 
     Ok(command)
+}
+
+fn parse_left_click_ticks(argument: Option<&str>) -> Option<u32> {
+    argument
+        .and_then(|ticks| ticks.parse::<u32>().ok())
+        .filter(|ticks| *ticks > 0)
 }

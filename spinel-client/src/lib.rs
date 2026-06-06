@@ -1,5 +1,6 @@
 pub mod entity;
 pub mod events;
+pub mod hit_target;
 pub mod instance;
 pub mod module_manager;
 pub mod network;
