@@ -1,4 +1,4 @@
-use crate::entity::EntityId;
+use crate::entity::{Entity, EntityId};
 use crate::events::player_pick_block::PlayerPickBlockEvent;
 use crate::events::player_pick_entity::PlayerPickEntityEvent;
 use crate::network::client::instance::Client;
@@ -35,14 +35,15 @@ fn on_pick_item_from_entity(
     let Some(player) = server.world_manager.player_pointer_for_client(client) else {
         return false;
     };
-    let target = EntityId::from_raw(packet.entity_id);
-    if !server
-        .world_manager
-        .client_world_contains_entity(client, target)
-    {
+    let Some(world_uuid) = server.world_manager.world_uuid_for_client(client) else {
         return false;
-    }
+    };
+    let target = server
+        .world_manager
+        .world_mut(world_uuid)
+        .and_then(|world| world.entity_by_id_mut(EntityId::from_raw(packet.entity_id)))
+        .map(|entity| entity as *mut Entity);
     let mut event = PlayerPickEntityEvent::new(player, target, packet.include_data);
     event.dispatch(server, client);
-    !event.is_cancelled()
+    true
 }

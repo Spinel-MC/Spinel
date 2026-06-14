@@ -3,7 +3,7 @@ use spinel_core::network::clientbound::play::update_attributes::{
     EntityAttribute, EntityAttributeModifier, UpdateAttributesPacket,
 };
 use spinel_registry::data_components::vanilla_components::ATTRIBUTE_MODIFIERS;
-use spinel_registry::{Attribute, AttributeOperation, Identifier, ItemStack};
+use spinel_registry::{Attribute, AttributeOperation, EntityType, Identifier, ItemStack};
 use std::collections::BTreeMap;
 
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -19,6 +19,24 @@ pub struct EntityAttributeState {
 }
 
 impl LivingAttributes {
+    pub fn from_entity_type(entity_type: EntityType) -> Self {
+        let instances = entity_type
+            .default_attributes()
+            .iter()
+            .map(|default_attribute| {
+                let attribute = default_attribute.attribute();
+                (
+                    attribute.protocol_id(),
+                    EntityAttributeState::with_base_value(
+                        attribute,
+                        default_attribute.base_value(),
+                    ),
+                )
+            })
+            .collect();
+        Self { instances }
+    }
+
     pub fn attribute(&mut self, attribute: Attribute) -> &mut EntityAttributeState {
         self.instances
             .entry(attribute.protocol_id())
@@ -122,6 +140,14 @@ impl EntityAttributeState {
         Self {
             attribute,
             base_value: attribute.default_value(),
+            modifiers: BTreeMap::new(),
+        }
+    }
+
+    fn with_base_value(attribute: Attribute, base_value: f64) -> Self {
+        Self {
+            attribute,
+            base_value,
             modifiers: BTreeMap::new(),
         }
     }

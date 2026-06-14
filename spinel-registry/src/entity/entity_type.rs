@@ -1,4 +1,4 @@
-use crate::{EntityBoundingBox, Identifier, RegistryKey, StaticRegistry};
+use crate::{Attribute, EntityBoundingBox, Identifier, RegistryKey, StaticRegistry};
 use std::sync::OnceLock;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -14,6 +14,11 @@ pub struct EntityType {
     fire_immune: bool,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct EntityTypeRegistryEntry {
+    entity_type: EntityType,
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum EntityPacketType {
     Entity,
@@ -27,6 +32,29 @@ pub struct EntityAttachmentOffset {
     x: f64,
     y: f64,
     z: f64,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct EntityDefaultAttribute {
+    attribute: Attribute,
+    base_value: f64,
+}
+
+impl EntityDefaultAttribute {
+    pub const fn new(attribute: Attribute, base_value: f64) -> Self {
+        Self {
+            attribute,
+            base_value,
+        }
+    }
+
+    pub const fn attribute(self) -> Attribute {
+        self.attribute
+    }
+
+    pub const fn base_value(self) -> f64 {
+        self.base_value
+    }
 }
 
 impl EntityType {
@@ -58,6 +86,11 @@ impl EntityType {
     #[must_use]
     pub const fn id(self) -> i32 {
         self.id
+    }
+
+    #[must_use]
+    pub const fn registry(self) -> EntityTypeRegistryEntry {
+        EntityTypeRegistryEntry { entity_type: self }
     }
 
     #[must_use]
@@ -144,11 +177,44 @@ impl EntityType {
     }
 
     #[must_use]
+    pub fn synchronizes_position_only(self) -> bool {
+        matches!(
+            self.path,
+            "item"
+                | "falling_block"
+                | "arrow"
+                | "spectral_arrow"
+                | "trident"
+                | "llama_spit"
+                | "wind_charge"
+                | "fishing_bobber"
+                | "snowball"
+                | "egg"
+                | "ender_pearl"
+                | "splash_potion"
+                | "lingering_potion"
+                | "eye_of_ender"
+                | "dragon_fireball"
+                | "fireball"
+                | "small_fireball"
+                | "tnt"
+        )
+    }
+
+    #[must_use]
     pub fn entity_attachment(self, attachment_name: &str) -> Option<[f64; 3]> {
         self.attachments()
             .iter()
             .find(|attachment| attachment.name == attachment_name)
             .map(|attachment| attachment.offset())
+    }
+
+    #[must_use]
+    pub fn default_attribute(self, attribute_name: &str) -> Option<f64> {
+        self.default_attributes()
+            .iter()
+            .find(|attribute| attribute.attribute.key() == attribute_name)
+            .map(|attribute| attribute.base_value)
     }
 
     #[must_use]
@@ -178,6 +244,88 @@ impl EntityType {
             registry.freeze();
             registry
         })
+    }
+}
+
+impl EntityTypeRegistryEntry {
+    #[must_use]
+    pub fn key(self) -> Identifier {
+        self.entity_type.key()
+    }
+
+    #[must_use]
+    pub const fn id(self) -> i32 {
+        self.entity_type.id()
+    }
+
+    #[must_use]
+    pub const fn translation_key(self) -> &'static str {
+        self.entity_type.translation_key()
+    }
+
+    #[must_use]
+    pub const fn width(self) -> f64 {
+        self.entity_type.width()
+    }
+
+    #[must_use]
+    pub const fn height(self) -> f64 {
+        self.entity_type.height()
+    }
+
+    #[must_use]
+    pub const fn eye_height(self) -> f64 {
+        self.entity_type.eye_height()
+    }
+
+    #[must_use]
+    pub const fn client_tracking_range(self) -> i32 {
+        self.entity_type.client_tracking_range()
+    }
+
+    #[must_use]
+    pub const fn fire_immune(self) -> bool {
+        self.entity_type.fire_immune()
+    }
+
+    #[must_use]
+    pub fn default_attributes(self) -> &'static [EntityDefaultAttribute] {
+        self.entity_type.default_attributes()
+    }
+
+    #[must_use]
+    pub const fn drag(self) -> f64 {
+        self.entity_type.drag()
+    }
+
+    #[must_use]
+    pub const fn acceleration(self) -> f64 {
+        self.entity_type.acceleration()
+    }
+
+    #[must_use]
+    pub const fn horizontal_air_resistance(self) -> f64 {
+        self.entity_type.horizontal_air_resistance()
+    }
+
+    #[must_use]
+    pub const fn vertical_air_resistance(self) -> f64 {
+        self.entity_type.vertical_air_resistance()
+    }
+
+    #[must_use]
+    pub const fn should_send_attributes(self) -> bool {
+        self.entity_type.should_send_attributes()
+    }
+
+    #[must_use]
+    pub fn entity_attachment(self, attachment_name: &str) -> Option<[f64; 3]> {
+        self.entity_type.entity_attachment(attachment_name)
+    }
+
+    #[must_use]
+    pub const fn bounding_box(self) -> EntityBoundingBox {
+        self.entity_type.bounding_box()
     }
 }
 

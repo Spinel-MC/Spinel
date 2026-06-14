@@ -4,7 +4,9 @@ use uuid::Uuid;
 
 use crate::data_type::DataType;
 use crate::types::var_int::VarIntWrapper;
-use crate::types::{GlobalPos, Position, Quaternionf, Slot, Vector3f};
+use crate::types::{
+    GlobalPos, MainHand, Particle, Position, Quaternionf, ResolvableProfile, Slot, Vector3f,
+};
 use crate::wrappers::JsonTextComponent;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -31,8 +33,8 @@ pub enum MetadataValue {
     OptionalUuid(Option<Uuid>),
     BlockState(i32),
     OptionalBlockState(i32),
-    Particle(Vec<u8>),
-    ParticleList(Vec<u8>),
+    Particle(Particle),
+    ParticleList(Vec<Particle>),
     VillagerData(i32, i32, i32),
     OptionalVarInt(Option<i32>),
     Pose(i32),
@@ -43,14 +45,17 @@ pub enum MetadataValue {
     FrogVariant(i32),
     PigVariant(i32),
     ChickenVariant(i32),
+    ZombieNautilusVariant(i32),
     OptionalGlobalPos(Option<GlobalPos>),
     PaintingVariant(i32),
     SnifferState(i32),
     ArmadilloState(i32),
     CopperGolemState(i32),
-    OxidationLevel(i32),
+    WeatherState(i32),
     Vector3f(Vector3f),
     Quaternionf(Quaternionf),
+    ResolvableProfile(ResolvableProfile),
+    MainHand(MainHand),
 }
 
 impl DataType for MetadataEntry {
@@ -141,13 +146,13 @@ impl DataType for MetadataValue {
                 VarIntWrapper(15).encode(w)?;
                 VarIntWrapper(*v).encode(w)
             }
-            MetadataValue::Particle(_) => {
+            MetadataValue::Particle(v) => {
                 VarIntWrapper(16).encode(w)?;
-                Ok(())
+                v.encode(w)
             }
-            MetadataValue::ParticleList(_) => {
+            MetadataValue::ParticleList(v) => {
                 VarIntWrapper(17).encode(w)?;
-                Ok(())
+                v.encode(w)
             }
             MetadataValue::VillagerData(t, p, l) => {
                 VarIntWrapper(18).encode(w)?;
@@ -191,36 +196,48 @@ impl DataType for MetadataValue {
                 VarIntWrapper(27).encode(w)?;
                 VarIntWrapper(*v).encode(w)
             }
-            MetadataValue::OptionalGlobalPos(v) => {
+            MetadataValue::ZombieNautilusVariant(v) => {
                 VarIntWrapper(28).encode(w)?;
+                VarIntWrapper(*v).encode(w)
+            }
+            MetadataValue::OptionalGlobalPos(v) => {
+                VarIntWrapper(29).encode(w)?;
                 v.encode(w)
             }
             MetadataValue::PaintingVariant(v) => {
-                VarIntWrapper(29).encode(w)?;
-                VarIntWrapper(*v).encode(w)
-            }
-            MetadataValue::SnifferState(v) => {
                 VarIntWrapper(30).encode(w)?;
                 VarIntWrapper(*v).encode(w)
             }
-            MetadataValue::ArmadilloState(v) => {
+            MetadataValue::SnifferState(v) => {
                 VarIntWrapper(31).encode(w)?;
                 VarIntWrapper(*v).encode(w)
             }
-            MetadataValue::CopperGolemState(v) => {
+            MetadataValue::ArmadilloState(v) => {
                 VarIntWrapper(32).encode(w)?;
                 VarIntWrapper(*v).encode(w)
             }
-            MetadataValue::OxidationLevel(v) => {
+            MetadataValue::CopperGolemState(v) => {
                 VarIntWrapper(33).encode(w)?;
                 VarIntWrapper(*v).encode(w)
             }
-            MetadataValue::Vector3f(v) => {
+            MetadataValue::WeatherState(v) => {
                 VarIntWrapper(34).encode(w)?;
+                VarIntWrapper(*v).encode(w)
+            }
+            MetadataValue::Vector3f(v) => {
+                VarIntWrapper(35).encode(w)?;
                 v.encode(w)
             }
             MetadataValue::Quaternionf(v) => {
-                VarIntWrapper(35).encode(w)?;
+                VarIntWrapper(36).encode(w)?;
+                v.encode(w)
+            }
+            MetadataValue::ResolvableProfile(v) => {
+                VarIntWrapper(37).encode(w)?;
+                v.encode(w)
+            }
+            MetadataValue::MainHand(v) => {
+                VarIntWrapper(38).encode(w)?;
                 v.encode(w)
             }
         }
@@ -255,8 +272,8 @@ impl DataType for MetadataValue {
             15 => Ok(MetadataValue::OptionalBlockState(
                 VarIntWrapper::decode(r)?.0,
             )),
-            16 => Ok(MetadataValue::Particle(vec![])),
-            17 => Ok(MetadataValue::ParticleList(vec![])),
+            16 => Ok(MetadataValue::Particle(Particle::decode(r)?)),
+            17 => Ok(MetadataValue::ParticleList(Vec::<Particle>::decode(r)?)),
             18 => Ok(MetadataValue::VillagerData(
                 VarIntWrapper::decode(r)?.0,
                 VarIntWrapper::decode(r)?.0,
@@ -273,16 +290,23 @@ impl DataType for MetadataValue {
             25 => Ok(MetadataValue::FrogVariant(VarIntWrapper::decode(r)?.0)),
             26 => Ok(MetadataValue::PigVariant(VarIntWrapper::decode(r)?.0)),
             27 => Ok(MetadataValue::ChickenVariant(VarIntWrapper::decode(r)?.0)),
-            28 => Ok(MetadataValue::OptionalGlobalPos(
+            28 => Ok(MetadataValue::ZombieNautilusVariant(
+                VarIntWrapper::decode(r)?.0,
+            )),
+            29 => Ok(MetadataValue::OptionalGlobalPos(
                 Option::<GlobalPos>::decode(r)?,
             )),
-            29 => Ok(MetadataValue::PaintingVariant(VarIntWrapper::decode(r)?.0)),
-            30 => Ok(MetadataValue::SnifferState(VarIntWrapper::decode(r)?.0)),
-            31 => Ok(MetadataValue::ArmadilloState(VarIntWrapper::decode(r)?.0)),
-            32 => Ok(MetadataValue::CopperGolemState(VarIntWrapper::decode(r)?.0)),
-            33 => Ok(MetadataValue::OxidationLevel(VarIntWrapper::decode(r)?.0)),
-            34 => Ok(MetadataValue::Vector3f(Vector3f::decode(r)?)),
-            35 => Ok(MetadataValue::Quaternionf(Quaternionf::decode(r)?)),
+            30 => Ok(MetadataValue::PaintingVariant(VarIntWrapper::decode(r)?.0)),
+            31 => Ok(MetadataValue::SnifferState(VarIntWrapper::decode(r)?.0)),
+            32 => Ok(MetadataValue::ArmadilloState(VarIntWrapper::decode(r)?.0)),
+            33 => Ok(MetadataValue::CopperGolemState(VarIntWrapper::decode(r)?.0)),
+            34 => Ok(MetadataValue::WeatherState(VarIntWrapper::decode(r)?.0)),
+            35 => Ok(MetadataValue::Vector3f(Vector3f::decode(r)?)),
+            36 => Ok(MetadataValue::Quaternionf(Quaternionf::decode(r)?)),
+            37 => Ok(MetadataValue::ResolvableProfile(ResolvableProfile::decode(
+                r,
+            )?)),
+            38 => Ok(MetadataValue::MainHand(MainHand::decode(r)?)),
             _ => Err(io::Error::new(
                 io::ErrorKind::InvalidData,
                 format!("Unknown metadata type: {}", type_id),

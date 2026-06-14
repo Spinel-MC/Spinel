@@ -40,7 +40,7 @@ pub fn handle_legacy_server_list_ping(
 
     dispatch_legacy_server_list_ping_response(event, is_versioned, client);
 
-    client.disconnect();
+    client.close_connection();
     true
 }
 

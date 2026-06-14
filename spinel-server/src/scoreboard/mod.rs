@@ -1,5 +1,5 @@
 mod team;
 #[cfg(test)]
-mod test;
+mod tests;
 
 pub use team::Team;

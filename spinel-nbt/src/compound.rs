@@ -5,7 +5,7 @@ use crate::{END_ID, Error, get_nbt_string};
 use std::collections::BTreeMap;
 use std::io::{ErrorKind, Read, Write};
 
-#[derive(Clone, Debug, Default, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct NbtCompound(pub BTreeMap<String, Nbt>);
 
 impl NbtCompound {

@@ -1,7 +1,7 @@
-use ::spinel_macros::packet;
-use ::spinel_network::DataType;
-use ::spinel_network::types::Array;
-use ::spinel_network::types::var_int::VarIntWrapper;
+use spinel_macros::packet;
+use spinel_network::DataType;
+use spinel_network::types::Array;
+use spinel_network::types::var_int::VarIntWrapper;
 
 #[derive(Debug, Clone)]
 pub struct Tag {

@@ -44,3 +44,4 @@ impl PacketStruct for ResourcePackPopPacket {
         ConnectionState::Configuration
     }
 }
+spinel_network::register_packet_codec!(ResourcePackPopPacket, spinel_network::Recipient::Client);

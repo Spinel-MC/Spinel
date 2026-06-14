@@ -1,20 +1,16 @@
 use crate::network::client::instance::Client;
 use crate::server::MinecraftServer;
-use ::rsa::Pkcs1v15Encrypt;
-use ::spinel_core::network::clientbound::login::disconnect::LoginDisconnectPacket;
-use ::spinel_core::network::clientbound::login::login_success::LoginSuccessPacket;
-use ::spinel_core::network::clientbound::login::set_compression::SetCompressionPacket;
-use ::spinel_core::network::serverbound::login::encryption_response::EncryptionResponsePacket;
-use ::spinel_macros::packet_listener;
-use ::spinel_utils::component::Component;
+use rsa::Pkcs1v15Encrypt;
 use rsa::RsaPrivateKey;
-use uuid::Uuid;
+use spinel_core::network::serverbound::login::encryption_response::EncryptionResponsePacket;
+use spinel_macros::packet_listener;
+use spinel_network::types::game_profile::GameProfile;
+use spinel_utils::component::Component;
 
 struct VerifiedLoginMetadata {
     private_key: RsaPrivateKey,
     expected_verify_token: Vec<u8>,
-    username: String,
-    uuid: Uuid,
+    game_profile: GameProfile,
 }
 
 struct EncryptionResponseHandler<'a> {
@@ -29,7 +25,7 @@ impl<'a> EncryptionResponseHandler<'a> {
 
     fn handle(mut self, packet: EncryptionResponsePacket) -> bool {
         let Some(login_metadata) = self.load_login_metadata() else {
-            return self.disconnect_invalid_login_sequence(format!(
+            return self.kick_for_invalid_login_sequence(format!(
                 "Error: Login metadata not found for {}. Client state: {:?}",
                 self.client.addr, self.client.state
             ));
@@ -51,7 +47,7 @@ impl<'a> EncryptionResponseHandler<'a> {
         };
 
         if verify_token != login_metadata.expected_verify_token {
-            return self.disconnect_invalid_login_sequence(format!(
+            return self.kick_for_invalid_login_sequence(format!(
                 "Client {} failed verification (verify token mismatch).",
                 self.client.addr
             ));
@@ -64,14 +60,12 @@ impl<'a> EncryptionResponseHandler<'a> {
         let login_metadata = self.client.login_metadata.as_ref()?;
         let private_key = login_metadata.private_key.clone()?;
         let expected_verify_token = login_metadata.verify_token.clone()?;
-        let username = login_metadata.username.clone()?;
-        let uuid = login_metadata.uuid?;
+        let game_profile = login_metadata.game_profile.clone()?;
 
         Some(VerifiedLoginMetadata {
             private_key,
             expected_verify_token,
-            username,
-            uuid,
+            game_profile,
         })
     }
 
@@ -86,7 +80,7 @@ impl<'a> EncryptionResponseHandler<'a> {
             .decrypt(Pkcs1v15Encrypt, &encrypted_bytes)
             .ok()
             .or_else(|| {
-                self.disconnect_invalid_login_sequence(format!(
+                self.kick_for_invalid_login_sequence(format!(
                     "Failed to decrypt {} for {}.",
                     payload_name, self.client.addr
                 ));
@@ -102,12 +96,9 @@ impl<'a> EncryptionResponseHandler<'a> {
         println!("Client {} successfully verified.", self.client.addr);
         self.client.enable_encryption(shared_secret);
 
-        if SetCompressionPacket::new(-1).dispatch(self.client).is_err() {
-            return false;
-        }
-
-        if LoginSuccessPacket::new(login_metadata.uuid, login_metadata.username)
-            .dispatch(self.client)
+        if self
+            .client
+            .transition_login_to_configuration(login_metadata.game_profile)
             .is_err()
         {
             return false;
@@ -120,15 +111,12 @@ impl<'a> EncryptionResponseHandler<'a> {
         true
     }
 
-    fn disconnect_invalid_login_sequence(&mut self, log_message: String) -> bool {
+    fn kick_for_invalid_login_sequence(&mut self, log_message: String) -> bool {
         println!("{}", log_message);
-        let disconnect_result =
-            LoginDisconnectPacket::new(Component::text("Invalid login sequence."))
-                .dispatch(self.client);
-        let client_address = self.client.addr;
-        self.client.disconnect();
-        self.server.on_disconnect(client_address);
-        if let Err(error) = disconnect_result {
+        if let Err(error) = self
+            .server
+            .kick(self.client, Component::text("Invalid login sequence."))
+        {
             eprintln!(
                 "Failed to send disconnect packet to {}: {}",
                 self.client.addr, error

@@ -1,5 +1,5 @@
-use ::spinel_macros::packet;
-use ::spinel_network::types::{Array, Identifier};
+use spinel_macros::packet;
+use spinel_network::types::{Array, Identifier};
 
 #[packet(
     id: "update_enabled_features",

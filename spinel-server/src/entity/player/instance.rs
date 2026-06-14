@@ -1,27 +1,32 @@
+use crate::entity::generic_entity::EntityAerodynamics;
 use crate::entity::metadata::{MetadataHolder, definitions};
+use crate::entity::physics::{EntityPhysicsResult, knockback_velocity, simulate_movement};
 use crate::entity::player::BelowNameTag;
 use crate::entity::player::ChunkUpdateLimitChecker;
 use crate::entity::player::PendingResourcePacks;
 use crate::entity::player::PlayerPose;
+use crate::entity::player::PlayerViewerSnapshot;
 use crate::entity::player::chunks::PlayerChunk;
 use crate::entity::player::input::PlayerInputs;
 use crate::entity::player::position::PlayerPosition;
 use crate::entity::player::skin::PlayerSkin;
 use crate::entity::{
-    Damage, EntityId, EntityIdentity, EntityPointers, EntityPosition, EntityView, EquipmentSlot,
-    LivingState, PlayerSnapshot, PlayerSpawnPoint,
+    Damage, EntityCollisionRules, EntityId, EntityIdentity, EntityLeash, EntityPointers,
+    EntityPosition, EntitySynchronization, EntityTeleport, EntityView, EquipmentSlot, LivingState,
+    PlayerSnapshot, PlayerSpawnPoint,
 };
 use crate::events::inventory_close::InventoryCloseEvent;
 use crate::events::item_drop::ItemDropEvent;
 use crate::events::player_change_held_slot::PlayerChangeHeldSlotEvent;
 use crate::events::player_death::PlayerDeathEvent;
 use crate::events::player_game_mode_change::PlayerGameModeChangeEvent;
+use crate::events::player_respawn::PlayerRespawnEvent;
 use crate::events::player_swap_item::PlayerSwapItemEvent;
 use crate::inventory::{ClickPreprocessor, Inventory, PlayerInventory};
 use crate::network::client::instance::Client;
 use crate::scheduler::{ContextScheduler, Task, TaskSchedule};
 use crate::scoreboard::Team;
-use crate::world::{BossBar, WorldHandle};
+use crate::world::{BossBar, ChunkPosition, WorldHandle, WorldSnapshot};
 use spinel_core::entity::game_mode::GameMode;
 use spinel_core::network::clientbound::play::advancements::Notification;
 use spinel_core::network::clientbound::play::chunk_data::ChunkDataAndUpdateLightPacket;
@@ -48,6 +53,7 @@ use spinel_core::network::clientbound::play::player_info_update::PlayerInfoUpdat
 use spinel_core::network::clientbound::play::player_look_at::{FacePoint, PlayerLookAtPacket};
 use spinel_core::network::clientbound::play::plugin_message::PlayCustomPayloadPacket;
 use spinel_core::network::clientbound::play::recipe_book_add::RecipeBookAddPacket;
+use spinel_core::network::clientbound::play::remove_entities::RemoveEntitiesPacket;
 use spinel_core::network::clientbound::play::respawn::RespawnPacket;
 use spinel_core::network::clientbound::play::server_difficulty::ServerDifficultyPacket;
 use spinel_core::network::clientbound::play::set_camera::SetCameraPacket;
@@ -77,15 +83,17 @@ use spinel_core::network::clientbound::play::ticking_step::TickingStepPacket;
 use spinel_core::network::clientbound::play::update_recipes::UpdateRecipesPacket;
 use spinel_core::network::clientbound::play::world_event::WorldEventPacket;
 use spinel_nbt::{TagHandler, Taggable};
+use spinel_network::types::MainHand;
 use spinel_network::types::entity_metadata::MetadataValue;
 use spinel_network::types::sound::SoundEvent;
 use spinel_network::types::{
-    ClientInformation, Identifier, IntList, Position, Slot, TeleportFlags, Vector3d, Velocity,
+    ClientInformation, GlobalPos, Identifier, IntList, Particle, Position, Slot, TeleportFlags,
+    Vector3d, Velocity,
 };
 use spinel_network::{ConnectionState, PacketSender, PacketStruct};
 use spinel_registry::dialog::Dialog;
 use spinel_registry::dimension_type::DimensionType;
-use spinel_registry::{EntityType, ItemStack, RegistryKey};
+use spinel_registry::{Attribute, EntityBoundingBox, EntityType, ItemStack, RegistryKey};
 use spinel_utils::component::color::{NamedTextColor, TextColor};
 use spinel_utils::component::events::{HoverEntity, HoverEvent};
 use spinel_utils::component::text::TextComponent;
@@ -98,10 +106,12 @@ const MIN_CHUNKS_PER_TICK: f32 = 0.01;
 const MAX_CHUNKS_PER_TICK: f32 = 64.0;
 const CHUNKS_PER_TICK_MULTIPLIER: f32 = 1.0;
 const DEFAULT_CLIENT_CHUNK_VIEW_DISTANCE: i32 = 8;
-const PLAYER_CHUNK_UPDATE_LIMITER_HISTORY_SIZE: usize = 8;
+const PLAYER_CHUNK_UPDATE_LIMITER_HISTORY_SIZE: usize = 5;
+const SERVER_TICKS_PER_SECOND: f64 = 20.0;
 
 pub struct Player {
     entity_id: EntityId,
+    entity_type: EntityType,
     pub uuid: Uuid,
     pub username: String,
     pub protocol_version: i32,
@@ -143,6 +153,8 @@ pub struct Player {
     vehicle: Option<EntityId>,
     velocity: Velocity,
     passengers: BTreeSet<EntityId>,
+    leash: EntityLeash,
+    synchronization: EntitySynchronization,
     vanished: bool,
     pub(super) click_preprocessor: ClickPreprocessor,
     held_slot: i32,
@@ -158,6 +170,10 @@ pub struct Player {
     tag_handler: TagHandler,
     has_entered_world: bool,
     on_ground: bool,
+    aerodynamics: EntityAerodynamics,
+    gravity_tick_count: u64,
+    previous_physics_result: Option<EntityPhysicsResult>,
+    has_physics: bool,
     last_sent_teleport_id: i32,
     last_received_teleport_id: i32,
     last_keep_alive: i64,
@@ -168,13 +184,13 @@ pub struct Player {
     pub(super) item_cooldowns: BTreeMap<String, u64>,
     statistics: BTreeMap<String, i32>,
     pub(super) alive_ticks: u64,
+    last_experience_pickup_tick: Option<i64>,
     pub(super) item_use_hand: Option<PlayerHand>,
     pub(super) start_item_use_time: u64,
     pub(super) item_use_time: u64,
     packet_queue: VecDeque<QueuedPlayerPacket>,
     pub(super) pending_resource_packs: PendingResourcePacks,
     pub(super) chunk_queue: VecDeque<QueuedPlayerChunk>,
-    pub(super) queued_client_chunks: HashSet<PlayerChunk>,
     pub(super) client_sent_chunks: HashSet<PlayerChunk>,
     pub(super) needs_chunk_position_sync: bool,
     pub(super) max_chunk_batch_lead: i32,
@@ -254,8 +270,10 @@ impl Player {
         let respawn_point = PlayerSpawnPoint::default();
         let position = PlayerPosition::from(respawn_point);
         let entity_id = EntityId::next();
+        let collision_rules = EntityCollisionRules::from_entity_type(EntityType::PLAYER);
         Self {
             entity_id,
+            entity_type: EntityType::PLAYER,
             uuid,
             username,
             protocol_version,
@@ -278,7 +296,7 @@ impl Player {
             dimension_type: DimensionType::OVERWORLD,
             world_name: None,
             hardcore: false,
-            living: LivingState::new(EntityType::PLAYER.bounding_box()),
+            living: LivingState::new(EntityType::PLAYER),
             food: 20,
             food_saturation: 5.0,
             death_location: None,
@@ -303,6 +321,14 @@ impl Player {
                 z: 0.0,
             }),
             passengers: BTreeSet::new(),
+            leash: EntityLeash::new(),
+            synchronization: EntitySynchronization::new(EntityPosition::new(
+                position.x,
+                position.y,
+                position.z,
+                position.yaw,
+                position.pitch,
+            )),
             vanished: false,
             click_preprocessor: ClickPreprocessor::default(),
             held_slot: 0,
@@ -310,14 +336,22 @@ impl Player {
             flying: false,
             allow_flying: false,
             instant_break: false,
-            has_entity_collision: true,
-            prevents_block_placement: true,
+            has_entity_collision: collision_rules.has_entity_collision(),
+            prevents_block_placement: collision_rules.prevents_block_placement(),
             flying_speed: 0.05,
             field_view_modifier: 0.1,
             metadata: MetadataHolder::default(),
             tag_handler: TagHandler::new_handler(),
             has_entered_world: false,
             on_ground: false,
+            aerodynamics: EntityAerodynamics::new(
+                EntityType::PLAYER.horizontal_air_resistance(),
+                EntityType::PLAYER.vertical_air_resistance(),
+                EntityType::PLAYER.acceleration(),
+            ),
+            gravity_tick_count: 0,
+            previous_physics_result: None,
+            has_physics: true,
             last_sent_teleport_id: 0,
             last_received_teleport_id: 0,
             last_keep_alive: 0,
@@ -328,13 +362,13 @@ impl Player {
             item_cooldowns: BTreeMap::new(),
             statistics: BTreeMap::new(),
             alive_ticks: 0,
+            last_experience_pickup_tick: None,
             item_use_hand: None,
             start_item_use_time: 0,
             item_use_time: 0,
             packet_queue: VecDeque::new(),
             pending_resource_packs: PendingResourcePacks::new(),
             chunk_queue: VecDeque::new(),
-            queued_client_chunks: HashSet::new(),
             client_sent_chunks: HashSet::new(),
             needs_chunk_position_sync: true,
             max_chunk_batch_lead: 1,
@@ -390,11 +424,14 @@ impl Player {
         &mut self,
         client: &mut Client,
         ticks_per_second: u32,
+        dimension_type_id: i32,
         world_name: Identifier,
         chunk_packets: Vec<
             spinel_core::network::clientbound::play::chunk_data::ChunkDataAndUpdateLightPacket,
         >,
+        world_border_packet: spinel_core::network::clientbound::play::initialize_world_border::InitializeWorldBorderPacket,
         time_packet: spinel_core::network::clientbound::play::set_time::SetTimePacket,
+        weather: crate::world::Weather,
     ) -> io::Result<()> {
         self.pending_spawning_world = None;
         self.living.revive();
@@ -402,9 +439,12 @@ impl Player {
         self.enter_world(
             client,
             ticks_per_second,
+            dimension_type_id,
             world_name,
             chunk_packets,
+            world_border_packet,
             time_packet,
+            weather,
         )
     }
 
@@ -412,9 +452,12 @@ impl Player {
         &mut self,
         client: &mut Client,
         ticks_per_second: u32,
+        dimension_type_id: i32,
         world_name: Identifier,
         chunks: Vec<PlayerChunk>,
+        world_border_packet: spinel_core::network::clientbound::play::initialize_world_border::InitializeWorldBorderPacket,
         time_packet: spinel_core::network::clientbound::play::set_time::SetTimePacket,
+        weather: crate::world::Weather,
     ) -> io::Result<()> {
         self.pending_spawning_world = None;
         self.living.revive();
@@ -422,9 +465,12 @@ impl Player {
         self.enter_world_with_chunk_positions(
             client,
             ticks_per_second,
+            dimension_type_id,
             world_name,
             chunks,
+            world_border_packet,
             time_packet,
+            weather,
         )
     }
 
@@ -486,6 +532,10 @@ impl Player {
 
     pub fn set_health(&mut self, health: f32) -> io::Result<()> {
         self.living.set_health(health);
+        self.metadata.set(
+            &definitions::living_entity::health(),
+            MetadataValue::Float(self.living.health()),
+        );
         self.sync_health()?;
         if self.living.health() <= 0.0 {
             self.kill()?;
@@ -508,6 +558,10 @@ impl Player {
         self.living.store_last_damage(damage);
         self.living
             .set_health(self.living.health() - remaining_damage);
+        self.metadata.set(
+            &definitions::living_entity::health(),
+            MetadataValue::Float(self.living.health()),
+        );
         self.sync_health()
     }
 
@@ -663,6 +717,11 @@ impl Player {
             return Ok(());
         }
         self.living.kill();
+        self.velocity = Velocity(Vector3d {
+            x: 0.0,
+            y: 0.0,
+            z: 0.0,
+        });
         let default_death_text = self
             .living
             .last_damage()
@@ -699,8 +758,6 @@ impl Player {
         if !self.living.is_dead() {
             return Ok(false);
         }
-        self.living.revive();
-        self.refresh_pose();
         let respawn_dimension = self
             .world_name
             .clone()
@@ -716,6 +773,10 @@ impl Player {
             SetExperiencePacket::new(0.0, 0, 0).dispatch(client)?;
             self.refresh_abilities()?;
         }
+        let respawn_position = self.dispatch_player_respawn_event();
+        self.living.revive();
+        self.refresh_pose();
+        self.position = PlayerPosition::from(respawn_position);
         Ok(true)
     }
 
@@ -1037,7 +1098,12 @@ impl Player {
 
     pub fn add_packet_to_queue(&mut self, packet: QueuedPlayerPacket) -> bool {
         if self.packet_queue.len() >= Self::PLAYER_PACKET_QUEUE_SIZE {
-            let _ = self.kick(Self::too_many_packets_text());
+            if let Some(client) = self.client_mut()
+                && let Some(server_ptr) = client.server_ptr
+            {
+                let server = unsafe { &mut *(server_ptr as *mut crate::server::MinecraftServer) };
+                let _ = server.kick(client, Self::too_many_packets_text());
+            }
             return false;
         }
         self.packet_queue.push_back(packet);
@@ -1124,6 +1190,23 @@ impl Player {
         self.entity_id
     }
 
+    pub const fn entity_type(&self) -> EntityType {
+        self.entity_type
+    }
+
+    pub fn switch_entity_type(&mut self, entity_type: EntityType) {
+        self.entity_type = entity_type;
+        self.metadata = MetadataHolder::default();
+        self.aerodynamics = EntityAerodynamics::from_entity_type(entity_type);
+        self.refresh_collision_rules();
+    }
+
+    fn refresh_collision_rules(&mut self) {
+        let collision_rules = EntityCollisionRules::from_entity_type(self.entity_type);
+        self.has_entity_collision = collision_rules.has_entity_collision();
+        self.prevents_block_placement = collision_rules.prevents_block_placement();
+    }
+
     pub const fn view(&self) -> &EntityView {
         &self.view
     }
@@ -1158,7 +1241,7 @@ impl Player {
 
     pub fn as_hover_event(&self) -> HoverEvent {
         HoverEvent::ShowEntity(HoverEntity {
-            entity_type: EntityType::PLAYER.key().to_string(),
+            entity_type: self.entity_type.key().to_string(),
             id: self.uuid.to_string(),
             name: Some(Box::new(TextComponent::literal(self.username()))),
         })
@@ -1211,8 +1294,25 @@ impl Player {
 
     pub fn set_skin(&mut self, skin: Option<PlayerSkin>) -> io::Result<()> {
         self.skin = skin;
-        self.dispatch_player_info_update(self.player_info_packet())?;
-        self.refresh_player_info_to_viewers()
+        if !self.has_entered_world() {
+            return Ok(());
+        }
+        let player_uuid = self.uuid();
+        let player_id = self.entity_id();
+        let add_player_packet = self.player_info_packet();
+        let viewer_snapshot = PlayerViewerSnapshot::from_player(self);
+
+        self.refresh_skin_for_self(player_uuid, add_player_packet.clone(), &viewer_snapshot)?;
+        self.broadcast_to_play_clients(|client| {
+            PlayerInfoRemovePacket::new(player_uuid).dispatch(client)
+        })?;
+        self.dispatch_to_viewer_clients(|client| {
+            RemoveEntitiesPacket::new(vec![player_id.value()]).dispatch(client)
+        })?;
+        self.broadcast_to_play_clients(|client| add_player_packet.clone().dispatch(client))?;
+        self.dispatch_to_viewer_clients(|client| {
+            viewer_snapshot.dispatch_without_player_info(client)
+        })
     }
 
     pub(crate) fn apply_skin(&mut self, skin: Option<PlayerSkin>) {
@@ -1227,7 +1327,50 @@ impl Player {
         self.display_name = display_name;
         let packet =
             PlayerInfoUpdatePacket::update_display_name(self.uuid, self.display_name.clone());
-        self.dispatch_player_info_update(packet)
+        self.broadcast_to_play_clients(|client| packet.clone().dispatch(client))
+    }
+
+    pub fn custom_name(&self) -> Option<TextComponent> {
+        match self.metadata.value(&definitions::custom_name()) {
+            MetadataValue::OptionalText(custom_name) => custom_name,
+            _ => None,
+        }
+    }
+
+    pub fn set_custom_name(&mut self, custom_name: Option<TextComponent>) {
+        self.metadata.set(
+            &definitions::custom_name(),
+            MetadataValue::OptionalText(custom_name),
+        );
+        self.refresh_dirty_metadata_to_viewers();
+    }
+
+    pub fn is_custom_name_visible(&self) -> bool {
+        match self.metadata.value(&definitions::custom_name_visible()) {
+            MetadataValue::Boolean(custom_name_visible) => custom_name_visible,
+            _ => false,
+        }
+    }
+
+    pub fn set_custom_name_visible(&mut self, custom_name_visible: bool) {
+        self.metadata.set(
+            &definitions::custom_name_visible(),
+            MetadataValue::Boolean(custom_name_visible),
+        );
+        self.refresh_dirty_metadata_to_viewers();
+    }
+
+    pub fn is_silent(&self) -> bool {
+        match self.metadata.value(&definitions::is_silent()) {
+            MetadataValue::Boolean(silent) => silent,
+            _ => false,
+        }
+    }
+
+    pub fn set_silent(&mut self, silent: bool) {
+        self.metadata
+            .set(&definitions::is_silent(), MetadataValue::Boolean(silent));
+        self.refresh_dirty_metadata_to_viewers();
     }
 
     pub const fn protocol_version(&self) -> i32 {
@@ -1239,6 +1382,7 @@ impl Player {
     }
 
     pub(crate) fn set_client(&mut self, client: &mut Client) {
+        client.set_player_entity_id(self.entity_id());
         self.client = Some(client as *mut Client as usize);
     }
 
@@ -1314,6 +1458,99 @@ impl Player {
         self.metadata.flag(&definitions::is_sprinting())
     }
 
+    pub fn is_swimming(&self) -> bool {
+        self.metadata.flag(&definitions::is_swimming())
+    }
+
+    pub fn is_invisible(&self) -> bool {
+        self.metadata.flag(&definitions::is_invisible())
+    }
+
+    pub fn is_glowing(&self) -> bool {
+        self.metadata.flag(&definitions::has_glowing_effect())
+    }
+
+    pub fn is_flying_with_elytra(&self) -> bool {
+        self.metadata.flag(&definitions::is_flying_with_elytra())
+    }
+
+    pub fn air_ticks(&self) -> i32 {
+        match self.metadata.value(&definitions::air_ticks()) {
+            MetadataValue::VarInt(air_ticks) => air_ticks,
+            _ => 300,
+        }
+    }
+
+    pub fn is_hand_active(&self) -> bool {
+        self.metadata
+            .flag(&definitions::living_entity::is_hand_active())
+    }
+
+    pub fn active_hand(&self) -> PlayerHand {
+        if self
+            .metadata
+            .flag(&definitions::living_entity::active_hand())
+        {
+            return PlayerHand::Off;
+        }
+        PlayerHand::Main
+    }
+
+    pub fn is_in_riptide_spin_attack(&self) -> bool {
+        self.metadata
+            .flag(&definitions::living_entity::is_riptide_spin_attack())
+    }
+
+    pub fn effect_particles(&self) -> Vec<Particle> {
+        match self
+            .metadata
+            .value(&definitions::living_entity::potion_effect_particles())
+        {
+            MetadataValue::ParticleList(effect_particles) => effect_particles,
+            _ => Vec::new(),
+        }
+    }
+
+    pub fn is_potion_effect_ambient(&self) -> bool {
+        match self
+            .metadata
+            .value(&definitions::living_entity::is_potion_effect_ambient())
+        {
+            MetadataValue::Boolean(potion_effect_ambient) => potion_effect_ambient,
+            _ => false,
+        }
+    }
+
+    pub fn arrow_count(&self) -> i32 {
+        match self
+            .metadata
+            .value(&definitions::living_entity::number_of_arrows())
+        {
+            MetadataValue::VarInt(arrow_count) => arrow_count,
+            _ => 0,
+        }
+    }
+
+    pub fn bee_stinger_count(&self) -> i32 {
+        match self
+            .metadata
+            .value(&definitions::living_entity::number_of_bee_stingers())
+        {
+            MetadataValue::VarInt(bee_stinger_count) => bee_stinger_count,
+            _ => 0,
+        }
+    }
+
+    pub fn bed_in_which_sleeping_position(&self) -> Option<Position> {
+        match self
+            .metadata
+            .value(&definitions::living_entity::location_of_bed())
+        {
+            MetadataValue::OptionalPosition(bed_position) => bed_position,
+            _ => None,
+        }
+    }
+
     pub const fn is_listed(&self) -> bool {
         self.listed
     }
@@ -1348,6 +1585,17 @@ impl Player {
     }
 
     pub fn set_flying_state(&mut self, flying: bool) {
+        self.flying = flying;
+    }
+
+    pub fn refresh_flying(&mut self, flying: bool) {
+        if self.flying != flying {
+            if self.is_sneaking() && self.pose() == PlayerPose::Standing {
+                self.set_pose(PlayerPose::Sneaking);
+            } else if self.pose() == PlayerPose::Sneaking {
+                self.set_pose(PlayerPose::Standing);
+            }
+        }
         self.flying = flying;
     }
 
@@ -1405,6 +1653,269 @@ impl Player {
         old_sprint != sprinting
     }
 
+    pub fn set_swimming(&mut self, swimming: bool) {
+        self.metadata
+            .set_flag(&definitions::is_swimming(), swimming);
+        self.refresh_pose();
+        self.refresh_dirty_metadata_to_viewers();
+    }
+
+    pub fn set_invisible(&mut self, invisible: bool) {
+        self.metadata
+            .set_flag(&definitions::is_invisible(), invisible);
+        self.refresh_dirty_metadata_to_viewers();
+    }
+
+    pub fn set_glowing(&mut self, glowing: bool) {
+        self.metadata
+            .set_flag(&definitions::has_glowing_effect(), glowing);
+        self.refresh_dirty_metadata_to_viewers();
+    }
+
+    pub(crate) fn set_flying_with_elytra(&mut self, flying_with_elytra: bool) -> bool {
+        let old_flying_with_elytra = self.metadata.flag(&definitions::is_flying_with_elytra());
+        self.metadata
+            .set_flag(&definitions::is_flying_with_elytra(), flying_with_elytra);
+        self.refresh_pose();
+        self.refresh_dirty_metadata_to_viewers();
+        old_flying_with_elytra != flying_with_elytra
+    }
+
+    pub fn set_air_ticks(&mut self, air_ticks: i32) {
+        self.metadata
+            .set(&definitions::air_ticks(), MetadataValue::VarInt(air_ticks));
+        self.refresh_dirty_metadata_to_viewers();
+    }
+
+    pub fn set_hand_active(&mut self, hand_active: bool) {
+        self.metadata
+            .set_flag(&definitions::living_entity::is_hand_active(), hand_active);
+        self.refresh_dirty_metadata_to_viewers();
+    }
+
+    pub fn set_active_hand(&mut self, hand: PlayerHand) {
+        self.metadata.set_flag(
+            &definitions::living_entity::active_hand(),
+            hand == PlayerHand::Off,
+        );
+        self.refresh_dirty_metadata_to_viewers();
+    }
+
+    pub fn set_in_riptide_spin_attack(&mut self, in_riptide_spin_attack: bool) {
+        self.metadata.set_flag(
+            &definitions::living_entity::is_riptide_spin_attack(),
+            in_riptide_spin_attack,
+        );
+        self.refresh_dirty_metadata_to_viewers();
+    }
+
+    pub fn set_effect_particles(&mut self, effect_particles: Vec<Particle>) {
+        self.metadata.set(
+            &definitions::living_entity::potion_effect_particles(),
+            MetadataValue::ParticleList(effect_particles),
+        );
+        self.refresh_dirty_metadata_to_viewers();
+    }
+
+    pub fn set_potion_effect_ambient(&mut self, potion_effect_ambient: bool) {
+        self.metadata.set(
+            &definitions::living_entity::is_potion_effect_ambient(),
+            MetadataValue::Boolean(potion_effect_ambient),
+        );
+        self.refresh_dirty_metadata_to_viewers();
+    }
+
+    pub fn set_arrow_count(&mut self, arrow_count: i32) {
+        let normalized_arrow_count = arrow_count.max(0);
+        self.living.set_arrow_count(normalized_arrow_count);
+        self.metadata.set(
+            &definitions::living_entity::number_of_arrows(),
+            MetadataValue::VarInt(normalized_arrow_count),
+        );
+        self.refresh_dirty_metadata_to_viewers();
+    }
+
+    pub fn set_bee_stinger_count(&mut self, bee_stinger_count: i32) {
+        self.metadata.set(
+            &definitions::living_entity::number_of_bee_stingers(),
+            MetadataValue::VarInt(bee_stinger_count.max(0)),
+        );
+        self.refresh_dirty_metadata_to_viewers();
+    }
+
+    pub fn set_bed_in_which_sleeping_position(&mut self, bed_position: Option<Position>) {
+        self.metadata.set(
+            &definitions::living_entity::location_of_bed(),
+            MetadataValue::OptionalPosition(bed_position),
+        );
+        self.refresh_dirty_metadata_to_viewers();
+    }
+
+    pub fn main_hand(&self) -> MainHand {
+        match self.metadata.value(&definitions::avatar::main_hand()) {
+            MetadataValue::MainHand(main_hand) => main_hand,
+            _ => MainHand::Right,
+        }
+    }
+
+    pub fn set_main_hand(&mut self, main_hand: MainHand) {
+        self.metadata.set(
+            &definitions::avatar::main_hand(),
+            MetadataValue::MainHand(main_hand),
+        );
+        self.refresh_dirty_metadata_to_viewers();
+    }
+
+    pub fn is_cape_enabled(&self) -> bool {
+        self.metadata.flag(&definitions::avatar::is_cape_enabled())
+    }
+
+    pub fn set_cape_enabled(&mut self, cape_enabled: bool) {
+        self.metadata
+            .set_flag(&definitions::avatar::is_cape_enabled(), cape_enabled);
+        self.refresh_dirty_metadata_to_viewers();
+    }
+
+    pub fn is_jacket_enabled(&self) -> bool {
+        self.metadata
+            .flag(&definitions::avatar::is_jacket_enabled())
+    }
+
+    pub fn set_jacket_enabled(&mut self, jacket_enabled: bool) {
+        self.metadata
+            .set_flag(&definitions::avatar::is_jacket_enabled(), jacket_enabled);
+        self.refresh_dirty_metadata_to_viewers();
+    }
+
+    pub fn is_left_sleeve_enabled(&self) -> bool {
+        self.metadata
+            .flag(&definitions::avatar::is_left_sleeve_enabled())
+    }
+
+    pub fn set_left_sleeve_enabled(&mut self, left_sleeve_enabled: bool) {
+        self.metadata.set_flag(
+            &definitions::avatar::is_left_sleeve_enabled(),
+            left_sleeve_enabled,
+        );
+        self.refresh_dirty_metadata_to_viewers();
+    }
+
+    pub fn is_right_sleeve_enabled(&self) -> bool {
+        self.metadata
+            .flag(&definitions::avatar::is_right_sleeve_enabled())
+    }
+
+    pub fn set_right_sleeve_enabled(&mut self, right_sleeve_enabled: bool) {
+        self.metadata.set_flag(
+            &definitions::avatar::is_right_sleeve_enabled(),
+            right_sleeve_enabled,
+        );
+        self.refresh_dirty_metadata_to_viewers();
+    }
+
+    pub fn is_left_leg_enabled(&self) -> bool {
+        self.metadata
+            .flag(&definitions::avatar::is_left_pants_leg_enabled())
+    }
+
+    pub fn set_left_leg_enabled(&mut self, left_leg_enabled: bool) {
+        self.metadata.set_flag(
+            &definitions::avatar::is_left_pants_leg_enabled(),
+            left_leg_enabled,
+        );
+        self.refresh_dirty_metadata_to_viewers();
+    }
+
+    pub fn is_right_leg_enabled(&self) -> bool {
+        self.metadata
+            .flag(&definitions::avatar::is_right_pants_leg_enabled())
+    }
+
+    pub fn set_right_leg_enabled(&mut self, right_leg_enabled: bool) {
+        self.metadata.set_flag(
+            &definitions::avatar::is_right_pants_leg_enabled(),
+            right_leg_enabled,
+        );
+        self.refresh_dirty_metadata_to_viewers();
+    }
+
+    pub fn is_hat_enabled(&self) -> bool {
+        self.metadata.flag(&definitions::avatar::is_hat_enabled())
+    }
+
+    pub fn set_hat_enabled(&mut self, hat_enabled: bool) {
+        self.metadata
+            .set_flag(&definitions::avatar::is_hat_enabled(), hat_enabled);
+        self.refresh_dirty_metadata_to_viewers();
+    }
+
+    pub fn displayed_skin_parts(&self) -> i8 {
+        match self
+            .metadata
+            .value(&definitions::avatar::displayed_model_parts_flags())
+        {
+            MetadataValue::Byte(displayed_skin_parts) => displayed_skin_parts,
+            _ => 0,
+        }
+    }
+
+    pub fn set_displayed_skin_parts(&mut self, displayed_skin_parts: i8) {
+        self.metadata.set(
+            &definitions::avatar::displayed_model_parts_flags(),
+            MetadataValue::Byte(displayed_skin_parts),
+        );
+        self.refresh_dirty_metadata_to_viewers();
+    }
+
+    pub fn score(&self) -> i32 {
+        match self.metadata.value(&definitions::player::score()) {
+            MetadataValue::VarInt(score) => score,
+            _ => 0,
+        }
+    }
+
+    pub fn set_score(&mut self, score: i32) {
+        self.metadata
+            .set(&definitions::player::score(), MetadataValue::VarInt(score));
+        self.refresh_dirty_metadata_to_viewers();
+    }
+
+    pub fn left_shoulder_entity_data(&self) -> Option<i32> {
+        match self
+            .metadata
+            .value(&definitions::player::left_shoulder_entity_data())
+        {
+            MetadataValue::OptionalVarInt(left_shoulder_entity_data) => left_shoulder_entity_data,
+            _ => None,
+        }
+    }
+
+    pub fn set_left_shoulder_entity_data(&mut self, left_shoulder_entity_data: Option<i32>) {
+        self.metadata.set(
+            &definitions::player::left_shoulder_entity_data(),
+            MetadataValue::OptionalVarInt(left_shoulder_entity_data),
+        );
+        self.refresh_dirty_metadata_to_viewers();
+    }
+
+    pub fn right_shoulder_entity_data(&self) -> Option<i32> {
+        match self
+            .metadata
+            .value(&definitions::player::right_shoulder_entity_data())
+        {
+            MetadataValue::OptionalVarInt(right_shoulder_entity_data) => right_shoulder_entity_data,
+            _ => None,
+        }
+    }
+
+    pub fn set_right_shoulder_entity_data(&mut self, right_shoulder_entity_data: Option<i32>) {
+        self.metadata.set(
+            &definitions::player::right_shoulder_entity_data(),
+            MetadataValue::OptionalVarInt(right_shoulder_entity_data),
+        );
+        self.refresh_dirty_metadata_to_viewers();
+    }
+
     pub fn leave_bed(&mut self) {
         self.metadata
             .set(&definitions::pose(), MetadataValue::Pose(0));
@@ -1448,19 +1959,6 @@ impl Player {
     pub fn close_inventory(&mut self) {
         self.click_preprocessor.clear_cache();
         self.open_inventory = None;
-    }
-
-    pub(crate) fn close_inventory_with_client(
-        &mut self,
-        from_client: bool,
-        server: &mut crate::server::MinecraftServer,
-        client: &mut Client,
-    ) -> bool {
-        let window_id = self
-            .opened_inventory()
-            .map(|inventory| inventory.window_id())
-            .unwrap_or_else(|| self.inventory_ref().window_id());
-        self.close_inventory_window_with_client(from_client, window_id, server, client)
     }
 
     pub(crate) fn close_inventory_window_with_client(
@@ -1530,11 +2028,11 @@ impl Player {
         self.vehicle
     }
 
-    pub fn set_vehicle(&mut self, vehicle: EntityId) {
+    pub(crate) fn set_vehicle(&mut self, vehicle: EntityId) {
         self.vehicle = Some(vehicle);
     }
 
-    pub fn clear_vehicle(&mut self) {
+    pub(crate) fn clear_vehicle(&mut self) {
         self.vehicle = None;
     }
 
@@ -1542,26 +2040,44 @@ impl Player {
         self.velocity
     }
 
-    pub fn set_velocity(&mut self, velocity: Velocity) {
+    pub(crate) fn set_velocity(&mut self, velocity: Velocity) {
         self.velocity = velocity;
     }
 
+    pub fn take_knockback(&mut self, strength: f32, x: f64, z: f64) {
+        let living_strength =
+            strength * (1.0 - self.living.attribute_value(Attribute::KNOCKBACK_RESISTANCE) as f32);
+        self.velocity = knockback_velocity(self.velocity, self.on_ground, living_strength, x, z);
+    }
+
     pub fn has_velocity(&self) -> bool {
-        self.velocity.0.x != 0.0 || self.velocity.0.y != 0.0 || self.velocity.0.z != 0.0
+        let velocity = self.velocity.0;
+        if self.on_ground {
+            return velocity.x != 0.0 || velocity.z != 0.0 || velocity.y > 0.0;
+        }
+        velocity.x != 0.0 || velocity.y != 0.0 || velocity.z != 0.0
     }
 
     pub fn velocity_packet(&self) -> EntityVelocityPacket {
         EntityVelocityPacket {
             entity_id: self.entity_id().value(),
-            velocity: self.velocity,
+            velocity: self.protocol_velocity(),
         }
     }
 
-    pub fn add_passenger(&mut self, passenger_id: EntityId) -> bool {
+    fn protocol_velocity(&self) -> Velocity {
+        Velocity(Vector3d {
+            x: self.velocity.0.x / SERVER_TICKS_PER_SECOND,
+            y: self.velocity.0.y / SERVER_TICKS_PER_SECOND,
+            z: self.velocity.0.z / SERVER_TICKS_PER_SECOND,
+        })
+    }
+
+    pub(crate) fn add_passenger(&mut self, passenger_id: EntityId) -> bool {
         self.passengers.insert(passenger_id)
     }
 
-    pub fn remove_passenger(&mut self, passenger_id: EntityId) -> bool {
+    pub(crate) fn remove_passenger(&mut self, passenger_id: EntityId) -> bool {
         self.passengers.remove(&passenger_id)
     }
 
@@ -1573,7 +2089,7 @@ impl Player {
         &self.passengers
     }
 
-    pub fn passenger_packet(&self) -> SetPassengersPacket {
+    pub(crate) fn passenger_packet(&self) -> SetPassengersPacket {
         SetPassengersPacket {
             vehicle_entity_id: self.entity_id().value(),
             passenger_entity_ids: IntList(
@@ -1583,6 +2099,68 @@ impl Player {
                     .collect(),
             ),
         }
+    }
+
+    pub fn leashed_entities(&self) -> &BTreeSet<EntityId> {
+        self.leash.leashed_entities()
+    }
+
+    pub const fn leash_holder(&self) -> Option<EntityId> {
+        self.leash.holder()
+    }
+
+    pub(crate) fn set_leash_holder(&mut self, leash_holder: Option<EntityId>) {
+        self.leash.set_holder(leash_holder);
+    }
+
+    pub(crate) fn add_leashed_entity(&mut self, entity_id: EntityId) -> bool {
+        self.leash.add_leashed_entity(entity_id)
+    }
+
+    pub(crate) fn remove_leashed_entity(&mut self, entity_id: EntityId) -> bool {
+        self.leash.remove_leashed_entity(entity_id)
+    }
+
+    pub(crate) fn attach_entity_packet(
+        &self,
+    ) -> spinel_core::network::clientbound::play::attach_entity::AttachEntityPacket {
+        self.leash.packet(self.entity_id)
+    }
+
+    pub const fn synchronization_ticks(&self) -> u64 {
+        self.synchronization.interval_ticks()
+    }
+
+    pub fn set_synchronization_ticks(&mut self, synchronization_ticks: u64) {
+        self.synchronization
+            .set_interval_ticks(synchronization_ticks);
+    }
+
+    pub fn synchronize_next_tick(&mut self) {
+        self.synchronization.synchronize_next_tick();
+    }
+
+    pub(super) fn record_synchronization_position(&mut self, position: EntityPosition) {
+        self.synchronization.record_position(position);
+    }
+
+    pub(crate) fn synchronize_entity_position_packet(
+        &mut self,
+    ) -> spinel_core::network::clientbound::play::entity_position_sync::EntityPositionSyncPacket
+    {
+        let position = self.position();
+        self.synchronization
+            .synchronize(self.entity_id, self.alive_ticks, position, self.on_ground)
+    }
+
+    pub(crate) fn scheduled_entity_position_sync_packet(
+        &mut self,
+    ) -> Option<
+        spinel_core::network::clientbound::play::entity_position_sync::EntityPositionSyncPacket,
+    > {
+        self.synchronization
+            .is_due(self.alive_ticks, self.vehicle.is_some())
+            .then(|| self.synchronize_entity_position_packet())
     }
 
     pub const fn is_vanished(&self) -> bool {
@@ -1602,12 +2180,8 @@ impl Player {
         self.open_inventory.as_mut()
     }
 
-    pub(crate) fn click_preprocessor(&mut self) -> &mut ClickPreprocessor {
+    pub fn click_preprocessor(&mut self) -> &mut ClickPreprocessor {
         &mut self.click_preprocessor
-    }
-
-    pub fn click_preprocessor_ref(&self) -> &ClickPreprocessor {
-        &self.click_preprocessor
     }
 
     pub fn did_close_inventory(&self) -> bool {
@@ -1682,6 +2256,114 @@ impl Player {
         self.on_ground = on_ground;
     }
 
+    pub(crate) fn refresh_on_ground(&mut self, on_ground: bool) -> bool {
+        self.on_ground = on_ground;
+        let player_is_airborne = !self.on_ground;
+        let player_is_not_flying_with_elytra = !self.is_flying_with_elytra();
+        if player_is_airborne || player_is_not_flying_with_elytra {
+            return false;
+        }
+        self.set_flying_with_elytra(false)
+    }
+
+    pub const fn aerodynamics(&self) -> EntityAerodynamics {
+        self.aerodynamics
+    }
+
+    pub fn set_aerodynamics(&mut self, aerodynamics: EntityAerodynamics) {
+        self.aerodynamics = aerodynamics;
+    }
+
+    pub const fn gravity_tick_count(&self) -> u64 {
+        self.gravity_tick_count
+    }
+
+    pub(crate) fn tick_gravity_counter(&mut self) {
+        self.gravity_tick_count = if self.on_ground {
+            0
+        } else {
+            self.gravity_tick_count.saturating_add(1)
+        };
+    }
+
+    pub(crate) fn movement_tick(&mut self, world: &WorldSnapshot) {
+        self.tick_gravity_counter();
+        if self.vehicle.is_some() {
+            return;
+        }
+        let position = self.position();
+        let velocity_per_tick = Velocity(Vector3d {
+            x: self.velocity.0.x / SERVER_TICKS_PER_SECOND,
+            y: self.velocity.0.y / SERVER_TICKS_PER_SECOND,
+            z: self.velocity.0.z / SERVER_TICKS_PER_SECOND,
+        });
+        let physics = simulate_movement(
+            position,
+            velocity_per_tick,
+            self.bounding_box(),
+            world,
+            self.aerodynamics,
+            self.has_no_gravity(),
+            self.has_physics,
+            self.on_ground,
+            self.is_flying(),
+            self.previous_physics_result,
+        );
+        self.previous_physics_result = Some(physics);
+        if !world.is_chunk_loaded(ChunkPosition::from(physics.new_position())) {
+            return;
+        }
+        self.velocity = Velocity(Vector3d {
+            x: physics.new_velocity_per_tick().0.x * SERVER_TICKS_PER_SECOND,
+            y: physics.new_velocity_per_tick().0.y * SERVER_TICKS_PER_SECOND,
+            z: physics.new_velocity_per_tick().0.z * SERVER_TICKS_PER_SECOND,
+        });
+    }
+
+    pub const fn has_physics(&self) -> bool {
+        self.has_physics
+    }
+
+    pub fn set_has_physics(&mut self, has_physics: bool) {
+        self.has_physics = has_physics;
+    }
+
+    pub fn has_no_gravity(&self) -> bool {
+        match self.metadata.value(&definitions::has_no_gravity()) {
+            MetadataValue::Boolean(has_no_gravity) => has_no_gravity,
+            _ => false,
+        }
+    }
+
+    pub fn set_no_gravity(&mut self, has_no_gravity: bool) {
+        self.metadata.set(
+            &definitions::has_no_gravity(),
+            MetadataValue::Boolean(has_no_gravity),
+        );
+        self.refresh_dirty_metadata_to_viewers();
+    }
+
+    pub fn ticks_frozen(&self) -> i32 {
+        match self.metadata.value(&definitions::ticks_frozen()) {
+            MetadataValue::VarInt(ticks_frozen) => ticks_frozen,
+            _ => 0,
+        }
+    }
+
+    pub fn set_ticks_frozen(&mut self, ticks_frozen: i32) {
+        self.metadata.set(
+            &definitions::ticks_frozen(),
+            MetadataValue::VarInt(ticks_frozen),
+        );
+        self.refresh_dirty_metadata_to_viewers();
+    }
+
+    pub fn bounding_box(&self) -> EntityBoundingBox {
+        self.pose()
+            .bounding_box(EntityType::PLAYER.bounding_box())
+            .unwrap_or_else(|| EntityType::PLAYER.bounding_box())
+    }
+
     pub fn next_teleport_id(&mut self) -> i32 {
         self.last_sent_teleport_id += 1;
         self.last_sent_teleport_id
@@ -1744,17 +2426,73 @@ impl Player {
         position: EntityPosition,
         chunks: Option<Vec<i64>>,
         flags: TeleportFlags,
-    ) -> io::Result<crate::entity::EntityTeleport> {
-        let velocity = Velocity(Vector3d {
-            x: 0.0,
-            y: 0.0,
-            z: 0.0,
-        });
-        self.set_position(position);
-        self.synchronize_position_after_teleport(position, velocity.0, flags, true)?;
-        Ok(crate::entity::EntityTeleport::new(
-            position, velocity, chunks, flags,
-        ))
+    ) -> io::Result<EntityTeleport> {
+        self.teleport(position, chunks, flags, true)
+    }
+
+    pub fn teleport(
+        &mut self,
+        position: EntityPosition,
+        chunks: Option<Vec<i64>>,
+        flags: TeleportFlags,
+        should_confirm: bool,
+    ) -> io::Result<EntityTeleport> {
+        self.teleport_with_velocity_chunks_and_flags(
+            position,
+            Velocity(Vector3d {
+                x: 0.0,
+                y: 0.0,
+                z: 0.0,
+            }),
+            chunks,
+            flags.with(TeleportFlags::DELTA_COORD),
+            should_confirm,
+        )
+    }
+
+    pub fn teleport_with_velocity_chunks_and_flags(
+        &mut self,
+        position: EntityPosition,
+        velocity: Velocity,
+        chunks: Option<Vec<i64>>,
+        flags: TeleportFlags,
+        should_confirm: bool,
+    ) -> io::Result<EntityTeleport> {
+        let teleport = EntityTeleport::resolve(
+            self.position(),
+            self.velocity,
+            position,
+            velocity,
+            chunks,
+            flags,
+        );
+        self.set_position(teleport.position());
+        self.set_velocity(teleport.velocity());
+        self.synchronize_position_after_teleport(position, velocity.0, flags, should_confirm)?;
+        Ok(teleport)
+    }
+
+    pub(crate) fn apply_teleport(
+        &mut self,
+        teleport: &EntityTeleport,
+        should_confirm: bool,
+    ) -> io::Result<()> {
+        self.set_position(teleport.position());
+        self.set_velocity(teleport.velocity());
+        self.synchronize_position_after_teleport(
+            teleport.teleport_position(),
+            teleport.teleport_velocity().0,
+            teleport.flags(),
+            should_confirm,
+        )
+    }
+
+    pub(crate) fn teleport_destination(
+        &self,
+        position: EntityPosition,
+        flags: TeleportFlags,
+    ) -> EntityPosition {
+        EntityTeleport::resolve_position(self.position(), position, flags)
     }
 
     pub fn item_in_hand(&self, hand: PlayerHand) -> ItemStack {
@@ -1887,6 +2625,15 @@ impl Player {
         item_use_completion
     }
 
+    pub(crate) fn experience_pickup_is_ready(&self, current_tick: i64) -> bool {
+        self.last_experience_pickup_tick
+            .is_none_or(|last_pickup_tick| current_tick - last_pickup_tick >= 10)
+    }
+
+    pub(crate) fn refresh_experience_pickup_cooldown(&mut self, current_tick: i64) {
+        self.last_experience_pickup_tick = Some(current_tick);
+    }
+
     fn process_scheduler_tick_start(&mut self) {
         let mut scheduler = std::mem::take(&mut self.scheduler);
         scheduler.process_tick(self);
@@ -1916,6 +2663,21 @@ impl Player {
             PlayerDeathEvent::new(self as *mut Player, Some(death_text), Some(chat_message));
         event.dispatch(server, client);
         event.into_messages()
+    }
+
+    fn dispatch_player_respawn_event(&mut self) -> PlayerSpawnPoint {
+        let respawn_point = self.respawn_point();
+        let Some(client_ptr) = self.client else {
+            return respawn_point;
+        };
+        let client = unsafe { &mut *(client_ptr as *mut Client) };
+        let Some(server_ptr) = client.server_ptr else {
+            return respawn_point;
+        };
+        let server = unsafe { &mut *(server_ptr as *mut crate::server::MinecraftServer) };
+        let mut event = PlayerRespawnEvent::new(self as *mut Player, respawn_point);
+        event.dispatch(server, client);
+        event.respawn_position()
     }
 
     fn broadcast_death_message(&mut self, chat_message: Option<TextComponent>) -> io::Result<()> {
@@ -2025,7 +2787,7 @@ impl Player {
     }
 
     pub fn eye_height(&self) -> f64 {
-        EntityType::PLAYER.eye_height()
+        self.entity_type.eye_height()
     }
 
     pub const fn last_keep_alive(&self) -> i64 {
@@ -2042,14 +2804,6 @@ impl Player {
 
     pub fn refresh_answer_keep_alive(&mut self, answer_keep_alive: bool) {
         self.answer_keep_alive = answer_keep_alive;
-    }
-
-    pub(crate) fn set_flying_with_elytra(&mut self, flying_with_elytra: bool) -> bool {
-        let old_flying_with_elytra = self.metadata.flag(&definitions::is_flying_with_elytra());
-        self.metadata
-            .set_flag(&definitions::is_flying_with_elytra(), flying_with_elytra);
-        self.refresh_pose();
-        old_flying_with_elytra != flying_with_elytra
     }
 
     pub(crate) fn metadata_packet(&self) -> SetEntityDataPacket {
@@ -2116,7 +2870,7 @@ impl Player {
         SpawnEntityPacket {
             entity_id: self.entity_id().value(),
             uuid: self.uuid,
-            entity_type: EntityType::PLAYER.id(),
+            entity_type: self.entity_type.id(),
             x: self.position.x,
             y: self.position.y,
             z: self.position.z,
@@ -2279,7 +3033,7 @@ impl Player {
         };
         let metadata_entity_id = metadata_packet.entity_id;
         let metadata_entries = metadata_packet.entries.0;
-        let _ = self.dispatch_to_other_play_clients(|viewer_client| {
+        let _ = self.dispatch_to_viewer_clients(|viewer_client| {
             SetEntityDataPacket::new(metadata_entity_id, metadata_entries.clone())
                 .dispatch(viewer_client)
         });
@@ -2291,13 +3045,129 @@ impl Player {
             .is_ok()
     }
 
-    fn refresh_player_info_to_viewers(&mut self) -> io::Result<()> {
-        let add_packet = self.player_info_packet();
-        let player_uuid = self.uuid;
-        self.dispatch_to_other_play_clients(|viewer_client| {
-            PlayerInfoRemovePacket::new(player_uuid).dispatch(viewer_client)?;
-            add_packet.clone().dispatch(viewer_client)
-        })
+    fn dispatch_to_viewer_clients(
+        &mut self,
+        mut dispatch_packet: impl FnMut(&mut Client) -> io::Result<()>,
+    ) -> io::Result<()> {
+        let viewer_ids = self.viewers();
+        let Some(client_ptr) = self.client else {
+            return Ok(());
+        };
+        let client = unsafe { &mut *(client_ptr as *mut Client) };
+        let Some(server_ptr) = client.server_ptr else {
+            return Ok(());
+        };
+        let server = unsafe { &mut *(server_ptr as *mut crate::server::MinecraftServer) };
+        server
+            .connection_manager
+            .clients()
+            .into_iter()
+            .try_for_each(|viewer_client| {
+                let Ok(mut viewer_client) = viewer_client.lock() else {
+                    return Ok(());
+                };
+                let client_is_entity_viewer = viewer_client
+                    .player_entity_id()
+                    .is_some_and(|viewer_id| viewer_ids.contains(&viewer_id));
+                if !client_is_entity_viewer || viewer_client.state != ConnectionState::Play {
+                    return Ok(());
+                }
+                dispatch_packet(&mut viewer_client)
+            })
+    }
+
+    fn broadcast_to_play_clients(
+        &mut self,
+        mut dispatch_packet: impl FnMut(&mut Client) -> io::Result<()>,
+    ) -> io::Result<()> {
+        let Some(client_ptr) = self.client else {
+            return Ok(());
+        };
+        let client = unsafe { &mut *(client_ptr as *mut Client) };
+        let Some(server_ptr) = client.server_ptr else {
+            if client.state != ConnectionState::Play {
+                return Ok(());
+            }
+            return dispatch_packet(client);
+        };
+        let server = unsafe { &mut *(server_ptr as *mut crate::server::MinecraftServer) };
+        server
+            .connection_manager
+            .clients()
+            .into_iter()
+            .try_for_each(|play_client| {
+                let Ok(mut play_client) = play_client.lock() else {
+                    return Ok(());
+                };
+                if play_client.state != ConnectionState::Play {
+                    return Ok(());
+                }
+                dispatch_packet(&mut play_client)
+            })
+    }
+
+    fn refresh_skin_for_self(
+        &mut self,
+        player_uuid: Uuid,
+        add_player_packet: PlayerInfoUpdatePacket,
+        viewer_snapshot: &PlayerViewerSnapshot,
+    ) -> io::Result<()> {
+        let Some(client_ptr) = self.client else {
+            return Ok(());
+        };
+        let client = unsafe { &mut *(client_ptr as *mut Client) };
+        if client.state != ConnectionState::Play {
+            return Ok(());
+        }
+        let mut respawn_packet = RespawnPacket::new(
+            self.game_mode(),
+            self.world_name
+                .clone()
+                .unwrap_or_else(|| Identifier::minecraft("overworld")),
+        );
+        respawn_packet.common_player_spawn_info.last_death_location =
+            self.death_location().map(|death_location| GlobalPos {
+                dimension: death_location.dimension().clone(),
+                position: Position {
+                    x: death_location.position().x().floor() as i32,
+                    y: death_location.position().y().floor() as i32,
+                    z: death_location.position().z().floor() as i32,
+                },
+            });
+        respawn_packet.common_player_spawn_info.portal_cooldown = self.portal_cooldown();
+
+        PlayerInfoRemovePacket::new(player_uuid).dispatch(client)?;
+        RemoveEntitiesPacket::new(vec![self.entity_id().value()]).dispatch(client)?;
+        add_player_packet.dispatch(client)?;
+        respawn_packet.dispatch(client)?;
+        GameEventPacket::from(GameEvent::StartWaitingForLevelChunks).dispatch(client)?;
+        ServerDifficultyPacket::normal(false).dispatch(client)?;
+        SetHealthPacket::new(self.health(), self.food(), self.food_saturation())
+            .dispatch(client)?;
+        SetExperiencePacket::new(
+            self.experience(),
+            self.experience_level(),
+            self.total_experience(),
+        )
+        .dispatch(client)?;
+        EntityStatusPacket {
+            entity_id: self.entity_id().value(),
+            status: (24 + self.permission_level()) as i8,
+        }
+        .dispatch(client)?;
+        self.abilities_packet().dispatch(client)?;
+        self.sync_inventory(client)?;
+        self.synchronize_position_after_teleport(
+            self.position(),
+            Vector3d {
+                x: 0.0,
+                y: 0.0,
+                z: 0.0,
+            },
+            TeleportFlags::absolute(),
+            true,
+        )?;
+        viewer_snapshot.dispatch_shared_state(client)
     }
 
     fn dispatch_to_other_play_clients(
@@ -2378,7 +3248,3 @@ impl PlayerHand {
         }
     }
 }
-
-#[cfg(test)]
-#[path = "test/mod.rs"]
-mod test;

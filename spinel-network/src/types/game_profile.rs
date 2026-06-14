@@ -3,14 +3,17 @@ use crate::types::var_int::VarIntWrapper;
 use std::io::{self, Read, Write};
 use uuid::Uuid;
 
-#[derive(Debug, Clone)]
+const MAXIMUM_PROFILE_NAME_LENGTH: usize = 16;
+const MAXIMUM_PROFILE_PROPERTIES: usize = 1024;
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GameProfile {
     pub uuid: Uuid,
     pub username: String,
     pub properties: Vec<GameProfileProperty>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GameProfileProperty {
     pub name: String,
     pub value: String,
@@ -19,6 +22,8 @@ pub struct GameProfileProperty {
 
 impl DataType for GameProfile {
     fn encode<W: Write>(&self, w: &mut W) -> io::Result<()> {
+        validate_profile_name(&self.username)?;
+        validate_property_count(self.properties.len())?;
         self.uuid.encode(w)?;
         self.username.encode(w)?;
         VarIntWrapper(self.properties.len() as i32).encode(w)?;
@@ -31,8 +36,16 @@ impl DataType for GameProfile {
     fn decode<R: Read>(r: &mut R) -> io::Result<Self> {
         let uuid = Uuid::decode(r)?;
         let username = String::decode(r)?;
+        validate_profile_name(&username)?;
 
-        let count = VarIntWrapper::decode(r)?.0 as usize;
+        let count = VarIntWrapper::decode(r)?.0;
+        validate_property_count(count.try_into().map_err(|_| {
+            io::Error::new(
+                io::ErrorKind::InvalidData,
+                format!("Profile property count out of bounds: {count}"),
+            )
+        })?)?;
+        let count = count as usize;
         let mut properties = Vec::with_capacity(count);
         for _ in 0..count {
             properties.push(GameProfileProperty::decode(r)?);
@@ -44,6 +57,31 @@ impl DataType for GameProfile {
             properties,
         })
     }
+}
+
+fn validate_profile_name(profile_name: &str) -> io::Result<()> {
+    if profile_name.len() <= MAXIMUM_PROFILE_NAME_LENGTH {
+        return Ok(());
+    }
+
+    Err(io::Error::new(
+        io::ErrorKind::InvalidData,
+        format!(
+            "Profile name length exceeds {MAXIMUM_PROFILE_NAME_LENGTH}: {}",
+            profile_name.len()
+        ),
+    ))
+}
+
+fn validate_property_count(property_count: usize) -> io::Result<()> {
+    if property_count <= MAXIMUM_PROFILE_PROPERTIES {
+        return Ok(());
+    }
+
+    Err(io::Error::new(
+        io::ErrorKind::InvalidData,
+        format!("Profile property count exceeds {MAXIMUM_PROFILE_PROPERTIES}: {property_count}"),
+    ))
 }
 
 impl DataType for GameProfileProperty {

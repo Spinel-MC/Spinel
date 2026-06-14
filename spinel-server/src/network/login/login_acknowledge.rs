@@ -1,12 +1,12 @@
 use crate::network::client::instance::Client;
 use crate::server::MinecraftServer;
-use ::spinel_core::network::clientbound::configuration::{
+use spinel_core::network::clientbound::configuration::{
     known_packs::KnownPacksPacket, plugin_message::CustomPayloadPacket,
 };
-use ::spinel_core::network::serverbound::login::login_acknowledge::LoginAcknowledgedPacket;
-use ::spinel_macros::packet_listener;
-use ::spinel_network::ConnectionState;
-use ::spinel_utils::constants::{MINECRAFT_VERSION, SERVER_BRAND};
+use spinel_core::network::serverbound::login::login_acknowledge::LoginAcknowledgedPacket;
+use spinel_macros::packet_listener;
+use spinel_network::ConnectionState;
+use spinel_utils::constants::{MINECRAFT_VERSION, SERVER_BRAND};
 use std::io;
 
 struct ConfigurationTransition<'a> {

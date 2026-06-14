@@ -13,9 +13,13 @@ pub mod jukebox_song;
 pub mod mob_effect;
 pub mod painting_variant;
 pub mod pig_variant;
+#[cfg(test)]
+mod tests;
 pub mod timeline;
 pub mod trim_material;
 pub mod trim_pattern;
+pub mod villager_profession;
+pub mod villager_type;
 pub mod wolf_sound_variant;
 pub mod wolf_variant;
 pub mod zombie_nautilus_variant;

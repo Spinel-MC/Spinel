@@ -2,6 +2,7 @@ use crate::network::client::instance::Client;
 use crate::server::MinecraftServer;
 use spinel_core::network::serverbound::play::keep_alive::KeepAlivePacket;
 use spinel_macros::packet_listener;
+use spinel_utils::component::Component;
 
 #[packet_listener]
 fn on_keep_alive(
@@ -13,11 +14,15 @@ fn on_keep_alive(
         return true;
     }
 
-    let Some(player) = server.world_manager.player_pointer_for_client(client) else {
-        client.disconnect();
-        server.on_disconnect(client.addr);
+    if server
+        .world_manager
+        .player_pointer_for_client(client)
+        .is_none()
+    {
+        client.close_connection();
+        server.handle_connection_closed_with_client(client.addr, client);
         return false;
-    };
-    let _ = unsafe { &mut *player }.kick(spinel_utils::component::Component::text("Timed out"));
+    }
+    let _ = server.kick(client, Component::text("Timed out"));
     false
 }

@@ -7,6 +7,7 @@ use spinel::{
     registry::{ItemStack, Material},
     server::{
         MinecraftServer,
+        entity::PlayerHand,
         events::player_block_interact::PlayerBlockInteractEvent,
         inventory::{Inventory, InventoryType},
         world::Block,
@@ -20,6 +21,12 @@ fn on_player_block_interact(event: &mut PlayerBlockInteractEvent, server: &mut M
         event.set_blocking_item_use(true);
         event.set_cancelled(true);
         run_showcase_sign_command(event, server, command);
+        return;
+    }
+
+    if pathfind_showcase_zombie(event, server) {
+        event.set_blocking_item_use(true);
+        event.set_cancelled(true);
         return;
     }
 
@@ -56,10 +63,15 @@ fn run_showcase_sign_command(
             let _ = InventoryShowcase::apply(event.player());
         }
         ShowcaseSignCommand::Entity => {
-            let Some((world_id, position, player_id)) = sign_player_context(event) else {
+            let Some((world_id, position, _)) = sign_player_context(event) else {
                 return;
             };
-            let _ = EntityShowcase::spawn(server, world_id, position, player_id);
+            let Ok(pathfinding_stick) = EntityShowcase::spawn(server, world_id, position) else {
+                return;
+            };
+            event
+                .player()
+                .set_item_in_hand(PlayerHand::Main, pathfinding_stick);
         }
         ShowcaseSignCommand::World => {
             let Some((world_id, position, _)) = sign_player_context(event) else {
@@ -68,6 +80,23 @@ fn run_showcase_sign_command(
             let _ = WorldShowcase::apply(server, world_id, position);
         }
     }
+}
+
+fn pathfind_showcase_zombie(
+    event: &mut PlayerBlockInteractEvent,
+    server: &mut MinecraftServer,
+) -> bool {
+    let hand = event.hand();
+    let block_position = event.block_position();
+    let player = event.player();
+    let pathfinding_stick = player.item_in_hand(hand);
+    let Some(world_id) = player.world().map(|world| world.uuid()) else {
+        return false;
+    };
+    let Some(world) = server.world_manager.world_mut(world_id) else {
+        return false;
+    };
+    EntityShowcase::pathfind(world, &pathfinding_stick, block_position)
 }
 
 fn sign_player_context(

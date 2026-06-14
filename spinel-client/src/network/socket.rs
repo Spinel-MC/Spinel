@@ -1,9 +1,8 @@
-use crate::events::network::inbound_packet_error::{
-    InboundPacketErrorEvent, InboundPacketErrorStage,
-};
+use crate::events::network::packet_error::{PacketErrorEvent, PacketErrorStage};
 use crate::instance::MinecraftClient;
 use crate::network::server::instance::Server;
 use spinel_network::DataType;
+use spinel_network::Recipient;
 use std::io::{Error, ErrorKind};
 use tokio::net::TcpStream;
 use tokio::task;
@@ -49,15 +48,16 @@ pub async fn connect_to_server(
                 Err(e) => {
                     if let Ok(mut server_lock) = server_arc.lock() {
                         if let Some(server) = server_lock.as_mut() {
-                            let mut inbound_packet_error_event = InboundPacketErrorEvent::new(
-                                InboundPacketErrorStage::FrameRead,
+                            let mut packet_error_event = PacketErrorEvent::new(
+                                Recipient::Client,
+                                PacketErrorStage::FrameRead,
                                 server.state,
                                 None,
                                 None,
                                 e.to_string(),
                             );
                             let mut client_handle = client.clone();
-                            inbound_packet_error_event.dispatch(&mut client_handle, server);
+                            packet_error_event.dispatch(&mut client_handle, server);
                         }
                     }
                     break;
@@ -70,15 +70,16 @@ pub async fn connect_to_server(
                 Err(e) => {
                     if let Ok(mut server_lock) = server_arc.lock() {
                         if let Some(server) = server_lock.as_mut() {
-                            let mut inbound_packet_error_event = InboundPacketErrorEvent::new(
-                                InboundPacketErrorStage::PacketIdDecode,
+                            let mut packet_error_event = PacketErrorEvent::new(
+                                Recipient::Client,
+                                PacketErrorStage::PacketIdDecode,
                                 server.state,
                                 None,
                                 None,
                                 e.to_string(),
                             );
                             let mut client_handle = client.clone();
-                            inbound_packet_error_event.dispatch(&mut client_handle, server);
+                            packet_error_event.dispatch(&mut client_handle, server);
                         }
                     }
                     break;
@@ -91,9 +92,7 @@ pub async fn connect_to_server(
             {
                 let mut lock = server_arc.lock().unwrap();
                 if let Some(s) = lock.as_mut() {
-                    if client.has_listener_for(packet_id, &s.state) {
-                        client.dispatch_packet(packet_id, s, payload);
-                    }
+                    client.dispatch_packet(packet_id, s, payload);
 
                     if !s.is_connected() {
                         break;

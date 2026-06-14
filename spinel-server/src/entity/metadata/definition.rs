@@ -13,6 +13,14 @@ pub struct MetadataBitMaskDefinition {
     default_value: bool,
 }
 
+#[derive(Clone, Debug, PartialEq)]
+pub struct MetadataByteMaskDefinition {
+    index: u8,
+    byte_mask: i8,
+    offset: u8,
+    default_value: i8,
+}
+
 impl MetadataDefinition {
     pub const fn new(index: u8, default_value: MetadataValue) -> Self {
         Self {
@@ -48,6 +56,33 @@ impl MetadataBitMaskDefinition {
     }
 
     pub const fn default_value(&self) -> bool {
+        self.default_value
+    }
+}
+
+impl MetadataByteMaskDefinition {
+    pub const fn new(index: u8, byte_mask: i8, offset: u8, default_value: i8) -> Self {
+        Self {
+            index,
+            byte_mask,
+            offset,
+            default_value,
+        }
+    }
+
+    pub const fn index(&self) -> u8 {
+        self.index
+    }
+
+    pub const fn byte_mask(&self) -> i8 {
+        self.byte_mask
+    }
+
+    pub const fn offset(&self) -> u8 {
+        self.offset
+    }
+
+    pub const fn default_value(&self) -> i8 {
         self.default_value
     }
 }

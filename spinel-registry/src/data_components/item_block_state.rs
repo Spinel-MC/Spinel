@@ -1,3 +1,4 @@
+use crate::blocks::{Block, BlockState};
 use crate::data_components::DataComponentValue;
 use crate::data_components::nbt_reader::{compound_from_nbt, string_map_from_compound};
 use spinel_nbt::{Nbt, NbtCompound};
@@ -24,6 +25,17 @@ impl ItemBlockState {
         let mut properties = self.properties.clone();
         properties.insert(key, value);
         Self { properties }
+    }
+
+    #[must_use]
+    pub fn apply(&self, block: Block) -> BlockState {
+        self.properties
+            .iter()
+            .fold(block.default_state(), |current_state, (property, value)| {
+                current_state
+                    .with_property(property, value)
+                    .unwrap_or(current_state)
+            })
     }
 }
 

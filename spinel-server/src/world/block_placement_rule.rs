@@ -1,6 +1,7 @@
 use crate::entity::{EntityId, EntityPosition, PlayerHand};
 use crate::events::player_block_interact::BlockFace;
 use crate::world::{Block, BlockPosition};
+use spinel_registry::Material;
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -25,6 +26,15 @@ pub struct BlockUpdateState {
     from_face: BlockFace,
 }
 
+#[derive(Clone, Debug)]
+pub struct BlockReplacement {
+    block: Block,
+    block_face: BlockFace,
+    cursor_position: (f32, f32, f32),
+    is_offset: bool,
+    material: Material,
+}
+
 pub trait BlockPlacementRule: Send + Sync {
     fn block(&self) -> Block;
 
@@ -32,6 +42,10 @@ pub trait BlockPlacementRule: Send + Sync {
 
     fn block_update(&self, update: BlockUpdateState) -> Block {
         update.current_block()
+    }
+
+    fn is_self_replaceable(&self, _replacement: BlockReplacement) -> bool {
+        false
     }
 
     fn max_update_distance(&self) -> i32 {
@@ -51,6 +65,44 @@ impl BlockPlacementRuleRegistry {
 
     pub fn rule(&self, block: Block) -> Option<Arc<dyn BlockPlacementRule>> {
         self.rules.get(&block).cloned()
+    }
+}
+
+impl BlockReplacement {
+    pub const fn new(
+        block: Block,
+        block_face: BlockFace,
+        cursor_position: (f32, f32, f32),
+        is_offset: bool,
+        material: Material,
+    ) -> Self {
+        Self {
+            block,
+            block_face,
+            cursor_position,
+            is_offset,
+            material,
+        }
+    }
+
+    pub const fn block(&self) -> Block {
+        self.block
+    }
+
+    pub const fn block_face(&self) -> BlockFace {
+        self.block_face
+    }
+
+    pub const fn cursor_position(&self) -> (f32, f32, f32) {
+        self.cursor_position
+    }
+
+    pub const fn is_offset(&self) -> bool {
+        self.is_offset
+    }
+
+    pub const fn material(&self) -> &Material {
+        &self.material
     }
 }
 

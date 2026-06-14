@@ -20,6 +20,46 @@ pub struct EntitySnapshot {
     custom_name: Option<TextComponent>,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct EntityObservation {
+    entity_id: EntityId,
+    entity_type: EntityType,
+    position: EntityPosition,
+    removed: bool,
+}
+
+impl EntityObservation {
+    pub const fn new(
+        entity_id: EntityId,
+        entity_type: EntityType,
+        position: EntityPosition,
+        removed: bool,
+    ) -> Self {
+        Self {
+            entity_id,
+            entity_type,
+            position,
+            removed,
+        }
+    }
+
+    pub const fn entity_id(self) -> EntityId {
+        self.entity_id
+    }
+
+    pub const fn entity_type(self) -> EntityType {
+        self.entity_type
+    }
+
+    pub const fn position(self) -> EntityPosition {
+        self.position
+    }
+
+    pub const fn is_removed(self) -> bool {
+        self.removed
+    }
+}
+
 impl EntitySnapshot {
     pub fn new(
         entity_id: EntityId,

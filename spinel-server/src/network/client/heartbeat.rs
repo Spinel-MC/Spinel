@@ -1,5 +1,8 @@
 use crate::network::client::instance::Client;
 use spinel_core::network::clientbound::play::keep_alive::KeepAlivePacket;
+use spinel_core::network::serverbound::play::keep_alive::KeepAlivePacket as KeepAliveResponsePacket;
+use spinel_network::DataType;
+use std::io;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 const KEEP_ALIVE_INTERVAL_MILLIS: u64 = 15_000;
@@ -41,6 +44,11 @@ impl Client {
             + current_time_millis().saturating_sub(self.alive_time) as u32)
             / 4;
         true
+    }
+
+    pub(crate) fn handle_keep_alive_payload(&mut self, payload: &[u8]) -> io::Result<bool> {
+        let keep_alive = KeepAliveResponsePacket::decode(&mut payload.as_ref())?;
+        Ok(self.handle_keep_alive(keep_alive.id))
     }
 }
 

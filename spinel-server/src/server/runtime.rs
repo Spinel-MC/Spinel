@@ -59,6 +59,7 @@ impl MinecraftServer {
         let mut next_tick_at = Instant::now();
 
         while Self::tick_server(&server_arc) {
+            std::thread::sleep(Duration::from_millis(1));
             let Some(tick_duration) = Self::tick_duration(&server_arc) else {
                 return;
             };
@@ -110,9 +111,11 @@ impl MinecraftServer {
         self.current_tick += 1;
         self.scheduler().process_tick();
         let server_ptr = self as *mut Self as usize;
-        self.tick_connections();
         self.process_queued_player_packets();
+        self.tick_connections();
+        self.flush_outbound_packets();
         self.world_manager.tick(&self.registries, server_ptr);
         self.scheduler().process_tick_end();
+        self.flush_outbound_packets();
     }
 }

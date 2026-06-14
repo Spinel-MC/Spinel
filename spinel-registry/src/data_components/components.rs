@@ -1171,6 +1171,26 @@ impl DataComponentValue for Identifier {
     }
 }
 
+impl<T> DataComponentValue for crate::RegistryKey<T> {
+    fn to_component_nbt(&self) -> Nbt {
+        self.key().to_component_nbt()
+    }
+
+    fn from_component_nbt(component_nbt: &Nbt) -> Option<Self> {
+        Some(Self::new(Identifier::from_component_nbt(component_nbt)?))
+    }
+}
+
+impl DataComponentValue for crate::VillagerType {
+    fn to_component_nbt(&self) -> Nbt {
+        self.key().to_component_nbt()
+    }
+
+    fn from_component_nbt(component_nbt: &Nbt) -> Option<Self> {
+        Self::from_key(&Identifier::from_component_nbt(component_nbt)?)
+    }
+}
+
 impl DataComponentValue for Vec<Identifier> {
     fn to_component_nbt(&self) -> Nbt {
         Nbt::List(

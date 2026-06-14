@@ -177,6 +177,11 @@ impl EntityTracker {
     fn targets_for_entity(&self, entity: &Entity) -> Vec<EntityTrackerTarget> {
         match entity {
             Entity::Player(_) => vec![EntityTrackerTarget::Entities, EntityTrackerTarget::Players],
+            Entity::Creature(_) => vec![EntityTrackerTarget::Entities],
+            Entity::ExperienceOrb(_) => vec![
+                EntityTrackerTarget::Entities,
+                EntityTrackerTarget::ExperienceOrbs,
+            ],
             Entity::Generic(entity) if entity.entity_type() == EntityType::ITEM => {
                 vec![EntityTrackerTarget::Entities, EntityTrackerTarget::Items]
             }
@@ -188,6 +193,7 @@ impl EntityTracker {
                 ]
             }
             Entity::Generic(_) => vec![EntityTrackerTarget::Entities],
+            Entity::Projectile(_) => vec![EntityTrackerTarget::Entities],
         }
     }
 

@@ -1,18 +1,16 @@
 use crate::entity::PlayerHand;
-use crate::events::inventory_open::InventoryOpenEvent;
 use crate::events::player_block_interact::{BlockFace, PlayerBlockInteractEvent};
 use crate::events::player_block_place::PlayerBlockPlaceEvent;
 use crate::events::player_use_item_on_block::PlayerUseItemOnBlockEvent;
 use crate::network::client::instance::Client;
 use crate::server::MinecraftServer;
-use crate::world::{Block, BlockHandlerPlacement, BlockPosition};
+use crate::world::{Block, BlockHandlerPlacement, BlockPosition, BlockReplacement, BlockState};
 use spinel_core::entity::game_mode::GameMode;
 use spinel_core::network::clientbound::play::acknowledge_block_change::AcknowledgeBlockChangePacket;
 use spinel_core::network::serverbound::play::use_item_on::UseItemOnPacket;
 use spinel_macros::packet_listener;
-
-const MIN_BUILD_HEIGHT: i32 = -64;
-const MAX_BUILD_HEIGHT: i32 = 319;
+use spinel_registry::data_components::vanilla_components::{BLOCK_STATE, CAN_PLACE_ON};
+use spinel_registry::{BlockPredicates, DataComponentMap, ItemBlockState};
 
 #[packet_listener]
 fn on_use_item_on(
@@ -49,25 +47,23 @@ fn on_use_item_on(
         }
     }
     if event.is_blocking_item_use() {
-        return finish_blocked_item_use(event_input.player, packet.sequence, server, client);
+        return acknowledge_block_change(packet.sequence, client);
     }
     let player = unsafe { &mut *event_input.player };
     let item_stack = player.item_in_hand(event_input.hand);
-    let mut item_on_block_event = PlayerUseItemOnBlockEvent::new(
-        event_input.player,
-        event_input.hand,
-        item_stack.clone(),
-        event_input.block_position,
-        event_input.cursor_position,
-        event_input.block_face,
-    );
-    item_on_block_event.dispatch(server, client);
     if let Some(block) = item_stack.material().block() {
+        let block_state = item_stack.get_or(BLOCK_STATE, ItemBlockState::default());
+        let default_block_state = DataComponentMap::default().get_or(
+            &item_stack.material().prototype(),
+            BLOCK_STATE,
+            ItemBlockState::default(),
+        );
         return place_block(
             event_input.player,
             event_input.block_position,
             event_input.block_face,
-            block,
+            block_state.apply(block),
+            block_state == default_block_state,
             event_input.cursor_position,
             event_input.hand,
             packet.sequence,
@@ -75,15 +71,28 @@ fn on_use_item_on(
             client,
         );
     }
-    dispatch_open_inventory_event(player, server, client)
-        && player.sync_open_inventory(client).is_ok()
+    let mut item_on_block_event = PlayerUseItemOnBlockEvent::new(
+        event_input.player,
+        event_input.hand,
+        item_stack,
+        event_input.block_position,
+        event_input.cursor_position,
+        event_input.block_face,
+    );
+    item_on_block_event.dispatch(server, client);
+    AcknowledgeBlockChangePacket {
+        sequence: packet.sequence,
+    }
+    .dispatch(client)
+    .is_ok()
 }
 
 fn place_block(
     player: *mut crate::entity::Player,
     interacted_position: BlockPosition,
     block_face: BlockFace,
-    block: Block,
+    block_state: BlockState,
+    should_do_block_updates: bool,
     cursor_position: (f32, f32, f32),
     hand: PlayerHand,
     sequence: i32,
@@ -91,42 +100,81 @@ fn place_block(
     client: &mut Client,
 ) -> bool {
     let player = unsafe { &mut *player };
-    if player.game_mode() == GameMode::Spectator || player.game_mode() == GameMode::Adventure {
-        return rollback_block_change(interacted_position, sequence, server, client);
+    let mut can_place_block = player.game_mode() != GameMode::Spectator;
+    if player.game_mode() == GameMode::Adventure {
+        can_place_block = player
+            .item_in_hand(hand)
+            .get_or(CAN_PLACE_ON, BlockPredicates::default())
+            .test_state_with_nbt(
+                server
+                    .loaded_block_state_in_world(client, interacted_position)
+                    .unwrap_or_else(|| Block::AIR.default_state()),
+                server
+                    .client_block_entity_nbt_in_world(client, interacted_position)
+                    .as_ref(),
+                &server.registries,
+            );
     }
-    let placement_position = placement_position(interacted_position, block_face, server, client);
-    if !block_position_is_buildable(placement_position) {
-        return rollback_block_change(interacted_position, sequence, server, client);
+    let placement_position = placement_position(
+        interacted_position,
+        block_face,
+        cursor_position,
+        player.item_in_hand(hand).material().clone(),
+        server,
+        client,
+    );
+    let Some(placement_position) = placement_position else {
+        return false;
+    };
+    if !block_position_is_buildable(placement_position, server, client) {
+        return true;
     }
     if !server.block_position_is_inside_world_border(client, placement_position) {
-        return rollback_block_change(interacted_position, sequence, server, client);
+        can_place_block = false;
     }
-    if server.block_position_has_placement_collision(client, placement_position) {
-        return rollback_block_change(interacted_position, sequence, server, client);
+    if !can_place_block {
+        return server
+            .refresh_block_in_world(client, placement_position)
+            .is_ok();
+    }
+    if server.chunk_is_read_only_in_world(client, placement_position) {
+        return refresh_inventory_and_chunk(player, placement_position, server, client);
+    }
+    if let Some(collision_entity) =
+        server.block_placement_collision_entity(client, placement_position)
+    {
+        if collision_entity != player.entity_id() {
+            return refresh_inventory_and_chunk(player, placement_position, server, client);
+        }
+        return true;
     }
     let Some(existing_block) = server.loaded_block_in_world(client, placement_position) else {
-        return rollback_block_change(interacted_position, sequence, server, client);
+        return false;
     };
-    if existing_block != Block::AIR {
-        return rollback_block_change(placement_position, sequence, server, client);
-    }
     let mut event = PlayerBlockPlaceEvent::new(
         player as *mut crate::entity::Player,
-        block,
+        block_state.block(),
         block_face,
         placement_position,
         cursor_position,
         hand,
     );
+    event.consume_block(player.game_mode() != GameMode::Creative);
+    event.set_do_block_updates(should_do_block_updates);
     event.dispatch(server, client);
     if event.is_cancelled() {
-        return rollback_block_change(placement_position, sequence, server, client);
+        return refresh_inventory_and_chunk(player, placement_position, server, client);
     }
     let Some(world_uuid) = server.world_uuid_for_client(client) else {
-        return rollback_block_change(placement_position, sequence, server, client);
+        return false;
+    };
+    let event_block_state = if event.block() == block_state.block() {
+        block_state
+    } else {
+        event.block().default_state()
     };
     let placement = BlockHandlerPlacement::new(
-        event.block(),
+        event_block_state,
         existing_block,
         world_uuid,
         placement_position,
@@ -135,69 +183,94 @@ fn place_block(
     let block_was_set = server
         .place_block_in_world(client, placement, event.should_do_block_updates())
         .unwrap_or(false);
-    if block_was_set && event.does_consume_block() && player.game_mode() != GameMode::Creative {
+    if !block_was_set {
+        return refresh_inventory_and_chunk(player, placement_position, server, client);
+    }
+    if event.does_consume_block() {
         let consumed_item = player.item_in_hand(hand).consume(1);
         player.set_item_in_hand(hand, consumed_item);
+        let _ = player.sync_inventory(client);
+    } else {
         let _ = player.sync_inventory(client);
     }
     let block_change_is_acknowledged = AcknowledgeBlockChangePacket { sequence }
         .dispatch(client)
         .is_ok();
-    block_was_set && block_change_is_acknowledged
+    block_change_is_acknowledged
 }
 
 fn placement_position(
     position: BlockPosition,
     block_face: BlockFace,
+    cursor_position: (f32, f32, f32),
+    material: spinel_registry::Material,
     server: &MinecraftServer,
     client: &Client,
-) -> BlockPosition {
-    if server
-        .loaded_block_in_world(client, position)
-        .is_some_and(|block| block == Block::AIR)
-    {
-        return position;
+) -> Option<BlockPosition> {
+    let interacted_block = server.loaded_block_in_world(client, position)?;
+    let interacted_block_is_self_replaceable = server.block_is_self_replaceable_in_world(
+        client,
+        BlockReplacement::new(
+            interacted_block,
+            block_face,
+            cursor_position,
+            false,
+            material.clone(),
+        ),
+    );
+    if interacted_block.is_air() || interacted_block_is_self_replaceable {
+        return Some(position);
     }
-    match block_face {
+    let placement_position = match block_face {
         BlockFace::Bottom => BlockPosition::new(position.x, position.y - 1, position.z),
         BlockFace::Top => BlockPosition::new(position.x, position.y + 1, position.z),
         BlockFace::North => BlockPosition::new(position.x, position.y, position.z - 1),
         BlockFace::South => BlockPosition::new(position.x, position.y, position.z + 1),
         BlockFace::West => BlockPosition::new(position.x - 1, position.y, position.z),
         BlockFace::East => BlockPosition::new(position.x + 1, position.y, position.z),
+    };
+    let placement_block = server.loaded_block_in_world(client, placement_position)?;
+    let placement_block_is_self_replaceable = server.block_is_self_replaceable_in_world(
+        client,
+        BlockReplacement::new(placement_block, block_face, cursor_position, true, material),
+    );
+    if placement_block.is_replaceable() || placement_block_is_self_replaceable {
+        Some(placement_position)
+    } else {
+        None
     }
 }
 
-fn block_position_is_buildable(position: BlockPosition) -> bool {
-    position.y >= MIN_BUILD_HEIGHT && position.y <= MAX_BUILD_HEIGHT
-}
-
-fn rollback_block_change(
+fn block_position_is_buildable(
     position: BlockPosition,
-    sequence: i32,
-    server: &mut MinecraftServer,
-    client: &mut Client,
+    server: &MinecraftServer,
+    client: &Client,
 ) -> bool {
-    let block_is_refreshed = server.refresh_block_in_world(client, position).is_ok();
-    let block_change_is_acknowledged = AcknowledgeBlockChangePacket { sequence }
-        .dispatch(client)
-        .is_ok();
-    block_is_refreshed && block_change_is_acknowledged
+    let Some(world_uuid) = server.world_uuid_for_client(client) else {
+        return false;
+    };
+    let Some(world) = server.world_manager.world(world_uuid) else {
+        return false;
+    };
+    let dimension = world.cached_dimension_type();
+    position.y >= dimension.min_y && position.y < dimension.min_y + dimension.height
 }
 
-fn finish_blocked_item_use(
-    player: *mut crate::entity::Player,
-    sequence: i32,
+fn refresh_inventory_and_chunk(
+    player: &mut crate::entity::Player,
+    position: BlockPosition,
     server: &mut MinecraftServer,
     client: &mut Client,
 ) -> bool {
-    let player = unsafe { &mut *player };
-    let inventory_is_opened = dispatch_open_inventory_event(player, server, client)
-        && player.sync_open_inventory(client).is_ok();
-    let block_change_is_acknowledged = AcknowledgeBlockChangePacket { sequence }
+    let inventory_is_refreshed = player.sync_inventory(client).is_ok();
+    let chunk_is_refreshed = server.refresh_chunk_in_world(client, position);
+    inventory_is_refreshed && chunk_is_refreshed
+}
+
+fn acknowledge_block_change(sequence: i32, client: &mut Client) -> bool {
+    AcknowledgeBlockChangePacket { sequence }
         .dispatch(client)
-        .is_ok();
-    inventory_is_opened && block_change_is_acknowledged
+        .is_ok()
 }
 
 fn player_block_interact_event_input(
@@ -243,20 +316,4 @@ struct PlayerBlockInteractEventInput {
     block_position: BlockPosition,
     cursor_position: (f32, f32, f32),
     block_face: BlockFace,
-}
-
-fn dispatch_open_inventory_event(
-    player: &mut crate::entity::Player,
-    server: &mut MinecraftServer,
-    client: &mut Client,
-) -> bool {
-    let Some(inventory) = player.opened_inventory().cloned() else {
-        return true;
-    };
-    let mut event = InventoryOpenEvent::new(player as *mut crate::entity::Player, inventory);
-    event.dispatch(server, client);
-    if !event.is_cancelled() {
-        return true;
-    }
-    player.close_inventory_with_client(false, server, client)
 }

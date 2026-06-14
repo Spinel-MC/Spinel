@@ -8,21 +8,23 @@ const WORLD_MIN_HEIGHTMAP_Y: i32 = -65;
 
 #[derive(Clone)]
 pub(crate) struct ChunkHeightmaps {
-    heights: [i32; CHUNK_COLUMN_COUNT],
+    heights: [i16; CHUNK_COLUMN_COUNT],
 }
 
 impl ChunkHeightmaps {
     pub(crate) fn from_sections(sections: &[ChunkSection]) -> Self {
+        let sections = sections
+            .iter()
+            .rposition(ChunkSection::has_non_air_blocks)
+            .map_or(&[][..], |highest_section_index| {
+                &sections[..=highest_section_index]
+            });
         let heights = std::array::from_fn(|column_index| {
             let local_x = (column_index & 15) as i32;
             let local_z = ((column_index >> 4) & 15) as i32;
-            Self::column_height(sections, local_x, local_z)
+            Self::column_height(sections, local_x, local_z) as i16
         });
         Self { heights }
-    }
-
-    pub(crate) fn refresh_from_sections(&mut self, sections: &[ChunkSection]) {
-        *self = Self::from_sections(sections);
     }
 
     pub(crate) fn refresh_block(
@@ -78,7 +80,7 @@ impl ChunkHeightmaps {
     }
 
     fn height_at(&self, local_x: i32, local_z: i32) -> i32 {
-        self.heights[Self::column_index(local_x, local_z)] + WORLD_MIN_HEIGHTMAP_Y
+        i32::from(self.heights[Self::column_index(local_x, local_z)]) + WORLD_MIN_HEIGHTMAP_Y
     }
 
     fn set_height(&mut self, local_x: i32, local_z: i32, height: i32) {
@@ -86,7 +88,7 @@ impl ChunkHeightmaps {
     }
 
     fn set_packed_height(&mut self, local_x: i32, local_z: i32, packed_height: i32) {
-        self.heights[Self::column_index(local_x, local_z)] = packed_height;
+        self.heights[Self::column_index(local_x, local_z)] = packed_height as i16;
     }
 
     fn column_index(local_x: i32, local_z: i32) -> usize {
@@ -102,17 +104,10 @@ impl ChunkHeightmaps {
     }
 
     fn section_column_height(section: &ChunkSection, local_x: i32, local_z: i32) -> Option<i32> {
-        if section.is_empty() {
-            return None;
-        }
-        if section.is_filled_with_blocks() {
-            return Some(section.y * 16 + 15 - WORLD_MIN_HEIGHTMAP_Y);
-        }
+        let air_state_id = Block::AIR.state_id();
         (0..16).rev().find_map(|local_y| {
-            let block = section
-                .block(local_x, local_y, local_z)
-                .unwrap_or(Block::AIR);
-            if Self::block_is_air(block) {
+            let block_state = section.block_state(local_x, local_y, local_z)?;
+            if block_state.state_id() == air_state_id {
                 return None;
             }
             Some(section.y * 16 + local_y - WORLD_MIN_HEIGHTMAP_Y)
@@ -144,7 +139,7 @@ impl ChunkHeightmaps {
         packed_heights[packed_index + 1] |= height >> (64 - bit_offset);
     }
 
-    fn unpack_height(packed_heights: &[i64], height_index: usize) -> i32 {
+    fn unpack_height(packed_heights: &[i64], height_index: usize) -> i16 {
         let bit_index = height_index * HEIGHTMAP_BITS_PER_ENTRY;
         let packed_index = bit_index / 64;
         let bit_offset = bit_index % 64;
@@ -156,7 +151,7 @@ impl ChunkHeightmaps {
             let next_height_bits = packed_heights.get(packed_index + 1).copied().unwrap_or(0);
             height |= (next_height_bits as u64) << (64 - bit_offset);
         }
-        (height & ((1 << HEIGHTMAP_BITS_PER_ENTRY) - 1)) as i32
+        (height & ((1 << HEIGHTMAP_BITS_PER_ENTRY) - 1)) as i16
     }
 
     fn block_is_air(block: Block) -> bool {

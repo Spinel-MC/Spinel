@@ -1,6 +1,7 @@
 pub use compound::NbtCompound;
 pub use json::{json_to_nbt, json_to_nbt_compound, nbt_compound_to_json, nbt_to_json};
 pub use serializer::to_bytes_unnamed;
+pub use snbt::{SnbtParseError, parse_snbt_compound};
 use std::{
     error,
     fmt::{self, Display},
@@ -15,6 +16,7 @@ pub mod deserializer;
 pub mod json;
 mod read;
 pub mod serializer;
+mod snbt;
 pub mod tag;
 pub mod tags;
 #[cfg(test)]

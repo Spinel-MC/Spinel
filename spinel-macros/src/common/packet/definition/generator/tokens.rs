@@ -108,6 +108,7 @@ impl PacketDefinitionGenerator {
         &self,
         packet_id_literal: TokenStream2,
         state_expression: syn::Expr,
+        recipient_expression: syn::Expr,
         constructor_tokens: TokenStream2,
         encode_tokens: TokenStream2,
         decode_tokens: TokenStream2,
@@ -116,6 +117,7 @@ impl PacketDefinitionGenerator {
         let item_struct = &self.item_struct;
         let network_path = get_base_path("network");
         let state_tokens = resolve_enum_from_expr(state_expression)?;
+        let recipient_tokens = resolve_enum_from_expr(recipient_expression)?;
         let decode_constructor = self.decode_constructor_tokens()?;
 
         Ok(quote! {
@@ -149,6 +151,8 @@ impl PacketDefinitionGenerator {
                 fn get_id() -> i32 { #packet_id_literal as i32 }
                 fn get_state() -> #network_path::ConnectionState { #state_tokens }
             }
+
+            #network_path::register_packet_codec!(#struct_name, #recipient_tokens);
         })
     }
 

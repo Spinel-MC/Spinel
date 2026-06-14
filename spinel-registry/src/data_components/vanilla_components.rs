@@ -173,21 +173,22 @@ pub const CONTAINER_LOOT: DataComponentType<SeededContainerLoot> =
     DataComponentType::new(77, Identifier::vanilla_static("container_loot"));
 pub const BREAK_SOUND: DataComponentType<Identifier> =
     DataComponentType::new(78, Identifier::vanilla_static("break_sound"));
-pub const VILLAGER_VARIANT: DataComponentType<Identifier> =
+pub const VILLAGER_VARIANT: DataComponentType<crate::VillagerType> =
     DataComponentType::new(79, Identifier::vanilla_static("villager/variant"));
-pub const WOLF_VARIANT: DataComponentType<Identifier> =
+pub const WOLF_VARIANT: DataComponentType<crate::RegistryKey<crate::wolf_variant::WolfVariant>> =
     DataComponentType::new(80, Identifier::vanilla_static("wolf/variant"));
-pub const WOLF_SOUND_VARIANT: DataComponentType<Identifier> =
-    DataComponentType::new(81, Identifier::vanilla_static("wolf/sound_variant"));
+pub const WOLF_SOUND_VARIANT: DataComponentType<
+    crate::RegistryKey<crate::wolf_sound_variant::WolfSoundVariant>,
+> = DataComponentType::new(81, Identifier::vanilla_static("wolf/sound_variant"));
 pub const WOLF_COLLAR: DataComponentType<DyeColor> =
     DataComponentType::new(82, Identifier::vanilla_static("wolf/collar"));
-pub const FOX_VARIANT: DataComponentType<String> =
+pub const FOX_VARIANT: DataComponentType<crate::FoxVariant> =
     DataComponentType::new(83, Identifier::vanilla_static("fox/variant"));
-pub const SALMON_SIZE: DataComponentType<String> =
+pub const SALMON_SIZE: DataComponentType<crate::SalmonSize> =
     DataComponentType::new(84, Identifier::vanilla_static("salmon/size"));
-pub const PARROT_VARIANT: DataComponentType<String> =
+pub const PARROT_VARIANT: DataComponentType<crate::ParrotColor> =
     DataComponentType::new(85, Identifier::vanilla_static("parrot/variant"));
-pub const TROPICAL_FISH_PATTERN: DataComponentType<String> =
+pub const TROPICAL_FISH_PATTERN: DataComponentType<crate::TropicalFishPattern> =
     DataComponentType::new(86, Identifier::vanilla_static("tropical_fish/pattern"));
 pub const TROPICAL_FISH_BASE_COLOR: DataComponentType<DyeColor> =
     DataComponentType::new(87, Identifier::vanilla_static("tropical_fish/base_color"));
@@ -195,29 +196,31 @@ pub const TROPICAL_FISH_PATTERN_COLOR: DataComponentType<DyeColor> = DataCompone
     88,
     Identifier::vanilla_static("tropical_fish/pattern_color"),
 );
-pub const MOOSHROOM_VARIANT: DataComponentType<String> =
+pub const MOOSHROOM_VARIANT: DataComponentType<crate::MooshroomVariant> =
     DataComponentType::new(89, Identifier::vanilla_static("mooshroom/variant"));
-pub const RABBIT_VARIANT: DataComponentType<String> =
+pub const RABBIT_VARIANT: DataComponentType<crate::RabbitVariant> =
     DataComponentType::new(90, Identifier::vanilla_static("rabbit/variant"));
-pub const PIG_VARIANT: DataComponentType<Identifier> =
+pub const PIG_VARIANT: DataComponentType<crate::RegistryKey<crate::pig_variant::PigVariant>> =
     DataComponentType::new(91, Identifier::vanilla_static("pig/variant"));
-pub const COW_VARIANT: DataComponentType<Identifier> =
+pub const COW_VARIANT: DataComponentType<crate::RegistryKey<crate::cow_variant::CowVariant>> =
     DataComponentType::new(92, Identifier::vanilla_static("cow/variant"));
-pub const CHICKEN_VARIANT: DataComponentType<Identifier> =
-    DataComponentType::new(93, Identifier::vanilla_static("chicken/variant"));
-pub const ZOMBIE_NAUTILUS_VARIANT: DataComponentType<Identifier> =
-    DataComponentType::new(94, Identifier::vanilla_static("zombie_nautilus/variant"));
-pub const FROG_VARIANT: DataComponentType<Identifier> =
+pub const CHICKEN_VARIANT: DataComponentType<
+    crate::RegistryKey<crate::chicken_variant::ChickenVariant>,
+> = DataComponentType::new(93, Identifier::vanilla_static("chicken/variant"));
+pub const ZOMBIE_NAUTILUS_VARIANT: DataComponentType<
+    crate::RegistryKey<crate::zombie_nautilus_variant::ZombieNautilusVariant>,
+> = DataComponentType::new(94, Identifier::vanilla_static("zombie_nautilus/variant"));
+pub const FROG_VARIANT: DataComponentType<crate::RegistryKey<crate::frog_variant::FrogVariant>> =
     DataComponentType::new(95, Identifier::vanilla_static("frog/variant"));
-pub const HORSE_VARIANT: DataComponentType<String> =
+pub const HORSE_VARIANT: DataComponentType<crate::HorseColor> =
     DataComponentType::new(96, Identifier::vanilla_static("horse/variant"));
 pub const PAINTING_VARIANT: DataComponentType<Identifier> =
     DataComponentType::new(97, Identifier::vanilla_static("painting/variant"));
-pub const LLAMA_VARIANT: DataComponentType<String> =
+pub const LLAMA_VARIANT: DataComponentType<crate::LlamaVariant> =
     DataComponentType::new(98, Identifier::vanilla_static("llama/variant"));
-pub const AXOLOTL_VARIANT: DataComponentType<String> =
+pub const AXOLOTL_VARIANT: DataComponentType<crate::AxolotlVariant> =
     DataComponentType::new(99, Identifier::vanilla_static("axolotl/variant"));
-pub const CAT_VARIANT: DataComponentType<Identifier> =
+pub const CAT_VARIANT: DataComponentType<crate::RegistryKey<crate::cat_variant::CatVariant>> =
     DataComponentType::new(100, Identifier::vanilla_static("cat/variant"));
 pub const CAT_COLLAR: DataComponentType<DyeColor> =
     DataComponentType::new(101, Identifier::vanilla_static("cat/collar"));

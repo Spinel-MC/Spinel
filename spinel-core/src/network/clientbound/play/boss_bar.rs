@@ -226,3 +226,4 @@ impl BossBarOverlay {
         }
     }
 }
+spinel_network::register_packet_codec!(BossBarPacket, spinel_network::Recipient::Client);

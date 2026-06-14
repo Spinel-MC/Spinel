@@ -13,7 +13,6 @@ use crate::world::WorldManager;
 use spinel_network::ConnectionState;
 use spinel_network::types::ClientInformation;
 use spinel_registry::Registries;
-use spinel_utils::component::Component;
 use std::io;
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -30,6 +29,7 @@ pub struct MinecraftServer {
     pub ticks_per_second: u32,
     pub current_tick: u64,
     pub is_ticking: Arc<AtomicBool>,
+    pub enforce_entity_interaction_range: bool,
     scheduler: Scheduler,
     packet_router: PacketRouter,
 }
@@ -48,6 +48,7 @@ impl MinecraftServer {
             ticks_per_second: DEFAULT_TICKS_PER_SECOND,
             current_tick: 0,
             is_ticking: Arc::new(AtomicBool::new(false)),
+            enforce_entity_interaction_range: true,
             scheduler: Scheduler::new(),
             packet_router: PacketRouter::new(),
         }
@@ -99,7 +100,7 @@ impl MinecraftServer {
             let Ok(mut client) = client_arc.lock() else {
                 continue;
             };
-            client.disconnect();
+            client.close_connection();
         }
     }
 
@@ -111,6 +112,10 @@ impl MinecraftServer {
 
     pub fn has_listener_for(&self, packet_id: i32, state: &ConnectionState) -> bool {
         self.packet_router.has_listener_for(packet_id, state)
+    }
+
+    pub fn has_codec_for(&self, packet_id: i32, state: ConnectionState) -> bool {
+        self.packet_router.has_codec_for(packet_id, state)
     }
 
     pub fn dispatch_packet(
@@ -225,7 +230,7 @@ impl MinecraftServer {
 
     pub(crate) fn refresh_player_status_in_world(
         &mut self,
-        client: &Client,
+        client: &mut Client,
         on_ground: bool,
     ) -> io::Result<()> {
         self.world_manager.refresh_player_status(client, on_ground)
@@ -252,6 +257,21 @@ impl MinecraftServer {
     ) -> io::Result<()> {
         self.world_manager
             .refresh_player_input(client, forward, backward, left, right, jump, shift, sprint)
+    }
+
+    pub(crate) fn steer_client_boat_in_world(
+        &mut self,
+        client: &Client,
+        vehicle_id: crate::entity::EntityId,
+        left_paddle_turning: bool,
+        right_paddle_turning: bool,
+    ) -> bool {
+        self.world_manager.steer_client_boat(
+            client,
+            vehicle_id,
+            left_paddle_turning,
+            right_paddle_turning,
+        )
     }
 
     pub(crate) fn set_player_sprinting_in_world(
@@ -356,6 +376,33 @@ impl MinecraftServer {
         self.world_manager.loaded_block_for_client(client, position)
     }
 
+    pub(crate) fn loaded_block_state_in_world(
+        &self,
+        client: &Client,
+        position: crate::world::BlockPosition,
+    ) -> Option<crate::world::BlockState> {
+        self.world_manager
+            .loaded_block_state_for_client(client, position)
+    }
+
+    pub(crate) fn client_block_entity_nbt_in_world(
+        &self,
+        client: &Client,
+        position: crate::world::BlockPosition,
+    ) -> Option<spinel_nbt::NbtCompound> {
+        self.world_manager
+            .client_block_entity_nbt_for_client(client, position)
+    }
+
+    pub(crate) fn block_is_self_replaceable_in_world(
+        &self,
+        client: &Client,
+        replacement: crate::world::BlockReplacement,
+    ) -> bool {
+        self.world_manager
+            .block_is_self_replaceable_for_client(client, replacement)
+    }
+
     pub(crate) fn block_position_is_loaded_in_world(
         &self,
         client: &Client,
@@ -374,13 +421,31 @@ impl MinecraftServer {
             .block_position_is_inside_world_border_for_client(client, position)
     }
 
-    pub(crate) fn block_position_has_placement_collision(
+    pub(crate) fn block_placement_collision_entity(
+        &self,
+        client: &Client,
+        position: crate::world::BlockPosition,
+    ) -> Option<crate::entity::EntityId> {
+        self.world_manager
+            .block_placement_collision_entity_for_client(client, position)
+    }
+
+    pub(crate) fn chunk_is_read_only_in_world(
         &self,
         client: &Client,
         position: crate::world::BlockPosition,
     ) -> bool {
         self.world_manager
-            .block_position_has_placement_collision_for_client(client, position)
+            .chunk_is_read_only_for_client(client, position)
+    }
+
+    pub(crate) fn refresh_chunk_in_world(
+        &mut self,
+        client: &Client,
+        position: crate::world::BlockPosition,
+    ) -> bool {
+        self.world_manager
+            .refresh_chunk_for_client(client, position)
     }
 
     pub(crate) fn refresh_block_in_world(
@@ -401,21 +466,23 @@ impl MinecraftServer {
             .refresh_block_entity_for_client(client, position)
     }
 
-    pub(crate) fn tick_connections(&mut self) {
-        let timed_out_clients = self
-            .connection_manager
-            .clients()
-            .into_iter()
-            .filter_map(|client_arc| self.tick_client(client_arc))
-            .collect();
-        self.disconnect_timed_out_clients(timed_out_clients);
-    }
-
     pub(crate) fn process_queued_player_packets(&mut self) {
         self.connection_manager
             .clients()
             .into_iter()
             .for_each(|client_arc| self.process_queued_player_packets_for_client(client_arc));
+    }
+
+    pub(crate) fn flush_outbound_packets(&mut self) {
+        self.connection_manager
+            .clients()
+            .into_iter()
+            .for_each(|client_arc| {
+                let Ok(mut client) = client_arc.lock() else {
+                    return;
+                };
+                let _ = client.flush_outbound_packets();
+            });
     }
 
     fn process_queued_player_packets_for_client(
@@ -456,41 +523,6 @@ impl MinecraftServer {
         player
             .client_mut()
             .map(|client| (client as *mut Client, queued_packet))
-    }
-
-    fn tick_client(
-        &mut self,
-        client_arc: std::sync::Arc<std::sync::Mutex<Client>>,
-    ) -> Option<SocketAddr> {
-        let Ok(mut client) = client_arc.lock() else {
-            return None;
-        };
-        if client.state != ConnectionState::Play {
-            return None;
-        }
-        let _ = client.flush_outbound_packets();
-        if client.tick() {
-            let _ = client.flush_outbound_packets();
-            return None;
-        }
-        Some(client.addr)
-    }
-
-    fn disconnect_timed_out_clients(&mut self, client_addresses: Vec<SocketAddr>) {
-        client_addresses.into_iter().for_each(|client_address| {
-            let Some(client_arc) = self.connection_manager.client(&client_address) else {
-                return;
-            };
-            let Ok(mut client) = client_arc.lock() else {
-                return;
-            };
-            let Some(player) = self.world_manager.player_pointer_for_client(&client) else {
-                client.disconnect();
-                self.on_disconnect(client_address);
-                return;
-            };
-            let _ = unsafe { &mut *player }.kick(Component::text("Timed out"));
-        });
     }
 }
 

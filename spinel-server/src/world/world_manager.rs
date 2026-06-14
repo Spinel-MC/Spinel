@@ -3,8 +3,8 @@ use crate::entity::{Entity, EntityId, EntityPosition, PlayerChunk};
 use crate::entity::{Player, PlayerHand};
 use crate::network::client::instance::Client;
 use crate::world::{
-    BlockHandlerPlacement, BlockPosition, Chunk, ChunkLoader, ChunkPosition, SharedWorld, World,
-    WorldHandle,
+    BlockHandlerPlacement, BlockPosition, Chunk, ChunkLoadTicket, ChunkLoader, ChunkPosition,
+    SharedWorld, World, WorldHandle,
 };
 use spinel_network::types::{ClientInformation, Identifier};
 use spinel_registry::dimension_type::DimensionType;
@@ -24,7 +24,7 @@ pub struct WorldManager {
     next_player_world_transition_id: u64,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 struct PendingPlayerWorldTransition {
     id: u64,
     player_uuid: Uuid,
@@ -32,6 +32,8 @@ struct PendingPlayerWorldTransition {
     target_world: Uuid,
     position: EntityPosition,
     should_refresh_chunks: bool,
+    chunks: Vec<PlayerChunk>,
+    chunk_load_tickets: Vec<ChunkLoadTicket>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -268,17 +270,62 @@ impl WorldManager {
             .entity_world_uuid(entity_id)
             .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "Entity not found."))?;
         self.load_chunk_for_world(target_world, chunk_position_for_entity(position))?;
-        let Some(mut entity) = self
-            .world_mut(current_world)
-            .and_then(|world| world.take_entity(entity_id))
-        else {
+        let source_world = self
+            .world_mut_ptr(current_world)
+            .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "Source world not found."))?;
+        let target_world = self
+            .world_mut_ptr(target_world)
+            .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "Target world not found."))?;
+        if source_world == target_world {
+            let source_world = unsafe { &mut *source_world };
+            let entity = source_world
+                .entity_by_id_mut(entity_id)
+                .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "Entity not found."))?;
+            entity.set_position(position);
+            return Ok(());
+        }
+        let source_world = unsafe { &mut *source_world };
+        let target_world = unsafe { &mut *target_world };
+        let entity = source_world
+            .entity_by_id_mut(entity_id)
+            .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "Entity not found."))?;
+        if target_world.dispatch_add_entity_to_instance_event(entity) {
+            return Err(io::Error::new(
+                io::ErrorKind::Interrupted,
+                "Entity add cancelled.",
+            ));
+        }
+        let Some(mut entity) = source_world.take_entity_from_instance(entity_id) else {
             return Err(io::Error::new(io::ErrorKind::NotFound, "Entity not found."));
         };
         entity.set_position(position);
-        self.world_mut(target_world)
-            .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "Target world not found."))?
-            .add_entity(entity);
+        target_world.add_entity_after_instance_event(entity);
         Ok(())
+    }
+
+    pub fn add_passenger(
+        &mut self,
+        vehicle_id: EntityId,
+        passenger_id: EntityId,
+    ) -> io::Result<bool> {
+        if vehicle_id == passenger_id {
+            return Ok(false);
+        }
+        let vehicle_world = self
+            .entity_world_uuid(vehicle_id)
+            .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "Vehicle not found."))?;
+        let passenger_world = self
+            .entity_world_uuid(passenger_id)
+            .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "Passenger not found."))?;
+        if vehicle_world != passenger_world {
+            let vehicle_position = self
+                .entity_position(vehicle_id)
+                .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "Vehicle not found."))?;
+            self.set_entity_world_at_position(passenger_id, vehicle_world, vehicle_position)?;
+        }
+        self.world_mut(vehicle_world)
+            .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "Vehicle world not found."))?
+            .add_passenger(vehicle_id, passenger_id)
     }
 
     pub fn set_player_world(&mut self, player_uuid: Uuid, target_world: Uuid) -> io::Result<()> {
@@ -330,10 +377,27 @@ impl WorldManager {
                 self.player_position(player_uuid).unwrap_or(position),
                 position,
             );
-        if should_refresh_chunks {
-            let chunks = self.player_target_chunks(player_uuid, target_world, position)?;
-            self.load_player_target_chunks(target_world, chunks)?;
-        }
+        let chunks = if should_refresh_chunks {
+            self.player_target_chunks(player_uuid, target_world, position)?
+        } else {
+            Vec::new()
+        };
+        let chunk_load_tickets = if should_refresh_chunks {
+            let target_world = self
+                .world_mut(target_world)
+                .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "World not found."))?;
+            chunks
+                .iter()
+                .copied()
+                .map(ChunkPosition::from)
+                .map(|position| target_world.load_optional_chunk_future(position))
+                .collect::<io::Result<Vec<_>>>()?
+                .into_iter()
+                .flatten()
+                .collect()
+        } else {
+            Vec::new()
+        };
         let ticket = self.next_player_world_transition_ticket();
         self.pending_player_world_transitions
             .push_back(PendingPlayerWorldTransition {
@@ -343,6 +407,8 @@ impl WorldManager {
                 target_world,
                 position,
                 should_refresh_chunks,
+                chunks,
+                chunk_load_tickets,
             });
         Ok(ticket)
     }
@@ -379,6 +445,21 @@ impl WorldManager {
         transition: PendingPlayerWorldTransition,
         registries: &Registries,
     ) -> io::Result<()> {
+        if transition.should_refresh_chunks {
+            let target_world = self
+                .world_mut(transition.target_world)
+                .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "World not found."))?;
+            let mut all_chunk_loads_are_complete = true;
+            for ticket in &transition.chunk_load_tickets {
+                if !target_world.complete_chunk_load(ticket)? {
+                    all_chunk_loads_are_complete = false;
+                }
+            }
+            if !all_chunk_loads_are_complete {
+                self.pending_player_world_transitions.push_back(transition);
+                return Ok(());
+            }
+        }
         let current_world = transition.current_world;
         if current_world == Some(transition.target_world) {
             self.completed_player_world_transitions.push(transition.id);
@@ -419,11 +500,16 @@ impl WorldManager {
             .world(transition.target_world)
             .map(World::create_initialize_world_border_packet)
             .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "Target world not found."))?;
-        let chunks = player.set_instance_position(
+        let target_weather = self
+            .world(transition.target_world)
+            .map(World::weather)
+            .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "Target world not found."))?;
+        let _ = player.set_instance_position(
             transition.position,
             target_view_distance,
             transition.should_refresh_chunks,
         );
+        let chunks = transition.chunks.clone();
         player.set_dimension_type(target_dimension_type);
         let first_spawn = !player.has_entered_world();
         if transition.should_refresh_chunks {
@@ -441,6 +527,7 @@ impl WorldManager {
                     chunks.clone(),
                     target_time_packet,
                     target_world_border_packet,
+                    target_weather,
                     first_spawn,
                     dimension_change,
                     transition.should_refresh_chunks,
@@ -556,17 +643,6 @@ impl WorldManager {
         Ok(center.surrounding(player.effective_chunk_view_distance(target_view_distance)))
     }
 
-    fn load_player_target_chunks(
-        &mut self,
-        target_world: Uuid,
-        chunks: Vec<PlayerChunk>,
-    ) -> io::Result<()> {
-        chunks.into_iter().try_for_each(|chunk| {
-            self.load_chunk_for_world(target_world, ChunkPosition::from(chunk))
-                .map(|_| ())
-        })
-    }
-
     fn entity_position(&self, entity_id: EntityId) -> Option<EntityPosition> {
         self.worlds
             .iter()
@@ -619,6 +695,20 @@ impl WorldManager {
             .iter_mut()
             .find(|world| world.uuid() == world_uuid)
             .map(SharedWorld::world_mut)
+    }
+
+    fn world_mut_ptr(&mut self, world_uuid: Uuid) -> Option<*mut World> {
+        if let Some(world) = self
+            .worlds
+            .iter_mut()
+            .find(|world| world.uuid() == world_uuid)
+        {
+            return Some(world as *mut World);
+        }
+        self.shared_worlds
+            .iter_mut()
+            .find(|world| world.uuid() == world_uuid)
+            .map(|world| world.world_mut() as *mut World)
     }
 
     pub fn worlds(&self) -> &[World] {
@@ -702,8 +792,7 @@ impl WorldManager {
         let Some(world) = self.world_mut(world_uuid) else {
             return false;
         };
-        world.add_entity(entity);
-        true
+        world.add_entity(entity)
     }
 
     pub(crate) fn tick(&mut self, registries: &Registries, server_ptr: usize) {
@@ -761,17 +850,6 @@ impl WorldManager {
         })
     }
 
-    pub(crate) fn client_world_contains_entity(
-        &self,
-        client: &Client,
-        entity_id: crate::entity::EntityId,
-    ) -> bool {
-        self.worlds
-            .iter()
-            .find(|world| world.player_by_addr(&client.addr).is_some())
-            .is_some_and(|world| world.entity_by_id(entity_id).is_some())
-    }
-
     pub(crate) fn move_client_world_entity(
         &mut self,
         client: &Client,
@@ -785,11 +863,24 @@ impl WorldManager {
         else {
             return false;
         };
-        let Some(entity) = world.entity_by_id_mut(entity_id) else {
+        world.set_entity_position(entity_id, position)
+    }
+
+    pub(crate) fn steer_client_boat(
+        &mut self,
+        client: &Client,
+        vehicle_id: EntityId,
+        left_paddle_turning: bool,
+        right_paddle_turning: bool,
+    ) -> bool {
+        let Some(world) = self
+            .worlds
+            .iter_mut()
+            .find(|world| world.player_by_addr(&client.addr).is_some())
+        else {
             return false;
         };
-        entity.set_position(position);
-        true
+        world.steer_boat(vehicle_id, left_paddle_turning, right_paddle_turning)
     }
 
     pub(crate) fn world_uuid_for_client(&self, client: &Client) -> Option<Uuid> {
@@ -819,6 +910,39 @@ impl WorldManager {
             .and_then(|world| world.loaded_block_at(position))
     }
 
+    pub(crate) fn loaded_block_state_for_client(
+        &self,
+        client: &Client,
+        position: crate::world::BlockPosition,
+    ) -> Option<crate::world::BlockState> {
+        self.worlds
+            .iter()
+            .find(|world| world.player_by_addr(&client.addr).is_some())
+            .and_then(|world| world.loaded_block_state_at(position))
+    }
+
+    pub(crate) fn client_block_entity_nbt_for_client(
+        &self,
+        client: &Client,
+        position: crate::world::BlockPosition,
+    ) -> Option<spinel_nbt::NbtCompound> {
+        self.worlds
+            .iter()
+            .find(|world| world.player_by_addr(&client.addr).is_some())
+            .and_then(|world| world.client_block_entity_nbt_at(position))
+    }
+
+    pub(crate) fn block_is_self_replaceable_for_client(
+        &self,
+        client: &Client,
+        replacement: crate::world::BlockReplacement,
+    ) -> bool {
+        self.worlds
+            .iter()
+            .find(|world| world.player_by_addr(&client.addr).is_some())
+            .is_some_and(|world| world.block_is_self_replaceable(replacement))
+    }
+
     pub(crate) fn block_position_is_loaded_for_client(
         &self,
         client: &Client,
@@ -841,7 +965,18 @@ impl WorldManager {
             .is_some_and(|world| world.block_position_is_inside_world_border(position))
     }
 
-    pub(crate) fn block_position_has_placement_collision_for_client(
+    pub(crate) fn block_placement_collision_entity_for_client(
+        &self,
+        client: &Client,
+        position: crate::world::BlockPosition,
+    ) -> Option<crate::entity::EntityId> {
+        self.worlds
+            .iter()
+            .find(|world| world.player_by_addr(&client.addr).is_some())
+            .and_then(|world| world.block_placement_collision_entity(position))
+    }
+
+    pub(crate) fn chunk_is_read_only_for_client(
         &self,
         client: &Client,
         position: crate::world::BlockPosition,
@@ -849,7 +984,18 @@ impl WorldManager {
         self.worlds
             .iter()
             .find(|world| world.player_by_addr(&client.addr).is_some())
-            .is_some_and(|world| world.block_position_has_placement_collision(position))
+            .is_some_and(|world| world.chunk_is_read_only_at(position))
+    }
+
+    pub(crate) fn refresh_chunk_for_client(
+        &mut self,
+        client: &Client,
+        position: crate::world::BlockPosition,
+    ) -> bool {
+        self.worlds
+            .iter_mut()
+            .find(|world| world.player_by_addr(&client.addr).is_some())
+            .is_some_and(|world| world.refresh_chunk_for_client(client, position))
     }
 
     pub(crate) fn refresh_block_for_client(
@@ -1032,7 +1178,7 @@ impl WorldManager {
 
     pub(crate) fn refresh_player_status(
         &mut self,
-        client: &Client,
+        client: &mut Client,
         on_ground: bool,
     ) -> io::Result<()> {
         let Some(world) = self
@@ -1176,72 +1322,4 @@ fn chunk_position_for_entity(position: EntityPosition) -> ChunkPosition {
 
 fn player_position_is_in_same_chunk(first: EntityPosition, second: EntityPosition) -> bool {
     chunk_position_for_entity(first) == chunk_position_for_entity(second)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::WorldManager;
-    use crate::world::{Chunk, ChunkLoader, ChunkPosition};
-    use spinel_network::types::Identifier;
-    use spinel_registry::dimension_type::DimensionType;
-    use std::io;
-
-    struct ManagerTestChunkLoader;
-
-    impl ChunkLoader for ManagerTestChunkLoader {
-        fn load_chunk(&self, _position: ChunkPosition) -> io::Result<Option<Chunk>> {
-            Ok(None)
-        }
-
-        fn save_chunk(&self, _chunk: &Chunk) -> io::Result<()> {
-            Ok(())
-        }
-
-        fn unload_chunk(&self, _chunk: &mut Chunk) -> io::Result<()> {
-            Ok(())
-        }
-    }
-
-    #[test]
-    fn world_manager_create_and_register_worlds_match_minestom_instance_manager_surface() {
-        let mut worlds = WorldManager::new();
-        let first_world = worlds.create_world(Identifier::minecraft("overworld"));
-        let second_world = worlds
-            .create_world_with_loader(Identifier::minecraft("custom"), ManagerTestChunkLoader);
-        let nether_world = worlds.create_world_with_dimension(
-            DimensionType::THE_NETHER,
-            DimensionType::builder()
-                .vertical_bounds(-32, 256, 128)
-                .build(),
-        );
-        let end_world = worlds.create_world_with_dimension_and_loader(
-            DimensionType::THE_END,
-            DimensionType::default(),
-            ManagerTestChunkLoader,
-        );
-
-        assert_eq!(worlds.worlds().len(), 4);
-        assert!(
-            worlds
-                .world(first_world)
-                .is_some_and(|world| world.is_registered())
-        );
-        assert!(
-            worlds
-                .world(second_world)
-                .is_some_and(|world| world.is_registered())
-        );
-        assert_eq!(
-            worlds
-                .world(nether_world)
-                .map(|world| world.dimension_type().clone()),
-            Some(DimensionType::THE_NETHER)
-        );
-        assert_eq!(
-            worlds
-                .world(end_world)
-                .map(|world| world.dimension_name().clone()),
-            Some(Identifier::minecraft("the_end"))
-        );
-    }
 }

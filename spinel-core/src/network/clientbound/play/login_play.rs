@@ -1,6 +1,6 @@
 use crate::entity::game_mode::GameMode;
-use ::spinel_macros::packet;
-use ::spinel_network::types::{Array, CommonPlayerSpawnInfo, Identifier, var_int::VarIntWrapper};
+use spinel_macros::packet;
+use spinel_network::types::{Array, CommonPlayerSpawnInfo, Identifier, var_int::VarIntWrapper};
 
 #[packet(id: "login",
 state: ConnectionState::Play,
@@ -22,37 +22,47 @@ pub struct LoginPlayPacket {
 
 impl LoginPlayPacket {
     pub fn new_default(player_id: i32) -> Self {
-        Self::new(player_id, GameMode::Survival)
+        Self::new(
+            player_id,
+            GameMode::Survival,
+            0,
+            Identifier::minecraft("overworld"),
+        )
     }
 
-    pub fn new(player_id: i32, game_mode: GameMode) -> Self {
+    pub fn new(
+        player_id: i32,
+        game_mode: GameMode,
+        dimension_type_id: i32,
+        dimension_name: Identifier,
+    ) -> Self {
         Self {
             player_id,
             is_hardcore: false,
-            levels: Self::default_levels(),
+            levels: Array(vec![dimension_name.clone()]),
             max_players: VarIntWrapper(20),
             chunk_radius: VarIntWrapper(8),
             simulation_distance: VarIntWrapper(8),
             has_reduced_debug_info: false,
             should_show_death_screen: true,
             is_limited_crafting_enabled: false,
-            common_player_spawn_info: Self::default_spawn_info(game_mode),
+            common_player_spawn_info: Self::spawn_info(
+                game_mode,
+                dimension_type_id,
+                dimension_name,
+            ),
             is_secure_chat_enforced: false,
         }
     }
 
-    fn default_levels() -> Array<Identifier> {
-        Array(vec![
-            Identifier::minecraft("overworld"),
-            Identifier::minecraft("the_nether"),
-            Identifier::minecraft("the_end"),
-        ])
-    }
-
-    fn default_spawn_info(game_mode: GameMode) -> CommonPlayerSpawnInfo {
+    fn spawn_info(
+        game_mode: GameMode,
+        dimension_type_id: i32,
+        dimension_name: Identifier,
+    ) -> CommonPlayerSpawnInfo {
         CommonPlayerSpawnInfo {
-            dimension_type: 1,
-            dimension: Identifier::minecraft("overworld"),
+            dimension_type: dimension_type_id,
+            dimension: dimension_name,
             seed: 0,
             game_mode: game_mode.id(),
             previous_game_mode: -1,
@@ -62,21 +72,5 @@ impl LoginPlayPacket {
             portal_cooldown: 0,
             sea_level: 63,
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::LoginPlayPacket;
-    use crate::entity::game_mode::GameMode;
-
-    #[test]
-    fn default_login_game_mode_is_survival() {
-        let packet = LoginPlayPacket::new_default(1);
-
-        assert_eq!(
-            packet.common_player_spawn_info.game_mode,
-            GameMode::Survival.id()
-        );
     }
 }

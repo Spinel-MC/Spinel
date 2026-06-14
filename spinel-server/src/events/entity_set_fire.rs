@@ -1,24 +1,28 @@
-use crate::entity::EntityId;
+use crate::entity::{Entity, EntityId};
 use spinel_macros::event_dispatcher;
 
 #[event_dispatcher]
 pub struct EntitySetFireEvent {
-    entity_id: EntityId,
+    entity: *mut Entity,
     fire_ticks: i32,
     cancelled: bool,
 }
 
 impl EntitySetFireEvent {
-    pub fn new(entity_id: EntityId, fire_ticks: i32) -> Self {
+    pub fn new(entity: *mut Entity, fire_ticks: i32) -> Self {
         Self {
-            entity_id,
+            entity,
             fire_ticks,
             cancelled: false,
         }
     }
 
+    pub fn entity(&mut self) -> &mut Entity {
+        unsafe { &mut *self.entity }
+    }
+
     pub fn entity_id(&self) -> EntityId {
-        self.entity_id
+        unsafe { (&*self.entity).entity_id() }
     }
 
     pub fn fire_ticks(&self) -> i32 {

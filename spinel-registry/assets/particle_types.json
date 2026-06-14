@@ -1,0 +1,579 @@
+{
+  "particle_types": [
+    {
+      "id": 0,
+      "name": "minecraft:angry_villager",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 1,
+      "name": "minecraft:block",
+      "payloadShape": "block_state"
+    },
+    {
+      "id": 2,
+      "name": "minecraft:block_marker",
+      "payloadShape": "block_state"
+    },
+    {
+      "id": 3,
+      "name": "minecraft:bubble",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 4,
+      "name": "minecraft:cloud",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 5,
+      "name": "minecraft:copper_fire_flame",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 6,
+      "name": "minecraft:crit",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 7,
+      "name": "minecraft:damage_indicator",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 8,
+      "name": "minecraft:dragon_breath",
+      "payloadShape": "float"
+    },
+    {
+      "id": 9,
+      "name": "minecraft:dripping_lava",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 10,
+      "name": "minecraft:falling_lava",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 11,
+      "name": "minecraft:landing_lava",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 12,
+      "name": "minecraft:dripping_water",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 13,
+      "name": "minecraft:falling_water",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 14,
+      "name": "minecraft:dust",
+      "payloadShape": "color_scale"
+    },
+    {
+      "id": 15,
+      "name": "minecraft:dust_color_transition",
+      "payloadShape": "color_transition_scale"
+    },
+    {
+      "id": 16,
+      "name": "minecraft:effect",
+      "payloadShape": "color_power"
+    },
+    {
+      "id": 17,
+      "name": "minecraft:elder_guardian",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 18,
+      "name": "minecraft:enchanted_hit",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 19,
+      "name": "minecraft:enchant",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 20,
+      "name": "minecraft:end_rod",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 21,
+      "name": "minecraft:entity_effect",
+      "payloadShape": "alpha_color"
+    },
+    {
+      "id": 22,
+      "name": "minecraft:explosion_emitter",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 23,
+      "name": "minecraft:explosion",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 24,
+      "name": "minecraft:gust",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 25,
+      "name": "minecraft:small_gust",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 26,
+      "name": "minecraft:gust_emitter_large",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 27,
+      "name": "minecraft:gust_emitter_small",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 28,
+      "name": "minecraft:sonic_boom",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 29,
+      "name": "minecraft:falling_dust",
+      "payloadShape": "block_state"
+    },
+    {
+      "id": 30,
+      "name": "minecraft:firework",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 31,
+      "name": "minecraft:fishing",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 32,
+      "name": "minecraft:flame",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 33,
+      "name": "minecraft:infested",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 34,
+      "name": "minecraft:cherry_leaves",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 35,
+      "name": "minecraft:pale_oak_leaves",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 36,
+      "name": "minecraft:tinted_leaves",
+      "payloadShape": "alpha_color"
+    },
+    {
+      "id": 37,
+      "name": "minecraft:sculk_soul",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 38,
+      "name": "minecraft:sculk_charge",
+      "payloadShape": "float"
+    },
+    {
+      "id": 39,
+      "name": "minecraft:sculk_charge_pop",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 40,
+      "name": "minecraft:soul_fire_flame",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 41,
+      "name": "minecraft:soul",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 42,
+      "name": "minecraft:flash",
+      "payloadShape": "alpha_color"
+    },
+    {
+      "id": 43,
+      "name": "minecraft:happy_villager",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 44,
+      "name": "minecraft:composter",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 45,
+      "name": "minecraft:heart",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 46,
+      "name": "minecraft:instant_effect",
+      "payloadShape": "color_power"
+    },
+    {
+      "id": 47,
+      "name": "minecraft:item",
+      "payloadShape": "item_stack"
+    },
+    {
+      "id": 48,
+      "name": "minecraft:vibration",
+      "payloadShape": "vibration"
+    },
+    {
+      "id": 49,
+      "name": "minecraft:trail",
+      "payloadShape": "trail"
+    },
+    {
+      "id": 50,
+      "name": "minecraft:item_slime",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 51,
+      "name": "minecraft:item_cobweb",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 52,
+      "name": "minecraft:item_snowball",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 53,
+      "name": "minecraft:large_smoke",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 54,
+      "name": "minecraft:lava",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 55,
+      "name": "minecraft:mycelium",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 56,
+      "name": "minecraft:note",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 57,
+      "name": "minecraft:poof",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 58,
+      "name": "minecraft:portal",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 59,
+      "name": "minecraft:rain",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 60,
+      "name": "minecraft:smoke",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 61,
+      "name": "minecraft:white_smoke",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 62,
+      "name": "minecraft:sneeze",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 63,
+      "name": "minecraft:spit",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 64,
+      "name": "minecraft:squid_ink",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 65,
+      "name": "minecraft:sweep_attack",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 66,
+      "name": "minecraft:totem_of_undying",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 67,
+      "name": "minecraft:underwater",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 68,
+      "name": "minecraft:splash",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 69,
+      "name": "minecraft:witch",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 70,
+      "name": "minecraft:bubble_pop",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 71,
+      "name": "minecraft:current_down",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 72,
+      "name": "minecraft:bubble_column_up",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 73,
+      "name": "minecraft:nautilus",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 74,
+      "name": "minecraft:dolphin",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 75,
+      "name": "minecraft:campfire_cosy_smoke",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 76,
+      "name": "minecraft:campfire_signal_smoke",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 77,
+      "name": "minecraft:dripping_honey",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 78,
+      "name": "minecraft:falling_honey",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 79,
+      "name": "minecraft:landing_honey",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 80,
+      "name": "minecraft:falling_nectar",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 81,
+      "name": "minecraft:falling_spore_blossom",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 82,
+      "name": "minecraft:ash",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 83,
+      "name": "minecraft:crimson_spore",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 84,
+      "name": "minecraft:warped_spore",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 85,
+      "name": "minecraft:spore_blossom_air",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 86,
+      "name": "minecraft:dripping_obsidian_tear",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 87,
+      "name": "minecraft:falling_obsidian_tear",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 88,
+      "name": "minecraft:landing_obsidian_tear",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 89,
+      "name": "minecraft:reverse_portal",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 90,
+      "name": "minecraft:white_ash",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 91,
+      "name": "minecraft:small_flame",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 92,
+      "name": "minecraft:snowflake",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 93,
+      "name": "minecraft:dripping_dripstone_lava",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 94,
+      "name": "minecraft:falling_dripstone_lava",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 95,
+      "name": "minecraft:dripping_dripstone_water",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 96,
+      "name": "minecraft:falling_dripstone_water",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 97,
+      "name": "minecraft:glow_squid_ink",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 98,
+      "name": "minecraft:glow",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 99,
+      "name": "minecraft:wax_on",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 100,
+      "name": "minecraft:wax_off",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 101,
+      "name": "minecraft:electric_spark",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 102,
+      "name": "minecraft:scrape",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 103,
+      "name": "minecraft:shriek",
+      "payloadShape": "var_int"
+    },
+    {
+      "id": 104,
+      "name": "minecraft:egg_crack",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 105,
+      "name": "minecraft:dust_plume",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 106,
+      "name": "minecraft:trial_spawner_detection",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 107,
+      "name": "minecraft:trial_spawner_detection_ominous",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 108,
+      "name": "minecraft:vault_connection",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 109,
+      "name": "minecraft:dust_pillar",
+      "payloadShape": "block_state"
+    },
+    {
+      "id": 110,
+      "name": "minecraft:ominous_spawning",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 111,
+      "name": "minecraft:raid_omen",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 112,
+      "name": "minecraft:trial_omen",
+      "payloadShape": "unit"
+    },
+    {
+      "id": 113,
+      "name": "minecraft:block_crumble",
+      "payloadShape": "block_state"
+    },
+    {
+      "id": 114,
+      "name": "minecraft:firefly",
+      "payloadShape": "unit"
+    }
+  ]
+}

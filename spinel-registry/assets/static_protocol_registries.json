@@ -1,0 +1,94 @@
+{
+  "villager_type": [
+    {
+      "id": 0,
+      "name": "minecraft:desert"
+    },
+    {
+      "id": 1,
+      "name": "minecraft:jungle"
+    },
+    {
+      "id": 2,
+      "name": "minecraft:plains"
+    },
+    {
+      "id": 3,
+      "name": "minecraft:savanna"
+    },
+    {
+      "id": 4,
+      "name": "minecraft:snow"
+    },
+    {
+      "id": 5,
+      "name": "minecraft:swamp"
+    },
+    {
+      "id": 6,
+      "name": "minecraft:taiga"
+    }
+  ],
+  "villager_profession": [
+    {
+      "id": 0,
+      "name": "minecraft:none"
+    },
+    {
+      "id": 1,
+      "name": "minecraft:armorer"
+    },
+    {
+      "id": 2,
+      "name": "minecraft:butcher"
+    },
+    {
+      "id": 3,
+      "name": "minecraft:cartographer"
+    },
+    {
+      "id": 4,
+      "name": "minecraft:cleric"
+    },
+    {
+      "id": 5,
+      "name": "minecraft:farmer"
+    },
+    {
+      "id": 6,
+      "name": "minecraft:fisherman"
+    },
+    {
+      "id": 7,
+      "name": "minecraft:fletcher"
+    },
+    {
+      "id": 8,
+      "name": "minecraft:leatherworker"
+    },
+    {
+      "id": 9,
+      "name": "minecraft:librarian"
+    },
+    {
+      "id": 10,
+      "name": "minecraft:mason"
+    },
+    {
+      "id": 11,
+      "name": "minecraft:nitwit"
+    },
+    {
+      "id": 12,
+      "name": "minecraft:shepherd"
+    },
+    {
+      "id": 13,
+      "name": "minecraft:toolsmith"
+    },
+    {
+      "id": 14,
+      "name": "minecraft:weaponsmith"
+    }
+  ]
+}

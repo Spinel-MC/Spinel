@@ -1,16 +1,27 @@
-use crate::entity::metadata::definitions;
-use crate::entity::player::PlayerSkin;
+use crate::entity::ai::CreatureAiAction;
+use crate::entity::physics::{EntityMovement, EntityMovementPacket};
+use crate::entity::player::{PlayerSkin, PlayerViewerSnapshot};
 use crate::entity::{
-    Damage, Entity, EntityId, EntityPosition, EquipmentSlot, GenericEntity, ItemEntity, Player,
-    PlayerChunk, PlayerChunkTransition, PlayerPose, TimedPotionEffect,
+    Damage, Entity, EntityId, EntityPosition, EntityTeleport, EquipmentSlot, ExperienceOrb,
+    GenericEntity, ItemEntity, Player, PlayerChunk, PlayerChunkTransition, PlayerPose,
+    TimedPotionEffect,
 };
+use crate::events::add_entity_to_instance::AddEntityToInstanceEvent;
+use crate::events::entity_attack::EntityAttackEvent;
 use crate::events::entity_damage::EntityDamageEvent;
 use crate::events::entity_death::EntityDeathEvent;
+use crate::events::entity_despawn::EntityDespawnEvent;
 use crate::events::entity_equip::EntityEquipEvent;
 use crate::events::entity_fire_extinguish::EntityFireExtinguishEvent;
+use crate::events::entity_item_merge::EntityItemMergeEvent;
 use crate::events::entity_potion_add::EntityPotionAddEvent;
 use crate::events::entity_potion_remove::EntityPotionRemoveEvent;
 use crate::events::entity_set_fire::EntitySetFireEvent;
+use crate::events::entity_shoot::EntityShootEvent;
+use crate::events::entity_spawn::EntitySpawnEvent;
+use crate::events::entity_teleport::EntityTeleportEvent;
+use crate::events::entity_tick::EntityTickEvent;
+use crate::events::entity_velocity::EntityVelocityEvent;
 use crate::events::instance_block_update::InstanceBlockUpdateEvent;
 use crate::events::instance_chunk_load::InstanceChunkLoadEvent;
 use crate::events::instance_chunk_unload::InstanceChunkUnloadEvent;
@@ -19,23 +30,33 @@ use crate::events::instance_section_invalidate::InstanceSectionInvalidateEvent;
 use crate::events::instance_tick::InstanceTickEvent;
 use crate::events::instance_tick_end::InstanceTickEndEvent;
 use crate::events::instance_unregister::InstanceUnregisterEvent;
+use crate::events::pickup_experience::PickupExperienceEvent;
 use crate::events::pickup_item::PickupItemEvent;
 use crate::events::player_block_break::PlayerBlockBreakEvent;
 use crate::events::player_move::PlayerMoveEvent;
 use crate::events::player_spawn::PlayerSpawnEvent;
+use crate::events::player_stop_flying_with_elytra::PlayerStopFlyingWithElytraEvent;
 use crate::events::player_tick::PlayerTickEvent;
 use crate::events::player_tick_end::PlayerTickEndEvent;
+use crate::events::projectile_collide_with_block::ProjectileCollideWithBlockEvent;
+use crate::events::projectile_collide_with_entity::ProjectileCollideWithEntityEvent;
+use crate::events::projectile_uncollide::ProjectileUncollideEvent;
+use crate::events::remove_entity_from_instance::RemoveEntityFromInstanceEvent;
 use crate::network::client::instance::Client;
 use crate::scoreboard::Team;
+use crate::world::chunk_loading_executor::ChunkLoadingExecutor;
 use crate::world::generator::{FallibleGenerator, GenerateChunkError, GenerationFork, Generator};
+use crate::world::world_lighting::WorldLighting;
 use crate::world::{
     Biome, Block, BlockHandler, BlockHandlerDestroy, BlockHandlerInteraction,
-    BlockHandlerPlacement, BlockHandlerRegistry, BlockHandlerTouch, BlockLookupCondition,
-    BlockPlacementRule, BlockPlacementRuleRegistry, BlockPlacementState, BlockPosition, BlockSize,
-    BlockUpdateState, BossBar, Chunk, ChunkLoader, ChunkPosition, ChunkSection, EntityTracker,
-    EntityTrackerTarget, ExplosionSupplier, GenerationUnit, NoopChunkLoader, Weather, WorldBorder,
-    WorldEventNode, WorldIdentity, WorldPointers, WorldScheduler, WorldSnapshot, WorldSoundEmitter,
+    BlockHandlerPlacement, BlockHandlerRegistry, BlockHandlerTouch, BlockInstance,
+    BlockLookupCondition, BlockPlacementRule, BlockPlacementRuleRegistry, BlockPlacementState,
+    BlockPosition, BlockReplacement, BlockSize, BlockState, BlockUpdateState, BossBar, Chunk,
+    ChunkLoader, ChunkPosition, EntityTracker, EntityTrackerTarget, ExplosionSupplier,
+    GenerationUnit, NoopChunkLoader, Weather, WorldBorder, WorldEventNode, WorldIdentity,
+    WorldPointers, WorldScheduler, WorldSnapshot, WorldSoundEmitter,
 };
+use spinel_core::entity::game_mode::GameMode;
 use spinel_core::network::clientbound::play::block_action::BlockActionPacket;
 use spinel_core::network::clientbound::play::block_entity_data::BlockEntityDataPacket;
 use spinel_core::network::clientbound::play::block_update::BlockUpdatePacket;
@@ -52,7 +73,7 @@ use spinel_core::network::clientbound::play::entity_sound_effect::{
 use spinel_core::network::clientbound::play::entity_status::EntityStatusPacket;
 use spinel_core::network::clientbound::play::entity_teleport::EntityTeleportPacket;
 use spinel_core::network::clientbound::play::entity_velocity::EntityVelocityPacket;
-use spinel_core::network::clientbound::play::game_event::{GameEvent, GameEventPacket};
+use spinel_core::network::clientbound::play::light_update::LightUpdatePacket;
 use spinel_core::network::clientbound::play::player_info_remove::PlayerInfoRemovePacket;
 use spinel_core::network::clientbound::play::player_info_update::PlayerInfoUpdatePacket;
 use spinel_core::network::clientbound::play::remove_entities::RemoveEntitiesPacket;
@@ -61,7 +82,6 @@ use spinel_core::network::clientbound::play::set_entity_data::SetEntityDataPacke
 use spinel_core::network::clientbound::play::set_equipment::{
     EntityEquipmentEntry, SetEquipmentPacket,
 };
-use spinel_core::network::clientbound::play::set_passengers::SetPassengersPacket;
 use spinel_core::network::clientbound::play::set_player_team::SetPlayerTeamPacket;
 use spinel_core::network::clientbound::play::set_time::SetTimePacket;
 use spinel_core::network::clientbound::play::sound_effect::{
@@ -73,14 +93,13 @@ use spinel_core::network::clientbound::play::take_item_entity::TakeItemEntityPac
 use spinel_core::network::clientbound::play::update_attributes::UpdateAttributesPacket;
 use spinel_core::network::clientbound::play::world_event::WorldEventPacket;
 use spinel_core::raycast::RaycastBoundingBox;
-use spinel_nbt::{Nbt, NbtCompound, TagHandler, Taggable};
+use spinel_nbt::{NbtCompound, TagHandler, Taggable};
 use spinel_network::types::entity_metadata::MetadataEntry;
 use spinel_network::types::sound::SoundEvent;
 use spinel_network::types::{
     ClientInformation, Identifier, Position, Slot, TeleportFlags, Vector3d, Velocity,
 };
 use spinel_network::{DataType, PacketSender, PacketStruct};
-use spinel_registry::block_entity_type::BlockEntityType;
 use spinel_registry::damage_type::DamageType;
 use spinel_registry::dimension_type::DimensionType;
 use spinel_registry::{EntityBoundingBox, EntityType, ItemStack, Registries, RegistryKey};
@@ -88,7 +107,8 @@ use spinel_utils::component::Component;
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::io::{Error, ErrorKind, Result};
 use std::net::SocketAddr;
-use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, mpsc};
 use std::thread::JoinHandle;
 use std::time::{SystemTime, UNIX_EPOCH};
 use uuid::Uuid;
@@ -99,20 +119,24 @@ const DEFAULT_CHUNK_VIEW_DISTANCE: i32 = 8;
 const DESTROY_BLOCK_WORLD_EVENT_ID: i32 = 2001;
 const ENTITY_VIEW_DISTANCE: i32 = 5;
 
+#[derive(Clone)]
 pub struct ChunkSupplier {
-    create_chunk: Box<dyn Fn(ChunkPosition) -> Chunk + Send + Sync>,
+    create_chunk: Arc<dyn Fn(ChunkPosition) -> Chunk + Send + Sync>,
 }
 
-#[derive(Clone, Copy)]
-struct PendingPlayerChunkLoad {
-    player_address: SocketAddr,
-    chunk: PlayerChunk,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug)]
 pub struct ChunkLoadTicket {
     id: u64,
     position: ChunkPosition,
+    is_completed: Arc<AtomicBool>,
+}
+
+pub struct EntityTeleportTicket {
+    entity_id: EntityId,
+    teleport: EntityTeleport,
+    chunk_load_tickets: Vec<ChunkLoadTicket>,
+    should_confirm: bool,
+    completed: bool,
 }
 
 pub struct WorldIoTask {
@@ -120,14 +144,28 @@ pub struct WorldIoTask {
     completed: Option<Result<()>>,
 }
 
-struct AsyncChunkLoad {
-    handle: JoinHandle<Result<Option<Chunk>>>,
+struct CompletedChunkLoad {
+    ticket: ChunkLoadTicket,
+    prepared_chunk_load: Result<PreparedChunkLoad>,
+}
+
+struct PendingPlayerEntry {
+    client: usize,
+    ticks_per_second: u32,
+    chunks: Vec<PlayerChunk>,
+    chunk_load_tickets: Vec<ChunkLoadTicket>,
+}
+
+struct PreparedChunkLoad {
+    chunk: Chunk,
+    generation_forks: Vec<GenerationFork>,
+    requires_generation_completion: bool,
 }
 
 impl ChunkSupplier {
     pub fn new(create_chunk: impl Fn(ChunkPosition) -> Chunk + Send + Sync + 'static) -> Self {
         Self {
-            create_chunk: Box::new(create_chunk),
+            create_chunk: Arc::new(create_chunk),
         }
     }
 
@@ -143,6 +181,36 @@ impl ChunkLoadTicket {
 
     pub const fn position(&self) -> ChunkPosition {
         self.position
+    }
+
+    pub fn is_completed(&self) -> bool {
+        self.is_completed.load(Ordering::SeqCst)
+    }
+
+    fn complete(&self) {
+        self.is_completed.store(true, Ordering::SeqCst);
+    }
+}
+
+impl PartialEq for ChunkLoadTicket {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id && self.position == other.position
+    }
+}
+
+impl Eq for ChunkLoadTicket {}
+
+impl EntityTeleportTicket {
+    pub fn entity_id(&self) -> EntityId {
+        self.entity_id
+    }
+
+    pub fn teleport(&self) -> &EntityTeleport {
+        &self.teleport
+    }
+
+    pub fn is_completed(&self) -> bool {
+        self.completed
     }
 }
 
@@ -184,66 +252,6 @@ impl Default for ChunkSupplier {
     }
 }
 
-struct PlayerViewerSnapshot {
-    player_info_packet: PlayerInfoUpdatePacket,
-    spawn_packet: SpawnEntityPacket,
-    metadata_entries: Vec<MetadataEntry>,
-    equipment_packet: SetEquipmentPacket,
-    head_look_packet: EntityHeadLookPacket,
-    velocity_packet: Option<EntityVelocityPacket>,
-    attributes_packet: Option<UpdateAttributesPacket>,
-    effect_packets: Vec<EntityEffectPacket>,
-    passenger_packet: Option<SetPassengersPacket>,
-}
-
-impl PlayerViewerSnapshot {
-    fn from_player(player: &Player) -> Self {
-        Self {
-            player_info_packet: player.player_info_packet(),
-            spawn_packet: player.spawn_packet(),
-            metadata_entries: player.metadata_packet().entries.0,
-            equipment_packet: player.visible_equipment_packet(),
-            head_look_packet: player.head_look_packet(),
-            velocity_packet: player.has_velocity().then(|| player.velocity_packet()),
-            attributes_packet: (!player.attributes().is_empty())
-                .then(|| player.update_attributes_packet()),
-            effect_packets: player.effect_packets(),
-            passenger_packet: player.has_passenger().then(|| player.passenger_packet()),
-        }
-    }
-
-    fn dispatch(&self, client: &mut Client) -> Result<()> {
-        self.player_info_packet.clone().dispatch(client)?;
-        self.spawn_packet.clone().dispatch(client)?;
-        if let Some(velocity_packet) = &self.velocity_packet {
-            velocity_packet.clone().dispatch(client)?;
-        }
-        SetEntityDataPacket::new(self.spawn_packet.entity_id, self.metadata_entries.clone())
-            .dispatch(client)?;
-        EntityHeadLookPacket {
-            entity_id: self.head_look_packet.entity_id,
-            head_yaw: self.head_look_packet.head_yaw,
-        }
-        .dispatch(client)?;
-        SetEquipmentPacket::new(
-            self.spawn_packet.entity_id,
-            self.equipment_packet.equipment.0.clone(),
-        )
-        .dispatch(client)?;
-        if let Some(attributes_packet) = &self.attributes_packet {
-            attributes_packet.clone().dispatch(client)?;
-        }
-        self.effect_packets
-            .iter()
-            .cloned()
-            .try_for_each(|packet| packet.dispatch(client))?;
-        if let Some(passenger_packet) = &self.passenger_packet {
-            passenger_packet.clone().dispatch(client)?;
-        }
-        Ok(())
-    }
-}
-
 struct GenericEntityViewerSnapshot {
     player_info_packet: Option<PlayerInfoUpdatePacket>,
     spawn_packet: SpawnEntityPacket,
@@ -276,7 +284,31 @@ impl GenericEntityViewerSnapshot {
         }
     }
 
-    fn dispatch(self, client: &mut Client) -> Result<()> {
+    fn from_experience_orb(experience_orb: &ExperienceOrb) -> Self {
+        let mut snapshot = Self::from_entity(experience_orb);
+        snapshot.spawn_packet = experience_orb.spawn_packet();
+        snapshot
+    }
+
+    fn from_item_entity(item_entity: &ItemEntity) -> Self {
+        let mut snapshot = Self::from_entity(item_entity);
+        snapshot.spawn_packet = item_entity.spawn_packet();
+        snapshot
+    }
+
+    fn from_projectile(projectile: &crate::entity::ProjectileEntity) -> Self {
+        let mut snapshot = Self::from_entity(projectile);
+        snapshot.spawn_packet = projectile.spawn_packet();
+        snapshot
+    }
+
+    fn dispatch_with_leashes(
+        self,
+        client: &mut Client,
+        leash_packets: Vec<
+            spinel_core::network::clientbound::play::attach_entity::AttachEntityPacket,
+        >,
+    ) -> Result<()> {
         if let Some(player_info_packet) = self.player_info_packet {
             player_info_packet.dispatch(client)?;
         }
@@ -285,8 +317,11 @@ impl GenericEntityViewerSnapshot {
             velocity_packet.dispatch(client)?;
         }
         self.metadata_packet.dispatch(client)?;
-        self.equipment_packet.dispatch(client)?;
+        leash_packets
+            .into_iter()
+            .try_for_each(|packet| packet.dispatch(client))?;
         self.head_look_packet.dispatch(client)?;
+        self.equipment_packet.dispatch(client)?;
         if let Some(attributes_packet) = self.attributes_packet {
             attributes_packet.dispatch(client)?;
         }
@@ -307,18 +342,19 @@ pub struct World {
     linked_shared_worlds: Vec<Uuid>,
     source_world: Option<Uuid>,
     last_block_change_time: u128,
-    currently_changing_blocks: HashMap<BlockPosition, Block>,
+    currently_changing_blocks: HashMap<BlockPosition, BlockState>,
     pending_generation: HashMap<ChunkPosition, Vec<GenerationFork>>,
     loading_chunks: HashSet<ChunkPosition>,
     async_chunk_loads: HashMap<ChunkPosition, ChunkLoadTicket>,
-    async_chunk_load_handles: HashMap<u64, AsyncChunkLoad>,
-    completed_chunk_loads: HashSet<u64>,
+    completed_chunk_load_sender: mpsc::Sender<CompletedChunkLoad>,
+    completed_chunk_load_receiver: mpsc::Receiver<CompletedChunkLoad>,
+    prepared_chunk_loads: HashMap<u64, (ChunkLoadTicket, Result<PreparedChunkLoad>)>,
     next_chunk_load_ticket_id: u64,
-    pending_player_chunk_loads: VecDeque<PendingPlayerChunkLoad>,
-    pending_player_chunk_load_keys: HashSet<(SocketAddr, PlayerChunk)>,
+    player_chunk_load_waiters: HashMap<ChunkPosition, Vec<SocketAddr>>,
+    pending_player_entries: HashMap<SocketAddr, PendingPlayerEntry>,
     pending_entity_visibility_refreshes: VecDeque<EntityId>,
     pending_entity_visibility_refresh_keys: HashSet<EntityId>,
-    generator: Option<Box<dyn Generator + Send + Sync>>,
+    generator: Option<Arc<dyn Generator + Send + Sync>>,
     explosion_supplier: Option<Box<dyn ExplosionSupplier>>,
     chunk_loader: Arc<dyn ChunkLoader>,
     chunk_supplier: ChunkSupplier,
@@ -347,6 +383,7 @@ pub struct World {
 
 impl World {
     pub fn new(name: Identifier) -> Self {
+        let (completed_chunk_load_sender, completed_chunk_load_receiver) = mpsc::channel();
         Self {
             uuid: Uuid::new_v4(),
             name: name.clone(),
@@ -362,11 +399,12 @@ impl World {
             pending_generation: HashMap::new(),
             loading_chunks: HashSet::new(),
             async_chunk_loads: HashMap::new(),
-            async_chunk_load_handles: HashMap::new(),
-            completed_chunk_loads: HashSet::new(),
+            completed_chunk_load_sender,
+            completed_chunk_load_receiver,
+            prepared_chunk_loads: HashMap::new(),
             next_chunk_load_ticket_id: 0,
-            pending_player_chunk_loads: VecDeque::new(),
-            pending_player_chunk_load_keys: HashSet::new(),
+            player_chunk_load_waiters: HashMap::new(),
+            pending_player_entries: HashMap::new(),
             pending_entity_visibility_refreshes: VecDeque::new(),
             pending_entity_visibility_refresh_keys: HashSet::new(),
             generator: None,
@@ -548,7 +586,7 @@ impl World {
     ) -> bool {
         self.currently_changing_blocks
             .get(&position)
-            .is_some_and(|changed_block| *changed_block == block)
+            .is_some_and(|changed_block| changed_block.block() == block)
     }
 
     pub fn copy(&self) -> Self {
@@ -583,25 +621,60 @@ impl World {
     }
 
     pub fn block_position_has_placement_collision(&self, position: BlockPosition) -> bool {
+        self.block_placement_collision_entity(position).is_some()
+    }
+
+    pub fn block_placement_collision_entity(&self, position: BlockPosition) -> Option<EntityId> {
         let block_center = Vector3d {
             x: f64::from(position.x) + 0.5,
             y: f64::from(position.y),
             z: f64::from(position.z) + 0.5,
         };
         let block_box = EntityBoundingBox::new(1.0, 1.0, 1.0);
-        self.entities.iter().any(|entity| match entity {
-            Entity::Generic(entity) => {
-                entity.prevents_block_placement()
-                    && entity.intersects_box_at(block_center, block_box)
-            }
-            Entity::Item(entity) => {
-                entity.prevents_block_placement()
-                    && entity.intersects_box_at(block_center, block_box)
-            }
-            Entity::Player(player) => {
-                player.prevents_block_placement()
-                    && player_intersects_block(player.position(), block_center, block_box)
-            }
+        self.entities
+            .iter()
+            .find(|entity| match entity {
+                Entity::Creature(entity) => {
+                    entity.prevents_block_placement()
+                        && entity.intersects_box_at(block_center, block_box)
+                }
+                Entity::ExperienceOrb(entity) => {
+                    entity.prevents_block_placement()
+                        && entity.intersects_box_at(block_center, block_box)
+                }
+                Entity::Generic(entity) => {
+                    entity.prevents_block_placement()
+                        && entity.intersects_box_at(block_center, block_box)
+                }
+                Entity::Item(entity) => {
+                    entity.prevents_block_placement()
+                        && entity.intersects_box_at(block_center, block_box)
+                }
+                Entity::Player(player) => {
+                    player.prevents_block_placement()
+                        && player_intersects_block(player.position(), block_center, block_box)
+                }
+                Entity::Projectile(entity) => {
+                    entity.prevents_block_placement()
+                        && entity.intersects_box_at(block_center, block_box)
+                }
+            })
+            .map(Entity::entity_id)
+    }
+
+    pub(crate) fn chunk_is_read_only_at(&self, position: BlockPosition) -> bool {
+        self.chunk(position.into())
+            .is_some_and(|chunk| chunk.is_read_only())
+    }
+
+    pub(crate) fn refresh_chunk_for_client(
+        &mut self,
+        client: &Client,
+        position: BlockPosition,
+    ) -> bool {
+        let player_chunk = ChunkPosition::from(position);
+        self.player_by_addr_mut(&client.addr).is_some_and(|player| {
+            player.send_loaded_chunk_position(PlayerChunk::new(player_chunk.x, player_chunk.z))
         })
     }
 
@@ -756,9 +829,14 @@ impl World {
     ) -> Option<Vec<SetPlayerTeamPacket>> {
         let entity = self.entity_by_id_mut(entity_id)?;
         Some(match entity {
+            Entity::Creature(entity) => entity.set_scoreboard_team(previous_team, requested_team),
+            Entity::ExperienceOrb(entity) => {
+                entity.set_scoreboard_team(previous_team, requested_team)
+            }
             Entity::Generic(entity) => entity.set_scoreboard_team(previous_team, requested_team),
             Entity::Item(_) => Vec::new(),
             Entity::Player(player) => player.set_scoreboard_team(previous_team, requested_team),
+            Entity::Projectile(entity) => entity.set_scoreboard_team(previous_team, requested_team),
         })
     }
 
@@ -846,7 +924,7 @@ impl World {
         &mut self,
         generator: impl Fn(&mut GenerationUnit) + Send + Sync + 'static,
     ) {
-        self.generator = Some(Box::new(generator));
+        self.generator = Some(Arc::new(generator));
     }
     pub fn set_fallible_generator(
         &mut self,
@@ -855,7 +933,7 @@ impl World {
         + Sync
         + 'static,
     ) {
-        self.generator = Some(Box::new(FallibleGenerator::new(generator)));
+        self.generator = Some(Arc::new(FallibleGenerator::new(generator)));
     }
     pub fn clear_generator(&mut self) {
         self.generator = None;
@@ -867,6 +945,12 @@ impl World {
 
     pub fn register_block_placement_rule(&mut self, rule: impl BlockPlacementRule + 'static) {
         self.block_placement_rules.register(rule);
+    }
+
+    pub fn block_is_self_replaceable(&self, replacement: BlockReplacement) -> bool {
+        self.block_placement_rules
+            .rule(replacement.block())
+            .is_some_and(|rule| rule.is_self_replaceable(replacement))
     }
 
     pub fn explosion_supplier(&self) -> Option<&dyn ExplosionSupplier> {
@@ -965,10 +1049,18 @@ impl World {
         ))
     }
 
+    pub fn chunk_at_position(&self, position: impl Into<ChunkPosition>) -> Option<&Chunk> {
+        self.chunk(position.into())
+    }
+
     pub fn is_chunk_loaded(&self, position: ChunkPosition) -> bool {
         self.chunks
             .get(&position)
             .is_some_and(|chunk| chunk.is_loaded())
+    }
+
+    pub fn is_chunk_loaded_at(&self, position: impl Into<ChunkPosition>) -> bool {
+        self.is_chunk_loaded(position.into())
     }
 
     pub fn enable_auto_chunk_load(&mut self, enable: bool) {
@@ -981,6 +1073,10 @@ impl World {
 
     pub fn load_chunk(&mut self, position: ChunkPosition) -> Result<&mut Chunk> {
         self.load_chunk_with_event_flag(position, true)
+    }
+
+    pub fn load_chunk_at(&mut self, position: impl Into<ChunkPosition>) -> Result<&mut Chunk> {
+        self.load_chunk(position.into())
     }
 
     pub fn load_chunk_result(&mut self, position: ChunkPosition) -> Result<&mut Chunk> {
@@ -997,6 +1093,13 @@ impl World {
         self.load_chunk(position).ok()
     }
 
+    pub fn load_optional_chunk_at(
+        &mut self,
+        position: impl Into<ChunkPosition>,
+    ) -> Option<&mut Chunk> {
+        self.load_optional_chunk(position.into())
+    }
+
     pub fn load_optional_chunk_result(
         &mut self,
         position: ChunkPosition,
@@ -1008,6 +1111,325 @@ impl World {
             return Ok(None);
         }
         self.load_chunk(position).map(Some)
+    }
+
+    pub fn load_optional_chunks(
+        &mut self,
+        positions: &[ChunkPosition],
+    ) -> Result<Vec<ChunkPosition>> {
+        positions
+            .iter()
+            .copied()
+            .map(|position| {
+                self.load_optional_chunk_result(position)
+                    .map(|chunk| chunk.map(|_| position))
+            })
+            .collect::<Result<Vec<_>>>()
+            .map(|positions| positions.into_iter().flatten().collect())
+    }
+
+    pub fn teleport_player(
+        &mut self,
+        player_uuid: Uuid,
+        position: EntityPosition,
+        chunks: Option<Vec<i64>>,
+        flags: TeleportFlags,
+        should_confirm: bool,
+    ) -> Result<Option<crate::entity::EntityTeleport>> {
+        self.teleport_player_with_velocity(
+            player_uuid,
+            position,
+            Velocity(Vector3d {
+                x: 0.0,
+                y: 0.0,
+                z: 0.0,
+            }),
+            chunks,
+            flags.with(TeleportFlags::DELTA_COORD),
+            should_confirm,
+        )
+    }
+
+    pub fn teleport_player_with_velocity(
+        &mut self,
+        player_uuid: Uuid,
+        position: EntityPosition,
+        velocity: Velocity,
+        chunks: Option<Vec<i64>>,
+        flags: TeleportFlags,
+        should_confirm: bool,
+    ) -> Result<Option<crate::entity::EntityTeleport>> {
+        let Some(player) = self.player_by_uuid(player_uuid) else {
+            return Ok(None);
+        };
+        let entity_id = player.entity_id();
+        let previous_position = player.position();
+        let destination = player.teleport_destination(position, flags);
+        let chunk_transition = player.chunk_transition(
+            destination.x(),
+            destination.y(),
+            destination.z(),
+            self.view_distance,
+        );
+        self.dispatch_entity_teleport_event(entity_id, position, destination, flags);
+        self.load_teleport_chunks(previous_position, destination, chunks.as_deref())?;
+        let world_view_distance = self.view_distance;
+        let teleport = {
+            let player = self.player_by_uuid_mut(player_uuid).ok_or_else(|| {
+                Error::new(ErrorKind::NotFound, "Player was removed before teleport")
+            })?;
+            player.refresh_chunks_after_teleport(chunk_transition, world_view_distance)?;
+            player.teleport_with_velocity_chunks_and_flags(
+                position,
+                velocity,
+                chunks,
+                flags,
+                should_confirm,
+            )?
+        };
+        let entity_id = self
+            .player_by_uuid(player_uuid)
+            .map(Player::entity_id)
+            .ok_or_else(|| Error::new(ErrorKind::NotFound, "Player was removed after teleport"))?;
+        self.entity_tracker.move_entity(entity_id, destination);
+        self.refresh_passenger_positions(entity_id);
+        self.schedule_entity_visibility_refresh(entity_id);
+        let synchronization_packet = self
+            .entity_by_id_mut(entity_id)
+            .map(Entity::synchronize_position_packet)
+            .ok_or_else(|| Error::new(ErrorKind::NotFound, "Player was removed after teleport"))?;
+        self.send_packet_to_entity_viewers(entity_id, synchronization_packet)?;
+        Ok(Some(teleport))
+    }
+
+    pub fn teleport_entity(
+        &mut self,
+        entity_id: EntityId,
+        position: EntityPosition,
+        chunks: Option<Vec<i64>>,
+        flags: TeleportFlags,
+    ) -> Result<Option<EntityTeleport>> {
+        self.teleport_entity_with_velocity(
+            entity_id,
+            position,
+            Velocity(Vector3d {
+                x: 0.0,
+                y: 0.0,
+                z: 0.0,
+            }),
+            chunks,
+            flags.with(TeleportFlags::DELTA_COORD),
+        )
+    }
+
+    pub fn teleport_entity_with_velocity(
+        &mut self,
+        entity_id: EntityId,
+        position: EntityPosition,
+        velocity: Velocity,
+        chunks: Option<Vec<i64>>,
+        flags: TeleportFlags,
+    ) -> Result<Option<EntityTeleport>> {
+        let Some(entity) = self.entity_by_id(entity_id) else {
+            return Ok(None);
+        };
+        if let Entity::Player(player) = entity {
+            return self.teleport_player_with_velocity(
+                player.uuid,
+                position,
+                velocity,
+                chunks,
+                flags,
+                true,
+            );
+        }
+        let previous_position = entity.position();
+        let teleport = EntityTeleport::resolve(
+            previous_position,
+            entity.velocity(),
+            position,
+            velocity,
+            chunks,
+            flags,
+        );
+        self.dispatch_entity_teleport_event(entity_id, position, teleport.position(), flags);
+        self.load_teleport_chunks(previous_position, teleport.position(), teleport.chunks())?;
+        let entity = self
+            .entity_by_id_mut(entity_id)
+            .ok_or_else(|| Error::new(ErrorKind::NotFound, "Entity was removed before teleport"))?;
+        entity.set_position(teleport.position());
+        entity.set_velocity(teleport.velocity());
+        self.entity_tracker
+            .move_entity(entity_id, teleport.position());
+        self.refresh_passenger_positions(entity_id);
+        self.schedule_entity_visibility_refresh(entity_id);
+        let synchronization_packet = self
+            .entity_by_id_mut(entity_id)
+            .map(Entity::synchronize_position_packet)
+            .ok_or_else(|| Error::new(ErrorKind::NotFound, "Entity was removed after teleport"))?;
+        self.send_packet_to_entity_viewers(entity_id, synchronization_packet)?;
+        Ok(Some(teleport))
+    }
+
+    pub fn teleport_entity_future(
+        &mut self,
+        entity_id: EntityId,
+        position: EntityPosition,
+        chunks: Option<Vec<i64>>,
+        flags: TeleportFlags,
+        should_confirm: bool,
+    ) -> Result<Option<EntityTeleportTicket>> {
+        self.teleport_entity_future_with_velocity(
+            entity_id,
+            position,
+            Velocity(Vector3d {
+                x: 0.0,
+                y: 0.0,
+                z: 0.0,
+            }),
+            chunks,
+            flags.with(TeleportFlags::DELTA_COORD),
+            should_confirm,
+        )
+    }
+
+    pub fn teleport_entity_future_with_velocity(
+        &mut self,
+        entity_id: EntityId,
+        position: EntityPosition,
+        velocity: Velocity,
+        chunks: Option<Vec<i64>>,
+        flags: TeleportFlags,
+        should_confirm: bool,
+    ) -> Result<Option<EntityTeleportTicket>> {
+        let Some(entity) = self.entity_by_id(entity_id) else {
+            return Ok(None);
+        };
+        let previous_position = entity.position();
+        let teleport = EntityTeleport::resolve(
+            previous_position,
+            entity.velocity(),
+            position,
+            velocity,
+            chunks,
+            flags,
+        );
+        self.dispatch_entity_teleport_event(entity_id, position, teleport.position(), flags);
+        let chunk_load_tickets = self.begin_teleport_chunk_loads(
+            previous_position,
+            teleport.position(),
+            teleport.chunks(),
+        )?;
+        Ok(Some(EntityTeleportTicket {
+            entity_id,
+            teleport,
+            chunk_load_tickets,
+            should_confirm,
+            completed: false,
+        }))
+    }
+
+    pub fn set_entity_velocity(&mut self, entity_id: EntityId, velocity: Velocity) -> Result<bool> {
+        if self.entity_by_id(entity_id).is_none() {
+            return Ok(false);
+        }
+        let Some(velocity) = self.dispatch_entity_velocity_event(entity_id, velocity) else {
+            return Ok(false);
+        };
+        let entity = self.entity_by_id_mut(entity_id).ok_or_else(|| {
+            Error::other(format!(
+                "entity {entity_id:?} disappeared during velocity event dispatch"
+            ))
+        })?;
+        entity.set_velocity(velocity);
+        let velocity_packet = entity.velocity_packet();
+        self.send_packet_to_player_viewers_and_self(entity_id, velocity_packet)?;
+        Ok(true)
+    }
+
+    pub fn complete_entity_teleport(
+        &mut self,
+        ticket: &mut EntityTeleportTicket,
+    ) -> Result<Option<EntityTeleport>> {
+        if ticket.completed {
+            return Ok(Some(ticket.teleport.clone()));
+        }
+        for chunk_load_ticket in &ticket.chunk_load_tickets {
+            if !self.complete_chunk_load(chunk_load_ticket)? {
+                return Ok(None);
+            }
+        }
+        let entity_id = ticket.entity_id;
+        let teleport = ticket.teleport.clone();
+        let player_chunk_transition = match self.entity_by_id(entity_id) {
+            Some(Entity::Player(player)) => player.chunk_transition(
+                teleport.position().x(),
+                teleport.position().y(),
+                teleport.position().z(),
+                self.view_distance,
+            ),
+            Some(_) => None,
+            None => {
+                return Err(Error::new(
+                    ErrorKind::NotFound,
+                    "Entity was removed before teleport completion",
+                ));
+            }
+        };
+        if let Some(player_chunk_transition) = player_chunk_transition.as_ref() {
+            let player_address = self
+                .entity_by_id(entity_id)
+                .and_then(|entity| match entity {
+                    Entity::Player(player) => Some(player.address()),
+                    _ => None,
+                })
+                .ok_or_else(|| Error::new(ErrorKind::NotFound, "Player was removed"))?;
+            self.schedule_player_chunk_loads(player_address, &player_chunk_transition.arriving)?;
+        }
+        let world_view_distance = self.view_distance;
+        let entity = self.entity_by_id_mut(entity_id).ok_or_else(|| {
+            Error::new(
+                ErrorKind::NotFound,
+                "Entity was removed before teleport completion",
+            )
+        })?;
+        match entity {
+            Entity::Player(player) => {
+                player
+                    .refresh_chunks_after_teleport(player_chunk_transition, world_view_distance)?;
+                player.apply_teleport(&teleport, ticket.should_confirm)?;
+            }
+            _ => {
+                entity.set_position(teleport.position());
+                entity.set_velocity(teleport.velocity());
+            }
+        }
+        self.entity_tracker
+            .move_entity(entity_id, teleport.position());
+        self.refresh_passenger_positions(entity_id);
+        self.schedule_entity_visibility_refresh(entity_id);
+        let synchronization_packet = self
+            .entity_by_id_mut(entity_id)
+            .map(Entity::synchronize_position_packet)
+            .ok_or_else(|| Error::new(ErrorKind::NotFound, "Entity was removed after teleport"))?;
+        self.send_packet_to_entity_viewers(entity_id, synchronization_packet)?;
+        ticket.completed = true;
+        Ok(Some(teleport))
+    }
+
+    pub fn retrieve_chunk<'world>(
+        &'world self,
+        current_chunk: Option<&'world Chunk>,
+        position: impl Into<ChunkPosition>,
+    ) -> Option<&'world Chunk> {
+        let position = position.into();
+        let current_chunk_matches = current_chunk.is_some_and(|chunk| {
+            chunk.is_loaded() && chunk.x() == position.x && chunk.z() == position.z
+        });
+        if current_chunk_matches {
+            return current_chunk;
+        }
+        self.chunk(position)
     }
 
     pub fn load_chunk_future(&mut self, position: ChunkPosition) -> Result<ChunkLoadTicket> {
@@ -1024,39 +1446,56 @@ impl World {
         self.load_chunk_future_with_optional_flag(position, self.auto_chunk_load)
     }
 
-    pub fn complete_chunk_load(&mut self, ticket: ChunkLoadTicket) -> Result<bool> {
-        if self.completed_chunk_loads.contains(&ticket.id) {
+    pub fn complete_chunk_load(&mut self, ticket: &ChunkLoadTicket) -> Result<bool> {
+        if ticket.is_completed() {
             return Ok(true);
         }
         if self.chunks.contains_key(&ticket.position) {
-            self.completed_chunk_loads.insert(ticket.id);
+            ticket.complete();
             self.async_chunk_loads.remove(&ticket.position);
+            self.queue_waiting_players_for_loaded_chunk(ticket.position);
             return Ok(true);
         }
-        let Some(async_load) = self.async_chunk_load_handles.get(&ticket.id) else {
+        self.receive_completed_chunk_loads();
+        let Some((_, prepared_chunk_load)) = self.prepared_chunk_loads.remove(&ticket.id) else {
             return Ok(false);
         };
-        if !async_load.handle.is_finished() {
-            return Ok(false);
-        }
-        let Some(async_load) = self.async_chunk_load_handles.remove(&ticket.id) else {
-            return Ok(false);
-        };
-        let load_result = async_load
-            .handle
-            .join()
-            .map_err(|_| Error::new(ErrorKind::Other, "Chunk load task panicked"))?;
         self.async_chunk_loads.remove(&ticket.position);
-        let mut chunk = match load_result? {
-            Some(chunk) => chunk,
-            None => self.chunk_supplier.create_chunk(ticket.position),
+        let PreparedChunkLoad {
+            mut chunk,
+            generation_forks,
+            requires_generation_completion,
+        } = match prepared_chunk_load {
+            Ok(prepared_chunk_load) => prepared_chunk_load,
+            Err(error) => {
+                self.player_chunk_load_waiters.remove(&ticket.position);
+                return Err(error);
+            }
         };
         chunk.set_world(self.uuid);
+        generation_forks
+            .into_iter()
+            .for_each(|fork| self.store_generation_fork(fork));
         self.chunks.insert(ticket.position, chunk);
         self.entity_tracker.create_chunk_partition(ticket.position);
-        self.generate_chunk_result(ticket.position)?;
+        if requires_generation_completion {
+            let Some(mut chunk) = self.chunks.remove(&ticket.position) else {
+                return Err(Error::new(
+                    ErrorKind::NotFound,
+                    "Prepared chunk disappeared before generation completion",
+                ));
+            };
+            self.apply_pending_generation(&mut chunk);
+            chunk.on_generate();
+            self.chunks.insert(ticket.position, chunk);
+            self.invalidate_generated_chunk_lighting(ticket.position);
+        }
+        if let Some(chunk) = self.chunks.get_mut(&ticket.position) {
+            chunk.on_load();
+        }
         self.dispatch_instance_chunk_load_event(ticket.position);
-        self.completed_chunk_loads.insert(ticket.id);
+        ticket.complete();
+        self.queue_waiting_players_for_loaded_chunk(ticket.position);
         Ok(true)
     }
 
@@ -1100,7 +1539,8 @@ impl World {
         })
     }
 
-    pub fn unload_chunk(&mut self, position: ChunkPosition) -> Result<bool> {
+    pub fn unload_chunk(&mut self, chunk: impl Into<ChunkPosition>) -> Result<bool> {
+        let position = chunk.into();
         if !self.chunks.contains_key(&position) {
             return Ok(false);
         }
@@ -1116,12 +1556,34 @@ impl World {
         Ok(true)
     }
 
-    pub fn tick_chunks(&self, time: u64) -> usize {
-        self.chunks
-            .values()
-            .filter(|chunk| chunk.is_loaded())
-            .map(|chunk| chunk.tick(self.uuid, &self.block_handlers, time))
-            .sum()
+    pub fn tick_chunks(&mut self, time: u64) -> usize {
+        if self.chunks.values().any(Chunk::lighting_update_is_due) {
+            WorldLighting::relight(
+                &mut self.chunks,
+                self.cached_dimension_type.has_skylight,
+                None,
+            );
+        }
+        let mut lighting_packets = Vec::new();
+        let ticked_block_count = self
+            .chunks
+            .iter_mut()
+            .filter(|(_, chunk)| chunk.is_loaded())
+            .map(|(position, chunk)| {
+                let light_data = chunk.tick_lighting();
+                if let Some(light_data) = light_data {
+                    lighting_packets.push((
+                        *position,
+                        LightUpdatePacket::new(position.x, position.z, light_data),
+                    ));
+                }
+                chunk.tick(self.uuid, &self.block_handlers, time)
+            })
+            .sum();
+        lighting_packets.into_iter().for_each(|(position, packet)| {
+            let _ = self.dispatch_packet_to_chunk_viewers(position, packet);
+        });
+        ticked_block_count
     }
 
     fn dispatch_instance_chunk_load_event(&mut self, position: ChunkPosition) {
@@ -1214,6 +1676,62 @@ impl World {
         self.event_node = event_node;
     }
 
+    pub(crate) fn dispatch_add_entity_to_instance_event(&mut self, entity: &mut Entity) -> bool {
+        let Some(server_ptr) = self.event_dispatcher else {
+            return false;
+        };
+        let server = unsafe { &mut *(server_ptr as *mut crate::server::MinecraftServer) };
+        let world = self as *mut World;
+        let entity = entity as *mut Entity;
+        let mut event = AddEntityToInstanceEvent::new(world, entity);
+        event.dispatch(server);
+        event.is_cancelled()
+    }
+
+    fn dispatch_entity_spawn_event(&mut self, entity_id: EntityId) {
+        let Some(server_ptr) = self.event_dispatcher else {
+            return;
+        };
+        let Some(entity) = self
+            .entity_by_id_mut(entity_id)
+            .map(|entity| entity as *mut Entity)
+        else {
+            return;
+        };
+        let server = unsafe { &mut *(server_ptr as *mut crate::server::MinecraftServer) };
+        let world = self as *mut World;
+        EntitySpawnEvent::new(entity, world).dispatch(server);
+    }
+
+    fn dispatch_entity_despawn_event(&mut self, entity_id: EntityId) {
+        let Some(server_ptr) = self.event_dispatcher else {
+            return;
+        };
+        let Some(entity) = self
+            .entity_by_id_mut(entity_id)
+            .map(|entity| entity as *mut Entity)
+        else {
+            return;
+        };
+        let server = unsafe { &mut *(server_ptr as *mut crate::server::MinecraftServer) };
+        EntityDespawnEvent::new(entity).dispatch(server);
+    }
+
+    fn dispatch_remove_entity_from_instance_event(&mut self, entity_id: EntityId) {
+        let Some(server_ptr) = self.event_dispatcher else {
+            return;
+        };
+        let Some(entity) = self
+            .entity_by_id_mut(entity_id)
+            .map(|entity| entity as *mut Entity)
+        else {
+            return;
+        };
+        let server = unsafe { &mut *(server_ptr as *mut crate::server::MinecraftServer) };
+        let world = self as *mut World;
+        RemoveEntityFromInstanceEvent::new(world, entity).dispatch(server);
+    }
+
     fn send_chunk_unload_to_players(&mut self, position: ChunkPosition) -> Result<()> {
         let player_chunk = PlayerChunk {
             x: position.x,
@@ -1248,14 +1766,11 @@ impl World {
             .map(Entity::entity_id)
             .collect::<Vec<_>>();
         removed_entity_ids.into_iter().for_each(|entity_id| {
-            self.entity_tracker.unregister(entity_id);
+            self.take_entity(entity_id);
         });
-        self.entities
-            .retain(|entity| chunk_position_for_entity_position(entity.position()) != position);
     }
     pub fn regenerate_chunk(&mut self, position: ChunkPosition) {
         if let Some(chunk) = self.chunks.get_mut(&position) {
-            chunk.mark_not_generated();
             chunk.clear_invalidated();
         }
         self.generate_chunk(position);
@@ -1265,23 +1780,68 @@ impl World {
     }
 
     pub fn generate_chunk_result(&mut self, position: ChunkPosition) -> Result<bool> {
+        self.load_chunk(position)?;
+        let Some(generator) = self.generator.take() else {
+            return Ok(self.chunks.contains_key(&position));
+        };
+        let generation_result =
+            self.generate_loaded_chunk_with_result(position, generator.as_ref());
+        self.generator = Some(generator);
+        generation_result
+    }
+
+    pub fn generate_chunk_with_result(
+        &mut self,
+        position: ChunkPosition,
+        generator: &(dyn Generator + Send + Sync),
+    ) -> Result<bool> {
+        self.load_chunk(position)?;
+        self.generate_loaded_chunk_with_result(position, generator)
+    }
+
+    fn generate_loaded_chunk_with_result(
+        &mut self,
+        position: ChunkPosition,
+        generator: &(dyn Generator + Send + Sync),
+    ) -> Result<bool> {
         let Some(mut chunk) = self.chunks.remove(&position) else {
             return Ok(false);
         };
-        let generation_result = self.apply_generator(&mut chunk);
+        let generation_result = self.apply_generation(&mut chunk, generator);
         self.chunks.insert(position, chunk);
-        generation_result.map(|_| true)
+        generation_result.map(|_| {
+            self.invalidate_generated_chunk_lighting(position);
+            self.queue_chunk_for_viewers(position);
+            true
+        })
     }
 
-    pub(crate) fn add_entity(&mut self, mut entity: Entity) {
+    pub fn add_entity(&mut self, mut entity: Entity) -> bool {
+        if self.dispatch_add_entity_to_instance_event(&mut entity) {
+            return false;
+        }
+        self.add_entity_after_instance_event(entity);
+        true
+    }
+
+    pub(crate) fn add_entity_after_instance_event(&mut self, mut entity: Entity) {
         entity.set_world(self.uuid);
         self.entity_tracker.register(&entity);
         let entity_id = entity.entity_id();
         self.entities.push(entity);
         self.schedule_entity_visibility_refresh(entity_id);
+        self.dispatch_entity_spawn_event(entity_id);
     }
 
     pub(crate) fn take_entity(&mut self, entity_id: EntityId) -> Option<Entity> {
+        self.dispatch_entity_despawn_event(entity_id);
+        self.take_entity_from_instance(entity_id)
+    }
+
+    pub(crate) fn take_entity_from_instance(&mut self, entity_id: EntityId) -> Option<Entity> {
+        self.dispatch_remove_entity_from_instance_event(entity_id);
+        self.detach_entity_passenger_relations(entity_id);
+        self.detach_leashed_entities(entity_id);
         let _ = self.hide_entity_from_all_viewers(entity_id);
         let entity_index = self
             .entities
@@ -1294,10 +1854,15 @@ impl World {
     pub(crate) fn take_player_by_uuid(&mut self, player_uuid: Uuid) -> Option<Player> {
         let entity_index = self.entities.iter().position(|entity| match entity {
             Entity::Player(player) => player.uuid() == player_uuid,
+            Entity::Creature(_) => false,
+            Entity::ExperienceOrb(_) => false,
             Entity::Generic(_) => false,
             Entity::Item(_) => false,
+            Entity::Projectile(_) => false,
         })?;
         let player_id = self.entities[entity_index].entity_id();
+        self.detach_entity_passenger_relations(player_id);
+        self.detach_leashed_entities(player_id);
         let _ = self.hide_entity_from_all_viewers(player_id);
         let Entity::Player(player) = self.entities.remove(entity_index) else {
             return None;
@@ -1325,6 +1890,16 @@ impl World {
             .find(|entity| entity.entity_id() == entity_id)
     }
 
+    pub fn creature_by_id_mut(
+        &mut self,
+        entity_id: EntityId,
+    ) -> Option<&mut crate::entity::CreatureEntity> {
+        self.entities.iter_mut().find_map(|entity| match entity {
+            Entity::Creature(creature) if creature.entity_id() == entity_id => Some(creature),
+            _ => None,
+        })
+    }
+
     pub(crate) fn entity_by_id_mut(&mut self, entity_id: EntityId) -> Option<&mut Entity> {
         self.entities
             .iter_mut()
@@ -1337,11 +1912,265 @@ impl World {
             .find(|entity| entity.uuid() == entity_uuid)
     }
 
+    pub fn add_entity_viewer(
+        &mut self,
+        viewed_entity_id: EntityId,
+        viewer_player_id: EntityId,
+    ) -> Result<bool> {
+        if viewed_entity_id == viewer_player_id {
+            return Ok(false);
+        }
+        let Some(viewed_entity) = self.entity_by_id(viewed_entity_id) else {
+            return Err(Error::new(
+                ErrorKind::InvalidInput,
+                "Entity must be in this world before adding viewers",
+            ));
+        };
+        if viewed_entity.world() != Some(self.uuid) {
+            return Err(Error::new(
+                ErrorKind::InvalidInput,
+                "Entity must be active in this world before adding viewers",
+            ));
+        }
+        if !matches!(self.entity_by_id(viewer_player_id), Some(Entity::Player(_))) {
+            return Err(Error::new(
+                ErrorKind::NotFound,
+                "Viewer player was not found in this world",
+            ));
+        }
+        let Some(viewed_entity) = self.entity_by_id_mut(viewed_entity_id) else {
+            return Ok(false);
+        };
+        if !viewed_entity.view_mut().manual_add(viewer_player_id) {
+            return Ok(false);
+        }
+        self.send_single_entity_spawn_to_player(viewed_entity_id, viewer_player_id)?;
+        Ok(true)
+    }
+
+    pub fn remove_entity_viewer(
+        &mut self,
+        viewed_entity_id: EntityId,
+        viewer_player_id: EntityId,
+    ) -> Result<bool> {
+        if viewed_entity_id == viewer_player_id {
+            return Ok(false);
+        }
+        let Some(viewed_entity) = self.entity_by_id(viewed_entity_id) else {
+            return Ok(false);
+        };
+        if !viewed_entity
+            .view()
+            .manual_viewers()
+            .contains(&viewer_player_id)
+        {
+            return Ok(false);
+        }
+        if !matches!(self.entity_by_id(viewer_player_id), Some(Entity::Player(_))) {
+            return Err(Error::new(
+                ErrorKind::NotFound,
+                "Viewer player was not found in this world",
+            ));
+        }
+        self.hide_single_visibility_pair(viewed_entity_id, viewer_player_id)?;
+        Ok(true)
+    }
+
+    pub fn add_passenger(&mut self, vehicle_id: EntityId, passenger_id: EntityId) -> Result<bool> {
+        if vehicle_id == passenger_id {
+            return Ok(false);
+        }
+        let Some(vehicle) = self.entity_by_id(vehicle_id) else {
+            return Ok(false);
+        };
+        if vehicle.vehicle() == Some(passenger_id) {
+            return Ok(false);
+        }
+        let Some(passenger) = self.entity_by_id(passenger_id) else {
+            return Ok(false);
+        };
+        if let Some(previous_vehicle_id) = passenger.vehicle() {
+            self.remove_passenger(previous_vehicle_id, passenger_id)?;
+        }
+        let Some(vehicle_index) = self
+            .entities
+            .iter()
+            .position(|entity| entity.entity_id() == vehicle_id)
+        else {
+            return Ok(false);
+        };
+        let Some(passenger_index) = self
+            .entities
+            .iter()
+            .position(|entity| entity.entity_id() == passenger_id)
+        else {
+            return Ok(false);
+        };
+        let passenger_position =
+            self.entities[vehicle_index].passenger_position(&self.entities[passenger_index]);
+        let passenger_packet = {
+            let (vehicle, passenger) =
+                distinct_entities_mut(&mut self.entities, vehicle_index, passenger_index);
+            vehicle.add_passenger(passenger_id);
+            passenger.set_vehicle(vehicle_id);
+            passenger.set_position(passenger_position);
+            vehicle.passenger_packet()
+        };
+        self.entity_tracker
+            .move_entity(passenger_id, passenger_position);
+        self.schedule_entity_visibility_refresh(passenger_id);
+        self.refresh_passenger_positions(passenger_id);
+        self.send_packet_to_player_viewers_and_self(vehicle_id, passenger_packet)?;
+        if let Some(position_sync_packet) = self
+            .entity_by_id_mut(passenger_id)
+            .map(Entity::synchronize_position_packet)
+        {
+            self.send_packet_to_player_viewers_and_self(passenger_id, position_sync_packet)?;
+        }
+        Ok(true)
+    }
+
+    pub fn remove_passenger(
+        &mut self,
+        vehicle_id: EntityId,
+        passenger_id: EntityId,
+    ) -> Result<bool> {
+        if vehicle_id == passenger_id {
+            return Ok(false);
+        }
+        let Some(vehicle_index) = self
+            .entities
+            .iter()
+            .position(|entity| entity.entity_id() == vehicle_id)
+        else {
+            return Ok(false);
+        };
+        let passenger_packet = {
+            let vehicle = &mut self.entities[vehicle_index];
+            if !vehicle.remove_passenger(passenger_id) {
+                return Ok(false);
+            }
+            vehicle.passenger_packet()
+        };
+        if let Some(passenger) = self.entity_by_id_mut(passenger_id) {
+            passenger.clear_vehicle();
+        }
+        self.send_packet_to_player_viewers_and_self(vehicle_id, passenger_packet)?;
+        if let Some(position_sync_packet) = self
+            .entity_by_id_mut(passenger_id)
+            .map(Entity::synchronize_position_packet)
+        {
+            self.send_packet_to_player_viewers_and_self(passenger_id, position_sync_packet)?;
+        }
+        Ok(true)
+    }
+
+    pub fn set_leash_holder(
+        &mut self,
+        entity_id: EntityId,
+        leash_holder_id: Option<EntityId>,
+    ) -> Result<bool> {
+        let Some(previous_leash_holder_id) = self.entity_by_id(entity_id).map(Entity::leash_holder)
+        else {
+            return Ok(false);
+        };
+        if leash_holder_id.is_some_and(|holder_id| self.entity_by_id(holder_id).is_none()) {
+            return Ok(false);
+        }
+        if let Some(previous_leash_holder_id) = previous_leash_holder_id {
+            if let Some(previous_leash_holder) = self.entity_by_id_mut(previous_leash_holder_id) {
+                previous_leash_holder.remove_leashed_entity(entity_id);
+            }
+        }
+        if let Some(leash_holder_id) = leash_holder_id {
+            if let Some(leash_holder) = self.entity_by_id_mut(leash_holder_id) {
+                leash_holder.add_leashed_entity(entity_id);
+            }
+        }
+        let Some(entity) = self.entity_by_id_mut(entity_id) else {
+            return Ok(false);
+        };
+        entity.set_leash_holder(leash_holder_id);
+        let attach_entity_packet = entity.attach_entity_packet();
+        self.send_packet_to_player_viewers_and_self(entity_id, attach_entity_packet)?;
+        Ok(true)
+    }
+
+    fn detach_entity_passenger_relations(&mut self, entity_id: EntityId) {
+        let Some(entity) = self.entity_by_id(entity_id) else {
+            return;
+        };
+        let passenger_ids = entity.passengers().iter().copied().collect::<Vec<_>>();
+        let vehicle_id = entity.vehicle();
+        passenger_ids.into_iter().for_each(|passenger_id| {
+            let _ = self.remove_passenger(entity_id, passenger_id);
+        });
+        if let Some(vehicle_id) = vehicle_id {
+            let _ = self.remove_passenger(vehicle_id, entity_id);
+        }
+    }
+
+    fn detach_leashed_entities(&mut self, entity_id: EntityId) {
+        let leashed_entity_ids = self
+            .entity_by_id(entity_id)
+            .map(|entity| {
+                entity
+                    .leashed_entities()
+                    .iter()
+                    .copied()
+                    .collect::<Vec<_>>()
+            })
+            .unwrap_or_default();
+        leashed_entity_ids
+            .into_iter()
+            .for_each(|leashed_entity_id| {
+                let _ = self.set_leash_holder(leashed_entity_id, None);
+            });
+    }
+
+    fn refresh_passenger_positions(&mut self, vehicle_id: EntityId) {
+        let mut pending_vehicle_ids = vec![vehicle_id];
+        let mut refreshed_vehicle_ids = std::collections::BTreeSet::new();
+        while let Some(vehicle_id) = pending_vehicle_ids.pop() {
+            if !refreshed_vehicle_ids.insert(vehicle_id) {
+                continue;
+            }
+            let passenger_positions = self
+                .entity_by_id(vehicle_id)
+                .map(|vehicle| {
+                    vehicle
+                        .passengers()
+                        .iter()
+                        .filter_map(|passenger_id| {
+                            self.entity_by_id(*passenger_id).map(|passenger| {
+                                (*passenger_id, vehicle.passenger_position(passenger))
+                            })
+                        })
+                        .collect::<Vec<_>>()
+                })
+                .unwrap_or_default();
+            passenger_positions
+                .into_iter()
+                .for_each(|(passenger_id, passenger_position)| {
+                    if let Some(passenger) = self.entity_by_id_mut(passenger_id) {
+                        passenger.set_position(passenger_position);
+                    }
+                    self.entity_tracker
+                        .move_entity(passenger_id, passenger_position);
+                    self.schedule_entity_visibility_refresh(passenger_id);
+                    pending_vehicle_ids.push(passenger_id);
+                });
+        }
+    }
+
     pub fn players(&self) -> impl Iterator<Item = &Player> {
         self.entities.iter().filter_map(|entity| match entity {
             Entity::Player(player) => Some(player),
+            Entity::Creature(_) => None,
+            Entity::ExperienceOrb(_) => None,
             Entity::Generic(_) => None,
             Entity::Item(_) => None,
+            Entity::Projectile(_) => None,
         })
     }
 
@@ -1371,12 +2200,12 @@ impl World {
             .collect()
     }
 
-    pub fn experience_orbs(&self) -> Vec<&GenericEntity> {
+    pub fn experience_orbs(&self) -> Vec<&ExperienceOrb> {
         self.entity_tracker
             .entities(EntityTrackerTarget::ExperienceOrbs)
             .into_iter()
             .filter_map(|entity_id| match self.entity_by_id(entity_id) {
-                Some(Entity::Generic(entity)) => Some(entity),
+                Some(Entity::ExperienceOrb(entity)) => Some(entity),
                 _ => None,
             })
             .collect()
@@ -1413,10 +2242,13 @@ impl World {
 
     pub(crate) fn player_by_uuid_mut(&mut self, player_uuid: Uuid) -> Option<&mut Player> {
         self.entities.iter_mut().find_map(|entity| match entity {
+            Entity::Creature(_) => None,
+            Entity::ExperienceOrb(_) => None,
             Entity::Generic(_) => None,
             Entity::Item(_) => None,
             Entity::Player(player) if player.uuid() == player_uuid => Some(player),
             Entity::Player(_) => None,
+            Entity::Projectile(_) => None,
         })
     }
 
@@ -1428,9 +2260,13 @@ impl World {
     ) -> Result<EntityId> {
         let mut entity = GenericEntity::new(entity_type);
         entity.set_position(position);
-        apply_entity_nbt(&mut entity, nbt);
+        if let Some(nbt) = nbt {
+            entity.apply_summon_nbt(nbt);
+        }
         let entity_id = entity.entity_id();
-        self.add_entity(Entity::Generic(entity));
+        if !self.add_entity(Entity::Generic(entity)) {
+            return Err(Error::new(ErrorKind::Interrupted, "Entity add cancelled."));
+        }
         Ok(entity_id)
     }
 
@@ -1442,8 +2278,177 @@ impl World {
         let mut item_entity = ItemEntity::new(item_stack);
         item_entity.spawn(position);
         let entity_id = item_entity.entity_id();
-        self.add_entity(Entity::Item(item_entity));
+        if !self.add_entity(Entity::Item(item_entity)) {
+            return Err(Error::new(ErrorKind::Interrupted, "Entity add cancelled."));
+        }
         Ok(entity_id)
+    }
+
+    pub fn spawn_experience_orb(
+        &mut self,
+        experience_count: i16,
+        position: EntityPosition,
+    ) -> Result<EntityId> {
+        let mut experience_orb = ExperienceOrb::new(experience_count);
+        experience_orb.set_position(position);
+        let entity_id = experience_orb.entity_id();
+        if !self.add_entity(Entity::ExperienceOrb(experience_orb)) {
+            return Err(Error::new(ErrorKind::Interrupted, "Entity add cancelled."));
+        }
+        Ok(entity_id)
+    }
+
+    pub fn spawn_projectile(
+        &mut self,
+        shooter_id: Option<EntityId>,
+        entity_type: EntityType,
+        position: EntityPosition,
+    ) -> Result<EntityId> {
+        let mut projectile = crate::entity::ProjectileEntity::new(shooter_id, entity_type);
+        projectile.set_position(position);
+        let projectile_id = projectile.entity_id();
+        if !self.add_entity(Entity::Projectile(projectile)) {
+            return Err(Error::new(ErrorKind::Interrupted, "Entity add cancelled."));
+        }
+        Ok(projectile_id)
+    }
+
+    pub fn shoot_projectile(
+        &mut self,
+        projectile_id: EntityId,
+        target: EntityPosition,
+        power: f64,
+        spread: f64,
+    ) -> bool {
+        let Some(shooter_id) = self
+            .entity_by_id(projectile_id)
+            .and_then(|entity| match entity {
+                Entity::Projectile(projectile) => projectile.shooter(),
+                _ => None,
+            })
+        else {
+            return false;
+        };
+        let Some((shooter_position, shooter_eye_height)) = self
+            .entity_by_id(shooter_id)
+            .map(|shooter| (shooter.position(), shooter.eye_height()))
+        else {
+            return false;
+        };
+        let Some(shooter) = self
+            .entity_by_id_mut(shooter_id)
+            .map(|entity| entity as *mut Entity)
+        else {
+            return false;
+        };
+        let Some(projectile_entity) = self
+            .entity_by_id_mut(projectile_id)
+            .map(|entity| entity as *mut Entity)
+        else {
+            return false;
+        };
+        let mut event = EntityShootEvent::new(shooter, projectile_entity, target, power, spread);
+        self.dispatch_entity_shoot_event(&mut event);
+        let Some(Entity::Projectile(projectile)) = self.entity_by_id_mut(projectile_id) else {
+            return false;
+        };
+        if event.is_cancelled() {
+            projectile.remove();
+            return false;
+        }
+        projectile.shoot_from(
+            shooter_position.offset(0.0, shooter_eye_height, 0.0),
+            event.target(),
+            event.power(),
+            event.spread(),
+        );
+        true
+    }
+
+    pub fn set_experience_orb_count(
+        &mut self,
+        entity_id: EntityId,
+        experience_count: i16,
+    ) -> Result<bool> {
+        let viewer_ids = match self.entity_by_id(entity_id) {
+            Some(Entity::ExperienceOrb(experience_orb)) => experience_orb.viewers(),
+            _ => return Ok(false),
+        };
+        viewer_ids
+            .iter()
+            .try_for_each(|viewer_id| self.send_entity_remove_to_player(entity_id, *viewer_id))?;
+        let Some(Entity::ExperienceOrb(experience_orb)) = self.entity_by_id_mut(entity_id) else {
+            return Ok(false);
+        };
+        experience_orb.set_experience_count(experience_count);
+        viewer_ids.into_iter().try_for_each(|viewer_id| {
+            self.send_single_entity_spawn_to_player(entity_id, viewer_id)
+        })?;
+        Ok(true)
+    }
+
+    pub fn switch_entity_type(
+        &mut self,
+        entity_id: EntityId,
+        entity_type: EntityType,
+    ) -> Result<bool> {
+        let Some(viewer_ids) = self.entity_by_id(entity_id).map(Entity::viewers) else {
+            return Ok(false);
+        };
+        viewer_ids.iter().try_for_each(|viewer_id| {
+            self.send_entity_switch_remove_to_player(entity_id, *viewer_id)
+        })?;
+        let Some(entity) = self.entity_by_id_mut(entity_id) else {
+            return Ok(false);
+        };
+        if !entity.switch_entity_type(entity_type) {
+            return Ok(false);
+        }
+        viewer_ids.into_iter().try_for_each(|viewer_id| {
+            self.send_single_entity_spawn_to_player(entity_id, viewer_id)
+        })?;
+        Ok(true)
+    }
+
+    pub fn set_entity_position(&mut self, entity_id: EntityId, position: EntityPosition) -> bool {
+        let Some(previous_position) = self.entity_by_id(entity_id).map(Entity::position) else {
+            return false;
+        };
+        let Some(entity) = self.entity_by_id_mut(entity_id) else {
+            return false;
+        };
+        entity.set_position(position);
+        let current_position = entity.position();
+        self.entity_tracker.move_entity(entity_id, current_position);
+        self.refresh_passenger_positions(entity_id);
+        if chunk_position_for_entity_position(previous_position)
+            == chunk_position_for_entity_position(current_position)
+        {
+            return true;
+        }
+        self.schedule_entity_visibility_refresh(entity_id);
+        true
+    }
+
+    pub fn steer_boat(
+        &mut self,
+        vehicle_id: EntityId,
+        left_paddle_turning: bool,
+        right_paddle_turning: bool,
+    ) -> bool {
+        let Some(Entity::Generic(vehicle)) = self.entity_by_id_mut(vehicle_id) else {
+            return false;
+        };
+        if !vehicle.entity_type().path().contains("boat") {
+            return false;
+        }
+        if vehicle.is_left_paddle_turning() != left_paddle_turning {
+            vehicle.set_left_paddle_turning(left_paddle_turning);
+        }
+        if vehicle.is_right_paddle_turning() != right_paddle_turning {
+            vehicle.set_right_paddle_turning(right_paddle_turning);
+        }
+        true
     }
 
     pub fn move_generic_entity(
@@ -1458,6 +2463,7 @@ impl World {
             return Ok(false);
         };
         self.entity_tracker.move_entity(entity_id, current_position);
+        self.refresh_passenger_positions(entity_id);
         if chunk_position_for_entity_position(previous_position)
             != chunk_position_for_entity_position(current_position)
         {
@@ -1490,6 +2496,58 @@ impl World {
         };
         self.send_packet_to_entity_viewers(entity_id, animation_packet)?;
         Ok(true)
+    }
+
+    pub fn creature_attack_entity(
+        &mut self,
+        creature_id: EntityId,
+        target_id: EntityId,
+        should_swing_main_hand: bool,
+    ) -> Result<bool> {
+        if !self.creature_can_attack_entity(creature_id, target_id) {
+            return Ok(false);
+        }
+        if should_swing_main_hand {
+            let Some(animation_packet) = self.creature_main_hand_animation(creature_id) else {
+                return Ok(false);
+            };
+            self.send_packet_to_entity_viewers(creature_id, animation_packet)?;
+        }
+        self.dispatch_entity_attack_event(creature_id, target_id);
+        Ok(true)
+    }
+
+    fn apply_creature_ai_action(&mut self, action: CreatureAiAction) {
+        match action {
+            CreatureAiAction::Attack {
+                source,
+                target,
+                should_swing_main_hand,
+            } => {
+                let _ = self.creature_attack_entity(source, target, should_swing_main_hand);
+            }
+            CreatureAiAction::Shoot {
+                shooter,
+                mut projectile,
+                target,
+                power,
+                spread,
+            } => {
+                let Some((shooter_position, shooter_eye_height)) = self
+                    .entity_by_id(shooter)
+                    .map(|entity| (entity.position(), entity.eye_height()))
+                else {
+                    return;
+                };
+                projectile.set_shooter(Some(shooter));
+                projectile.set_position(shooter_position.offset(0.0, shooter_eye_height, 0.0));
+                let projectile_id = projectile.entity_id();
+                if !self.add_entity(Entity::Projectile(projectile)) {
+                    return;
+                }
+                self.shoot_projectile(projectile_id, target, power, spread);
+            }
+        }
     }
 
     fn move_generic_entity_state(
@@ -1538,6 +2596,26 @@ impl World {
             return None;
         };
         Some(entity.swing_main_hand())
+    }
+
+    fn creature_main_hand_animation(
+        &self,
+        entity_id: EntityId,
+    ) -> Option<spinel_core::network::clientbound::play::entity_animation::EntityAnimationPacket>
+    {
+        let Some(Entity::Creature(entity)) = self.entity_by_id(entity_id) else {
+            return None;
+        };
+        Some(entity.swing_main_hand())
+    }
+
+    fn creature_can_attack_entity(&self, creature_id: EntityId, target_id: EntityId) -> bool {
+        if creature_id == target_id {
+            return false;
+        }
+        let source_is_creature =
+            matches!(self.entity_by_id(creature_id), Some(Entity::Creature(_)));
+        source_is_creature && self.entity_by_id(target_id).is_some()
     }
 
     pub(crate) fn move_generic_entities_for_player(
@@ -1627,9 +2705,12 @@ impl World {
             self.entity_tracker.unregister(*entity_id);
         });
         self.entities.retain(|entity| match entity {
+            Entity::Creature(entity) => !entity.is_removed(),
+            Entity::ExperienceOrb(entity) => !entity.is_removed(),
             Entity::Generic(entity) => !entity.is_removed(),
             Entity::Item(entity) => !entity.is_removed(),
             Entity::Player(_) => true,
+            Entity::Projectile(entity) => !entity.is_removed(),
         });
         Ok(removed_entity_count)
     }
@@ -1645,8 +2726,58 @@ impl World {
             Some(player) => player.spawn_chunks(self.view_distance),
             None => Vec::new(),
         };
-        self.schedule_player_chunk_loads(client.addr, &chunks);
+        let chunk_load_tickets = chunks
+            .iter()
+            .copied()
+            .map(ChunkPosition::from)
+            .map(|position| self.load_optional_chunk_future(position))
+            .collect::<Result<Vec<_>>>()?
+            .into_iter()
+            .flatten()
+            .collect::<Vec<_>>();
+        let all_chunks_are_loaded = chunks
+            .iter()
+            .copied()
+            .map(ChunkPosition::from)
+            .all(|position| self.is_chunk_loaded(position));
+        if all_chunks_are_loaded {
+            return self.finish_player_entry(client, ticks_per_second, registries, chunks);
+        }
+        self.pending_player_entries.insert(
+            client.addr,
+            PendingPlayerEntry {
+                client: client as *mut Client as usize,
+                ticks_per_second,
+                chunks,
+                chunk_load_tickets,
+            },
+        );
+        Ok(())
+    }
+
+    fn finish_player_entry(
+        &mut self,
+        client: &mut Client,
+        ticks_per_second: u32,
+        registries: &Registries,
+        chunks: Vec<PlayerChunk>,
+    ) -> Result<()> {
+        let dimension_type_id = registries
+            .dynamic_registry_id(
+                &spinel_registry::DIMENSION_TYPE_REGISTRY,
+                self.dimension_type.key(),
+            )
+            .ok_or_else(|| {
+                Error::new(
+                    ErrorKind::NotFound,
+                    format!(
+                        "Dimension type {} is not registered",
+                        self.dimension_type.key()
+                    ),
+                )
+            })?;
         let time_packet = self.time_packet();
+        let weather = self.weather;
         let world_name = self.name.clone();
         let world_uuid = self.uuid;
         let world_border_packet = self
@@ -1668,11 +2799,13 @@ impl World {
             player.unsafe_init_with_chunk_positions(
                 client,
                 ticks_per_second,
+                dimension_type_id,
                 world_name.clone(),
                 chunks,
+                world_border_packet,
                 time_packet,
+                weather,
             )?;
-            world_border_packet.dispatch(client)?;
             boss_bar_packets
                 .into_iter()
                 .try_for_each(|packet| packet.dispatch(client))?;
@@ -1686,7 +2819,7 @@ impl World {
         self.entity_tracker.move_entity(player_id, player_position);
         self.refresh_visibility_for_entity(player_id)?;
         self.send_pending_chunks_for_client(client, registries)?;
-        dispatch_player_spawn_event(player, world_name, first_spawn, client);
+        dispatch_player_spawn_event(player, self as *mut World, first_spawn, client);
         self.synchronize_player_visibility(client)
     }
     pub(crate) fn move_player(
@@ -1711,7 +2844,14 @@ impl World {
             || player_coordinate_is_too_large(y)
             || player_coordinate_is_too_large(z)
         {
-            return player.kick(Component::text("You moved too far away!"));
+            let Some(client) = player.client_mut() else {
+                return Ok(());
+            };
+            let Some(server_ptr) = client.server_ptr else {
+                return Ok(());
+            };
+            let server = unsafe { &mut *(server_ptr as *mut crate::server::MinecraftServer) };
+            return server.kick(client, Component::text("You moved too far away!"));
         }
         if previous_position.x() == x && previous_position.y() == y && previous_position.z() == z {
             return Ok(());
@@ -1726,7 +2866,7 @@ impl World {
         else {
             return Ok(());
         };
-        let transition = self.player_by_addr(&client.addr).and_then(|player| {
+        let pending_transition = self.player_by_addr(&client.addr).and_then(|player| {
             player.chunk_transition(
                 event_position.x(),
                 event_position.y(),
@@ -1734,7 +2874,7 @@ impl World {
                 self.view_distance,
             )
         });
-        if self.movement_enters_unloaded_chunk(transition.as_ref()) {
+        if self.movement_enters_unloaded_chunk(pending_transition.as_ref()) {
             let Some(player) = self.player_by_addr_mut(&client.addr) else {
                 return Err(Error::new(ErrorKind::NotFound, "Player not found."));
             };
@@ -1749,11 +2889,14 @@ impl World {
                 true,
             );
         }
+        let transition = self
+            .player_by_addr_mut(&client.addr)
+            .and_then(|player| player.accept_chunk_transition(pending_transition));
         let chunks = match transition.as_ref() {
             Some(transition) => transition.arriving.clone(),
             None => Vec::new(),
         };
-        self.schedule_player_chunk_loads(client.addr, &chunks);
+        self.schedule_player_chunk_loads(client.addr, &chunks)?;
         let Some(player) = self.player_by_addr_mut(&client.addr) else {
             return Err(Error::new(ErrorKind::NotFound, "Player not found."));
         };
@@ -1804,7 +2947,14 @@ impl World {
             || player_coordinate_is_too_large(y)
             || player_coordinate_is_too_large(z)
         {
-            return player.kick(Component::text("You moved too far away!"));
+            let Some(client) = player.client_mut() else {
+                return Ok(());
+            };
+            let Some(server_ptr) = client.server_ptr else {
+                return Ok(());
+            };
+            let server = unsafe { &mut *(server_ptr as *mut crate::server::MinecraftServer) };
+            return server.kick(client, Component::text("You moved too far away!"));
         }
         let packet_position = EntityPosition::new(x, y, z, yaw, pitch);
         if previous_position == packet_position {
@@ -1818,7 +2968,7 @@ impl World {
         else {
             return Ok(());
         };
-        let transition = self.player_by_addr(&client.addr).and_then(|player| {
+        let pending_transition = self.player_by_addr(&client.addr).and_then(|player| {
             player.chunk_transition(
                 event_position.x(),
                 event_position.y(),
@@ -1826,7 +2976,7 @@ impl World {
                 self.view_distance,
             )
         });
-        if self.movement_enters_unloaded_chunk(transition.as_ref()) {
+        if self.movement_enters_unloaded_chunk(pending_transition.as_ref()) {
             let Some(player) = self.player_by_addr_mut(&client.addr) else {
                 return Err(Error::new(ErrorKind::NotFound, "Player not found."));
             };
@@ -1841,11 +2991,14 @@ impl World {
                 true,
             );
         }
+        let transition = self
+            .player_by_addr_mut(&client.addr)
+            .and_then(|player| player.accept_chunk_transition(pending_transition));
         let chunks = match transition.as_ref() {
             Some(transition) => transition.arriving.clone(),
             None => Vec::new(),
         };
-        self.load_player_chunks(&chunks)?;
+        self.schedule_player_chunk_loads(client.addr, &chunks)?;
         let Some(player) = self.player_by_addr_mut(&client.addr) else {
             return Err(Error::new(ErrorKind::NotFound, "Player not found."));
         };
@@ -2013,16 +3166,15 @@ impl World {
         client: &mut Client,
         settings: ClientInformation,
     ) -> Result<()> {
-        let world_view_distance = self.view_distance;
         let Some(player) = self.player_by_addr_mut(&client.addr) else {
             return Err(Error::new(ErrorKind::NotFound, "Player not found."));
         };
         let current_center = player.chunks_loaded_by_client;
-        let previous_view_distance = player.effective_chunk_view_distance(world_view_distance);
+        let previous_view_distance = player.client_chunk_view_distance();
         if !player.refresh_settings(settings) {
             return Ok(());
         }
-        let next_view_distance = player.effective_chunk_view_distance(world_view_distance);
+        let next_view_distance = player.client_chunk_view_distance();
         let previous_chunks = current_center
             .surrounding(previous_view_distance)
             .into_iter()
@@ -2039,16 +3191,11 @@ impl World {
             .difference(&next_chunks)
             .copied()
             .collect::<Vec<_>>();
-        self.schedule_player_chunk_loads(client.addr, &arriving);
+        self.schedule_player_chunk_loads(client.addr, &arriving)?;
         let Some(player) = self.player_by_addr_mut(&client.addr) else {
             return Err(Error::new(ErrorKind::NotFound, "Player not found."));
         };
-        player.update_chunks_after_view_distance_change(
-            client,
-            arriving,
-            departing,
-            world_view_distance,
-        )
+        player.update_chunks_after_view_distance_change(client, arriving, departing)
     }
 
     pub(crate) fn start_player_flying_with_elytra(&mut self, client: &Client) -> Result<()> {
@@ -2143,12 +3290,52 @@ impl World {
         )
     }
 
-    pub(crate) fn refresh_player_status(&mut self, client: &Client, on_ground: bool) -> Result<()> {
-        let Some(player) = self.player_by_addr_mut(&client.addr) else {
-            return Err(Error::new(ErrorKind::NotFound, "Player not found."));
+    pub(crate) fn refresh_player_status(
+        &mut self,
+        client: &mut Client,
+        on_ground: bool,
+    ) -> Result<()> {
+        let (player, player_entity_id, metadata_packet, stopped_flying_with_elytra) = {
+            let Some(player) = self.player_by_addr_mut(&client.addr) else {
+                return Err(Error::new(ErrorKind::NotFound, "Player not found."));
+            };
+            let stopped_flying_with_elytra = player.refresh_on_ground(on_ground);
+            (
+                player as *mut Player,
+                player.entity_id(),
+                player.dirty_metadata_packet(),
+                stopped_flying_with_elytra,
+            )
         };
-        player.set_on_ground(on_ground);
+
+        if stopped_flying_with_elytra {
+            self.dispatch_player_stop_flying_with_elytra_event(client, player);
+        }
+
+        let Some(metadata_packet) = metadata_packet else {
+            return Ok(());
+        };
+
+        self.broadcast_player_metadata(
+            player_entity_id,
+            metadata_packet.entity_id,
+            metadata_packet.entries.0,
+        )?;
+
         Ok(())
+    }
+
+    fn dispatch_player_stop_flying_with_elytra_event(
+        &mut self,
+        client: &mut Client,
+        player: *mut Player,
+    ) {
+        let Some(server_ptr) = client.server_ptr else {
+            return;
+        };
+        let mut event = PlayerStopFlyingWithElytraEvent::new(player);
+        let server = unsafe { &mut *(server_ptr as *mut crate::server::MinecraftServer) };
+        event.dispatch(server, client);
     }
 
     fn broadcast_player_movement(
@@ -2171,6 +3358,9 @@ impl World {
         let position_changed = current_position.x() != previous_position.x()
             || current_position.y() != previous_position.y()
             || current_position.z() != previous_position.z();
+        if position_changed {
+            self.refresh_passenger_positions(moving_player_id);
+        }
         let view_changed = current_position.yaw() != previous_position.yaw()
             || current_position.pitch() != previous_position.pitch();
         let movement_requires_teleport = (current_position.x() - previous_position.x()).abs() > 8.0
@@ -2405,16 +3595,11 @@ impl World {
         };
         let viewed_player_is_vanished =
             matches!(viewed_entity, Entity::Player(player) if player.is_vanished());
-        let should_be_visible = viewer_player.has_entered_world()
-            && !viewed_player_is_vanished
-            && entity_positions_are_within_view_distance(
-                viewed_entity.position(),
-                viewer_player.position(),
-            )
-            && viewed_entity.view().is_auto_viewable()
-            && viewer_player.view().is_auto_viewer()
-            && viewed_entity.view().viewable_rule_allows(viewer_player_id)
-            && viewer_player.view().viewer_rule_allows(viewed_entity_id);
+        let should_be_visible = automatic_visibility_pair_is_allowed(
+            viewed_entity,
+            viewer_player,
+            viewed_player_is_vanished,
+        );
         let is_automatically_visible = viewed_entity
             .view()
             .automatic_viewers()
@@ -2424,14 +3609,10 @@ impl World {
             viewer_player
                 .view_mut()
                 .register_viewed_entity(viewed_entity_id);
-            return self.send_entity_spawn_to_player(viewed_entity_id, viewer_player_id);
+            return self.send_entity_chain_spawn_to_player(viewed_entity_id, viewer_player_id);
         }
         if !should_be_visible && is_automatically_visible {
-            viewed_entity.view_mut().automatic_remove(viewer_player_id);
-            viewer_player
-                .view_mut()
-                .unregister_viewed_entity(viewed_entity_id);
-            return self.send_entity_remove_to_player(viewed_entity_id, viewer_player_id);
+            return self.hide_visibility_pair(viewed_entity_id, viewer_player_id);
         }
         Ok(())
     }
@@ -2458,6 +3639,59 @@ impl World {
         viewed_entity_id: EntityId,
         viewer_player_id: EntityId,
     ) -> Result<()> {
+        let mut pending_entity_ids = vec![viewed_entity_id];
+        let mut hidden_entity_ids = HashSet::new();
+        while let Some(entity_id) = pending_entity_ids.pop() {
+            if !hidden_entity_ids.insert(entity_id) {
+                continue;
+            }
+            let passenger_ids = self
+                .entity_by_id(entity_id)
+                .map(|entity| {
+                    entity
+                        .passengers()
+                        .iter()
+                        .rev()
+                        .copied()
+                        .collect::<Vec<_>>()
+                })
+                .unwrap_or_default();
+            self.hide_single_visibility_pair(entity_id, viewer_player_id)?;
+            pending_entity_ids.extend(
+                passenger_ids
+                    .into_iter()
+                    .filter(|passenger_id| *passenger_id != viewer_player_id),
+            );
+        }
+        Ok(())
+    }
+
+    fn hide_single_visibility_pair(
+        &mut self,
+        viewed_entity_id: EntityId,
+        viewer_player_id: EntityId,
+    ) -> Result<()> {
+        if self
+            .entity_by_id(viewed_entity_id)
+            .is_none_or(|entity| !entity.view().is_viewer(viewer_player_id))
+        {
+            return Ok(());
+        }
+        let leash_detach_packets = self
+            .entity_by_id(viewed_entity_id)
+            .map(|entity| {
+                entity
+                    .leashed_entities()
+                    .iter()
+                    .map(|leashed_entity_id| {
+                        spinel_core::network::clientbound::play::attach_entity::AttachEntityPacket {
+                            attached_entity_id: leashed_entity_id.value(),
+                            holding_entity_id: -1,
+                        }
+                    })
+                    .collect::<Vec<_>>()
+            })
+            .unwrap_or_default();
         let Some(viewed_entity_index) = self
             .entities
             .iter()
@@ -2482,6 +3716,17 @@ impl World {
         viewer_player
             .view_mut()
             .unregister_viewed_entity(viewed_entity_id);
+        if let Some(client) =
+            self.entity_by_id_mut(viewer_player_id)
+                .and_then(|entity| match entity {
+                    Entity::Player(player) => player.client_mut(),
+                    _ => None,
+                })
+        {
+            leash_detach_packets
+                .into_iter()
+                .try_for_each(|packet| packet.dispatch(client))?;
+        }
         self.send_entity_remove_to_player(viewed_entity_id, viewer_player_id)
     }
 
@@ -2543,14 +3788,36 @@ impl World {
         snapshot.dispatch(client)
     }
 
-    fn send_entity_spawn_to_player(
+    fn send_entity_chain_spawn_to_player(
         &mut self,
-        viewed_entity_id: EntityId,
+        root_entity_id: EntityId,
         viewer_player_id: EntityId,
     ) -> Result<()> {
-        let Some(viewer_snapshot) = self.entity_viewer_snapshot(viewed_entity_id) else {
-            return Ok(());
-        };
+        let visible_chain = self.collect_visible_passenger_chain(root_entity_id, viewer_player_id);
+        let visible_entity_ids = visible_chain.iter().copied().collect::<HashSet<_>>();
+        let viewer_dispatches = visible_chain
+            .iter()
+            .filter_map(|entity_id| {
+                self.entity_viewer_snapshot(*entity_id).map(|snapshot| {
+                    (
+                        snapshot,
+                        self.leash_packets_for_new_viewer(*entity_id, viewer_player_id),
+                    )
+                })
+            })
+            .collect::<Vec<_>>();
+        let passenger_packets = visible_chain
+            .iter()
+            .rev()
+            .filter_map(|entity_id| self.entity_by_id(*entity_id))
+            .filter(|entity| {
+                entity
+                    .passengers()
+                    .iter()
+                    .any(|passenger_id| visible_entity_ids.contains(passenger_id))
+            })
+            .map(Entity::passenger_packet)
+            .collect::<Vec<_>>();
         let Some(client) =
             self.entity_by_id_mut(viewer_player_id)
                 .and_then(|entity| match entity {
@@ -2560,7 +3827,141 @@ impl World {
         else {
             return Ok(());
         };
-        viewer_snapshot.dispatch(client)
+        viewer_dispatches
+            .into_iter()
+            .try_for_each(|(snapshot, leash_packets)| {
+                snapshot.dispatch_with_leashes(client, leash_packets)
+            })?;
+        passenger_packets
+            .into_iter()
+            .try_for_each(|packet| packet.dispatch(client))
+    }
+
+    fn send_single_entity_spawn_to_player(
+        &mut self,
+        viewed_entity_id: EntityId,
+        viewer_player_id: EntityId,
+    ) -> Result<()> {
+        let Some(snapshot) = self.entity_viewer_snapshot(viewed_entity_id) else {
+            return Ok(());
+        };
+        let leash_packets = self.leash_packets_for_new_viewer(viewed_entity_id, viewer_player_id);
+        let Some(client) =
+            self.entity_by_id_mut(viewer_player_id)
+                .and_then(|entity| match entity {
+                    Entity::Player(player) => player.client_mut(),
+                    _ => None,
+                })
+        else {
+            return Ok(());
+        };
+        snapshot.dispatch_with_leashes(client, leash_packets)
+    }
+
+    fn collect_visible_passenger_chain(
+        &mut self,
+        root_entity_id: EntityId,
+        viewer_player_id: EntityId,
+    ) -> Vec<EntityId> {
+        let mut visible_chain = vec![root_entity_id];
+        let mut collected_entity_ids = HashSet::from([root_entity_id]);
+        let mut pending_entity_ids = self
+            .entity_by_id(root_entity_id)
+            .map(|entity| {
+                entity
+                    .passengers()
+                    .iter()
+                    .rev()
+                    .copied()
+                    .collect::<Vec<_>>()
+            })
+            .unwrap_or_default();
+        while let Some(entity_id) = pending_entity_ids.pop() {
+            if collected_entity_ids.contains(&entity_id)
+                || !self.register_automatic_visibility_pair(entity_id, viewer_player_id)
+            {
+                continue;
+            }
+            collected_entity_ids.insert(entity_id);
+            visible_chain.push(entity_id);
+            if let Some(entity) = self.entity_by_id(entity_id) {
+                pending_entity_ids.extend(entity.passengers().iter().rev().copied());
+            }
+        }
+        visible_chain
+    }
+
+    fn register_automatic_visibility_pair(
+        &mut self,
+        viewed_entity_id: EntityId,
+        viewer_player_id: EntityId,
+    ) -> bool {
+        if viewed_entity_id == viewer_player_id {
+            return false;
+        }
+        let Some(viewed_entity_index) = self
+            .entities
+            .iter()
+            .position(|entity| entity.entity_id() == viewed_entity_id)
+        else {
+            return false;
+        };
+        let Some(viewer_player_index) = self
+            .entities
+            .iter()
+            .position(|entity| entity.entity_id() == viewer_player_id)
+        else {
+            return false;
+        };
+        let (viewed_entity, viewer_player) =
+            distinct_entities_mut(&mut self.entities, viewed_entity_index, viewer_player_index);
+        let Entity::Player(viewer_player) = viewer_player else {
+            return false;
+        };
+        let viewed_player_is_vanished =
+            matches!(viewed_entity, Entity::Player(player) if player.is_vanished());
+        if viewed_entity.view().is_viewer(viewer_player_id)
+            || !automatic_visibility_pair_is_allowed(
+                viewed_entity,
+                viewer_player,
+                viewed_player_is_vanished,
+            )
+        {
+            return false;
+        }
+        viewed_entity.view_mut().automatic_add(viewer_player_id);
+        viewer_player
+            .view_mut()
+            .register_viewed_entity(viewed_entity_id);
+        true
+    }
+
+    fn leash_packets_for_new_viewer(
+        &self,
+        entity_id: EntityId,
+        viewer_player_id: EntityId,
+    ) -> Vec<spinel_core::network::clientbound::play::attach_entity::AttachEntityPacket> {
+        let Some(entity) = self.entity_by_id(entity_id) else {
+            return Vec::new();
+        };
+        let mut packets = Vec::new();
+        if entity.leash_holder().is_some_and(|leash_holder_id| {
+            leash_holder_id == viewer_player_id
+                || self
+                    .entity_by_id(leash_holder_id)
+                    .is_some_and(|holder| holder.view().is_viewer(viewer_player_id))
+        }) {
+            packets.push(entity.attach_entity_packet());
+        }
+        packets.extend(
+            entity
+                .leashed_entities()
+                .iter()
+                .filter_map(|leashed_entity_id| self.entity_by_id(*leashed_entity_id))
+                .filter(|leashed_entity| leashed_entity.view().is_viewer(viewer_player_id))
+                .map(Entity::attach_entity_packet),
+        );
+        packets
     }
 
     fn entity_viewer_snapshot(&self, viewed_entity_id: EntityId) -> Option<EntityViewerSnapshot> {
@@ -2577,18 +3978,35 @@ enum EntityViewerSnapshot {
 impl EntityViewerSnapshot {
     fn from_entity(entity: &Entity) -> Self {
         match entity {
+            Entity::Creature(entity) => {
+                Self::Generic(GenericEntityViewerSnapshot::from_entity(entity))
+            }
+            Entity::ExperienceOrb(entity) => {
+                Self::Generic(GenericEntityViewerSnapshot::from_experience_orb(entity))
+            }
             Entity::Generic(entity) => {
                 Self::Generic(GenericEntityViewerSnapshot::from_entity(entity))
             }
-            Entity::Item(entity) => Self::Generic(GenericEntityViewerSnapshot::from_entity(entity)),
+            Entity::Item(entity) => {
+                Self::Generic(GenericEntityViewerSnapshot::from_item_entity(entity))
+            }
             Entity::Player(player) => Self::Player(PlayerViewerSnapshot::from_player(player)),
+            Entity::Projectile(entity) => {
+                Self::Generic(GenericEntityViewerSnapshot::from_projectile(entity))
+            }
         }
     }
 
-    fn dispatch(self, client: &mut Client) -> Result<()> {
+    fn dispatch_with_leashes(
+        self,
+        client: &mut Client,
+        leash_packets: Vec<
+            spinel_core::network::clientbound::play::attach_entity::AttachEntityPacket,
+        >,
+    ) -> Result<()> {
         match self {
-            Self::Generic(snapshot) => snapshot.dispatch(client),
-            Self::Player(snapshot) => snapshot.dispatch(client),
+            Self::Generic(snapshot) => snapshot.dispatch_with_leashes(client, leash_packets),
+            Self::Player(snapshot) => snapshot.dispatch_with_leashes(client, leash_packets),
         }
     }
 }
@@ -2617,6 +4035,23 @@ impl World {
         if viewed_entity_type == EntityType::PLAYER {
             PlayerInfoRemovePacket::new(viewed_entity_uuid).dispatch(client)?;
         }
+        RemoveEntitiesPacket::new(vec![viewed_entity_id.value()]).dispatch(client)
+    }
+
+    fn send_entity_switch_remove_to_player(
+        &mut self,
+        viewed_entity_id: EntityId,
+        viewer_player_id: EntityId,
+    ) -> Result<()> {
+        let Some(client) =
+            self.entity_by_id_mut(viewer_player_id)
+                .and_then(|entity| match entity {
+                    Entity::Player(player) => player.client_mut(),
+                    _ => None,
+                })
+        else {
+            return Ok(());
+        };
         RemoveEntitiesPacket::new(vec![viewed_entity_id.value()]).dispatch(client)
     }
 
@@ -2659,64 +4094,212 @@ impl World {
         self.tick_time();
         self.tick_weather();
         self.dispatch_instance_tick_event();
+        let world_snapshot = self.update_snapshot();
         let mut player_addresses = Vec::new();
         let mut entity_touches = Vec::new();
+        let mut moved_entities = Vec::new();
+        let mut entity_movements = Vec::new();
+        let mut mergeable_item_entity_ids = Vec::new();
+        let mut experience_orb_ids = Vec::new();
+        let mut projectile_paths = Vec::new();
         let mut expired_fire_entities = Vec::new();
         let mut expired_effects = Vec::new();
+        let mut creature_ai_actions = Vec::new();
+        let event_dispatcher = self.event_dispatcher;
         let item_use_completions = self
             .entities
             .iter_mut()
-            .filter_map(|entity| match entity {
-                Entity::Generic(entity) => {
-                    if entity.fire_ticks() == 1 {
-                        expired_fire_entities.push(entity.entity_id());
+            .filter_map(|entity| {
+                let entity_ptr = entity as *mut Entity;
+                match entity {
+                    Entity::Creature(entity) => {
+                        if entity.fire_ticks() == 1 {
+                            expired_fire_entities.push(entity.entity_id());
+                        }
+                        let previous_position = entity.position();
+                        if let Some(movement) = entity.movement_tick(&world_snapshot) {
+                            entity_movements.push(movement);
+                        }
+                        entity.tick(&world_snapshot, self.world_age as u64);
+                        if let Some(movement) = entity.position_movement_after_tick() {
+                            entity_movements.push(movement);
+                        }
+                        creature_ai_actions.extend(entity.take_ai_actions());
+                        dispatch_entity_tick_event(entity_ptr, event_dispatcher);
+                        if entity.position() != previous_position {
+                            moved_entities.push((entity.entity_id(), entity.position()));
+                        }
+                        expired_effects.extend(
+                            entity
+                                .take_expired_effects()
+                                .into_iter()
+                                .map(|effect| (entity.entity_id(), effect)),
+                        );
+                        entity_touches.push((entity.entity_id(), entity.position()));
+                        None
                     }
-                    entity.tick();
-                    expired_effects.extend(
-                        entity
-                            .take_expired_effects()
-                            .into_iter()
-                            .map(|effect| (entity.entity_id(), effect)),
-                    );
-                    entity_touches.push((entity.entity_id(), entity.position()));
-                    None
-                }
-                Entity::Item(entity) => {
-                    entity.tick();
-                    entity_touches.push((entity.entity_id(), entity.position()));
-                    None
-                }
-                Entity::Player(player) => {
-                    dispatch_player_tick_event(player);
-                    let item_use_completion = player.tick();
-                    if player.fire_ticks() == 1 {
-                        expired_fire_entities.push(player.entity_id());
+                    Entity::ExperienceOrb(entity) => {
+                        if let Some(movement) = entity.movement_tick(&world_snapshot) {
+                            entity_movements.push(movement);
+                        }
+                        entity.tick();
+                        dispatch_entity_tick_event(entity_ptr, event_dispatcher);
+                        experience_orb_ids.push(entity.entity_id());
+                        entity_touches.push((entity.entity_id(), entity.position()));
+                        None
                     }
-                    player.tick_fire_ticks();
-                    expired_effects.extend(
-                        player
-                            .tick_living_state()
-                            .into_iter()
-                            .map(|effect| (player.entity_id(), effect)),
-                    );
-                    entity_touches.push((player.entity_id(), player.position()));
-                    if player.has_entered_world() {
-                        player_addresses.push(player.addr);
+                    Entity::Generic(entity) => {
+                        if entity.fire_ticks() == 1 {
+                            expired_fire_entities.push(entity.entity_id());
+                        }
+                        if let Some(movement) = entity.movement_tick(&world_snapshot) {
+                            entity_movements.push(movement);
+                        }
+                        entity.tick();
+                        dispatch_entity_tick_event(entity_ptr, event_dispatcher);
+                        expired_effects.extend(
+                            entity
+                                .take_expired_effects()
+                                .into_iter()
+                                .map(|effect| (entity.entity_id(), effect)),
+                        );
+                        entity_touches.push((entity.entity_id(), entity.position()));
+                        None
                     }
-                    dispatch_player_tick_end_event(player);
-                    item_use_completion
+                    Entity::Item(entity) => {
+                        if let Some(movement) = entity.movement_tick(&world_snapshot) {
+                            entity_movements.push(movement);
+                        }
+                        entity.tick();
+                        dispatch_entity_tick_event(entity_ptr, event_dispatcher);
+                        if entity.should_check_merge(self.world_age as u64) {
+                            mergeable_item_entity_ids.push(entity.entity_id());
+                        }
+                        entity_touches.push((entity.entity_id(), entity.position()));
+                        None
+                    }
+                    Entity::Projectile(entity) => {
+                        if entity.fire_ticks() == 1 {
+                            expired_fire_entities.push(entity.entity_id());
+                        }
+                        let position_before_tick = entity.position();
+                        if let Some(movement) = entity.movement_tick(&world_snapshot) {
+                            entity_movements.push(movement);
+                        }
+                        entity.tick();
+                        projectile_paths.push((
+                            entity.entity_id(),
+                            position_before_tick,
+                            entity.position(),
+                        ));
+                        dispatch_entity_tick_event(entity_ptr, event_dispatcher);
+                        expired_effects.extend(
+                            entity
+                                .take_expired_effects()
+                                .into_iter()
+                                .map(|effect| (entity.entity_id(), effect)),
+                        );
+                        entity_touches.push((entity.entity_id(), entity.position()));
+                        None
+                    }
+                    Entity::Player(player) => {
+                        player.movement_tick(&world_snapshot);
+                        let item_use_completion = player.tick();
+                        dispatch_player_tick_event(player);
+                        dispatch_entity_tick_event(entity_ptr, event_dispatcher);
+                        if player.fire_ticks() == 1 {
+                            expired_fire_entities.push(player.entity_id());
+                        }
+                        player.tick_fire_ticks();
+                        expired_effects.extend(
+                            player
+                                .tick_living_state()
+                                .into_iter()
+                                .map(|effect| (player.entity_id(), effect)),
+                        );
+                        entity_touches.push((player.entity_id(), player.position()));
+                        if player.has_entered_world() && player.is_online() {
+                            player_addresses.push(player.addr);
+                        }
+                        dispatch_player_tick_end_event(player);
+                        item_use_completion
+                    }
                 }
             })
             .collect::<Vec<_>>();
+        creature_ai_actions
+            .into_iter()
+            .for_each(|action| self.apply_creature_ai_action(action));
+        experience_orb_ids
+            .into_iter()
+            .for_each(|experience_orb_id| self.tick_experience_orb(experience_orb_id));
+        mergeable_item_entity_ids
+            .into_iter()
+            .for_each(|item_entity_id| self.merge_item_entity(item_entity_id));
+        let synchronization_packets = self
+            .entities
+            .iter_mut()
+            .filter_map(|entity| {
+                entity
+                    .scheduled_position_sync_packet()
+                    .map(|position_packet| {
+                        (
+                            entity.entity_id(),
+                            position_packet,
+                            entity.velocity_packet(),
+                        )
+                    })
+            })
+            .collect::<Vec<_>>();
+        let metadata_packets = self
+            .entities
+            .iter_mut()
+            .filter_map(|entity| {
+                entity
+                    .dirty_metadata_packet()
+                    .map(|packet| (entity.entity_id(), packet))
+            })
+            .collect::<Vec<_>>();
+        moved_entities
+            .into_iter()
+            .for_each(|(entity_id, position)| {
+                self.entity_tracker.move_entity(entity_id, position);
+                self.refresh_passenger_positions(entity_id);
+            });
+        entity_movements
+            .into_iter()
+            .for_each(|movement| self.apply_entity_movement(movement));
+        metadata_packets
+            .into_iter()
+            .for_each(|(entity_id, packet)| {
+                let _ = self.send_packet_to_player_viewers_and_self(entity_id, packet);
+            });
+        synchronization_packets.into_iter().for_each(
+            |(entity_id, position_packet, velocity_packet)| {
+                let _ = self.send_packet_to_entity_viewers(entity_id, position_packet);
+                let _ = self.send_packet_to_entity_viewers(entity_id, velocity_packet);
+            },
+        );
+        projectile_paths.into_iter().for_each(
+            |(projectile_id, position_before_tick, position_after_tick)| {
+                self.process_projectile_collision(
+                    projectile_id,
+                    position_before_tick,
+                    position_after_tick,
+                );
+            },
+        );
         self.dispatch_expired_fire_events(expired_fire_entities);
         expired_effects.into_iter().for_each(|(entity_id, effect)| {
             let _ = self.dispatch_entity_effect_removal(entity_id, effect);
         });
         self.process_living_item_pickups();
+        self.process_player_experience_pickups();
         entity_touches
             .into_iter()
             .for_each(|(entity_id, position)| self.touch_entity_blocks(entity_id, position));
-        let _ = self.process_pending_player_chunk_loads();
+        let _ = self.process_completed_chunk_loads();
+        let _ = self.process_pending_player_entries(registries);
         let _ = self.process_pending_entity_visibility_refreshes();
         self.tick_chunks(self.world_age as u64);
         player_addresses.into_iter().for_each(|address| {
@@ -2728,6 +4311,238 @@ impl World {
         self.process_tick_end_scheduler();
         self.dispatch_instance_tick_end_event();
         self.currently_changing_blocks.clear();
+    }
+
+    fn apply_entity_movement(&mut self, movement: EntityMovement) {
+        let entity_id = movement.entity_id();
+        self.entity_tracker
+            .move_entity(entity_id, movement.position());
+        self.refresh_passenger_positions(entity_id);
+        let Some(packet) = movement.packet() else {
+            return;
+        };
+        match packet {
+            EntityMovementPacket::Position(packet) => {
+                let _ = self.send_packet_to_entity_viewers(entity_id, packet);
+            }
+            EntityMovementPacket::Teleport(packet) => {
+                let _ = self.send_packet_to_entity_viewers(entity_id, packet);
+            }
+        }
+    }
+
+    fn process_projectile_collision(
+        &mut self,
+        projectile_id: EntityId,
+        position_before_tick: EntityPosition,
+        position_after_tick: EntityPosition,
+    ) {
+        let Some(projectile_state) = self.projectile_collision_state(projectile_id) else {
+            return;
+        };
+        let collision = self.projectile_collision(
+            projectile_id,
+            position_before_tick,
+            position_after_tick,
+            projectile_state,
+        );
+        if self
+            .entity_by_id(projectile_id)
+            .is_none_or(projectile_entity_is_removed)
+        {
+            return;
+        }
+        match collision {
+            ProjectileCollision::Stuck(collision_position) => {
+                self.stick_projectile(projectile_id, collision_position)
+            }
+            ProjectileCollision::Free => self.unstick_projectile(projectile_id),
+        }
+    }
+
+    fn projectile_collision_state(
+        &self,
+        projectile_id: EntityId,
+    ) -> Option<ProjectileCollisionState> {
+        let Entity::Projectile(projectile) = self.entity_by_id(projectile_id)? else {
+            return None;
+        };
+        Some(ProjectileCollisionState {
+            shooter_id: projectile.shooter(),
+            alive_ticks: projectile.ticks(),
+            bounding_box: projectile.bounding_box(),
+            is_on_ground: projectile.is_on_ground(),
+        })
+    }
+
+    fn projectile_collision(
+        &mut self,
+        projectile_id: EntityId,
+        position_before_tick: EntityPosition,
+        position_after_tick: EntityPosition,
+        projectile_state: ProjectileCollisionState,
+    ) -> ProjectileCollision {
+        if entity_positions_share_point(position_before_tick, position_after_tick) {
+            return self
+                .loaded_block_at(block_position_for_entity(position_before_tick))
+                .filter(|block| block.is_solid())
+                .map_or(ProjectileCollision::Free, |_| {
+                    ProjectileCollision::Stuck(position_before_tick)
+                });
+        }
+        projectile_sample_positions(
+            position_before_tick,
+            position_after_tick,
+            projectile_state.bounding_box.width(),
+        )
+        .into_iter()
+        .find_map(|collision_position| {
+            self.projectile_collision_at(projectile_id, collision_position, projectile_state)
+        })
+        .unwrap_or(ProjectileCollision::Free)
+    }
+
+    fn projectile_collision_at(
+        &mut self,
+        projectile_id: EntityId,
+        collision_position: EntityPosition,
+        projectile_state: ProjectileCollisionState,
+    ) -> Option<ProjectileCollision> {
+        let block = self
+            .loaded_block_at(block_position_for_entity(collision_position))
+            .unwrap_or(Block::AIR);
+        if block.is_solid() {
+            let mut event =
+                ProjectileCollideWithBlockEvent::new(projectile_id, collision_position, block);
+            self.dispatch_projectile_block_collision_event(&mut event);
+            if self
+                .entity_by_id(projectile_id)
+                .is_none_or(projectile_entity_is_removed)
+            {
+                return Some(ProjectileCollision::Stuck(collision_position));
+            }
+            if !event.is_cancelled() {
+                return Some(ProjectileCollision::Stuck(collision_position));
+            }
+        }
+        let target_id =
+            self.projectile_collision_target(projectile_id, collision_position, projectile_state)?;
+        let mut event =
+            ProjectileCollideWithEntityEvent::new(projectile_id, collision_position, target_id);
+        self.dispatch_projectile_entity_collision_event(&mut event);
+        (!event.is_cancelled() && projectile_state.is_on_ground)
+            .then_some(ProjectileCollision::Stuck(collision_position))
+    }
+
+    fn projectile_collision_target(
+        &self,
+        projectile_id: EntityId,
+        collision_position: EntityPosition,
+        projectile_state: ProjectileCollisionState,
+    ) -> Option<EntityId> {
+        self.entity_tracker
+            .chunk_entities(
+                ChunkPosition::from(collision_position),
+                EntityTrackerTarget::Entities,
+            )
+            .into_iter()
+            .filter(|target_id| *target_id != projectile_id)
+            .filter(|target_id| {
+                projectile_state.alive_ticks >= 3 || projectile_state.shooter_id != Some(*target_id)
+            })
+            .filter_map(|target_id| {
+                self.entity_by_id(target_id)
+                    .filter(|target| entity_is_living(target))
+                    .filter(|target| {
+                        entity_boxes_intersect_at(
+                            collision_position,
+                            projectile_state.bounding_box,
+                            target.position(),
+                            target.bounding_box(),
+                        )
+                    })
+                    .map(|_| target_id)
+            })
+            .next()
+    }
+
+    fn stick_projectile(&mut self, projectile_id: EntityId, collision_position: EntityPosition) {
+        let Some(Entity::Projectile(projectile)) = self.entity_by_id_mut(projectile_id) else {
+            return;
+        };
+        if projectile.is_on_ground() {
+            return;
+        }
+        projectile.set_position(collision_position);
+        projectile.set_on_ground(true);
+        projectile.set_velocity(Velocity(Vector3d {
+            x: 0.0,
+            y: 0.0,
+            z: 0.0,
+        }));
+        projectile.set_no_gravity(true);
+        projectile.set_was_stuck(true);
+        let teleport_packet = projectile.synchronize_position_packet();
+        let velocity_packet = projectile.velocity_packet();
+        self.entity_tracker
+            .move_entity(projectile_id, collision_position);
+        self.refresh_passenger_positions(projectile_id);
+        let _ = self.send_packet_to_player_viewers_and_self(projectile_id, teleport_packet);
+        let _ = self.send_packet_to_player_viewers_and_self(projectile_id, velocity_packet);
+    }
+
+    fn unstick_projectile(&mut self, projectile_id: EntityId) {
+        let Some(Entity::Projectile(projectile)) = self.entity_by_id_mut(projectile_id) else {
+            return;
+        };
+        if !projectile.was_stuck() {
+            return;
+        }
+        projectile.set_was_stuck(false);
+        let was_on_ground = projectile.is_on_ground();
+        projectile.set_no_gravity(was_on_ground);
+        projectile.set_on_ground(false);
+        self.dispatch_projectile_uncollide_event(ProjectileUncollideEvent::new(projectile_id));
+    }
+
+    fn dispatch_entity_shoot_event(&mut self, event: &mut EntityShootEvent) {
+        let Some(server_ptr) = self.event_dispatcher else {
+            return;
+        };
+        let server = unsafe { &mut *(server_ptr as *mut crate::server::MinecraftServer) };
+        event.dispatch(server);
+    }
+
+    fn dispatch_projectile_block_collision_event(
+        &mut self,
+        event: &mut ProjectileCollideWithBlockEvent,
+    ) {
+        let Some(server_ptr) = self.event_dispatcher else {
+            return;
+        };
+        let server = unsafe { &mut *(server_ptr as *mut crate::server::MinecraftServer) };
+        event.dispatch(server);
+        event.collision_mut().dispatch(server);
+    }
+
+    fn dispatch_projectile_entity_collision_event(
+        &mut self,
+        event: &mut ProjectileCollideWithEntityEvent,
+    ) {
+        let Some(server_ptr) = self.event_dispatcher else {
+            return;
+        };
+        let server = unsafe { &mut *(server_ptr as *mut crate::server::MinecraftServer) };
+        event.dispatch(server);
+        event.collision_mut().dispatch(server);
+    }
+
+    fn dispatch_projectile_uncollide_event(&mut self, mut event: ProjectileUncollideEvent) {
+        let Some(server_ptr) = self.event_dispatcher else {
+            return;
+        };
+        let server = unsafe { &mut *(server_ptr as *mut crate::server::MinecraftServer) };
+        event.dispatch(server);
     }
 
     pub fn set_entity_equipment(
@@ -2804,9 +4619,12 @@ impl World {
         let Some(current_fire_ticks) =
             self.entity_by_id(entity_id)
                 .and_then(|entity| match entity {
+                    Entity::Creature(entity) => Some(entity.fire_ticks()),
+                    Entity::ExperienceOrb(entity) => Some(entity.fire_ticks()),
                     Entity::Generic(entity) => Some(entity.fire_ticks()),
                     Entity::Item(_) => None,
                     Entity::Player(player) => Some(player.fire_ticks()),
+                    Entity::Projectile(entity) => Some(entity.fire_ticks()),
                 })
         else {
             return false;
@@ -2934,6 +4752,165 @@ impl World {
             .for_each(|entity_id| self.process_living_entity_item_pickups(entity_id));
     }
 
+    fn tick_experience_orb(&mut self, experience_orb_id: EntityId) {
+        let current_tick = self.world_age;
+        let Some(Entity::ExperienceOrb(experience_orb)) = self.entity_by_id_mut(experience_orb_id)
+        else {
+            return;
+        };
+        experience_orb.apply_gravity();
+        let experience_orb_position = experience_orb.position();
+        let current_target = experience_orb.target();
+        let target_refresh_tick =
+            current_tick - 20 + i64::from(experience_orb.entity_id().value() % 100);
+        let should_refresh_target = experience_orb.last_target_update_tick() < target_refresh_tick;
+
+        let target_is_missing_or_distant = current_target.is_none_or(|target_id| {
+            self.entity_by_id(target_id).is_none_or(|target| {
+                target.position().distance_squared(experience_orb_position) > 64.0
+            })
+        });
+        let refreshed_target = (should_refresh_target && target_is_missing_or_distant)
+            .then(|| self.closest_player_to(experience_orb_position, 8.0))
+            .flatten();
+
+        if should_refresh_target {
+            let Some(Entity::ExperienceOrb(experience_orb)) =
+                self.entity_by_id_mut(experience_orb_id)
+            else {
+                return;
+            };
+            if target_is_missing_or_distant {
+                experience_orb.set_target(refreshed_target);
+            }
+            experience_orb.set_last_target_update_tick(current_tick);
+        }
+
+        let target = self
+            .entity_by_id(experience_orb_id)
+            .and_then(|entity| match entity {
+                Entity::ExperienceOrb(experience_orb) => experience_orb.target(),
+                _ => None,
+            })
+            .and_then(|target_id| match self.entity_by_id(target_id) {
+                Some(Entity::Player(player)) if player.game_mode() != GameMode::Spectator => {
+                    Some((target_id, player.position(), player.eye_height()))
+                }
+                _ => None,
+            });
+        let Some(Entity::ExperienceOrb(experience_orb)) = self.entity_by_id_mut(experience_orb_id)
+        else {
+            return;
+        };
+        match target {
+            Some((_, target_position, eye_height)) => {
+                experience_orb.apply_attraction(target_position, eye_height);
+            }
+            None => experience_orb.set_target(None),
+        }
+        experience_orb.apply_drag();
+    }
+
+    fn closest_player_to(
+        &self,
+        position: EntityPosition,
+        maximum_distance: f64,
+    ) -> Option<EntityId> {
+        let maximum_distance_squared = maximum_distance * maximum_distance;
+        self.players()
+            .map(|player| {
+                (
+                    player.entity_id(),
+                    player.position().distance_squared(position),
+                )
+            })
+            .filter(|(_, distance_squared)| *distance_squared <= maximum_distance_squared)
+            .min_by(|(_, first_distance), (_, second_distance)| {
+                first_distance.total_cmp(second_distance)
+            })
+            .map(|(player_id, _)| player_id)
+    }
+
+    fn process_player_experience_pickups(&mut self) {
+        let current_tick = self.world_age;
+        let player_ids = self
+            .entities
+            .iter_mut()
+            .filter_map(|entity| match entity {
+                Entity::Player(player) if player.experience_pickup_is_ready(current_tick) => {
+                    player.refresh_experience_pickup_cooldown(current_tick);
+                    Some(player.entity_id())
+                }
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+        player_ids.into_iter().for_each(|player_id| {
+            self.process_player_experience_pickup(player_id);
+        });
+    }
+
+    fn process_player_experience_pickup(&mut self, player_id: EntityId) {
+        let Some((player_position, expanded_bounding_box)) =
+            self.entity_by_id(player_id)
+                .and_then(|entity| match entity {
+                    Entity::Player(player) => {
+                        Some((player.position(), player.expanded_bounding_box()))
+                    }
+                    _ => None,
+                })
+        else {
+            return;
+        };
+        let experience_orb_ids = self.entity_tracker.nearby_entities(
+            player_position,
+            expanded_bounding_box.width(),
+            EntityTrackerTarget::ExperienceOrbs,
+        );
+        experience_orb_ids
+            .into_iter()
+            .for_each(|experience_orb_id| {
+                let Some(experience_count) =
+                    self.entity_by_id(experience_orb_id)
+                        .and_then(|entity| match entity {
+                            Entity::ExperienceOrb(experience_orb)
+                                if experience_orb.intersects_box_at(
+                                    player_position.as_vector(),
+                                    expanded_bounding_box,
+                                ) =>
+                            {
+                                Some(experience_orb.experience_count())
+                            }
+                            _ => None,
+                        })
+                else {
+                    return;
+                };
+                if self.dispatch_pickup_experience_event(
+                    player_id,
+                    experience_orb_id,
+                    experience_count,
+                ) {
+                    return;
+                }
+                self.take_entity(experience_orb_id);
+            });
+    }
+
+    fn dispatch_pickup_experience_event(
+        &mut self,
+        player_id: EntityId,
+        experience_orb_id: EntityId,
+        experience_count: i16,
+    ) -> bool {
+        let Some(server_ptr) = self.event_dispatcher else {
+            return false;
+        };
+        let mut event = PickupExperienceEvent::new(player_id, experience_orb_id, experience_count);
+        let server = unsafe { &mut *(server_ptr as *mut crate::server::MinecraftServer) };
+        event.dispatch(server);
+        event.is_cancelled()
+    }
+
     fn process_living_entity_item_pickups(&mut self, living_entity_id: EntityId) {
         if !self.refresh_living_item_pickup_cooldown(living_entity_id) {
             return;
@@ -3034,6 +5011,103 @@ impl World {
         event.is_cancelled()
     }
 
+    fn merge_item_entity(&mut self, source_item_entity_id: EntityId) {
+        let Some((source_position, merge_range)) = self
+            .entity_by_id(source_item_entity_id)
+            .and_then(item_entity)
+            .map(|item_entity| (item_entity.position(), item_entity.merge_range()))
+        else {
+            return;
+        };
+        let nearby_item_entity_ids = self.entity_tracker.nearby_entities(
+            source_position,
+            f64::from(merge_range),
+            EntityTrackerTarget::Items,
+        );
+        nearby_item_entity_ids
+            .into_iter()
+            .filter(|merged_item_entity_id| *merged_item_entity_id != source_item_entity_id)
+            .for_each(|merged_item_entity_id| {
+                self.merge_item_entity_pair(source_item_entity_id, merged_item_entity_id);
+            });
+    }
+
+    fn merge_item_entity_pair(
+        &mut self,
+        source_item_entity_id: EntityId,
+        merged_item_entity_id: EntityId,
+    ) {
+        let Some(source_item_stack) = self
+            .entity_by_id(source_item_entity_id)
+            .and_then(item_entity)
+            .filter(|item_entity| item_entity.is_pickable() && item_entity.is_mergeable())
+            .map(|item_entity| item_entity.item_stack().clone())
+        else {
+            return;
+        };
+        let Some(merged_item_stack) = self
+            .entity_by_id(merged_item_entity_id)
+            .and_then(item_entity)
+            .filter(|item_entity| item_entity.is_pickable() && item_entity.is_mergeable())
+            .map(|item_entity| item_entity.item_stack().clone())
+        else {
+            return;
+        };
+        if !source_item_stack.is_similar(&merged_item_stack) {
+            return;
+        }
+        let total_amount = source_item_stack.amount() + merged_item_stack.amount();
+        if total_amount < 0 || total_amount > source_item_stack.max_stack_size() {
+            return;
+        }
+        let result = source_item_stack.with_amount(total_amount);
+        let Some(result) = self.dispatch_entity_item_merge_event(
+            source_item_entity_id,
+            merged_item_entity_id,
+            result,
+        ) else {
+            return;
+        };
+        let Some(source_item_entity) =
+            self.entity_by_id_mut(source_item_entity_id)
+                .and_then(|entity| match entity {
+                    Entity::Item(item_entity) => Some(item_entity),
+                    _ => None,
+                })
+        else {
+            return;
+        };
+        source_item_entity.set_item_stack(result);
+        self.take_entity(merged_item_entity_id);
+    }
+
+    fn dispatch_entity_item_merge_event(
+        &mut self,
+        source_item_entity_id: EntityId,
+        merged_item_entity_id: EntityId,
+        result: ItemStack,
+    ) -> Option<ItemStack> {
+        let Some(server_ptr) = self.event_dispatcher else {
+            return Some(result);
+        };
+        let Some(source_item_entity) = self
+            .entity_by_id_mut(source_item_entity_id)
+            .map(|entity| entity as *mut Entity)
+        else {
+            return Some(result);
+        };
+        let Some(merged_item_entity) = self
+            .entity_by_id_mut(merged_item_entity_id)
+            .map(|entity| entity as *mut Entity)
+        else {
+            return Some(result);
+        };
+        let mut event = EntityItemMergeEvent::new(source_item_entity, merged_item_entity, result);
+        let server = unsafe { &mut *(server_ptr as *mut crate::server::MinecraftServer) };
+        event.dispatch(server);
+        (!event.is_cancelled()).then(|| event.result().clone())
+    }
+
     fn dispatch_entity_equip_event(
         &mut self,
         entity_id: EntityId,
@@ -3082,7 +5156,13 @@ impl World {
         let Some(server_ptr) = self.event_dispatcher else {
             return true;
         };
-        let mut event = EntityPotionAddEvent::new(entity_id, effect);
+        let Some(entity) = self
+            .entity_by_id_mut(entity_id)
+            .map(|entity| entity as *mut Entity)
+        else {
+            return true;
+        };
+        let mut event = EntityPotionAddEvent::new(entity, effect);
         let server = unsafe { &mut *(server_ptr as *mut crate::server::MinecraftServer) };
         event.dispatch(server);
         !event.is_cancelled()
@@ -3096,23 +5176,35 @@ impl World {
         let Some(server_ptr) = self.event_dispatcher else {
             return;
         };
+        let Some(entity) = self
+            .entity_by_id_mut(entity_id)
+            .map(|entity| entity as *mut Entity)
+        else {
+            return;
+        };
         let server = unsafe { &mut *(server_ptr as *mut crate::server::MinecraftServer) };
-        EntityPotionRemoveEvent::new(entity_id, effect).dispatch(server);
+        EntityPotionRemoveEvent::new(entity, effect).dispatch(server);
     }
 
     fn entity_effect(&self, entity_id: EntityId, effect_id: i32) -> Option<&TimedPotionEffect> {
         match self.entity_by_id(entity_id)? {
+            Entity::Creature(entity) => entity.effect(effect_id),
+            Entity::ExperienceOrb(entity) => entity.effect(effect_id),
             Entity::Generic(entity) => entity.effect(effect_id),
             Entity::Item(entity) => entity.effect(effect_id),
             Entity::Player(player) => player.effect(effect_id),
+            Entity::Projectile(entity) => entity.effect(effect_id),
         }
     }
 
     fn entity_effects(&self, entity_id: EntityId) -> Vec<&TimedPotionEffect> {
         match self.entity_by_id(entity_id) {
+            Some(Entity::Creature(entity)) => entity.active_effects(),
+            Some(Entity::ExperienceOrb(entity)) => entity.active_effects(),
             Some(Entity::Generic(entity)) => entity.active_effects(),
             Some(Entity::Item(entity)) => entity.active_effects(),
             Some(Entity::Player(player)) => player.active_effects(),
+            Some(Entity::Projectile(entity)) => entity.active_effects(),
             None => Vec::new(),
         }
     }
@@ -3127,9 +5219,12 @@ impl World {
         effect: TimedPotionEffect,
     ) -> Option<EntityEffectPacket> {
         match self.entity_by_id_mut(entity_id)? {
+            Entity::Creature(entity) => Some(entity.add_effect(effect)),
+            Entity::ExperienceOrb(entity) => Some(entity.add_effect(effect)),
             Entity::Generic(entity) => Some(entity.add_effect(effect)),
             Entity::Item(entity) => Some(entity.add_effect(effect)),
             Entity::Player(player) => Some(player.add_effect(effect)),
+            Entity::Projectile(entity) => Some(entity.add_effect(effect)),
         }
     }
 
@@ -3139,9 +5234,12 @@ impl World {
         effect_id: i32,
     ) -> Option<RemoveEntityEffectPacket> {
         match self.entity_by_id_mut(entity_id)? {
+            Entity::Creature(entity) => entity.remove_effect(effect_id),
+            Entity::ExperienceOrb(entity) => entity.remove_effect(effect_id),
             Entity::Generic(entity) => entity.remove_effect(effect_id),
             Entity::Item(entity) => entity.remove_effect(effect_id),
             Entity::Player(player) => player.remove_effect(effect_id),
+            Entity::Projectile(entity) => entity.remove_effect(effect_id),
         }
     }
 
@@ -3161,9 +5259,12 @@ impl World {
     fn entity_is_dead(&self, entity_id: EntityId) -> bool {
         self.entity_by_id(entity_id)
             .is_none_or(|entity| match entity {
+                Entity::Creature(entity) => entity.is_dead(),
+                Entity::ExperienceOrb(_) => true,
                 Entity::Generic(entity) => entity.is_dead(),
                 Entity::Item(_) => true,
                 Entity::Player(player) => player.is_dead(),
+                Entity::Projectile(_) => true,
             })
     }
 
@@ -3180,27 +5281,40 @@ impl World {
     }
 
     fn apply_living_death_state(&mut self, entity_id: EntityId) -> Result<()> {
+        let passenger_ids = self
+            .entity_by_id(entity_id)
+            .map(|entity| entity.passengers().iter().copied().collect::<Vec<_>>())
+            .unwrap_or_default();
         let Some(entity) = self.entity_by_id_mut(entity_id) else {
             return Ok(());
         };
         match entity {
-            Entity::Generic(entity) => {
-                let passenger_ids = entity.passengers().iter().copied().collect::<Vec<_>>();
+            Entity::Creature(entity) => {
                 entity.kill();
                 entity.set_velocity(Velocity(Vector3d {
                     x: 0.0,
                     y: 0.0,
                     z: 0.0,
                 }));
-                passenger_ids.into_iter().for_each(|passenger_id| {
-                    entity.remove_passenger(passenger_id);
-                });
+            }
+            Entity::ExperienceOrb(_) => {}
+            Entity::Generic(entity) => {
+                entity.kill();
+                entity.set_velocity(Velocity(Vector3d {
+                    x: 0.0,
+                    y: 0.0,
+                    z: 0.0,
+                }));
             }
             Entity::Item(_) => {}
             Entity::Player(player) => {
                 player.set_pose(PlayerPose::Dying);
             }
+            Entity::Projectile(_) => {}
         }
+        passenger_ids.into_iter().try_for_each(|passenger_id| {
+            self.remove_passenger(entity_id, passenger_id).map(|_| ())
+        })?;
         Ok(())
     }
 
@@ -3208,8 +5322,119 @@ impl World {
         let Some(server_ptr) = self.event_dispatcher else {
             return;
         };
+        let Some(entity) = self
+            .entity_by_id_mut(entity_id)
+            .map(|entity| entity as *mut Entity)
+        else {
+            return;
+        };
         let server = unsafe { &mut *(server_ptr as *mut crate::server::MinecraftServer) };
-        EntityDeathEvent::new(entity_id).dispatch(server);
+        EntityDeathEvent::new(entity).dispatch(server);
+    }
+
+    fn dispatch_entity_attack_event(&mut self, entity_id: EntityId, target_id: EntityId) {
+        let Some(server_ptr) = self.event_dispatcher else {
+            return;
+        };
+        let server = unsafe { &mut *(server_ptr as *mut crate::server::MinecraftServer) };
+        EntityAttackEvent::new(entity_id, target_id).dispatch(server);
+    }
+
+    fn dispatch_entity_teleport_event(
+        &mut self,
+        entity_id: EntityId,
+        teleport_position: EntityPosition,
+        new_position: EntityPosition,
+        relative_flags: TeleportFlags,
+    ) {
+        let Some(server_ptr) = self.event_dispatcher else {
+            return;
+        };
+        let Some(entity) = self
+            .entity_by_id_mut(entity_id)
+            .map(|entity| entity as *mut Entity)
+        else {
+            return;
+        };
+        let server = unsafe { &mut *(server_ptr as *mut crate::server::MinecraftServer) };
+        EntityTeleportEvent::new(entity, teleport_position, new_position, relative_flags)
+            .dispatch(server);
+    }
+
+    fn dispatch_entity_velocity_event(
+        &mut self,
+        entity_id: EntityId,
+        velocity: Velocity,
+    ) -> Option<Velocity> {
+        let Some(server_ptr) = self.event_dispatcher else {
+            return Some(velocity);
+        };
+        let Some(entity) = self
+            .entity_by_id_mut(entity_id)
+            .map(|entity| entity as *mut Entity)
+        else {
+            return Some(velocity);
+        };
+        let mut event = EntityVelocityEvent::new(entity, velocity);
+        let server = unsafe { &mut *(server_ptr as *mut crate::server::MinecraftServer) };
+        event.dispatch(server);
+        if event.is_cancelled() {
+            return None;
+        }
+        Some(event.velocity())
+    }
+
+    fn load_teleport_chunks(
+        &mut self,
+        previous_position: EntityPosition,
+        destination: EntityPosition,
+        chunks: Option<&[i64]>,
+    ) -> Result<()> {
+        let explicit_chunk_positions = chunks
+            .unwrap_or_default()
+            .iter()
+            .copied()
+            .map(ChunkPosition::from_index)
+            .collect::<Vec<_>>();
+        if explicit_chunk_positions.is_empty() {
+            let previous_chunk = ChunkPosition::from(previous_position);
+            let destination_chunk = ChunkPosition::from(destination);
+            if previous_chunk == destination_chunk {
+                return Ok(());
+            }
+            self.load_optional_chunk_result(destination_chunk)?;
+            return Ok(());
+        }
+        self.load_optional_chunks(&explicit_chunk_positions)?;
+        Ok(())
+    }
+
+    fn begin_teleport_chunk_loads(
+        &mut self,
+        previous_position: EntityPosition,
+        destination: EntityPosition,
+        chunks: Option<&[i64]>,
+    ) -> Result<Vec<ChunkLoadTicket>> {
+        let explicit_chunk_positions = chunks
+            .unwrap_or_default()
+            .iter()
+            .copied()
+            .map(ChunkPosition::from_index)
+            .collect::<Vec<_>>();
+        if !explicit_chunk_positions.is_empty() {
+            return explicit_chunk_positions
+                .into_iter()
+                .map(|position| self.load_optional_chunk_future(position))
+                .collect::<Result<Vec<_>>>()
+                .map(|tickets| tickets.into_iter().flatten().collect());
+        }
+        let previous_chunk = ChunkPosition::from(previous_position);
+        let destination_chunk = ChunkPosition::from(destination);
+        if previous_chunk == destination_chunk {
+            return Ok(Vec::new());
+        }
+        self.load_optional_chunk_future(destination_chunk)
+            .map(|ticket| ticket.into_iter().collect())
     }
 
     fn entity_rejects_damage(&self, entity_id: EntityId, damage: &Damage) -> bool {
@@ -3217,6 +5442,12 @@ impl World {
             return true;
         };
         match entity {
+            Entity::Creature(entity) => {
+                entity.is_dead()
+                    || (damage.damage_type() != &DamageType::OUT_OF_WORLD
+                        && entity.is_immune_to_damage(&damage.damage_type().key().to_string()))
+            }
+            Entity::ExperienceOrb(_) => true,
             Entity::Generic(entity) => {
                 entity.is_dead()
                     || (damage.damage_type() != &DamageType::OUT_OF_WORLD
@@ -3228,6 +5459,7 @@ impl World {
                     || (damage.damage_type() != &DamageType::OUT_OF_WORLD
                         && player.is_invulnerable())
             }
+            Entity::Projectile(_) => true,
         }
     }
 
@@ -3239,7 +5471,13 @@ impl World {
         let Some(server_ptr) = self.event_dispatcher else {
             return Some(damage);
         };
-        let mut event = EntityDamageEvent::new(entity_id, damage);
+        let Some(entity) = self
+            .entity_by_id_mut(entity_id)
+            .map(|entity| entity as *mut Entity)
+        else {
+            return Some(damage);
+        };
+        let mut event = EntityDamageEvent::new(entity, damage);
         let server = unsafe { &mut *(server_ptr as *mut crate::server::MinecraftServer) };
         event.dispatch(server);
         if event.is_cancelled() {
@@ -3253,6 +5491,14 @@ impl World {
             return Ok(false);
         };
         let should_kill = match entity {
+            Entity::Creature(entity) => {
+                entity.apply_damage(damage);
+                entity.health() <= 0.0
+            }
+            Entity::ExperienceOrb(entity) => {
+                entity.apply_damage(damage);
+                entity.health() <= 0.0
+            }
             Entity::Generic(entity) => {
                 entity.apply_damage(damage);
                 entity.health() <= 0.0
@@ -3262,6 +5508,7 @@ impl World {
                 player.apply_damage(damage)?;
                 player.health() <= 0.0
             }
+            Entity::Projectile(_) => return Ok(false),
         };
         if should_kill {
             self.kill_entity(entity_id)?;
@@ -3277,7 +5524,13 @@ impl World {
         let Some(server_ptr) = self.event_dispatcher else {
             return Some(fire_ticks);
         };
-        let mut event = EntitySetFireEvent::new(entity_id, fire_ticks);
+        let Some(entity) = self
+            .entity_by_id_mut(entity_id)
+            .map(|entity| entity as *mut Entity)
+        else {
+            return Some(fire_ticks);
+        };
+        let mut event = EntitySetFireEvent::new(entity, fire_ticks);
         let server = unsafe { &mut *(server_ptr as *mut crate::server::MinecraftServer) };
         event.dispatch(server);
         if event.is_cancelled() {
@@ -3294,7 +5547,13 @@ impl World {
         let Some(server_ptr) = self.event_dispatcher else {
             return false;
         };
-        let mut event = EntityFireExtinguishEvent::new(entity_id, natural);
+        let Some(entity) = self
+            .entity_by_id_mut(entity_id)
+            .map(|entity| entity as *mut Entity)
+        else {
+            return false;
+        };
+        let mut event = EntityFireExtinguishEvent::new(entity, natural);
         let server = unsafe { &mut *(server_ptr as *mut crate::server::MinecraftServer) };
         event.dispatch(server);
         event.is_cancelled()
@@ -3305,9 +5564,12 @@ impl World {
             return false;
         };
         match entity {
+            Entity::Creature(entity) => entity.set_fire_ticks(fire_ticks),
+            Entity::ExperienceOrb(entity) => entity.set_fire_ticks(fire_ticks),
             Entity::Generic(entity) => entity.set_fire_ticks(fire_ticks),
             Entity::Item(_) => return false,
             Entity::Player(player) => player.set_fire_ticks(fire_ticks),
+            Entity::Projectile(entity) => entity.set_fire_ticks(fire_ticks),
         }
         true
     }
@@ -3321,6 +5583,14 @@ impl World {
             return false;
         };
         match entity {
+            Entity::Creature(entity) => {
+                entity.set_fire_ticks_after_cancelled_extinguish(fire_ticks);
+                entity.set_on_fire(true);
+            }
+            Entity::ExperienceOrb(entity) => {
+                entity.set_fire_ticks_after_cancelled_extinguish(fire_ticks);
+                entity.set_on_fire(true);
+            }
             Entity::Generic(entity) => {
                 entity.set_fire_ticks_after_cancelled_extinguish(fire_ticks);
                 entity.set_on_fire(true);
@@ -3329,6 +5599,10 @@ impl World {
             Entity::Player(player) => {
                 player.set_fire_ticks_after_cancelled_extinguish(fire_ticks);
                 player.set_on_fire(true);
+            }
+            Entity::Projectile(entity) => {
+                entity.set_fire_ticks_after_cancelled_extinguish(fire_ticks);
+                entity.set_on_fire(true);
             }
         }
         true
@@ -3352,14 +5626,14 @@ impl World {
             position.y().floor() as i32,
             position.z().floor() as i32,
         );
-        let Some(block) = self.loaded_block_at(block_position) else {
+        let Some(block_instance) = self.loaded_block_instance_at(block_position) else {
             return;
         };
-        let Some(handler) = self.block_handlers.handler(block) else {
+        let Some(handler) = block_instance.handler() else {
             return;
         };
         handler.on_touch(BlockHandlerTouch::new(
-            block,
+            block_instance.block(),
             self.uuid,
             block_position,
             entity_id,
@@ -3407,18 +5681,16 @@ impl World {
             })
             .filter_map(Player::client_mut)
             .try_for_each(|client| {
-                if previous_weather.has_rain() != weather.has_rain() {
-                    let rain_event = if weather.has_rain() {
-                        GameEvent::BeginRaining
-                    } else {
-                        GameEvent::EndRaining
-                    };
-                    GameEventPacket::from(rain_event).dispatch(client)?;
+                if previous_weather.is_raining() != weather.is_raining() {
+                    weather.is_raining_packet().dispatch(client)?;
                 }
-                GameEventPacket::from(GameEvent::RainLevelChange(weather.rain_level()))
-                    .dispatch(client)?;
-                GameEventPacket::from(GameEvent::ThunderLevelChange(weather.thunder_level()))
-                    .dispatch(client)
+                if previous_weather.rain_level() != weather.rain_level() {
+                    weather.rain_level_packet().dispatch(client)?;
+                }
+                if previous_weather.thunder_level() == weather.thunder_level() {
+                    return Ok(());
+                }
+                weather.thunder_level_packet().dispatch(client)
             })
     }
 
@@ -3522,28 +5794,37 @@ impl World {
                 })
             })?;
         self.entities.retain(|entity| match entity {
+            Entity::Creature(_) => true,
+            Entity::ExperienceOrb(_) => true,
             Entity::Generic(_) => true,
             Entity::Item(_) => true,
             Entity::Player(player) => player.addr != *addr,
+            Entity::Projectile(_) => true,
         });
         Ok(())
     }
 
     pub(crate) fn player_by_addr_mut(&mut self, addr: &SocketAddr) -> Option<&mut Player> {
         self.entities.iter_mut().find_map(|entity| match entity {
+            Entity::Creature(_) => None,
+            Entity::ExperienceOrb(_) => None,
             Entity::Generic(_) => None,
             Entity::Item(_) => None,
             Entity::Player(player) if player.addr == *addr => Some(player),
             Entity::Player(_) => None,
+            Entity::Projectile(_) => None,
         })
     }
 
     pub(crate) fn player_by_addr(&self, addr: &SocketAddr) -> Option<&Player> {
         self.entities.iter().find_map(|entity| match entity {
+            Entity::Creature(_) => None,
+            Entity::ExperienceOrb(_) => None,
             Entity::Generic(_) => None,
             Entity::Item(_) => None,
             Entity::Player(player) if player.addr == *addr => Some(player),
             Entity::Player(_) => None,
+            Entity::Projectile(_) => None,
         })
     }
 
@@ -3574,20 +5855,33 @@ impl World {
         first_spawn: bool,
         client: &mut Client,
     ) {
-        let world_name = self.name.clone();
         let Some(player) = self.entities.iter_mut().find_map(|entity| match entity {
             Entity::Player(player) if player.uuid() == player_uuid => Some(player),
             _ => None,
         }) else {
             return;
         };
-        dispatch_player_spawn_event(player as *mut Player, world_name, first_spawn, client);
+        dispatch_player_spawn_event(
+            player as *mut Player,
+            self as *mut World,
+            first_spawn,
+            client,
+        );
     }
 
     pub fn block_at(&mut self, position: BlockPosition) -> Result<Block> {
+        self.block_state_at(position).map(BlockState::block)
+    }
+
+    pub fn block_instance_at(&mut self, position: BlockPosition) -> Result<BlockInstance> {
+        self.block_instance_at_with_condition(position, BlockLookupCondition::None)?
+            .ok_or_else(|| Error::new(ErrorKind::NotFound, "Block instance was not found"))
+    }
+
+    pub fn block_state_at(&mut self, position: BlockPosition) -> Result<BlockState> {
         let chunk_position =
             ChunkPosition::new(position.x.div_euclid(16), position.z.div_euclid(16));
-        Ok(self.load_chunk(chunk_position)?.block(position))
+        Ok(self.load_chunk(chunk_position)?.block_state(position))
     }
 
     pub fn block_at_with_condition(
@@ -3595,11 +5889,26 @@ impl World {
         position: BlockPosition,
         condition: BlockLookupCondition,
     ) -> Result<Option<Block>> {
+        self.block_instance_at_with_condition(position, condition)
+            .map(|block_instance| block_instance.map(|block_instance| block_instance.block()))
+    }
+
+    pub fn block_instance_at_with_condition(
+        &mut self,
+        position: BlockPosition,
+        condition: BlockLookupCondition,
+    ) -> Result<Option<BlockInstance>> {
+        let chunk_position =
+            ChunkPosition::new(position.x.div_euclid(16), position.z.div_euclid(16));
         match condition {
-            BlockLookupCondition::None => self.block_at(position).map(Some),
-            BlockLookupCondition::Cached | BlockLookupCondition::Type => {
-                Ok(self.loaded_block_at(position))
-            }
+            BlockLookupCondition::None => Ok(self
+                .load_chunk(chunk_position)?
+                .block_instance_with_condition(position, condition)),
+            BlockLookupCondition::Cached | BlockLookupCondition::Type => Ok(self
+                .chunks
+                .get(&chunk_position)
+                .filter(|chunk| chunk.is_loaded())
+                .and_then(|chunk| chunk.block_instance_with_condition(position, condition))),
         }
     }
 
@@ -3624,50 +5933,118 @@ impl World {
     }
 
     pub fn set_block(&mut self, position: BlockPosition, block: Block) -> Result<bool> {
-        self.set_block_with_handler(position, block, None, None)
+        self.set_block_instance(position, block.into())
     }
 
-    fn set_block_with_handler(
+    pub fn set_block_instance(
         &mut self,
         position: BlockPosition,
-        block: Block,
+        block_instance: BlockInstance,
+    ) -> Result<bool> {
+        self.set_block_instance_with_handler(position, block_instance, None, None)
+    }
+
+    pub fn set_block_state(
+        &mut self,
+        position: BlockPosition,
+        block_state: BlockState,
+    ) -> Result<bool> {
+        self.set_block_instance(position, block_state.into())
+    }
+
+    fn set_block_instance_with_handler(
+        &mut self,
+        position: BlockPosition,
+        block_instance: BlockInstance,
         placement: Option<BlockHandlerPlacement>,
         destroy: Option<BlockHandlerDestroy>,
     ) -> Result<bool> {
         let chunk_position =
             ChunkPosition::new(position.x.div_euclid(16), position.z.div_euclid(16));
         self.load_chunk(chunk_position)?;
-        self.set_loaded_block_with_handler(position, block, placement, destroy, true, 0)
+        self.set_loaded_block_instance_with_handler(
+            position,
+            block_instance,
+            placement,
+            destroy,
+            true,
+            0,
+        )
     }
 
     fn set_loaded_block_with_handler(
         &mut self,
         position: BlockPosition,
-        mut block: Block,
+        block: Block,
         placement: Option<BlockHandlerPlacement>,
         destroy: Option<BlockHandlerDestroy>,
         do_block_updates: bool,
         update_distance: i32,
     ) -> Result<bool> {
-        block =
-            self.block_after_placement_rule(block, position, placement.as_ref(), do_block_updates);
+        self.set_loaded_block_instance_with_handler(
+            position,
+            block.into(),
+            placement,
+            destroy,
+            do_block_updates,
+            update_distance,
+        )
+    }
+
+    fn set_loaded_block_instance_with_handler(
+        &mut self,
+        position: BlockPosition,
+        block_instance: BlockInstance,
+        placement: Option<BlockHandlerPlacement>,
+        destroy: Option<BlockHandlerDestroy>,
+        do_block_updates: bool,
+        update_distance: i32,
+    ) -> Result<bool> {
+        let block_state = self.block_state_after_placement_rule(
+            block_instance.block_state(),
+            position,
+            placement.as_ref(),
+            do_block_updates,
+        );
+        self.set_loaded_block_state_with_handler(
+            position,
+            block_instance.with_block_state(block_state),
+            placement,
+            destroy,
+            do_block_updates,
+            update_distance,
+        )
+    }
+
+    fn set_loaded_block_state_with_handler(
+        &mut self,
+        position: BlockPosition,
+        block_instance: impl Into<BlockInstance>,
+        placement: Option<BlockHandlerPlacement>,
+        destroy: Option<BlockHandlerDestroy>,
+        do_block_updates: bool,
+        update_distance: i32,
+    ) -> Result<bool> {
+        let block_instance = block_instance.into();
+        let block_state = block_instance.block_state();
+        let block = block_state.block();
         if self
             .currently_changing_blocks
             .get(&position)
-            .is_some_and(|changed_block| *changed_block == block)
+            .is_some_and(|changed_block| *changed_block == block_state)
         {
             return Ok(false);
         }
-        self.currently_changing_blocks.insert(position, block);
+        self.currently_changing_blocks.insert(position, block_state);
         let chunk_position =
             ChunkPosition::new(position.x.div_euclid(16), position.z.div_euclid(16));
         let Some(mut chunk) = self.chunks.remove(&chunk_position) else {
             return Ok(false);
         };
         let block_was_set = chunk
-            .try_set_block_with_handler(
+            .try_set_block_instance_with_handler(
                 position,
-                block,
+                block_instance,
                 Some(&self.block_handlers),
                 placement,
                 destroy,
@@ -3681,37 +6058,86 @@ impl World {
         if do_block_updates {
             self.execute_neighbor_block_placement_rules(position, update_distance)?;
         }
-        self.broadcast_block_update(position, block)?;
-        self.broadcast_block_entity_update(position, block)?;
+        self.broadcast_block_update(position, block_state)?;
+        self.broadcast_block_entity_update(position)?;
+        self.invalidate_neighbor_chunk_lighting(position);
         self.dispatch_instance_block_update_event(position, block);
         Ok(true)
     }
 
-    fn block_after_placement_rule(
+    fn invalidate_neighbor_chunk_lighting(&mut self, position: BlockPosition) {
+        let Some(changed_chunk) = self.chunks.get(&ChunkPosition::from(position)) else {
+            return;
+        };
+        if !changed_chunk.is_lighting_chunk() || changed_chunk.is_lighting_invalidation_frozen() {
+            return;
+        }
+        let section_y = position.y.div_euclid(16);
+        affected_lighting_chunk_positions(position)
+            .into_iter()
+            .for_each(|chunk_position| {
+                if let Some(chunk) = self.chunks.get_mut(&chunk_position) {
+                    ((section_y - 1)..=(section_y + 1)).for_each(|section_y| {
+                        chunk.invalidate_section(section_y);
+                    });
+                    chunk.schedule_lighting_update();
+                }
+            });
+    }
+
+    fn invalidate_generated_chunk_lighting(&mut self, position: ChunkPosition) {
+        if self
+            .chunks
+            .get(&position)
+            .is_none_or(|chunk| !chunk.is_lighting_chunk())
+        {
+            return;
+        }
+        (-1..=1)
+            .flat_map(|x_offset| {
+                (-1..=1).map(move |z_offset| {
+                    ChunkPosition::new(position.x + x_offset, position.z + z_offset)
+                })
+            })
+            .for_each(|chunk_position| {
+                if let Some(chunk) = self.chunks.get_mut(&chunk_position) {
+                    (chunk.min_section()..chunk.max_section()).for_each(|section_y| {
+                        chunk.invalidate_section(section_y);
+                    });
+                    chunk.schedule_generated_lighting_update();
+                }
+            });
+    }
+
+    fn block_state_after_placement_rule(
         &self,
-        block: Block,
+        block_state: BlockState,
         position: BlockPosition,
         placement: Option<&BlockHandlerPlacement>,
         do_block_updates: bool,
-    ) -> Block {
+    ) -> BlockState {
         if !do_block_updates {
-            return block;
+            return block_state;
         }
         let Some(placement) = placement else {
-            return block;
+            return block_state;
         };
+        let block = block_state.block();
         let Some(rule) = self.block_placement_rules.rule(block) else {
-            return block;
+            return block_state;
         };
         let player = placement
             .player()
             .and_then(|player_id| self.entity_by_id(player_id))
             .and_then(|entity| match entity {
                 Entity::Player(player) => Some(player),
+                Entity::Creature(_) => None,
+                Entity::ExperienceOrb(_) => None,
                 Entity::Generic(_) => None,
                 Entity::Item(_) => None,
+                Entity::Projectile(_) => None,
             });
-        rule.block_place(BlockPlacementState::new(
+        let result_block = rule.block_place(BlockPlacementState::new(
             block,
             placement.block_face(),
             position,
@@ -3720,8 +6146,12 @@ impl World {
             placement.player(),
             placement.hand(),
             player.is_some_and(Player::is_sneaking),
-        ))
-        .unwrap_or(Block::AIR)
+        ));
+        match result_block {
+            Some(result_block) if result_block == block => block_state,
+            Some(result_block) => result_block.default_state(),
+            None => Block::AIR.default_state(),
+        }
     }
 
     fn execute_neighbor_block_placement_rules(
@@ -3791,12 +6221,32 @@ impl World {
     }
 
     pub fn loaded_block_at(&self, position: BlockPosition) -> Option<Block> {
+        self.loaded_block_state_at(position).map(BlockState::block)
+    }
+
+    pub fn loaded_block_instance_at(&self, position: BlockPosition) -> Option<BlockInstance> {
         let chunk_position =
             ChunkPosition::new(position.x.div_euclid(16), position.z.div_euclid(16));
         self.chunks
             .get(&chunk_position)
             .filter(|chunk| chunk.is_loaded())
-            .map(|chunk| chunk.block(position))
+            .and_then(|chunk| {
+                chunk.block_instance_with_condition(position, BlockLookupCondition::None)
+            })
+    }
+
+    pub fn loaded_block_state_at(&self, position: BlockPosition) -> Option<BlockState> {
+        let chunk_position =
+            ChunkPosition::new(position.x.div_euclid(16), position.z.div_euclid(16));
+        self.chunks
+            .get(&chunk_position)
+            .filter(|chunk| chunk.is_loaded())
+            .map(|chunk| chunk.block_state(position))
+    }
+
+    pub fn client_block_entity_nbt_at(&self, position: BlockPosition) -> Option<NbtCompound> {
+        let block_instance = self.loaded_block_instance_at(position)?;
+        self.client_block_entity_nbt(position, &block_instance)
     }
 
     pub fn target_block_position(
@@ -3917,11 +6367,14 @@ impl World {
     }
 
     pub fn block_light(&mut self, position: BlockPosition) -> u8 {
-        let chunk_position =
-            ChunkPosition::new(position.x.div_euclid(16), position.z.div_euclid(16));
-        if let Some(chunk) = self.chunks.get_mut(&chunk_position) {
-            chunk.relight_block_light_at(position.y);
+        if self.chunks.values().any(Chunk::lighting_is_invalidated) {
+            WorldLighting::relight(
+                &mut self.chunks,
+                self.cached_dimension_type.has_skylight,
+                None,
+            );
         }
+        let chunk_position = ChunkPosition::from(position);
         self.chunks
             .get(&chunk_position)
             .filter(|chunk| chunk.is_loaded())
@@ -3930,16 +6383,35 @@ impl World {
     }
 
     pub fn sky_light(&mut self, position: BlockPosition) -> u8 {
-        let chunk_position =
-            ChunkPosition::new(position.x.div_euclid(16), position.z.div_euclid(16));
-        if let Some(chunk) = self.chunks.get_mut(&chunk_position) {
-            chunk.relight_sky_light_at(position.y);
+        if self.chunks.values().any(Chunk::lighting_is_invalidated) {
+            WorldLighting::relight(
+                &mut self.chunks,
+                self.cached_dimension_type.has_skylight,
+                None,
+            );
         }
+        let chunk_position = ChunkPosition::from(position);
         self.chunks
             .get(&chunk_position)
             .filter(|chunk| chunk.is_loaded())
             .map(|chunk| chunk.sky_light(position))
             .unwrap_or_default()
+    }
+
+    pub fn relight_chunks(&mut self, positions: &[ChunkPosition]) -> Vec<ChunkPosition> {
+        let has_loaded_requested_chunk = positions.iter().any(|position| {
+            self.chunks
+                .get(position)
+                .is_some_and(|chunk| chunk.is_loaded() && chunk.is_lighting_chunk())
+        });
+        if !has_loaded_requested_chunk {
+            return Vec::new();
+        }
+        WorldLighting::relight(
+            &mut self.chunks,
+            self.cached_dimension_type.has_skylight,
+            Some(positions),
+        )
     }
 
     pub fn invalidate_section(&mut self, section_x: i32, section_y: i32, section_z: i32) -> bool {
@@ -4124,12 +6596,17 @@ impl World {
         position: ChunkPosition,
         _registries: &Registries,
     ) -> Result<()> {
+        self.queue_chunk_for_viewers(position);
+        Ok(())
+    }
+
+    fn queue_chunk_for_viewers(&mut self, position: ChunkPosition) {
         let Some(chunk) = self.chunks.get(&position).filter(|chunk| chunk.is_loaded()) else {
-            return Ok(());
+            return;
         };
         let viewer_ids = chunk.viewers().collect::<HashSet<_>>();
         if viewer_ids.is_empty() {
-            return Ok(());
+            return;
         }
         let player_chunk = PlayerChunk::new(position.x, position.z);
         self.entities
@@ -4143,7 +6620,6 @@ impl World {
             .for_each(|player| {
                 player.send_loaded_chunk_position(player_chunk);
             });
-        Ok(())
     }
 
     fn dispatch_packet_to_chunk_viewers<P>(
@@ -4204,14 +6680,14 @@ impl World {
         client: &mut Client,
         position: BlockPosition,
     ) -> Result<()> {
-        let block = self.block_at(position)?;
+        let block_state = self.block_state_at(position)?;
         BlockUpdatePacket::new(
             Position {
                 x: position.x,
                 y: position.y,
                 z: position.z,
             },
-            block.state_id(),
+            block_state.state_id(),
         )
         .dispatch(client)
     }
@@ -4221,13 +6697,10 @@ impl World {
         client: &mut Client,
         position: BlockPosition,
     ) -> Result<()> {
-        let Some(block) = self.loaded_block_at(position) else {
+        let Some(block_instance) = self.loaded_block_instance_at(position) else {
             return Ok(());
         };
-        if !ChunkSection::block_can_own_block_entity(block) {
-            return Ok(());
-        }
-        let Some(block_entity_type) = self.block_entity_packet_type(block) else {
+        let Some(block_entity_type) = block_instance.block().block_entity_type() else {
             return Ok(());
         };
         BlockEntityDataPacket::new(
@@ -4237,7 +6710,7 @@ impl World {
                 z: position.z,
             },
             block_entity_type,
-            self.client_block_entity_nbt(position, block),
+            self.client_block_entity_nbt(position, &block_instance),
         )
         .dispatch(client)
     }
@@ -4258,9 +6731,15 @@ impl World {
         if !self.is_chunk_loaded(chunk_position) {
             return false;
         }
-        self.set_loaded_block_with_handler(
+        let block_state = self.block_state_after_placement_rule(
+            placement.block_state(),
             placement.block_position(),
-            placement.block(),
+            Some(&placement),
+            do_block_updates,
+        );
+        self.set_loaded_block_state_with_handler(
+            placement.block_position(),
+            block_state,
             Some(placement),
             None,
             do_block_updates,
@@ -4338,14 +6817,14 @@ impl World {
         position: BlockPosition,
         cursor_position: (f32, f32, f32),
     ) -> bool {
-        let Some(block) = self.loaded_block_at(position) else {
+        let Some(block_instance) = self.loaded_block_instance_at(position) else {
             return true;
         };
-        let Some(handler) = self.block_handlers.handler(block) else {
+        let Some(handler) = block_instance.handler() else {
             return true;
         };
         handler.on_interact(BlockHandlerInteraction::new(
-            block,
+            block_instance.block(),
             self.uuid,
             block_face,
             position,
@@ -4458,7 +6937,11 @@ impl World {
             .try_for_each(|client| client.send_packet(P::get_id(), &payload))
     }
 
-    fn broadcast_block_update(&mut self, position: BlockPosition, block: Block) -> Result<()> {
+    fn broadcast_block_update(
+        &mut self,
+        position: BlockPosition,
+        block_state: BlockState,
+    ) -> Result<()> {
         let block_position = Position {
             x: position.x,
             y: position.y,
@@ -4472,24 +6955,21 @@ impl World {
             })
             .filter_map(Player::client_mut)
             .try_for_each(|viewer_client| {
-                BlockUpdatePacket::new(block_position, block.state_id()).dispatch(viewer_client)
+                BlockUpdatePacket::new(block_position, block_state.state_id())
+                    .dispatch(viewer_client)
             })
     }
 
-    fn broadcast_block_entity_update(
-        &mut self,
-        position: BlockPosition,
-        block: Block,
-    ) -> Result<()> {
-        if !ChunkSection::block_can_own_block_entity(block) {
+    fn broadcast_block_entity_update(&mut self, position: BlockPosition) -> Result<()> {
+        let Some(block_instance) = self.loaded_block_instance_at(position) else {
             return Ok(());
-        }
-        let Some(block_entity_type) = self.block_entity_packet_type(block) else {
+        };
+        let Some(block_entity_type) = block_instance.block().block_entity_type() else {
             return Ok(());
         };
         let chunk_position =
             ChunkPosition::new(position.x.div_euclid(16), position.z.div_euclid(16));
-        let block_entity_nbt = self.client_block_entity_nbt(position, block);
+        let block_entity_nbt = self.client_block_entity_nbt(position, &block_instance);
         let packet = BlockEntityDataPacket::new(
             Position {
                 x: position.x,
@@ -4502,26 +6982,15 @@ impl World {
         self.dispatch_packet_to_chunk_viewers(chunk_position, packet)
     }
 
-    fn block_entity_packet_type(&self, block: Block) -> Option<BlockEntityType> {
-        self.block_handlers
-            .handler(block)
-            .and_then(|handler| BlockEntityType::from_id(handler.block_entity_action().into()))
-            .or_else(|| block_entity_type_for_block(block))
-    }
-
     fn client_block_entity_nbt(
         &self,
-        position: BlockPosition,
-        block: Block,
+        _position: BlockPosition,
+        block_instance: &BlockInstance,
     ) -> Option<NbtCompound> {
-        let chunk_position =
-            ChunkPosition::new(position.x.div_euclid(16), position.z.div_euclid(16));
-        let block_entity = self
-            .chunks
-            .get(&chunk_position)
-            .and_then(|chunk| chunk.block_entity(position))?;
-        let Some(handler) = self.block_handlers.handler(block) else {
-            return Some(block_entity.nbt().clone());
+        block_instance.block().block_entity_type()?;
+        let block_entity_nbt = block_instance.nbt_or_empty();
+        let Some(handler) = block_instance.handler() else {
+            return Some(block_entity_nbt);
         };
         let tags = handler.block_entity_tags();
         if tags.is_empty() {
@@ -4529,51 +6998,78 @@ impl World {
         }
         let mut filtered_nbt = NbtCompound::new();
         tags.into_iter().for_each(|tag| {
-            tag.write(&mut filtered_nbt, tag.read(block_entity.nbt()));
+            tag.write(&mut filtered_nbt, tag.read(&block_entity_nbt));
         });
         Some(filtered_nbt)
     }
 
     fn apply_generator(&mut self, chunk: &mut Chunk) -> Result<()> {
-        let Some(generator) = self.generator() else {
-            return Ok(());
-        };
-        if !chunk.should_generate() {
+        if !chunk.requires_generation_completion() {
             return Ok(());
         }
-        let size = BlockSize::new(16, (chunk.sections().len() as i32) << 4, 16);
-        let start = BlockPosition::new(chunk.x() << 4, -64, chunk.z() << 4);
-        let mut unit = GenerationUnit::new(size, start, chunk.sections().to_vec());
-        generator
-            .generate(&mut unit)
-            .map_err(|error| Error::new(ErrorKind::Other, error))?;
-        let (sections, forks) = unit.into_generation();
-        chunk.replace_sections(sections);
-        forks
+        let generation_result = if chunk.requires_generation() {
+            let Some(generator) = self.generator.take() else {
+                self.apply_pending_generation(chunk);
+                chunk.on_generate();
+                return Ok(());
+            };
+            let generation_result = self.apply_generation(chunk, generator.as_ref());
+            self.generator = Some(generator);
+            generation_result
+        } else {
+            self.apply_pending_generation(chunk);
+            Ok(())
+        };
+        chunk.on_generate();
+        generation_result
+    }
+
+    fn apply_generation(
+        &mut self,
+        chunk: &mut Chunk,
+        generator: &(dyn Generator + Send + Sync),
+    ) -> Result<()> {
+        generate_chunk(chunk, generator)?
             .into_iter()
             .for_each(|fork| self.store_generation_fork(fork));
         self.apply_pending_generation(chunk);
-        chunk.on_generate();
         Ok(())
     }
 
-    fn load_player_chunks(&mut self, chunks: &[PlayerChunk]) -> Result<()> {
-        chunks
-            .iter()
-            .try_for_each(|chunk| self.load_chunk(ChunkPosition::from(*chunk)).map(|_| ()))
+    fn finish_new_chunk_generation(&mut self, position: ChunkPosition) -> Result<bool> {
+        let Some(mut chunk) = self.chunks.remove(&position) else {
+            return Ok(false);
+        };
+        let chunk_will_generate = chunk.requires_generation_completion();
+        let generation_result = self.apply_generator(&mut chunk);
+        self.chunks.insert(position, chunk);
+        if chunk_will_generate {
+            self.invalidate_generated_chunk_lighting(position);
+        }
+        generation_result.map(|_| true)
     }
 
-    fn schedule_player_chunk_loads(&mut self, player_address: SocketAddr, chunks: &[PlayerChunk]) {
-        chunks.iter().for_each(|chunk| {
-            let request_key = (player_address, *chunk);
-            if self.pending_player_chunk_load_keys.insert(request_key) {
-                self.pending_player_chunk_loads
-                    .push_back(PendingPlayerChunkLoad {
-                        player_address,
-                        chunk: *chunk,
-                    });
+    fn schedule_player_chunk_loads(
+        &mut self,
+        player_address: SocketAddr,
+        chunks: &[PlayerChunk],
+    ) -> Result<()> {
+        for chunk in chunks {
+            let position = ChunkPosition::from(*chunk);
+            if self.is_chunk_loaded(position) {
+                self.queue_loaded_chunk_for_player(player_address, *chunk);
+                continue;
             }
-        });
+            let Some(ticket) = self.load_optional_chunk_future(position)? else {
+                continue;
+            };
+            self.player_chunk_load_waiters
+                .entry(position)
+                .or_default()
+                .push(player_address);
+            let _ = self.complete_chunk_load(&ticket)?;
+        }
+        Ok(())
     }
 
     fn schedule_entity_visibility_refresh(&mut self, entity_id: EntityId) {
@@ -4599,47 +7095,93 @@ impl World {
         Ok(())
     }
 
-    fn process_pending_player_chunk_loads(&mut self) -> Result<()> {
-        let mut pending_chunk_loads = VecDeque::new();
-        std::mem::swap(
-            &mut pending_chunk_loads,
-            &mut self.pending_player_chunk_loads,
-        );
-        self.pending_player_chunk_load_keys.clear();
-        while let Some(pending_chunk_load) = pending_chunk_loads.pop_front() {
-            self.process_pending_player_chunk_load(pending_chunk_load)?;
+    pub(crate) fn process_completed_chunk_loads(&mut self) -> Result<()> {
+        self.receive_completed_chunk_loads();
+        let completed_tickets = self
+            .prepared_chunk_loads
+            .values()
+            .map(|(ticket, _)| ticket.clone())
+            .collect::<Vec<_>>();
+        for ticket in completed_tickets {
+            self.complete_chunk_load(&ticket)?;
         }
         Ok(())
     }
 
-    fn process_pending_player_chunk_load(
-        &mut self,
-        pending_chunk_load: PendingPlayerChunkLoad,
-    ) -> Result<()> {
-        let Some(player) = self.player_by_addr(&pending_chunk_load.player_address) else {
-            return Ok(());
-        };
-        if !pending_chunk_load.chunk.is_within_view_distance(
-            player.chunks_loaded_by_client,
-            player.effective_chunk_view_distance(self.view_distance),
-        ) {
-            return Ok(());
+    fn process_pending_player_entries(&mut self, registries: &Registries) -> Result<()> {
+        let pending_entries = self
+            .pending_player_entries
+            .iter()
+            .map(|(player_address, pending_entry)| {
+                (*player_address, pending_entry.chunk_load_tickets.clone())
+            })
+            .collect::<Vec<_>>();
+        for (player_address, chunk_load_tickets) in pending_entries {
+            let mut all_chunk_loads_are_complete = true;
+            for ticket in chunk_load_tickets {
+                if !self.complete_chunk_load(&ticket)? {
+                    all_chunk_loads_are_complete = false;
+                }
+            }
+            if !all_chunk_loads_are_complete {
+                continue;
+            }
+            let Some(pending_entry) = self.pending_player_entries.remove(&player_address) else {
+                continue;
+            };
+            let client = unsafe { &mut *(pending_entry.client as *mut Client) };
+            self.finish_player_entry(
+                client,
+                pending_entry.ticks_per_second,
+                registries,
+                pending_entry.chunks,
+            )?;
         }
-        self.load_chunk(ChunkPosition::from(pending_chunk_load.chunk))?;
-        let world_view_distance = self.view_distance;
-        let Some(player) = self.player_by_addr_mut(&pending_chunk_load.player_address) else {
-            return Ok(());
-        };
-        player.queue_loaded_chunk_if_current_view(pending_chunk_load.chunk, world_view_distance);
         Ok(())
+    }
+
+    fn receive_completed_chunk_loads(&mut self) {
+        while let Ok(completed_chunk_load) = self.completed_chunk_load_receiver.try_recv() {
+            self.prepared_chunk_loads.insert(
+                completed_chunk_load.ticket.id,
+                (
+                    completed_chunk_load.ticket,
+                    completed_chunk_load.prepared_chunk_load,
+                ),
+            );
+        }
+    }
+
+    fn queue_waiting_players_for_loaded_chunk(&mut self, position: ChunkPosition) {
+        let Some(player_addresses) = self.player_chunk_load_waiters.remove(&position) else {
+            return;
+        };
+        let chunk = PlayerChunk::new(position.x, position.z);
+        player_addresses.into_iter().for_each(|player_address| {
+            self.queue_loaded_chunk_for_player(player_address, chunk);
+        });
+    }
+
+    fn queue_loaded_chunk_for_player(&mut self, player_address: SocketAddr, chunk: PlayerChunk) {
+        let Some(player) = self.player_by_addr_mut(&player_address) else {
+            return;
+        };
+        player.queue_loaded_chunk(chunk);
     }
 
     fn loaded_chunk_packet(
-        &self,
+        chunks: &mut HashMap<ChunkPosition, Chunk>,
+        has_skylight: bool,
         position: ChunkPosition,
         registries: &Registries,
     ) -> Result<Option<ChunkDataAndUpdateLightPacket>> {
-        let Some(chunk) = self.chunks.get(&position) else {
+        let lighting_requires_update = chunks
+            .get(&position)
+            .is_some_and(Chunk::lighting_is_invalidated);
+        if lighting_requires_update {
+            WorldLighting::relight(chunks, has_skylight, Some(&[position]));
+        }
+        let Some(chunk) = chunks.get(&position) else {
             return Ok(None);
         };
         if !chunk.is_loaded() {
@@ -4663,10 +7205,11 @@ impl World {
         let Some(player) = self.player_pointer_by_addr(&client.addr) else {
             return Ok(());
         };
-        let world = self as *const Self;
+        let chunks = &mut self.chunks as *mut HashMap<ChunkPosition, Chunk>;
+        let has_skylight = self.cached_dimension_type.has_skylight;
         unsafe { &mut *player }.send_pending_chunks_with(client, |queued_chunk| {
             let position = ChunkPosition::from(queued_chunk.chunk);
-            unsafe { &*world }.loaded_chunk_packet(position, registries)
+            Self::loaded_chunk_packet(unsafe { &mut *chunks }, has_skylight, position, registries)
         })
     }
 
@@ -4682,10 +7225,11 @@ impl World {
             return Ok(());
         };
         let client = client as *mut Client;
-        let world = self as *const Self;
+        let chunks = &mut self.chunks as *mut HashMap<ChunkPosition, Chunk>;
+        let has_skylight = self.cached_dimension_type.has_skylight;
         unsafe { &mut *player }.send_pending_chunks_with(unsafe { &mut *client }, |queued_chunk| {
             let position = ChunkPosition::from(queued_chunk.chunk);
-            unsafe { &*world }.loaded_chunk_packet(position, registries)
+            Self::loaded_chunk_packet(unsafe { &mut *chunks }, has_skylight, position, registries)
         })
     }
 
@@ -4739,27 +7283,41 @@ impl World {
         if !should_load_missing_chunk {
             return Ok(None);
         }
-        if let Some(ticket) = self.async_chunk_loads.get(&position).copied() {
+        if let Some(ticket) = self.async_chunk_loads.get(&position).cloned() {
             return Ok(Some(ticket));
         }
         let ticket = self.next_chunk_load_ticket(position);
-        if !self.chunk_loader.supports_parallel_loading() {
-            self.load_chunk(position)?;
-            self.completed_chunk_loads.insert(ticket.id);
-            self.async_chunk_loads.remove(&position);
-            return Ok(Some(ticket));
-        }
+        let supports_parallel_loading = self.chunk_loader.supports_parallel_loading();
         let chunk_loader = self.chunk_loader.clone();
-        let handle = std::thread::spawn(move || chunk_loader.load_chunk(position));
-        self.async_chunk_loads.insert(position, ticket);
-        self.async_chunk_load_handles
-            .insert(ticket.id, AsyncChunkLoad { handle });
+        let chunk_supplier = self.chunk_supplier.clone();
+        let generator = self.generator.clone();
+        let synchronously_loaded_chunk = if supports_parallel_loading {
+            None
+        } else {
+            Some(chunk_loader.load_chunk(position)?)
+        };
+        let completed_chunk_load_sender = self.completed_chunk_load_sender.clone();
+        let executor_ticket = ticket.clone();
+        ChunkLoadingExecutor::global().execute(move || {
+            let prepared_chunk_load = prepare_chunk_load(
+                position,
+                chunk_loader,
+                chunk_supplier,
+                generator,
+                synchronously_loaded_chunk,
+            );
+            let _ = completed_chunk_load_sender.send(CompletedChunkLoad {
+                ticket: executor_ticket,
+                prepared_chunk_load,
+            });
+        });
+        self.async_chunk_loads.insert(position, ticket.clone());
         Ok(Some(ticket))
     }
 
     fn next_completed_chunk_load_ticket(&mut self, position: ChunkPosition) -> ChunkLoadTicket {
         let ticket = self.next_chunk_load_ticket(position);
-        self.completed_chunk_loads.insert(ticket.id);
+        ticket.complete();
         ticket
     }
 
@@ -4768,6 +7326,7 @@ impl World {
         ChunkLoadTicket {
             id: self.next_chunk_load_ticket_id,
             position,
+            is_completed: Arc::new(AtomicBool::new(false)),
         }
     }
 
@@ -4798,11 +7357,20 @@ impl World {
         let chunk_was_missing = !self.chunks.contains_key(&position);
         if chunk_was_missing {
             self.loading_chunks.insert(position);
-            let load_result = self.retrieve_chunk(position);
+            let load_result = self.load_or_create_chunk(position);
             self.loading_chunks.remove(&position);
             load_result?;
         }
-        self.generate_chunk_result(position)?;
+        self.finish_new_chunk_generation(position)?;
+        if chunk_was_missing {
+            let chunk = self.chunks.get_mut(&position).ok_or_else(|| {
+                Error::new(
+                    ErrorKind::NotFound,
+                    "Loaded chunk disappeared before on-load callback",
+                )
+            })?;
+            chunk.on_load();
+        }
         if chunk_was_missing && should_dispatch_load_event {
             self.dispatch_instance_chunk_load_event(position);
         }
@@ -4811,9 +7379,12 @@ impl World {
             .ok_or_else(|| Error::new(ErrorKind::NotFound, "Chunk was not loaded"))
     }
 
-    fn retrieve_chunk(&mut self, position: ChunkPosition) -> Result<()> {
+    fn load_or_create_chunk(&mut self, position: ChunkPosition) -> Result<()> {
         let mut chunk = match self.chunk_loader.load_chunk(position)? {
-            Some(chunk) => chunk,
+            Some(mut chunk) => {
+                chunk.mark_loaded_from_storage();
+                chunk
+            }
             None => self.chunk_supplier.create_chunk(position),
         };
         chunk.set_world(self.uuid);
@@ -4833,19 +7404,51 @@ impl Taggable for World {
     }
 }
 
-fn apply_entity_nbt(entity: &mut GenericEntity, nbt: Option<&NbtCompound>) {
-    let Some(nbt) = nbt else {
-        return;
-    };
-    if matches!(nbt.get("HasVisualFire"), Some(Nbt::Byte(1))) {
-        entity
-            .metadata_mut()
-            .set_flag(&definitions::is_on_fire(), true);
-    }
-}
-
 fn player_coordinate_is_too_large(coordinate: f64) -> bool {
     coordinate.abs() > MAX_PLAYER_COORDINATE
+}
+
+fn prepare_chunk_load(
+    position: ChunkPosition,
+    chunk_loader: Arc<dyn ChunkLoader>,
+    chunk_supplier: ChunkSupplier,
+    generator: Option<Arc<dyn Generator + Send + Sync>>,
+    synchronously_loaded_chunk: Option<Option<Chunk>>,
+) -> Result<PreparedChunkLoad> {
+    let loaded_chunk = match synchronously_loaded_chunk {
+        Some(loaded_chunk) => loaded_chunk,
+        None => chunk_loader.load_chunk(position)?,
+    };
+    let mut chunk = match loaded_chunk {
+        Some(mut chunk) => {
+            chunk.mark_loaded_from_storage();
+            chunk
+        }
+        None => chunk_supplier.create_chunk(position),
+    };
+    let requires_generation_completion = chunk.requires_generation_completion();
+    let generation_forks = match (chunk.requires_generation(), generator) {
+        (true, Some(generator)) => generate_chunk(&mut chunk, generator.as_ref())?,
+        _ => Vec::new(),
+    };
+    Ok(PreparedChunkLoad {
+        chunk,
+        generation_forks,
+        requires_generation_completion,
+    })
+}
+
+fn generate_chunk(
+    chunk: &mut Chunk,
+    generator: &(dyn Generator + Send + Sync),
+) -> Result<Vec<GenerationFork>> {
+    let size = BlockSize::new(16, (chunk.sections().len() as i32) << 4, 16);
+    let start = BlockPosition::new(chunk.x() << 4, -64, chunk.z() << 4);
+    let mut unit = GenerationUnit::new(size, start, chunk.sections().to_vec());
+    generator.generate(&mut unit).map_err(Error::other)?;
+    let (sections, generation_forks) = unit.into_generation();
+    chunk.replace_sections(sections);
+    Ok(generation_forks)
 }
 
 fn chunk_position_for_entity_position(position: EntityPosition) -> ChunkPosition {
@@ -4865,71 +7468,41 @@ fn entity_positions_are_within_view_distance(
         && (viewed_entity_chunk.z - viewer_chunk.z).abs() <= ENTITY_VIEW_DISTANCE
 }
 
-fn block_entity_type_for_block(block: Block) -> Option<BlockEntityType> {
-    let block_name = format!("{block:?}").to_ascii_lowercase();
-    let block_name = block_name.as_str();
-    if block_name.ends_with("_bed") {
-        return Some(BlockEntityType::Bed);
-    }
-    if block_name.ends_with("_banner") || block_name.ends_with("_wall_banner") {
-        return Some(BlockEntityType::Banner);
-    }
-    if block_name.ends_with("_hanging_sign") || block_name.ends_with("_wall_hanging_sign") {
-        return Some(BlockEntityType::HangingSign);
-    }
-    if block_name.ends_with("_sign") || block_name.ends_with("_wall_sign") {
-        return Some(BlockEntityType::Sign);
-    }
-    if block_name.ends_with("_shulker_box") {
-        return Some(BlockEntityType::ShulkerBox);
-    }
-    if block_name.ends_with("_head")
-        || block_name.ends_with("_wall_head")
-        || block_name.ends_with("_skull")
-        || block_name.ends_with("_wall_skull")
-    {
-        return Some(BlockEntityType::Skull);
-    }
-    match block_name {
-        "barrel" => Some(BlockEntityType::Barrel),
-        "beacon" => Some(BlockEntityType::Beacon),
-        "beehive" | "bee_nest" => Some(BlockEntityType::Beehive),
-        "bell" => Some(BlockEntityType::Bell),
-        "blast_furnace" => Some(BlockEntityType::BlastFurnace),
-        "brewing_stand" => Some(BlockEntityType::BrewingStand),
-        "calibrated_sculk_sensor" => Some(BlockEntityType::CalibratedSculkSensor),
-        "campfire" => Some(BlockEntityType::Campfire),
-        "chest" => Some(BlockEntityType::Chest),
-        "chiseled_bookshelf" => Some(BlockEntityType::ChiseledBookshelf),
-        "comparator" => Some(BlockEntityType::Comparator),
-        "conduit" => Some(BlockEntityType::Conduit),
-        "crafter" => Some(BlockEntityType::Crafter),
-        "decorated_pot" => Some(BlockEntityType::DecoratedPot),
-        "dispenser" => Some(BlockEntityType::Dispenser),
-        "dropper" => Some(BlockEntityType::Dropper),
-        "enchanting_table" => Some(BlockEntityType::EnchantingTable),
-        "ender_chest" => Some(BlockEntityType::EnderChest),
-        "end_gateway" => Some(BlockEntityType::EndGateway),
-        "end_portal" => Some(BlockEntityType::EndPortal),
-        "furnace" => Some(BlockEntityType::Furnace),
-        "hopper" => Some(BlockEntityType::Hopper),
-        "jigsaw" => Some(BlockEntityType::Jigsaw),
-        "jukebox" => Some(BlockEntityType::Jukebox),
-        "lectern" => Some(BlockEntityType::Lectern),
-        "mob_spawner" => Some(BlockEntityType::MobSpawner),
-        "piston" => Some(BlockEntityType::Piston),
-        "sculk_catalyst" => Some(BlockEntityType::SculkCatalyst),
-        "sculk_sensor" => Some(BlockEntityType::SculkSensor),
-        "sculk_shrieker" => Some(BlockEntityType::SculkShrieker),
-        "smoker" => Some(BlockEntityType::Smoker),
-        "structure_block" => Some(BlockEntityType::StructureBlock),
-        "trapped_chest" => Some(BlockEntityType::TrappedChest),
-        _ => None,
-    }
+fn automatic_visibility_pair_is_allowed(
+    viewed_entity: &Entity,
+    viewer_player: &Player,
+    viewed_player_is_vanished: bool,
+) -> bool {
+    viewer_player.has_entered_world()
+        && !viewed_player_is_vanished
+        && viewer_player.vehicle() != Some(viewed_entity.entity_id())
+        && entity_positions_are_within_view_distance(
+            viewed_entity.position(),
+            viewer_player.position(),
+        )
+        && viewed_entity.view().is_auto_viewable()
+        && viewer_player.view().is_auto_viewer()
+        && viewed_entity
+            .view()
+            .viewable_rule_allows(viewer_player.entity_id())
+        && viewer_player
+            .view()
+            .viewer_rule_allows(viewed_entity.entity_id())
 }
 
 fn block_is_air(block: Block) -> bool {
     matches!(block, Block::AIR | Block::CAVE_AIR | Block::VOID_AIR)
+}
+
+fn affected_lighting_chunk_positions(position: BlockPosition) -> Vec<ChunkPosition> {
+    let changed_chunk = ChunkPosition::from(position);
+    (-1..=1)
+        .flat_map(|x_offset| {
+            (-1..=1).map(move |z_offset| {
+                ChunkPosition::new(changed_chunk.x + x_offset, changed_chunk.z + z_offset)
+            })
+        })
+        .collect()
 }
 
 fn block_is_sight_block(block: Block) -> bool {
@@ -5117,6 +7690,125 @@ fn boxes_intersect(
         && first_end.z >= second_start.z
 }
 
+#[derive(Clone, Copy)]
+struct ProjectileCollisionState {
+    shooter_id: Option<EntityId>,
+    alive_ticks: u64,
+    bounding_box: spinel_registry::EntityBoundingBox,
+    is_on_ground: bool,
+}
+
+enum ProjectileCollision {
+    Free,
+    Stuck(EntityPosition),
+}
+
+fn projectile_sample_positions(
+    position_before_tick: EntityPosition,
+    position_after_tick: EntityPosition,
+    projectile_width: f64,
+) -> Vec<EntityPosition> {
+    let delta_x = position_after_tick.x() - position_before_tick.x();
+    let delta_y = position_after_tick.y() - position_before_tick.y();
+    let delta_z = position_after_tick.z() - position_before_tick.z();
+    let distance = delta_x
+        .mul_add(delta_x, delta_y.mul_add(delta_y, delta_z * delta_z))
+        .sqrt();
+    let sample_distance = projectile_width / 2.0;
+    let sample_count = (distance / sample_distance).ceil() as usize;
+    if sample_count == 0 {
+        return Vec::new();
+    }
+    let direction_x = delta_x / distance * sample_distance;
+    let direction_y = delta_y / distance * sample_distance;
+    let direction_z = delta_z / distance * sample_distance;
+    (0..sample_count)
+        .map(|sample_index| {
+            if sample_index == sample_count - 1 {
+                return position_after_tick;
+            }
+            let sample_multiplier = (sample_index + 1) as f64;
+            position_before_tick.offset(
+                direction_x * sample_multiplier,
+                direction_y * sample_multiplier,
+                direction_z * sample_multiplier,
+            )
+        })
+        .collect()
+}
+
+fn block_position_for_entity(position: EntityPosition) -> BlockPosition {
+    BlockPosition::new(
+        position.x().floor() as i32,
+        position.y().floor() as i32,
+        position.z().floor() as i32,
+    )
+}
+
+fn entity_is_living(entity: &Entity) -> bool {
+    match entity {
+        Entity::Creature(_) | Entity::Player(_) => true,
+        Entity::Generic(entity) => entity.entity_type().is_living(),
+        Entity::ExperienceOrb(_) | Entity::Item(_) | Entity::Projectile(_) => false,
+    }
+}
+
+fn projectile_entity_is_removed(entity: &Entity) -> bool {
+    match entity {
+        Entity::Projectile(entity) => entity.is_removed(),
+        Entity::Creature(_)
+        | Entity::ExperienceOrb(_)
+        | Entity::Generic(_)
+        | Entity::Item(_)
+        | Entity::Player(_) => true,
+    }
+}
+
+fn entity_positions_share_point(
+    first_position: EntityPosition,
+    second_position: EntityPosition,
+) -> bool {
+    first_position.x() == second_position.x()
+        && first_position.y() == second_position.y()
+        && first_position.z() == second_position.z()
+}
+
+fn entity_boxes_intersect_at(
+    first_position: EntityPosition,
+    first_bounding_box: spinel_registry::EntityBoundingBox,
+    second_position: EntityPosition,
+    second_bounding_box: spinel_registry::EntityBoundingBox,
+) -> bool {
+    boxes_intersect(
+        entity_box_start(first_position, first_bounding_box),
+        entity_box_end(first_position, first_bounding_box),
+        entity_box_start(second_position, second_bounding_box),
+        entity_box_end(second_position, second_bounding_box),
+    )
+}
+
+fn entity_box_start(
+    position: EntityPosition,
+    bounding_box: spinel_registry::EntityBoundingBox,
+) -> Vector3d {
+    Vector3d {
+        x: position.x() - bounding_box.width() / 2.0,
+        y: position.y(),
+        z: position.z() - bounding_box.depth() / 2.0,
+    }
+}
+
+fn entity_box_end(
+    position: EntityPosition,
+    bounding_box: spinel_registry::EntityBoundingBox,
+) -> Vector3d {
+    Vector3d {
+        x: position.x() + bounding_box.width() / 2.0,
+        y: position.y() + bounding_box.height(),
+        z: position.z() + bounding_box.depth() / 2.0,
+    }
+}
+
 fn current_time_nanos() -> u128 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -5136,12 +7828,12 @@ fn transition_weather(
     let thunder_level = current_weather.thunder_level()
         + (target_weather.thunder_level() - current_weather.thunder_level())
             * (1.0 / remaining_thunder_transition_ticks.max(1) as f32);
-    Weather::new(rain_level, thunder_level)
+    Weather::from_valid_levels(rain_level, thunder_level)
 }
 
 fn dispatch_player_spawn_event(
     player: *mut Player,
-    world_name: Identifier,
+    world: *mut World,
     first_spawn: bool,
     client: &mut Client,
 ) {
@@ -5149,19 +7841,23 @@ fn dispatch_player_spawn_event(
         return;
     };
     let server = unsafe { &mut *(server_ptr as *mut crate::server::MinecraftServer) };
-    PlayerSpawnEvent::new(player, world_name, first_spawn).dispatch(server, client);
+    PlayerSpawnEvent::new(player, world, first_spawn).dispatch(server, client);
 }
 
 fn entity_scoreboard_team_name(entity: &Entity) -> Option<&str> {
     match entity {
+        Entity::Creature(entity) => entity.team(),
+        Entity::ExperienceOrb(entity) => entity.team(),
         Entity::Generic(entity) => entity.team(),
         Entity::Item(_) => None,
         Entity::Player(player) => player.team(),
+        Entity::Projectile(entity) => entity.team(),
     }
 }
 
 fn living_item_pickup_scan(entity: &Entity) -> Option<(EntityPosition, EntityBoundingBox)> {
     match entity {
+        Entity::Creature(entity) => Some((entity.position(), entity.expanded_bounding_box())),
         Entity::Generic(entity) if entity.entity_type().is_living() => {
             Some((entity.position(), entity.expanded_bounding_box()))
         }
@@ -5196,6 +7892,14 @@ fn dispatch_player_tick_event(player: &mut Player) {
     PlayerTickEvent::new(player_ptr).dispatch(server, client);
 }
 
+fn dispatch_entity_tick_event(entity: *mut Entity, server_ptr: Option<usize>) {
+    let Some(server_ptr) = server_ptr else {
+        return;
+    };
+    let server = unsafe { &mut *(server_ptr as *mut crate::server::MinecraftServer) };
+    EntityTickEvent::new(entity).dispatch(server);
+}
+
 fn dispatch_player_tick_end_event(player: &mut Player) {
     let player_ptr = player as *mut Player;
     let Some(client) = player.client_mut() else {
@@ -5219,1019 +7923,4 @@ fn distinct_entities_mut(
     }
     let (before_first, from_first) = entities.split_at_mut(first_index);
     (&mut from_first[0], &mut before_first[second_index])
-}
-
-#[cfg(test)]
-mod tests {
-    use super::World;
-    use crate::entity::{Entity, EntityId, EntityPosition, Player, PlayerChunk};
-    use crate::events::player_move::PlayerMoveEvent;
-    use crate::network::client::instance::Client;
-    use crate::server::MinecraftServer;
-    use crate::world::{
-        Biome, Block, BlockPosition, Chunk, ChunkLoader, ChunkPosition, GenerateChunkError,
-        SetChunkBlockResult,
-    };
-    use spinel_core::network::clientbound::play::disconnect::PlayDisconnectPacket;
-    use spinel_core::network::clientbound::play::forget_level_chunk::ForgetLevelChunkPacket;
-    use spinel_core::network::clientbound::play::sync_player_pos::SyncPlayerPositionPacket;
-    use spinel_macros::event_listener;
-    use spinel_network::types::Identifier;
-    use spinel_network::{ConnectionState, DataType, VarIntWrapper};
-    use spinel_registry::EntityType;
-    use spinel_registry::Registries;
-    use spinel_registry::dimension_type::DimensionType;
-    use std::io::{self, Cursor, Error, ErrorKind, Read};
-    use std::net::{IpAddr, Ipv4Addr, SocketAddr, TcpListener, TcpStream};
-    use std::sync::atomic::{AtomicI32, AtomicUsize, Ordering};
-    use std::sync::{Arc, Mutex};
-    use std::thread;
-    use std::time::{Duration, Instant};
-    use uuid::Uuid;
-
-    const PLAYER_MOVE_TEST_PASSTHROUGH: i32 = 0;
-    const PLAYER_MOVE_TEST_CANCEL: i32 = 1;
-    const PLAYER_MOVE_TEST_VIEW: i32 = 2;
-    const PLAYER_MOVE_TEST_COORDINATES: i32 = 3;
-    const PLAYER_MOVE_TEST_TELEPORT: i32 = 4;
-
-    static PLAYER_MOVE_TEST_BEHAVIOR: AtomicI32 = AtomicI32::new(PLAYER_MOVE_TEST_PASSTHROUGH);
-    static PLAYER_MOVE_TEST_LOCK: Mutex<()> = Mutex::new(());
-
-    #[event_listener]
-    fn player_move_test_listener(event: &mut PlayerMoveEvent, _server: &mut MinecraftServer) {
-        match PLAYER_MOVE_TEST_BEHAVIOR.load(Ordering::SeqCst) {
-            PLAYER_MOVE_TEST_CANCEL => event.set_cancelled(true),
-            PLAYER_MOVE_TEST_VIEW => {
-                let packet_position = event.new_position();
-                event.set_new_position(EntityPosition::new(
-                    packet_position.x(),
-                    packet_position.y(),
-                    packet_position.z(),
-                    90.0,
-                    45.0,
-                ));
-            }
-            PLAYER_MOVE_TEST_COORDINATES => {
-                let packet_position = event.new_position();
-                event.set_new_position(EntityPosition::new(
-                    packet_position.x() + 1.0,
-                    packet_position.y(),
-                    packet_position.z(),
-                    packet_position.yaw(),
-                    packet_position.pitch(),
-                ));
-            }
-            PLAYER_MOVE_TEST_TELEPORT => event
-                .player()
-                .set_position(EntityPosition::new(8.0, 64.0, 8.0, 0.0, 0.0)),
-            _ => {}
-        }
-    }
-
-    struct PlayerMoveBehaviorScope<'a> {
-        _lock: std::sync::MutexGuard<'a, ()>,
-    }
-
-    impl Drop for PlayerMoveBehaviorScope<'_> {
-        fn drop(&mut self) {
-            PLAYER_MOVE_TEST_BEHAVIOR.store(PLAYER_MOVE_TEST_PASSTHROUGH, Ordering::SeqCst);
-        }
-    }
-
-    struct FailingChunkLoader;
-
-    impl ChunkLoader for FailingChunkLoader {
-        fn load_chunk(&self, _position: ChunkPosition) -> io::Result<Option<Chunk>> {
-            Err(Error::new(ErrorKind::Other, "load failed"))
-        }
-
-        fn save_chunk(&self, _chunk: &Chunk) -> io::Result<()> {
-            Err(Error::new(ErrorKind::Other, "save failed"))
-        }
-
-        fn unload_chunk(&self, _chunk: &mut Chunk) -> io::Result<()> {
-            Err(Error::new(ErrorKind::Other, "unload failed"))
-        }
-    }
-
-    fn player_move_behavior_scope(behavior: i32) -> PlayerMoveBehaviorScope<'static> {
-        let lock = PLAYER_MOVE_TEST_LOCK.lock().unwrap();
-        PLAYER_MOVE_TEST_BEHAVIOR.store(behavior, Ordering::SeqCst);
-        PlayerMoveBehaviorScope { _lock: lock }
-    }
-
-    fn test_client_pair() -> (Client, TcpStream) {
-        let listener =
-            TcpListener::bind(SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 0)).unwrap();
-        let addr = listener.local_addr().unwrap();
-        let stream = std::net::TcpStream::connect(addr).unwrap();
-        let (peer_stream, _) = listener.accept().unwrap();
-        peer_stream
-            .set_read_timeout(Some(Duration::from_secs(1)))
-            .unwrap();
-        let mut client = Client::new(stream, addr);
-        client.state = ConnectionState::Play;
-        (client, peer_stream)
-    }
-
-    fn read_packet_frame(peer_stream: &mut TcpStream) -> (i32, Vec<u8>) {
-        let frame_length = VarIntWrapper::decode(peer_stream).unwrap().0 as usize;
-        let mut frame = vec![0; frame_length];
-        peer_stream.read_exact(&mut frame).unwrap();
-        let mut frame_cursor = Cursor::new(frame);
-        let packet_id = VarIntWrapper::decode(&mut frame_cursor).unwrap().0;
-        let payload_start = frame_cursor.position() as usize;
-        let payload = frame_cursor.into_inner()[payload_start..].to_vec();
-        (packet_id, payload)
-    }
-
-    fn world_with_entered_player(client: &mut Client) -> World {
-        let mut world = World::new(Identifier::minecraft("overworld"));
-        let mut player = Player::new(Uuid::nil(), "Player".to_string(), 0, client.addr);
-        player.set_client(client);
-        player.set_world(world.uuid());
-        player.set_position(EntityPosition::new(0.0, 64.0, 0.0, 0.0, 0.0));
-        player.mark_entered_world();
-        world.add_entity(Entity::Player(player));
-        world
-    }
-
-    fn attach_server_to_client(server: &mut MinecraftServer, client: &mut Client) {
-        client.server_ptr = Some(server as *mut MinecraftServer as usize);
-    }
-
-    fn player_position(world: &World, client: &Client) -> EntityPosition {
-        world.player_by_addr(&client.addr).unwrap().position()
-    }
-
-    #[test]
-    fn optional_chunk_load_respects_auto_chunk_loading_like_minestom() {
-        let mut world = World::new(Identifier::minecraft("overworld"));
-        let chunk_position = ChunkPosition::new(2, 3);
-
-        world.enable_auto_chunk_load(false);
-
-        assert!(world.load_optional_chunk(chunk_position).is_none());
-        assert!(world.chunk(chunk_position).is_none());
-
-        world.enable_auto_chunk_load(true);
-
-        assert!(world.load_optional_chunk(chunk_position).is_some());
-        assert!(world.chunk(chunk_position).is_some());
-    }
-
-    #[test]
-    fn chunk_unload_missing_chunk_is_minestom_noop() {
-        let mut world = World::new(Identifier::minecraft("overworld"));
-
-        assert!(!world.unload_chunk(ChunkPosition::new(4, 5)).unwrap());
-    }
-
-    #[test]
-    fn explicit_chunk_unload_sends_forget_packet_to_loaded_viewer() {
-        let (mut client, mut peer_stream) = test_client_pair();
-        let mut world = world_with_entered_player(&mut client);
-        let registries = Registries::new_vanilla();
-
-        world.load_chunk(ChunkPosition::new(0, 0)).unwrap();
-        let packet = world
-            .chunk(ChunkPosition::new(0, 0))
-            .unwrap()
-            .full_data_packet(&registries)
-            .unwrap();
-        let player = world.player_by_addr_mut(&client.addr).unwrap();
-        player.send_chunk(packet);
-        player.send_pending_chunks().unwrap();
-        let _ = read_packet_frame(&mut peer_stream);
-        let _ = read_packet_frame(&mut peer_stream);
-        let _ = read_packet_frame(&mut peer_stream);
-        let _ = read_packet_frame(&mut peer_stream);
-
-        assert!(world.unload_chunk(ChunkPosition::new(0, 0)).unwrap());
-
-        let (packet_id, _) = read_packet_frame(&mut peer_stream);
-
-        assert_eq!(packet_id, ForgetLevelChunkPacket::get_id());
-    }
-
-    #[test]
-    fn fast_linear_movement_loads_full_minestom_view_radius() {
-        let (mut client, _peer_stream) = test_client_pair();
-        let mut world = world_with_entered_player(&mut client);
-        let registries = Registries::new_vanilla();
-        world.set_view_distance(1);
-        world.set_generator(|unit| {
-            unit.modifier().fill_height(-64, -63, Block::STONE);
-        });
-
-        world
-            .move_player(&mut client, 80.0, 64.0, 0.0, true, &registries)
-            .unwrap();
-        world.process_pending_player_chunk_loads().unwrap();
-
-        PlayerChunk::new(5, 0)
-            .surrounding(2)
-            .into_iter()
-            .for_each(|chunk| {
-                assert!(
-                    world.is_chunk_loaded(ChunkPosition::from(chunk)),
-                    "chunk {chunk:?} was not loaded"
-                );
-            });
-    }
-
-    #[test]
-    fn sharp_turn_before_chunk_load_completion_loads_latest_view_only() {
-        let (mut client, _peer_stream) = test_client_pair();
-        let mut world = world_with_entered_player(&mut client);
-        let registries = Registries::new_vanilla();
-        world.set_view_distance(1);
-        world.set_generator(|unit| {
-            unit.modifier().fill_height(-64, -63, Block::STONE);
-        });
-
-        world
-            .move_player(&mut client, 80.0, 64.0, 0.0, true, &registries)
-            .unwrap();
-        world
-            .move_player(&mut client, 0.0, 64.0, 0.0, true, &registries)
-            .unwrap();
-        world.process_pending_player_chunk_loads().unwrap();
-
-        PlayerChunk::new(0, 0)
-            .surrounding(2)
-            .into_iter()
-            .for_each(|chunk| {
-                assert!(
-                    world.is_chunk_loaded(ChunkPosition::from(chunk)),
-                    "chunk {chunk:?} was not loaded"
-                );
-            });
-        PlayerChunk::new(5, 0)
-            .surrounding(2)
-            .into_iter()
-            .filter(|chunk| !chunk.is_within_view_distance(PlayerChunk::new(0, 0), 2))
-            .for_each(|chunk| {
-                assert!(
-                    !world.is_chunk_loaded(ChunkPosition::from(chunk)),
-                    "stale trail chunk {chunk:?} was loaded"
-                );
-            });
-    }
-
-    #[test]
-    #[ignore]
-    fn measure_fast_movement_load_vs_throttled_send_cost() {
-        let (mut client, mut peer_stream) = test_client_pair();
-        let mut world = world_with_entered_player(&mut client);
-        let registries = Registries::new_vanilla();
-        world.set_view_distance(4);
-        world.set_generator(|unit| {
-            unit.modifier().fill_height(-64, 64, Block::STONE);
-        });
-        let drain_thread = thread::spawn(move || {
-            let mut drained_bytes = 0usize;
-            let mut buffer = [0u8; 8192];
-            loop {
-                match peer_stream.read(&mut buffer) {
-                    Ok(0) => return drained_bytes,
-                    Ok(bytes_read) => drained_bytes += bytes_read,
-                    Err(error)
-                        if matches!(error.kind(), ErrorKind::WouldBlock | ErrorKind::TimedOut) =>
-                    {
-                        return drained_bytes;
-                    }
-                    Err(_) => return drained_bytes,
-                }
-            }
-        });
-
-        let movement_start = Instant::now();
-        world
-            .move_player(&mut client, 320.0, 64.0, 0.0, true, &registries)
-            .unwrap();
-        let movement_elapsed = movement_start.elapsed();
-        let loaded_chunks = world.chunks().count();
-        let queued_before_tick = world
-            .player_by_addr(&client.addr)
-            .unwrap()
-            .queued_chunk_count();
-
-        let tick_start = Instant::now();
-        world.tick_with_registries(&registries);
-        let tick_elapsed = tick_start.elapsed();
-        let player = world.player_by_addr(&client.addr).unwrap();
-        let queued_after_tick = player.queued_chunk_count();
-        let chunk_batch_lead = player.chunk_batch_lead();
-        let target_chunks_per_tick = player.target_chunks_per_tick();
-        drop(world);
-        drop(client);
-        let drained_bytes = drain_thread.join().unwrap();
-
-        println!(
-            "loaded_chunks={} queued_before_tick={} move_load={:?} first_throttled_tick={:?} queued_after_tick={} chunk_batch_lead={} target_chunks_per_tick={} drained_bytes={}",
-            loaded_chunks,
-            queued_before_tick,
-            movement_elapsed,
-            tick_elapsed,
-            queued_after_tick,
-            chunk_batch_lead,
-            target_chunks_per_tick,
-            drained_bytes
-        );
-    }
-
-    #[test]
-    #[ignore]
-    fn measure_fast_client_movement_chunk_generation_per_second() {
-        let (mut client, mut peer_stream) = test_client_pair();
-        let mut world = world_with_entered_player(&mut client);
-        let registries = Registries::new_vanilla();
-        let generated_chunks = Arc::new(AtomicUsize::new(0));
-        let generated_chunk_counter = Arc::clone(&generated_chunks);
-        world.set_view_distance(4);
-        world.set_generator(move |unit| {
-            generated_chunk_counter.fetch_add(1, Ordering::SeqCst);
-            unit.modifier().fill_height(0, 3, Block::GRASS_BLOCK);
-        });
-        let drain_thread = thread::spawn(move || {
-            let mut drained_bytes = 0usize;
-            let mut buffer = [0u8; 16384];
-            loop {
-                match peer_stream.read(&mut buffer) {
-                    Ok(0) => return drained_bytes,
-                    Ok(bytes_read) => drained_bytes += bytes_read,
-                    Err(error)
-                        if matches!(error.kind(), ErrorKind::WouldBlock | ErrorKind::TimedOut) =>
-                    {
-                        return drained_bytes;
-                    }
-                    Err(_) => return drained_bytes,
-                }
-            }
-        });
-
-        let movement_count = 40;
-        let movement_start = Instant::now();
-        for movement_step in 1..=movement_count {
-            world
-                .move_player(
-                    &mut client,
-                    movement_step as f64 * 24.0,
-                    64.0,
-                    0.0,
-                    true,
-                    &registries,
-                )
-                .unwrap();
-            world
-                .player_by_addr_mut(&client.addr)
-                .unwrap()
-                .on_chunk_batch_received(64.0);
-            world.tick_with_registries(&registries);
-        }
-        let movement_elapsed = movement_start.elapsed();
-        let generated_chunk_count = generated_chunks.load(Ordering::SeqCst);
-        let generated_chunks_per_second =
-            generated_chunk_count as f64 / movement_elapsed.as_secs_f64();
-        let loaded_chunks = world.chunks().count();
-        let player = world.player_by_addr(&client.addr).unwrap();
-        let queued_chunks = player.queued_chunk_count();
-        let chunk_batch_lead = player.chunk_batch_lead();
-        let target_chunks_per_tick = player.target_chunks_per_tick();
-        drop(world);
-        drop(client);
-        let drained_bytes = drain_thread.join().unwrap();
-
-        println!(
-            "movement_count={} generated_chunks={} elapsed={:?} generated_chunks_per_second={:.2} loaded_chunks={} queued_chunks={} chunk_batch_lead={} target_chunks_per_tick={} drained_bytes={}",
-            movement_count,
-            generated_chunk_count,
-            movement_elapsed,
-            generated_chunks_per_second,
-            loaded_chunks,
-            queued_chunks,
-            chunk_batch_lead,
-            target_chunks_per_tick,
-            drained_bytes
-        );
-    }
-
-    #[test]
-    #[ignore]
-    fn measure_fast_client_movement_chunk_pipeline_split() {
-        let (mut client, mut peer_stream) = test_client_pair();
-        let mut world = world_with_entered_player(&mut client);
-        let registries = Registries::new_vanilla();
-        let generated_chunks = Arc::new(AtomicUsize::new(0));
-        let generated_chunk_counter = Arc::clone(&generated_chunks);
-        world.set_view_distance(4);
-        world.set_generator(move |unit| {
-            generated_chunk_counter.fetch_add(1, Ordering::SeqCst);
-            unit.modifier().fill_height(0, 3, Block::GRASS_BLOCK);
-        });
-        let drain_thread = thread::spawn(move || {
-            let mut drained_bytes = 0usize;
-            let mut buffer = [0u8; 16384];
-            loop {
-                match peer_stream.read(&mut buffer) {
-                    Ok(0) => return drained_bytes,
-                    Ok(bytes_read) => drained_bytes += bytes_read,
-                    Err(error)
-                        if matches!(error.kind(), ErrorKind::WouldBlock | ErrorKind::TimedOut) =>
-                    {
-                        return drained_bytes;
-                    }
-                    Err(_) => return drained_bytes,
-                }
-            }
-        });
-
-        let movement_count = 40;
-        let mut movement_elapsed = Duration::ZERO;
-        let mut pending_load_elapsed = Duration::ZERO;
-        let mut pending_send_elapsed = Duration::ZERO;
-        let pipeline_start = Instant::now();
-        for movement_step in 1..=movement_count {
-            let movement_start = Instant::now();
-            world
-                .move_player(
-                    &mut client,
-                    movement_step as f64 * 24.0,
-                    64.0,
-                    0.0,
-                    true,
-                    &registries,
-                )
-                .unwrap();
-            movement_elapsed += movement_start.elapsed();
-
-            let pending_load_start = Instant::now();
-            world.process_pending_player_chunk_loads().unwrap();
-            pending_load_elapsed += pending_load_start.elapsed();
-
-            let pending_send_start = Instant::now();
-            world
-                .send_pending_chunks_for_player_address(client.addr, &registries)
-                .unwrap();
-            pending_send_elapsed += pending_send_start.elapsed();
-
-            world
-                .player_by_addr_mut(&client.addr)
-                .unwrap()
-                .on_chunk_batch_received(64.0);
-        }
-        let pipeline_elapsed = pipeline_start.elapsed();
-        let generated_chunk_count = generated_chunks.load(Ordering::SeqCst);
-        let generated_chunks_per_second =
-            generated_chunk_count as f64 / pipeline_elapsed.as_secs_f64();
-        let loaded_chunks = world.chunks().count();
-        let player = world.player_by_addr(&client.addr).unwrap();
-        let queued_chunks = player.queued_chunk_count();
-        drop(world);
-        drop(client);
-        let drained_bytes = drain_thread.join().unwrap();
-
-        println!(
-            "movement_count={} generated_chunks={} generated_chunks_per_second={:.2} total={:?} movement={:?} pending_load={:?} pending_send={:?} loaded_chunks={} queued_chunks={} drained_bytes={}",
-            movement_count,
-            generated_chunk_count,
-            generated_chunks_per_second,
-            pipeline_elapsed,
-            movement_elapsed,
-            pending_load_elapsed,
-            pending_send_elapsed,
-            loaded_chunks,
-            queued_chunks,
-            drained_bytes
-        );
-    }
-
-    #[test]
-    fn too_large_player_coordinate_kicks_player_like_minestom() {
-        let (mut client, mut peer_stream) = test_client_pair();
-        let mut world = world_with_entered_player(&mut client);
-        let registries = Registries::new_vanilla();
-
-        world
-            .move_player(&mut client, 30_000_001.0, 64.0, 0.0, true, &registries)
-            .unwrap();
-
-        let (packet_id, _) = read_packet_frame(&mut peer_stream);
-
-        assert_eq!(packet_id, PlayDisconnectPacket::get_id());
-        assert!(!client.is_online());
-    }
-
-    #[test]
-    fn movement_is_suppressed_while_teleport_confirmation_is_pending() {
-        let (mut client, mut peer_stream) = test_client_pair();
-        let mut world = world_with_entered_player(&mut client);
-        let registries = Registries::new_vanilla();
-
-        world
-            .player_by_addr_mut(&client.addr)
-            .unwrap()
-            .next_teleport_id();
-        world
-            .move_player(&mut client, 1.0, 64.0, 0.0, true, &registries)
-            .unwrap();
-
-        peer_stream
-            .set_read_timeout(Some(Duration::from_millis(25)))
-            .unwrap();
-        let mut trailing_packet_byte = [0u8; 1];
-
-        assert_eq!(player_position(&world, &client).x(), 0.0);
-        assert!(peer_stream.read(&mut trailing_packet_byte).is_err());
-    }
-
-    #[test]
-    fn movement_into_unloaded_destination_chunk_teleports_player_back() {
-        let (mut client, mut peer_stream) = test_client_pair();
-        let mut world = world_with_entered_player(&mut client);
-        let registries = Registries::new_vanilla();
-
-        world.load_chunk(ChunkPosition::new(0, 0)).unwrap();
-        world.enable_auto_chunk_load(false);
-        world
-            .move_player(&mut client, 16.0, 64.0, 0.0, true, &registries)
-            .unwrap();
-
-        let (packet_id, _) = read_packet_frame(&mut peer_stream);
-
-        assert_eq!(packet_id, SyncPlayerPositionPacket::get_id());
-        assert_eq!(player_position(&world, &client).x(), 0.0);
-    }
-
-    #[test]
-    fn cancelled_player_move_event_sends_correction_packet() {
-        let _scope = player_move_behavior_scope(PLAYER_MOVE_TEST_CANCEL);
-        let (mut client, mut peer_stream) = test_client_pair();
-        let mut server = MinecraftServer::new();
-        attach_server_to_client(&mut server, &mut client);
-        let mut world = world_with_entered_player(&mut client);
-        let registries = Registries::new_vanilla();
-
-        world
-            .move_player(&mut client, 1.0, 64.0, 0.0, true, &registries)
-            .unwrap();
-
-        let (packet_id, _) = read_packet_frame(&mut peer_stream);
-
-        assert_eq!(packet_id, SyncPlayerPositionPacket::get_id());
-        assert_eq!(player_position(&world, &client).x(), 0.0);
-    }
-
-    #[test]
-    fn player_move_event_mutated_yaw_and_pitch_update_player_view() {
-        let _scope = player_move_behavior_scope(PLAYER_MOVE_TEST_VIEW);
-        let (mut client, mut peer_stream) = test_client_pair();
-        let mut server = MinecraftServer::new();
-        attach_server_to_client(&mut server, &mut client);
-        let mut world = world_with_entered_player(&mut client);
-        let registries = Registries::new_vanilla();
-
-        world
-            .move_player_with_view(&mut client, 1.0, 64.0, 0.0, 0.0, 0.0, true, &registries)
-            .unwrap();
-
-        peer_stream
-            .set_read_timeout(Some(Duration::from_millis(25)))
-            .unwrap();
-        let mut trailing_packet_byte = [0u8; 1];
-        let position = player_position(&world, &client);
-
-        assert_eq!(position.x(), 1.0);
-        assert_eq!(position.yaw(), 90.0);
-        assert_eq!(position.pitch(), 45.0);
-        assert!(peer_stream.read(&mut trailing_packet_byte).is_err());
-    }
-
-    #[test]
-    fn player_move_event_mutated_coordinates_teleport_player_to_event_position() {
-        let _scope = player_move_behavior_scope(PLAYER_MOVE_TEST_COORDINATES);
-        let (mut client, mut peer_stream) = test_client_pair();
-        let mut server = MinecraftServer::new();
-        attach_server_to_client(&mut server, &mut client);
-        let mut world = world_with_entered_player(&mut client);
-        let registries = Registries::new_vanilla();
-
-        world
-            .move_player(&mut client, 1.0, 64.0, 0.0, true, &registries)
-            .unwrap();
-
-        let (packet_id, _) = read_packet_frame(&mut peer_stream);
-
-        assert_eq!(packet_id, SyncPlayerPositionPacket::get_id());
-        assert_eq!(player_position(&world, &client).x(), 2.0);
-    }
-
-    #[test]
-    fn player_move_event_triggered_teleport_stops_original_movement() {
-        let _scope = player_move_behavior_scope(PLAYER_MOVE_TEST_TELEPORT);
-        let (mut client, mut peer_stream) = test_client_pair();
-        let mut server = MinecraftServer::new();
-        attach_server_to_client(&mut server, &mut client);
-        let mut world = world_with_entered_player(&mut client);
-        let registries = Registries::new_vanilla();
-
-        world
-            .move_player(&mut client, 1.0, 64.0, 0.0, true, &registries)
-            .unwrap();
-
-        peer_stream
-            .set_read_timeout(Some(Duration::from_millis(25)))
-            .unwrap();
-        let mut trailing_packet_byte = [0u8; 1];
-
-        assert_eq!(player_position(&world, &client).x(), 8.0);
-        assert!(peer_stream.read(&mut trailing_packet_byte).is_err());
-    }
-
-    #[test]
-    fn chunk_loader_errors_propagate_through_fallible_load_api() {
-        let mut world = World::new(Identifier::minecraft("overworld"));
-        world.set_chunk_loader(FailingChunkLoader);
-
-        let load_error = match world.load_chunk(ChunkPosition::new(1, 1)) {
-            Ok(_) => panic!("loader error should propagate"),
-            Err(error) => error,
-        };
-
-        assert_eq!(load_error.kind(), ErrorKind::Other);
-        assert!(world.chunk(ChunkPosition::new(1, 1)).is_none());
-    }
-
-    #[test]
-    fn loader_miss_uses_world_chunk_supplier_like_minestom() {
-        let mut world = World::new(Identifier::minecraft("overworld"));
-        world.set_chunk_supplier(|_| Chunk::new(ChunkPosition::new(7, -9)));
-
-        let chunk = world.load_chunk(ChunkPosition::new(1, 1)).unwrap();
-
-        assert_eq!(chunk.x(), 7);
-        assert_eq!(chunk.z(), -9);
-        assert_eq!(
-            world
-                .chunk_supplier()
-                .create_chunk(ChunkPosition::new(3, 4))
-                .x(),
-            7
-        );
-    }
-
-    #[test]
-    fn in_flight_chunk_load_guard_rejects_duplicate_reentry() {
-        let mut world = World::new(Identifier::minecraft("overworld"));
-        let chunk_position = ChunkPosition::new(1, 1);
-        world.loading_chunks.insert(chunk_position);
-
-        let load_error = match world.load_chunk(chunk_position) {
-            Ok(_) => panic!("in-flight chunk load should reject duplicate reentry"),
-            Err(error) => error,
-        };
-
-        assert_eq!(load_error.kind(), ErrorKind::WouldBlock);
-        assert!(world.chunk(chunk_position).is_none());
-    }
-
-    #[test]
-    fn generation_errors_propagate_through_fallible_chunk_load_api() {
-        let mut world = World::new(Identifier::minecraft("overworld"));
-        world.set_fallible_generator(|_| {
-            Err(GenerateChunkError::GeneratorFailed {
-                reason: "test generator failed".to_string(),
-            })
-        });
-
-        let load_error = match world.load_chunk(ChunkPosition::new(1, 1)) {
-            Ok(_) => panic!("generator error should propagate"),
-            Err(error) => error,
-        };
-
-        assert_eq!(load_error.kind(), ErrorKind::Other);
-        assert!(world.chunk(ChunkPosition::new(1, 1)).is_some());
-        assert!(
-            world
-                .chunk(ChunkPosition::new(1, 1))
-                .is_some_and(Chunk::should_generate)
-        );
-    }
-
-    #[test]
-    fn chunk_state_accessors_match_minestom_chunk_api_capability() {
-        let mut chunk = Chunk::new(ChunkPosition::new(2, -3));
-        let copied_chunk = chunk.copy_for_position(ChunkPosition::new(4, 5));
-        let registries = spinel_registry::Registries::new_vanilla();
-
-        assert_ne!(chunk.identifier(), copied_chunk.identifier());
-        assert_eq!(chunk.x(), 2);
-        assert_eq!(chunk.z(), -3);
-        assert_eq!(chunk.min_section(), -4);
-        assert_eq!(chunk.max_section(), 20);
-        assert_eq!(
-            chunk.world_position(),
-            crate::world::BlockPosition::new(32, 0, -48)
-        );
-        assert!(chunk.section_at_block_y(-64).is_some());
-        assert!(chunk.section_at_block_y(319).is_some());
-        assert!(chunk.section_at_block_y(320).is_none());
-        assert!(chunk.section(-4).is_some());
-        assert!(chunk.section(20).is_none());
-
-        assert_eq!(
-            chunk.try_set_block(crate::world::BlockPosition::new(1, 64, 1), Block::STONE),
-            SetChunkBlockResult::Changed
-        );
-        assert!(chunk.is_invalidated());
-        let chunk_packet = chunk.full_data_packet(&registries).unwrap();
-
-        assert_eq!(chunk_packet.chunk_x, 2);
-        assert_eq!(chunk_packet.chunk_z, -3);
-        assert_eq!(chunk_packet.chunk_data.sections.len(), 24);
-        chunk.reset();
-
-        assert_eq!(
-            chunk.block(crate::world::BlockPosition::new(1, 64, 1)),
-            Block::AIR
-        );
-        assert!(chunk.is_invalidated());
-        assert!(chunk.should_generate());
-        chunk.on_generate();
-        assert!(!chunk.should_generate());
-
-        chunk.set_read_only(true);
-
-        assert_eq!(
-            chunk.try_set_block(crate::world::BlockPosition::new(1, 64, 1), Block::STONE),
-            SetChunkBlockResult::ReadOnly
-        );
-        assert!(chunk.section_mut(4).is_none());
-    }
-
-    #[test]
-    fn chunk_biome_accessors_invalidate_cached_chunk_data() {
-        let registries = spinel_registry::Registries::new_vanilla();
-        let mut chunk = Chunk::new(ChunkPosition::new(0, 0));
-
-        let empty_chunk_data = chunk.data(&registries).unwrap();
-
-        assert_eq!(
-            chunk.biome(crate::world::BlockPosition::new(0, 64, 0)),
-            spinel_registry::Biome::PLAINS
-        );
-        assert!(chunk.set_biome(
-            crate::world::BlockPosition::new(0, 64, 0),
-            spinel_registry::Biome::BADLANDS
-        ));
-
-        let changed_chunk_data = chunk.data(&registries).unwrap();
-        let empty_biomes = &empty_chunk_data.sections[8].biomes;
-        let changed_biomes = &changed_chunk_data.sections[8].biomes;
-
-        assert_ne!(empty_biomes.bits_per_entry, changed_biomes.bits_per_entry);
-        assert_ne!(empty_biomes.palette, changed_biomes.palette);
-
-        chunk.fill_biome(spinel_registry::Biome::BAMBOO_JUNGLE);
-
-        assert_eq!(
-            chunk.biome(crate::world::BlockPosition::new(4, 64, 4)),
-            spinel_registry::Biome::BAMBOO_JUNGLE
-        );
-    }
-
-    #[test]
-    fn chunk_cache_and_heightmaps_invalidate_after_block_mutation() {
-        let registries = spinel_registry::Registries::new_vanilla();
-        let mut chunk = Chunk::new(ChunkPosition::new(0, 0));
-
-        let empty_chunk_data = chunk.data(&registries).unwrap();
-
-        assert_eq!(empty_chunk_data.sections[4].block_count, 0);
-
-        assert_eq!(
-            chunk.try_set_block(crate::world::BlockPosition::new(1, 64, 1), Block::STONE),
-            SetChunkBlockResult::Changed
-        );
-
-        let changed_chunk_data = chunk.data(&registries).unwrap();
-
-        assert_eq!(changed_chunk_data.sections[8].block_count, 1);
-        let empty_heightmap_data = empty_chunk_data
-            .heightmaps
-            .iter()
-            .flat_map(|heightmap| heightmap.data.iter())
-            .copied()
-            .collect::<Vec<_>>();
-        let changed_heightmap_data = changed_chunk_data
-            .heightmaps
-            .iter()
-            .flat_map(|heightmap| heightmap.data.iter())
-            .copied()
-            .collect::<Vec<_>>();
-
-        assert_ne!(empty_heightmap_data, changed_heightmap_data);
-    }
-
-    #[test]
-    fn chunk_loads_heightmaps_from_nbt_like_minestom() {
-        let mut chunk = Chunk::new(ChunkPosition::new(0, 0));
-        let mut heightmaps = spinel_nbt::NbtCompound::new();
-        heightmaps.insert(
-            "MOTION_BLOCKING".to_string(),
-            spinel_nbt::Nbt::LongArray(vec![1; 37].into_boxed_slice()),
-        );
-
-        chunk.load_heightmaps_from_nbt(&heightmaps);
-
-        assert_eq!(
-            &chunk.motion_blocking_heightmap()[0..36],
-            vec![1; 36].as_slice()
-        );
-    }
-
-    #[test]
-    fn chunk_viewer_membership_matches_minestom_no_op_edges() {
-        let mut chunk = Chunk::new(ChunkPosition::new(0, 0));
-        let viewer = EntityId::next();
-
-        assert!(chunk.add_viewer(viewer));
-        assert!(!chunk.add_viewer(viewer));
-        assert_eq!(chunk.viewers().collect::<Vec<_>>(), vec![viewer.value()]);
-        assert!(chunk.remove_viewer(viewer));
-        assert!(!chunk.remove_viewer(viewer));
-        assert!(chunk.viewers().next().is_none());
-    }
-
-    #[test]
-    fn chunk_light_data_has_full_chunk_section_shape() {
-        let chunk = Chunk::new(ChunkPosition::new(0, 0));
-        let light_data = chunk.light_data();
-
-        assert_eq!(light_data.sky_light_mask, vec![0x01ff_fffe]);
-        assert_eq!(light_data.block_light_mask, vec![0x01ff_fffe]);
-        assert_eq!(light_data.empty_sky_light_mask, vec![0x0200_0001]);
-        assert_eq!(light_data.empty_block_light_mask, vec![0x0200_0001]);
-        assert_eq!(light_data.sky_light_arrays.len(), 24);
-        assert_eq!(light_data.block_light_arrays.len(), 24);
-        assert!(
-            light_data
-                .sky_light_arrays
-                .iter()
-                .all(|section_light| section_light.len() == 2048)
-        );
-        assert!(
-            light_data
-                .block_light_arrays
-                .iter()
-                .all(|section_light| section_light.len() == 2048)
-        );
-    }
-
-    #[test]
-    fn added_entities_record_their_current_world_membership() {
-        let mut world = World::new(Identifier::minecraft("overworld"));
-        let world_uuid = world.uuid;
-        let entity = Entity::new(EntityType::ZOMBIE);
-
-        world.add_entity(entity);
-
-        assert_eq!(world.entities[0].world(), Some(world_uuid));
-    }
-
-    #[test]
-    fn world_dimension_registration_and_void_api_match_minestom_instance_surface() {
-        let dimension_type = DimensionType::THE_NETHER;
-        let cached_dimension_type = DimensionType::builder()
-            .vertical_bounds(-32, 256, 128)
-            .build();
-        let world = World::new_with_dimension(
-            Identifier::minecraft("the_nether"),
-            dimension_type.clone(),
-            cached_dimension_type,
-        );
-
-        assert!(!world.is_registered());
-        assert_eq!(world.dimension_type(), &dimension_type);
-        assert_eq!(world.cached_dimension_type().min_y, -32);
-        assert_eq!(world.dimension_name(), &Identifier::minecraft("the_nether"));
-        assert!(world.is_in_void(EntityPosition::new(0.0, -97.0, 0.0, 0.0, 0.0)));
-        assert!(!world.is_in_void(EntityPosition::new(0.0, -96.0, 0.0, 0.0, 0.0)));
-    }
-
-    #[test]
-    fn world_entity_and_player_lookup_api_matches_minestom_instance_surface() {
-        let mut world = World::new(Identifier::minecraft("overworld"));
-        let generic_entity = Entity::new(EntityType::ZOMBIE);
-        let generic_entity_id = generic_entity.entity_id();
-        let generic_entity_uuid = generic_entity.uuid();
-        let player_socket = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 25565);
-        let player = Player::new(Uuid::nil(), "Player".to_string(), 0, player_socket);
-        let player_id = player.entity_id();
-        let player_uuid = player.uuid();
-
-        world.add_entity(generic_entity);
-        world.add_entity(Entity::Player(player));
-
-        assert_eq!(world.entities().count(), 2);
-        assert_eq!(
-            world.entity_by_id(generic_entity_id).map(Entity::uuid),
-            Some(generic_entity_uuid)
-        );
-        assert_eq!(
-            world.entity_by_uuid(player_uuid).map(Entity::entity_id),
-            Some(player_id)
-        );
-        assert_eq!(world.players().count(), 1);
-        assert_eq!(
-            world.player_by_uuid(player_uuid).map(Player::entity_id),
-            Some(player_id)
-        );
-    }
-
-    #[test]
-    fn world_chunk_and_block_api_match_loaded_chunk_semantics() {
-        let mut world = World::new(Identifier::minecraft("overworld"));
-        let chunk_position = ChunkPosition::new(0, 0);
-
-        assert_eq!(world.uuid(), world.uuid);
-        assert_eq!(world.name(), &Identifier::minecraft("overworld"));
-        assert!(!world.is_chunk_loaded(chunk_position));
-        assert!(world.chunk_at(0.0, 0.0).is_none());
-        assert!(
-            world
-                .loaded_block_at(crate::world::BlockPosition::new(1, 64, 1))
-                .is_none()
-        );
-
-        let block = world
-            .block_at(crate::world::BlockPosition::new(1, 64, 1))
-            .unwrap();
-
-        assert_eq!(block, Block::AIR);
-        assert_eq!(
-            world.biome_at(BlockPosition::new(1, 64, 1)).unwrap(),
-            Biome::PLAINS
-        );
-        assert!(
-            world
-                .set_block(BlockPosition::new(1, 64, 1), Block::STONE)
-                .unwrap()
-        );
-        assert!(world.is_chunk_loaded(chunk_position));
-        assert!(world.chunk_at(0.0, 0.0).is_some());
-        assert_eq!(world.chunks().count(), 1);
-        assert_eq!(
-            world.loaded_block_at(crate::world::BlockPosition::new(1, 64, 1)),
-            Some(Block::STONE)
-        );
-        assert!(world.block_position_is_loaded(crate::world::BlockPosition::new(1, 64, 1)));
-    }
-
-    #[test]
-    fn world_time_api_matches_minestom_defaults_and_validation() {
-        let mut world = World::new(Identifier::minecraft("overworld"));
-
-        assert_eq!(world.world_age(), 0);
-        assert_eq!(world.time(), 0);
-        assert_eq!(world.time_rate(), 1);
-        assert_eq!(world.time_synchronization_ticks(), 20);
-        assert_eq!(world.view_distance(), 8);
-        assert_eq!(world.time_packet().world_age, 0);
-        assert_eq!(world.time_packet().time, 0);
-        assert!(world.time_packet().tick_day_time);
-
-        world.set_world_age(40).unwrap();
-        world.set_time(6000).unwrap();
-        world.set_time_rate(0).unwrap();
-        world.set_time_synchronization_ticks(0).unwrap();
-        world.set_view_distance(12);
-
-        assert_eq!(world.world_age(), 40);
-        assert_eq!(world.time(), 6000);
-        assert_eq!(world.time_rate(), 0);
-        assert_eq!(world.time_synchronization_ticks(), 0);
-        assert_eq!(world.view_distance(), 12);
-        assert!(!world.time_packet().tick_day_time);
-        assert!(world.set_time_rate(-1).is_err());
-        assert!(world.set_time_synchronization_ticks(-1).is_err());
-    }
-
-    #[test]
-    fn world_tick_advances_time_like_minestom() {
-        let mut world = World::new(Identifier::minecraft("overworld"));
-
-        world.tick();
-
-        assert_eq!(world.world_age(), 1);
-        assert_eq!(world.time(), 1);
-
-        world.set_time_rate(0).unwrap();
-        world.tick();
-
-        assert_eq!(world.world_age(), 2);
-        assert_eq!(world.time(), 1);
-    }
 }

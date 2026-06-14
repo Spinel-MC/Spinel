@@ -170,10 +170,18 @@ impl Player {
         let pack_failed_required_load =
             pending_pack.is_required() && status != ResourcePackStatus::SuccessfullyLoaded;
         if pack_failed_required_load {
-            return self.kick(TextComponent::literal_with_color(
+            let disconnect_reason = TextComponent::literal_with_color(
                 "Required resource pack was not loaded.",
                 TextColor::from_named(NamedTextColor::Red),
-            ));
+            );
+            let Some(client) = self.client_mut() else {
+                return Ok(());
+            };
+            let Some(server_ptr) = client.server_ptr else {
+                return Ok(());
+            };
+            let server = unsafe { &mut *(server_ptr as *mut crate::server::MinecraftServer) };
+            return server.kick(client, disconnect_reason);
         }
         Ok(())
     }

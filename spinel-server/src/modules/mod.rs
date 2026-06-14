@@ -1,3 +1,3 @@
 mod manager;
 
-pub use manager::ModuleManager;
+pub use manager::ServerModuleManager;

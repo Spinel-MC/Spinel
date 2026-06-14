@@ -6,7 +6,7 @@ use crate::entity::player::position::PlayerPosition;
 use crate::events::player_chunk_load::PlayerChunkLoadEvent;
 use crate::events::player_chunk_unload::PlayerChunkUnloadEvent;
 use crate::network::client::instance::Client;
-use crate::world::Chunk;
+use crate::world::{Chunk, Weather};
 use spinel_core::network::clientbound::play::chunk_batch_finished::ChunkBatchFinishedPacket;
 use spinel_core::network::clientbound::play::chunk_batch_start::ChunkBatchStartPacket;
 use spinel_core::network::clientbound::play::chunk_data::ChunkDataAndUpdateLightPacket;
@@ -39,20 +39,37 @@ impl Player {
         &mut self,
         client: &mut Client,
         ticks_per_second: u32,
+        dimension_type_id: i32,
         world_name: Identifier,
         chunk_packets: Vec<ChunkDataAndUpdateLightPacket>,
+        world_border_packet: InitializeWorldBorderPacket,
         time_packet: SetTimePacket,
+        weather: Weather,
     ) -> io::Result<()> {
         self.position = PlayerPosition::from(self.respawn_point());
         self.loaded_chunk = PlayerChunk::from_position(self.position);
         self.chunks_loaded_by_client = self.loaded_chunk;
-        self.reset_chunk_queue_for_world_entry_or_teleport();
-        LoginPlayPacket::new(self.entity_id().value(), self.game_mode()).dispatch(client)?;
+        self.initialize_chunk_update_history();
+        self.reset_chunk_queue();
+        LoginPlayPacket::new(
+            self.entity_id().value(),
+            self.game_mode(),
+            dimension_type_id,
+            world_name.clone(),
+        )
+        .dispatch(client)?;
         client.enter_play();
         self.last_completed_client_tick = 0;
         self.set_on_ground(false);
         self.send_tick_rate(client, ticks_per_second)?;
-        self.load_world(client, world_name, chunk_packets, time_packet)?;
+        self.load_world(
+            client,
+            world_name,
+            chunk_packets,
+            world_border_packet,
+            time_packet,
+            weather,
+        )?;
         self.mark_entered_world();
         self.refresh_commands()?;
         self.refresh_recipes()
@@ -62,20 +79,37 @@ impl Player {
         &mut self,
         client: &mut Client,
         ticks_per_second: u32,
+        dimension_type_id: i32,
         world_name: Identifier,
         chunks: Vec<PlayerChunk>,
+        world_border_packet: InitializeWorldBorderPacket,
         time_packet: SetTimePacket,
+        weather: Weather,
     ) -> io::Result<()> {
         self.position = PlayerPosition::from(self.respawn_point());
         self.loaded_chunk = PlayerChunk::from_position(self.position);
         self.chunks_loaded_by_client = self.loaded_chunk;
-        self.reset_chunk_queue_for_world_entry_or_teleport();
-        LoginPlayPacket::new(self.entity_id().value(), self.game_mode()).dispatch(client)?;
+        self.initialize_chunk_update_history();
+        self.reset_chunk_queue();
+        LoginPlayPacket::new(
+            self.entity_id().value(),
+            self.game_mode(),
+            dimension_type_id,
+            world_name.clone(),
+        )
+        .dispatch(client)?;
         client.enter_play();
         self.last_completed_client_tick = 0;
         self.set_on_ground(false);
         self.send_tick_rate(client, ticks_per_second)?;
-        self.load_world_chunk_positions(client, world_name, chunks, time_packet)?;
+        self.load_world_chunk_positions(
+            client,
+            world_name,
+            chunks,
+            world_border_packet,
+            time_packet,
+            weather,
+        )?;
         self.mark_entered_world();
         self.refresh_commands()?;
         self.refresh_recipes()
@@ -88,6 +122,7 @@ impl Player {
         chunks: Vec<PlayerChunk>,
         time_packet: SetTimePacket,
         world_border_packet: InitializeWorldBorderPacket,
+        weather: Weather,
         first_spawn: bool,
         dimension_change: bool,
         update_chunks: bool,
@@ -96,7 +131,20 @@ impl Player {
         if dimension_change {
             RespawnPacket::new(self.game_mode(), world_name.clone()).dispatch(client)?;
         }
+        world_border_packet.dispatch(client)?;
+        SetTimePacket::new(
+            time_packet.world_age,
+            time_packet.time,
+            time_packet.tick_day_time,
+        )
+        .dispatch(client)?;
+        weather
+            .packets()
+            .into_iter()
+            .try_for_each(|packet| packet.dispatch(client))?;
         if update_chunks {
+            self.chunk_update_limit_checker
+                .add_to_history(self.loaded_chunk);
             SetChunkCacheCenterPacket::new(self.loaded_chunk.x, self.loaded_chunk.z)
                 .dispatch(client)?;
             self.queue_chunks(chunks);
@@ -164,6 +212,28 @@ impl Player {
         )
     }
 
+    pub(crate) fn accept_chunk_transition(
+        &mut self,
+        transition: Option<PlayerChunkTransition>,
+    ) -> Option<PlayerChunkTransition> {
+        let transition = transition?;
+        if self
+            .chunk_update_limit_checker
+            .add_to_history(transition.next)
+        {
+            return Some(transition);
+        }
+
+        self.loaded_chunk = transition.next;
+        None
+    }
+
+    fn initialize_chunk_update_history(&mut self) {
+        self.chunk_update_limit_checker.clear_history();
+        self.chunk_update_limit_checker
+            .add_to_history(self.loaded_chunk);
+    }
+
     pub(crate) fn move_to_with_view_loaded_chunks(
         &mut self,
         client: &mut Client,
@@ -198,6 +268,9 @@ impl Player {
             position.yaw(),
             position.pitch(),
         );
+        if self.current_world().is_none() {
+            self.record_synchronization_position(position);
+        }
     }
 
     pub(crate) fn set_position_and_view(&mut self, position: crate::entity::EntityPosition) {
@@ -220,7 +293,8 @@ impl Player {
         self.loaded_chunk = PlayerChunk::from_position(self.position);
         self.chunks_loaded_by_client = self.loaded_chunk;
         if should_reset_chunks {
-            self.reset_chunk_queue_for_world_entry_or_teleport();
+            self.chunk_update_limit_checker.clear_history();
+            self.reset_chunk_queue();
         }
         self.loaded_chunk
             .surrounding(self.effective_chunk_view_distance(world_view_distance))
@@ -245,6 +319,29 @@ impl Player {
         )
     }
 
+    pub(crate) fn refresh_chunks_after_teleport(
+        &mut self,
+        transition: Option<PlayerChunkTransition>,
+        world_view_distance: i32,
+    ) -> io::Result<()> {
+        self.chunk_update_limit_checker.clear_history();
+        let transition = self.accept_chunk_transition(transition);
+        let Some(transition) = transition else {
+            return Ok(());
+        };
+        let arriving = transition.arriving.clone();
+        let Some(client_ptr) = self.client else {
+            return Ok(());
+        };
+        let client = unsafe { &mut *(client_ptr as *mut Client) };
+        self.update_chunks_after_border_crossing_with_chunks(
+            client,
+            transition,
+            arriving,
+            world_view_distance,
+        )
+    }
+
     pub(crate) fn has_chunk_loaded_by_client(
         &self,
         chunk: PlayerChunk,
@@ -261,12 +358,19 @@ impl Player {
         client: &mut Client,
         world_name: Identifier,
         chunk_packets: Vec<ChunkDataAndUpdateLightPacket>,
+        world_border_packet: InitializeWorldBorderPacket,
         time_packet: SetTimePacket,
+        weather: Weather,
     ) -> io::Result<()> {
+        world_border_packet.dispatch(client)?;
+        time_packet.dispatch(client)?;
+        weather
+            .packets()
+            .into_iter()
+            .try_for_each(|packet| packet.dispatch(client))?;
         SetChunkCacheCenterPacket::new(self.loaded_chunk.x, self.loaded_chunk.z)
             .dispatch(client)?;
         self.spawn_position(client, world_name)?;
-        time_packet.dispatch(client)?;
         SetHealthPacket::new(20.0, 20, 5.0).dispatch(client)?;
         self.sync_main_hand_attributes(client)?;
         self.sync_inventory(client)?;
@@ -280,12 +384,19 @@ impl Player {
         client: &mut Client,
         world_name: Identifier,
         chunks: Vec<PlayerChunk>,
+        world_border_packet: InitializeWorldBorderPacket,
         time_packet: SetTimePacket,
+        weather: Weather,
     ) -> io::Result<()> {
+        world_border_packet.dispatch(client)?;
+        time_packet.dispatch(client)?;
+        weather
+            .packets()
+            .into_iter()
+            .try_for_each(|packet| packet.dispatch(client))?;
         SetChunkCacheCenterPacket::new(self.loaded_chunk.x, self.loaded_chunk.z)
             .dispatch(client)?;
         self.spawn_position(client, world_name)?;
-        time_packet.dispatch(client)?;
         SetHealthPacket::new(20.0, 20, 5.0).dispatch(client)?;
         self.sync_main_hand_attributes(client)?;
         self.sync_inventory(client)?;
@@ -308,13 +419,7 @@ impl Player {
             return Ok(());
         }
         SetChunkCacheCenterPacket::new(transition.next.x, transition.next.z).dispatch(client)?;
-        let effective_view_distance = self.effective_chunk_view_distance(i32::MAX - 1);
-        self.forget_chunks(
-            client,
-            transition.departing,
-            transition.next,
-            effective_view_distance,
-        )?;
+        self.forget_chunks(client, transition.departing)?;
         self.load_chunks(client, chunk_packets)?;
         self.chunks_loaded_by_client = transition.next;
         self.loaded_chunk = transition.next;
@@ -325,26 +430,11 @@ impl Player {
         &mut self,
         client: &mut Client,
         transition: PlayerChunkTransition,
-        chunks: Vec<PlayerChunk>,
-        world_view_distance: i32,
+        _chunks: Vec<PlayerChunk>,
+        _world_view_distance: i32,
     ) -> io::Result<()> {
-        if !self
-            .chunk_update_limit_checker
-            .add_to_history(transition.next)
-        {
-            self.loaded_chunk = transition.next;
-            return Ok(());
-        }
-        let effective_view_distance = self.effective_chunk_view_distance(world_view_distance);
         SetChunkCacheCenterPacket::new(transition.next.x, transition.next.z).dispatch(client)?;
-        self.forget_chunks(
-            client,
-            transition.departing,
-            transition.next,
-            effective_view_distance,
-        )?;
-        self.queue_chunks(chunks);
-        self.prune_queued_chunks_outside_view(transition.next, effective_view_distance);
+        self.forget_chunks(client, transition.departing)?;
         self.chunks_loaded_by_client = transition.next;
         self.loaded_chunk = transition.next;
         Ok(())
@@ -391,60 +481,41 @@ impl Player {
         });
     }
 
-    pub(crate) fn queue_loaded_chunk_if_current_view(
-        &mut self,
-        chunk: PlayerChunk,
-        world_view_distance: i32,
-    ) -> bool {
-        if !chunk.is_within_view_distance(
-            self.chunks_loaded_by_client,
-            self.effective_chunk_view_distance(world_view_distance),
-        ) {
-            return false;
-        }
-        self.queue_chunk(chunk)
+    pub(crate) fn queue_loaded_chunk(&mut self, chunk: PlayerChunk) {
+        self.queue_chunk(chunk);
     }
 
     pub(crate) fn update_chunks_after_view_distance_change(
         &mut self,
         client: &mut Client,
-        arriving: Vec<PlayerChunk>,
+        _arriving: Vec<PlayerChunk>,
         departing: Vec<PlayerChunk>,
-        world_view_distance: i32,
     ) -> io::Result<()> {
-        let current_center = self.chunks_loaded_by_client;
-        let effective_view_distance = self.effective_chunk_view_distance(world_view_distance);
-        self.forget_chunks(client, departing, current_center, effective_view_distance)?;
-        self.queue_chunks(arriving);
-        self.prune_queued_chunks_outside_view(current_center, effective_view_distance);
+        self.forget_chunks(client, departing)?;
         Ok(())
     }
 
-    fn queue_chunk(&mut self, chunk: PlayerChunk) -> bool {
-        if !self.queued_client_chunks.insert(chunk) {
-            return false;
-        }
+    fn queue_chunk(&mut self, chunk: PlayerChunk) {
         self.chunk_queue
             .push_back(QueuedPlayerChunk::from_chunk(chunk));
-        true
     }
 
     pub fn send_chunk(&mut self, chunk_packet: ChunkDataAndUpdateLightPacket) {
         let queued_chunk = QueuedPlayerChunk::new(chunk_packet);
-        if self.queued_client_chunks.insert(queued_chunk.chunk) {
-            self.chunk_queue.push_back(queued_chunk);
-        }
+        self.chunk_queue.push_back(queued_chunk);
     }
 
     pub fn send_loaded_chunk(&mut self, chunk: &Chunk) -> bool {
         if !chunk.is_loaded() {
             return false;
         }
-        self.queue_chunk(PlayerChunk::new(chunk.x(), chunk.z()))
+        self.queue_chunk(PlayerChunk::new(chunk.x(), chunk.z()));
+        true
     }
 
     pub(crate) fn send_loaded_chunk_position(&mut self, chunk: PlayerChunk) -> bool {
-        self.queue_chunk(chunk)
+        self.queue_chunk(chunk);
+        true
     }
 
     #[cfg(test)]
@@ -467,6 +538,10 @@ impl Player {
             QueuedPlayerChunk,
         ) -> io::Result<Option<ChunkDataAndUpdateLightPacket>>,
     ) -> io::Result<()> {
+        if !client.is_online() {
+            self.discard_pending_chunk_delivery();
+            return Ok(());
+        }
         if self.chunk_queue.is_empty() || self.chunk_batch_lead >= self.max_chunk_batch_lead {
             return Ok(());
         }
@@ -476,22 +551,24 @@ impl Player {
         if self.pending_chunk_count < 1.0 {
             return Ok(());
         }
-        let mut sent_chunk_count = 0;
         ChunkBatchStartPacket.dispatch(client)?;
-        while self.ready_chunk_batch_size() > 0 {
+        let mut sent_chunk_count = 0;
+        while !self.chunk_queue.is_empty() && self.pending_chunk_count >= 1.0 {
+            if !client.is_online() {
+                self.discard_pending_chunk_delivery();
+                return Ok(());
+            }
             let Some(queued_chunk) = self.chunk_queue.pop_front() else {
                 break;
             };
-            self.queued_client_chunks.remove(&queued_chunk.chunk);
-            let chunk_x = queued_chunk.chunk.x;
-            let chunk_z = queued_chunk.chunk.z;
+            let chunk = queued_chunk.chunk;
             let Some(packet) = packet_for_chunk(queued_chunk)? else {
                 continue;
             };
             packet.dispatch(client)?;
             self.client_sent_chunks
-                .insert(PlayerChunk::new(chunk_x, chunk_z));
-            self.dispatch_player_chunk_load_event(client, chunk_x, chunk_z);
+                .insert(PlayerChunk::new(chunk.x, chunk.z));
+            self.dispatch_player_chunk_load_event(client, chunk.x, chunk.z);
             self.pending_chunk_count -= 1.0;
             sent_chunk_count += 1;
         }
@@ -504,9 +581,10 @@ impl Player {
         Ok(())
     }
 
-    fn ready_chunk_batch_size(&self) -> i32 {
-        let pending_chunks = self.pending_chunk_count.floor() as usize;
-        pending_chunks.min(self.chunk_queue.len()) as i32
+    fn discard_pending_chunk_delivery(&mut self) {
+        self.chunk_queue.clear();
+        self.pending_chunk_count = 0.0;
+        self.chunk_batch_lead = 0;
     }
 
     fn sort_queued_chunks_by_distance(&mut self) {
@@ -520,32 +598,18 @@ impl Player {
         self.chunk_queue.len()
     }
 
-    pub(crate) fn reset_chunk_queue_for_world_entry_or_teleport(&mut self) {
+    pub(crate) fn reset_chunk_queue(&mut self) {
         self.chunk_queue.clear();
-        self.queued_client_chunks.clear();
         self.client_sent_chunks.clear();
         self.needs_chunk_position_sync = true;
         self.target_chunks_per_tick = 9.0;
         self.pending_chunk_count = 0.0;
-        self.chunk_batch_lead = 0;
-        self.chunk_update_limit_checker.clear_history();
     }
 
-    fn forget_chunks(
-        &mut self,
-        client: &mut Client,
-        chunks: Vec<PlayerChunk>,
-        current_center: PlayerChunk,
-        effective_view_distance: i32,
-    ) -> io::Result<()> {
-        chunks.into_iter().try_for_each(|chunk| {
-            self.forget_loaded_chunk_if_outside_view(
-                client,
-                chunk,
-                current_center,
-                effective_view_distance,
-            )
-        })
+    fn forget_chunks(&mut self, client: &mut Client, chunks: Vec<PlayerChunk>) -> io::Result<()> {
+        chunks
+            .into_iter()
+            .try_for_each(|chunk| self.unload_chunk_from_client_view(client, chunk))
     }
 
     pub(crate) fn forget_loaded_chunk(
@@ -553,7 +617,6 @@ impl Player {
         client: &mut Client,
         chunk: PlayerChunk,
     ) -> io::Result<()> {
-        self.remove_queued_chunk(chunk);
         if !self.client_sent_chunks.remove(&chunk) {
             return Ok(());
         }
@@ -562,44 +625,15 @@ impl Player {
         Ok(())
     }
 
-    fn forget_loaded_chunk_if_outside_view(
+    fn unload_chunk_from_client_view(
         &mut self,
         client: &mut Client,
         chunk: PlayerChunk,
-        current_center: PlayerChunk,
-        effective_view_distance: i32,
     ) -> io::Result<()> {
-        self.remove_queued_chunk(chunk);
-        if chunk.is_within_view_distance(current_center, effective_view_distance) {
-            return Ok(());
-        }
-        if !self.client_sent_chunks.remove(&chunk) {
-            return Ok(());
-        }
+        self.client_sent_chunks.remove(&chunk);
         ForgetLevelChunkPacket::new(chunk.packet_position()).dispatch(client)?;
         self.dispatch_player_chunk_unload_event(client, chunk.x, chunk.z);
         Ok(())
-    }
-
-    fn remove_queued_chunk(&mut self, chunk: PlayerChunk) {
-        self.chunk_queue.retain(|chunk_packet| {
-            chunk_packet.chunk.x != chunk.x || chunk_packet.chunk.z != chunk.z
-        });
-        self.queued_client_chunks.remove(&chunk);
-    }
-
-    fn prune_queued_chunks_outside_view(
-        &mut self,
-        current_center: PlayerChunk,
-        effective_view_distance: i32,
-    ) {
-        self.chunk_queue.retain(|queued_chunk| {
-            queued_chunk
-                .chunk
-                .is_within_view_distance(current_center, effective_view_distance)
-        });
-        self.queued_client_chunks
-            .retain(|chunk| chunk.is_within_view_distance(current_center, effective_view_distance));
     }
 }
 

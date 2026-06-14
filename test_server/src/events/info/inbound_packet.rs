@@ -1,11 +1,14 @@
+use spinel::network::Recipient;
 use spinel::{
     macros::event_listener,
-    server::{MinecraftServer, events::network::inbound_packet::InboundPacketEvent},
+    server::{MinecraftServer, events::network::packet::PacketEvent},
 };
 
+use crate::events::info::packet_filter::packet_is_filtered;
+
 #[event_listener]
-fn on_inbound_packet(event: &mut InboundPacketEvent, _server: &mut MinecraftServer) {
-    let packet_blacklist = vec![
+fn on_inbound_packet(event: &mut PacketEvent, _server: &mut MinecraftServer) {
+    let filtered_packet_names = [
         "client_tick_end",
         "keep_alive",
         "move_player_pos_rot",
@@ -18,7 +21,9 @@ fn on_inbound_packet(event: &mut InboundPacketEvent, _server: &mut MinecraftServ
         "chunk_batch_received",
     ];
 
-    if packet_blacklist.contains(&event.packet_name.as_str()) {
+    if event.recipient != Recipient::Server
+        || packet_is_filtered(&event.packet_name, &filtered_packet_names)
+    {
         return;
     }
 

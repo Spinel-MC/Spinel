@@ -1,12 +1,18 @@
+use crate::events::info::packet_filter::packet_is_filtered;
+use spinel::network::Recipient;
 use spinel::{
     macros::event_listener,
-    server::{MinecraftServer, events::network::outbound_packet::OutboundEventPacket},
+    server::{MinecraftServer, events::network::packet::PacketEvent},
 };
 
 #[event_listener]
-fn on_outbound_packet(event: &mut OutboundEventPacket, _server: &mut MinecraftServer) {
-    let packet_blacklist = vec![
+fn on_outbound_packet(event: &mut PacketEvent, _server: &mut MinecraftServer) {
+    let filtered_packet_names = [
         "level_chunk_with_light",
+        "chunk_batch_start",
+        "chunk_batch_finished",
+        "forget_level_chunk",
+        "set_chunk_cache_center",
         "keep_alive",
         "set_time",
         "move_entity_pos_rot",
@@ -14,7 +20,9 @@ fn on_outbound_packet(event: &mut OutboundEventPacket, _server: &mut MinecraftSe
         "entity_position_sync",
     ];
 
-    if packet_blacklist.contains(&event.packet_name.as_str()) {
+    if event.recipient != Recipient::Client
+        || packet_is_filtered(&event.packet_name, &filtered_packet_names)
+    {
         return;
     }
 

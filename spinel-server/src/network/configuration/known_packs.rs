@@ -1,17 +1,20 @@
-use ::std::thread::sleep;
-use ::std::time::Duration;
+use std::thread::sleep;
+use std::time::Duration;
 
 use crate::entity::{Entity, Player};
 use crate::events::player_configuration::AsyncPlayerConfigurationEvent;
+use crate::events::player_skin_init::PlayerSkinInitEvent;
 use crate::network::client::instance::Client;
 use crate::server::MinecraftServer;
-use ::spinel_core::network::clientbound::configuration::disconnect::ConfigurationDisconnectPacket;
-use ::spinel_core::network::clientbound::configuration::finish_configuration::FinishConfigurationPacket;
-use ::spinel_core::network::serverbound::configuration::known_packs::KnownPacksPacket;
-use ::spinel_macros::packet_listener;
-use ::spinel_utils::component::Component;
-use ::spinel_utils::component::color::{NamedTextColor, TextColor};
-use ::spinel_utils::component::text::TextComponent;
+use spinel_core::network::clientbound::configuration::features::FeaturesPacket;
+use spinel_core::network::clientbound::configuration::finish_configuration::FinishConfigurationPacket;
+use spinel_core::network::clientbound::configuration::reset_chat::ResetChatPacket;
+use spinel_core::network::serverbound::configuration::known_packs::KnownPacksPacket;
+use spinel_macros::packet_listener;
+use spinel_network::types::{Array, Identifier};
+use spinel_utils::component::Component;
+use spinel_utils::component::color::{NamedTextColor, TextColor};
+use spinel_utils::component::text::TextComponent;
 use std::io;
 use uuid::Uuid;
 
@@ -20,29 +23,42 @@ struct ConfigurationCompletion<'a, 'b> {
     server: &'b mut MinecraftServer,
 }
 
+struct ConfigurationPacketOptions {
+    feature_flags: Vec<Identifier>,
+    should_clear_chat: bool,
+    should_send_registry_data: bool,
+}
+
 impl<'a, 'b> ConfigurationCompletion<'a, 'b> {
     fn dispatch(mut self) -> io::Result<()> {
-        if !self.configure_player() {
+        let Some(packet_options) = self.configure_player() else {
             return Ok(());
+        };
+        FeaturesPacket {
+            features: Array(packet_options.feature_flags),
         }
-        self.dispatch_registry_packets()?;
-        self.server
-            .registry_cache
-            .tag_packet()
-            .clone()
-            .dispatch(self.client)?;
+        .dispatch(self.client)?;
+        if packet_options.should_send_registry_data {
+            self.dispatch_registry_packets()?;
+            self.server
+                .registry_cache
+                .tag_packet()
+                .clone()
+                .dispatch(self.client)?;
+        }
+        if packet_options.should_clear_chat {
+            ResetChatPacket.dispatch(self.client)?;
+        }
         sleep(Duration::from_millis(100));
         FinishConfigurationPacket::new().dispatch(self.client)
     }
 
-    fn configure_player(&mut self) -> bool {
-        let Some(player) = create_player(self.client) else {
-            let _ = ConfigurationDisconnectPacket::new(Component::text("Invalid login sequence."))
-                .dispatch(self.client);
-            let client_address = self.client.addr;
-            self.client.disconnect();
-            self.server.on_disconnect(client_address);
-            return false;
+    fn configure_player(&mut self) -> Option<ConfigurationPacketOptions> {
+        let Some(player) = create_player(self.client, self.server) else {
+            let _ = self
+                .server
+                .kick(self.client, Component::text("Invalid login sequence."));
+            return None;
         };
 
         let mut event = AsyncPlayerConfigurationEvent::new(player, true);
@@ -54,14 +70,19 @@ impl<'a, 'b> ConfigurationCompletion<'a, 'b> {
                 self.server,
                 format!("{username} failed to join because no spawning world was set."),
             );
-            return false;
+            return None;
         };
 
         let is_hardcore = event.is_hardcore();
+        let packet_options = ConfigurationPacketOptions {
+            feature_flags: event.feature_flags().to_vec(),
+            should_clear_chat: event.should_clear_chat(),
+            should_send_registry_data: event.should_send_registry_data(),
+        };
         let mut player = event.into_player();
         player.set_pending_options(spawning_world, is_hardcore);
 
-        place_player(self.client, self.server, spawning_world, player)
+        place_player(self.client, self.server, spawning_world, player).then_some(packet_options)
     }
 
     fn dispatch_registry_packets(&mut self) -> io::Result<()> {
@@ -74,16 +95,29 @@ impl<'a, 'b> ConfigurationCompletion<'a, 'b> {
     }
 }
 
-fn create_player(client: &mut Client) -> Option<Player> {
+fn create_player(client: &mut Client, server: &mut MinecraftServer) -> Option<Player> {
     let login_metadata = client.login_metadata.as_ref()?;
+    let game_profile = login_metadata.game_profile.as_ref()?;
     let mut player = Player::new(
-        login_metadata.uuid?,
-        login_metadata.username.clone()?,
+        game_profile.uuid,
+        game_profile.username.clone(),
         login_metadata.protocol_version,
         client.addr,
     );
+    player.apply_skin(game_profile.properties.iter().find_map(|property| {
+        (property.name == "textures").then(|| {
+            crate::entity::player::PlayerSkin::new(
+                property.value.clone(),
+                property.signature.clone(),
+            )
+        })
+    }));
     player.set_client(client);
     player.refresh_settings(client.pending_client_settings.clone());
+    let player_pointer = &mut player as *mut Player;
+    let mut skin_init_event = PlayerSkinInitEvent::new(player_pointer, player.skin().cloned());
+    skin_init_event.dispatch(server, client);
+    player.apply_skin(skin_init_event.into_skin());
     Some(player)
 }
 
@@ -112,10 +146,7 @@ fn place_player(
 
 fn fail_player_join(client: &mut Client, server: &mut MinecraftServer, log_message: String) {
     eprintln!("{log_message}");
-    let _ = ConfigurationDisconnectPacket::new(error_during_login()).dispatch(client);
-    let client_address = client.addr;
-    client.disconnect();
-    server.on_disconnect(client_address);
+    let _ = server.kick(client, error_during_login());
 }
 
 fn error_during_login() -> TextComponent {
@@ -123,19 +154,6 @@ fn error_during_login() -> TextComponent {
         "Error during login!",
         TextColor::from_named(NamedTextColor::Red),
     )
-}
-
-#[cfg(test)]
-mod tests {
-    use super::error_during_login;
-
-    #[test]
-    fn error_during_login_is_red() {
-        let json = error_during_login().to_json_string();
-
-        assert!(json.contains("\"text\":\"Error during login!\""));
-        assert!(json.contains("\"color\":\"red\""));
-    }
 }
 
 #[packet_listener(module: "login")]

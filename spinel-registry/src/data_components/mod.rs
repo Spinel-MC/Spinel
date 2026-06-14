@@ -23,6 +23,10 @@ pub use custom_model_data::CustomModelData;
 pub use damage_resistant::DamageResistant;
 pub use debug_stick_state::DebugStickState;
 pub use enchantment_list::EnchantmentList;
+pub use entity_variants::{
+    AxolotlVariant, FoxVariant, HorseColor, LlamaVariant, MooshroomVariant, ParrotColor,
+    RabbitVariant, SalmonSize, TropicalFishPattern,
+};
 pub use equippable::{Equippable, EquippableSlot};
 pub use firework_explosion::{FireworkExplosion, FireworkExplosionShape};
 pub use firework_list::FireworkList;
@@ -66,6 +70,7 @@ mod custom_model_data;
 mod damage_resistant;
 mod debug_stick_state;
 mod enchantment_list;
+mod entity_variants;
 mod equippable;
 mod firework_explosion;
 mod firework_list;
@@ -86,6 +91,8 @@ mod registry_reference;
 mod resolvable_profile;
 mod seeded_container_loot;
 mod swing_animation;
+#[cfg(test)]
+mod tests;
 mod tool;
 mod tooltip_display;
 mod typed_custom_data;

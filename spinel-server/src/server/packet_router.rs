@@ -1,10 +1,12 @@
 use crate::ServerPacketListener;
-use crate::events::network::inbound_packet::InboundPacketEvent;
+use crate::events::network::packet::PacketEvent;
+use crate::events::network::packet_error::{PacketErrorEvent, PacketErrorStage};
+use crate::events::player_packet::PlayerPacketEvent;
 use crate::listeners::listeners;
 use crate::network::client::instance::Client;
 use crate::server::MinecraftServer;
-use spinel_network::ConnectionState;
 use spinel_network::packet_names::PacketNameRegistry;
+use spinel_network::{ConnectionState, PacketCodecRegistry, Recipient};
 use std::collections::HashMap;
 use std::io::Cursor;
 
@@ -28,6 +30,10 @@ impl PacketRouter {
             || self.generic_packet_listeners.contains_key(state)
     }
 
+    pub fn has_codec_for(&self, packet_id: i32, state: ConnectionState) -> bool {
+        PacketCodecRegistry::contains(Recipient::Server, state, packet_id)
+    }
+
     pub fn dispatch_packet(
         &self,
         server_pointer: *mut MinecraftServer,
@@ -37,6 +43,24 @@ impl PacketRouter {
     ) -> bool {
         let packet_key = (client.state, packet_id);
         client.server_ptr = Some(server_pointer as usize);
+        let server = unsafe { &mut *server_pointer };
+        let packet_name = PacketNameRegistry::get_serverbound_packet_name(client.state, packet_id);
+        let Some(packet_codec) =
+            PacketCodecRegistry::codec(Recipient::Server, client.state, packet_id)
+        else {
+            self.dispatch_packet_error(
+                server,
+                client,
+                packet_id,
+                packet_name,
+                "received an undefined packet id".to_string(),
+            );
+            return false;
+        };
+        if let Err(error) = (packet_codec.decode)(&payload) {
+            self.dispatch_packet_error(server, client, packet_id, packet_name, error.to_string());
+            return false;
+        }
 
         let assigned_packet_listeners = self
             .assigned_packet_listeners
@@ -49,15 +73,27 @@ impl PacketRouter {
             .cloned()
             .unwrap_or_default();
 
+        let mut packet_event = PacketEvent::new(
+            Recipient::Server,
+            client.state,
+            packet_id,
+            packet_name.clone(),
+            payload.len(),
+        );
+        packet_event.dispatch(server, client);
+        let payload = match self.dispatch_player_packet_event(
+            server,
+            client,
+            packet_id,
+            packet_name,
+            payload,
+        ) {
+            Some(payload) => payload,
+            None => return true,
+        };
         if assigned_packet_listeners.is_empty() && generic_packet_listeners.is_empty() {
-            return false;
+            return true;
         }
-
-        let packet_name = PacketNameRegistry::get_serverbound_packet_name(client.state, packet_id);
-        let mut inbound_packet_event =
-            InboundPacketEvent::new(client.state, packet_id, packet_name, payload.len());
-        let server = unsafe { &mut *server_pointer };
-        inbound_packet_event.dispatch(server, client);
         client.payload_cursor = Some(Cursor::new(payload));
 
         for packet_listener in assigned_packet_listeners {
@@ -76,6 +112,44 @@ impl PacketRouter {
 
         client.payload_cursor = None;
         true
+    }
+
+    fn dispatch_packet_error(
+        &self,
+        server: &mut MinecraftServer,
+        client: &mut Client,
+        packet_id: i32,
+        packet_name: String,
+        message: String,
+    ) {
+        let mut packet_error_event = PacketErrorEvent::new(
+            Recipient::Server,
+            PacketErrorStage::PacketDecode,
+            client.state,
+            Some(packet_id),
+            Some(packet_name),
+            message,
+        );
+        packet_error_event.dispatch(server, client);
+    }
+
+    fn dispatch_player_packet_event(
+        &self,
+        server: &mut MinecraftServer,
+        client: &mut Client,
+        packet_id: i32,
+        packet_name: String,
+        payload: Vec<u8>,
+    ) -> Option<Vec<u8>> {
+        if client.state != ConnectionState::Play {
+            return Some(payload);
+        }
+        let Some(player) = server.world_manager.player_pointer_for_client(client) else {
+            return Some(payload);
+        };
+        let mut event = PlayerPacketEvent::new(player, packet_id, packet_name, payload);
+        event.dispatch(server, client);
+        (!event.is_cancelled()).then(|| event.into_payload())
     }
 }
 

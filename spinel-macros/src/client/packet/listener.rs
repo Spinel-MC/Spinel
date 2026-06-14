@@ -57,8 +57,22 @@ impl ClientPacketListenerGenerator {
 
             #[doc(hidden)]
             fn #wrapper_function_name(connection: &mut #connection_type, context_ptr: *mut ()) -> bool {
-                let Ok(packet) = <#packet_type as #network_path::DataType>::decode(connection) else {
-                    return false;
+                let packet = match <#packet_type as #network_path::DataType>::decode(connection) {
+                    Ok(packet) => packet,
+                    Err(error) => {
+                        let context = unsafe { &mut *(context_ptr as *mut #context_type) };
+                        let mut packet_error_event =
+                            #client_path::events::network::packet_error::PacketErrorEvent::new(
+                                #network_path::Recipient::Client,
+                                #client_path::events::network::packet_error::PacketErrorStage::PacketDecode,
+                                connection.state,
+                                Some(#packet_type::get_id_const()),
+                                Some(stringify!(#packet_type).to_string()),
+                                error.to_string(),
+                            );
+                        packet_error_event.dispatch(context, connection);
+                        return false;
+                    }
                 };
 
                 let context = unsafe { &mut *(context_ptr as *mut #context_type) };

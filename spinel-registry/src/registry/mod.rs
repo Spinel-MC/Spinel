@@ -27,3 +27,5 @@ mod dynamic;
 mod key;
 mod simple_value;
 mod static_registry;
+#[cfg(test)]
+mod tests;

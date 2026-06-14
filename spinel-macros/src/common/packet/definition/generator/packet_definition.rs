@@ -31,6 +31,12 @@ impl PacketDefinitionGenerator {
             PacketMetadataResolver::extract_state_string(&Some(state_expression.clone()));
         let recipient_name =
             PacketMetadataResolver::extract_recipient_string(&self.packet_attributes.recipient);
+        let recipient_expression = self.packet_attributes.recipient.clone().ok_or_else(|| {
+            syn::Error::new_spanned(
+                &self.item_struct.ident,
+                "packet must have a `recipient` attribute",
+            )
+        })?;
         let (packet_id_literal, packet_fields) =
             self.resolve_packet_id_and_fields(state_name.as_deref(), recipient_name.as_deref())?;
 
@@ -41,6 +47,7 @@ impl PacketDefinitionGenerator {
         self.packet_tokens(
             packet_id_literal,
             state_expression,
+            recipient_expression,
             constructor_tokens,
             encode_tokens,
             decode_tokens,

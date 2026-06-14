@@ -1,25 +1,29 @@
-use crate::entity::{Damage, EntityId};
+use crate::entity::{Damage, Entity, EntityId};
 use spinel_macros::event_dispatcher;
 use spinel_network::types::sound::SoundEvent;
 
 #[event_dispatcher]
 pub struct EntityDamageEvent {
-    entity_id: EntityId,
+    entity: *mut Entity,
     damage: Damage,
     cancelled: bool,
 }
 
 impl EntityDamageEvent {
-    pub fn new(entity_id: EntityId, damage: Damage) -> Self {
+    pub fn new(entity: *mut Entity, damage: Damage) -> Self {
         Self {
-            entity_id,
+            entity,
             damage,
             cancelled: false,
         }
     }
 
+    pub fn entity(&mut self) -> &mut Entity {
+        unsafe { &mut *self.entity }
+    }
+
     pub fn entity_id(&self) -> EntityId {
-        self.entity_id
+        unsafe { (&*self.entity).entity_id() }
     }
 
     pub fn damage_source(&self) -> &str {

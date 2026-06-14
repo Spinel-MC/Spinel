@@ -1,15 +1,14 @@
-use crate::events::network::inbound_packet_error::{
-    InboundPacketErrorEvent, InboundPacketErrorStage,
-};
+use crate::events::network::packet_error::{PacketErrorEvent, PacketErrorStage};
 use crate::network::client::instance::Client;
 use crate::server::MinecraftServer;
 use spinel_core::network::serverbound::play::keep_alive::KeepAlivePacket;
-use spinel_network::ConnectionState;
 use spinel_network::DataType;
 use spinel_network::VarIntWrapper;
 use spinel_network::packet_names::PacketNameRegistry;
+use spinel_network::{ConnectionState, Recipient};
 use std::io::{Error, ErrorKind};
-use std::net::SocketAddr;
+use std::net::{Shutdown, SocketAddr};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::task;
@@ -57,7 +56,13 @@ impl ServerSocketRuntime {
             return;
         }
 
-        task::spawn_blocking(move || Self::run_client_loop(server_arc, client, read_stream, addr));
+        let Some(connection_status) = client.lock().ok().map(|client| client.connection_status())
+        else {
+            return;
+        };
+        task::spawn_blocking(move || {
+            Self::run_client_loop(server_arc, client, read_stream, connection_status, addr)
+        });
     }
 
     fn connection_cancelled(
@@ -66,7 +71,6 @@ impl ServerSocketRuntime {
         addr: SocketAddr,
     ) -> bool {
         let Ok(mut server) = server_arc.lock() else {
-            eprintln!("Failed to lock server during connection setup for {}", addr);
             return true;
         };
         if server.on_connection(client) {
@@ -77,18 +81,24 @@ impl ServerSocketRuntime {
         false
     }
 
-    fn dispatch_inbound_packet_error_event(
+    fn dispatch_packet_error_event(
         server: &mut MinecraftServer,
         client: &mut Client,
-        stage: InboundPacketErrorStage,
+        stage: PacketErrorStage,
         packet_id: Option<i32>,
         message: String,
     ) {
         let packet_name =
             packet_id.map(|id| PacketNameRegistry::get_serverbound_packet_name(client.state, id));
-        let mut inbound_packet_error_event =
-            InboundPacketErrorEvent::new(stage, client.state, packet_id, packet_name, message);
-        inbound_packet_error_event.dispatch(server, client);
+        let mut packet_error_event = PacketErrorEvent::new(
+            Recipient::Server,
+            stage,
+            client.state,
+            packet_id,
+            packet_name,
+            message,
+        );
+        packet_error_event.dispatch(server, client);
     }
 
     fn initialize_client(
@@ -96,19 +106,15 @@ impl ServerSocketRuntime {
         addr: SocketAddr,
     ) -> Option<(Arc<Mutex<Client>>, std::net::TcpStream)> {
         let _ = stream.set_nodelay(true);
-        let std_stream = Self::into_blocking_std_stream(stream, addr)?;
+        let std_stream = Self::into_blocking_std_stream(stream)?;
         let read_stream = std_stream.try_clone().ok()?;
         let client = Arc::new(Mutex::new(Client::new(std_stream, addr)));
         Some((client, read_stream))
     }
 
-    fn into_blocking_std_stream(
-        stream: TcpStream,
-        addr: SocketAddr,
-    ) -> Option<std::net::TcpStream> {
+    fn into_blocking_std_stream(stream: TcpStream) -> Option<std::net::TcpStream> {
         let std_stream = stream.into_std().ok()?;
-        if let Err(error) = std_stream.set_nonblocking(false) {
-            eprintln!("Failed to set stream to blocking for {}: {}", addr, error);
+        if std_stream.set_nonblocking(false).is_err() {
             return None;
         }
 
@@ -125,17 +131,15 @@ impl ServerSocketRuntime {
             Ok(packet_id) => Some((packet_id.0, cursor.position() as usize)),
             Err(error) => {
                 let Ok(mut server) = server_arc.lock() else {
-                    eprintln!("Failed to lock server while decoding packet id");
                     return None;
                 };
                 let Ok(mut client) = client.lock() else {
-                    eprintln!("Failed to lock client while decoding packet id");
                     return None;
                 };
-                Self::dispatch_inbound_packet_error_event(
+                Self::dispatch_packet_error_event(
                     &mut server,
                     &mut client,
-                    InboundPacketErrorStage::PacketIdDecode,
+                    PacketErrorStage::PacketIdDecode,
                     None,
                     error.to_string(),
                 );
@@ -148,6 +152,7 @@ impl ServerSocketRuntime {
         server_arc: Arc<Mutex<MinecraftServer>>,
         client: Arc<Mutex<Client>>,
         mut read_stream: std::net::TcpStream,
+        connection_status: Arc<AtomicBool>,
         addr: SocketAddr,
     ) {
         println!("Client loop started for: {}", addr);
@@ -171,8 +176,10 @@ impl ServerSocketRuntime {
             Self::dispatch_packet(&server_arc, &client, &mut decoder, packet_id, payload);
         }
 
+        connection_status.store(false, Ordering::SeqCst);
+        let _ = read_stream.shutdown(Shutdown::Both);
         if let Ok(mut server) = server_arc.lock() {
-            server.on_disconnect(addr);
+            server.handle_connection_closed(addr);
         }
     }
 
@@ -187,20 +194,18 @@ impl ServerSocketRuntime {
             Err(error) if error.kind() == ErrorKind::UnexpectedEof => Err(()),
             Err(error) => {
                 let Ok(mut server) = server_arc.lock() else {
-                    eprintln!("Failed to lock server while reading frame");
                     return Err(());
                 };
                 let Ok(mut client) = client.lock() else {
-                    eprintln!("Failed to lock client while reading frame");
                     return Err(());
                 };
                 if !client.is_online() {
                     return Err(());
                 }
-                Self::dispatch_inbound_packet_error_event(
+                Self::dispatch_packet_error_event(
                     &mut server,
                     &mut client,
-                    InboundPacketErrorStage::FrameRead,
+                    PacketErrorStage::FrameRead,
                     None,
                     error.to_string(),
                 );
@@ -216,23 +221,38 @@ impl ServerSocketRuntime {
         packet_id: i32,
         payload: Vec<u8>,
     ) {
+        if Self::handle_keep_alive_without_server(client, packet_id, &payload) {
+            return;
+        }
         let Ok(mut server) = server_arc.lock() else {
-            eprintln!("Failed to lock server while dispatching packet");
             return;
         };
         let Ok(mut client) = client.lock() else {
-            eprintln!("Failed to lock client while dispatching packet");
             return;
         };
 
-        let packet_has_listener = server.has_listener_for(packet_id, &client.state);
-        if packet_has_listener && Self::packet_should_be_queued(&client, packet_id) {
+        let packet_has_codec = server.has_codec_for(packet_id, client.state);
+        if packet_has_codec && Self::packet_should_be_queued(&client, packet_id) {
             server.queue_player_packet(packet_id, &mut client, payload);
-        } else if packet_has_listener {
+        } else {
             server.dispatch_packet(packet_id, &mut client, payload);
         }
 
         Self::sync_decoder_state(decoder, &mut client);
+    }
+
+    fn handle_keep_alive_without_server(
+        client: &Arc<Mutex<Client>>,
+        packet_id: i32,
+        payload: &[u8],
+    ) -> bool {
+        let Ok(mut client) = client.lock() else {
+            return false;
+        };
+        if client.state != ConnectionState::Play || packet_id != KeepAlivePacket::get_id() {
+            return false;
+        }
+        client.handle_keep_alive_payload(payload).unwrap_or(false)
     }
 
     fn packet_should_be_queued(client: &Client, packet_id: i32) -> bool {

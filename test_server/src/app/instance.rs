@@ -8,10 +8,10 @@ pub struct TestServer {
 }
 
 impl TestServer {
-    pub const fn new() -> Self {
+    pub const fn new(port: u16) -> Self {
         Self {
             bind_address: "127.0.0.1",
-            port: 25565,
+            port,
         }
     }
 
@@ -19,7 +19,10 @@ impl TestServer {
         let Some(server) = self.server() else {
             return;
         };
-        println!("Starting Spinel Server on 127.0.0.1:25565");
+        println!(
+            "Starting Spinel Server on {}:{}",
+            self.bind_address, self.port
+        );
         server.start(self.bind_address, self.port).await;
     }
 

@@ -11,8 +11,10 @@ use spinel_core::network::clientbound::play::forget_level_chunk::ForgetLevelChun
 use spinel_core::network::clientbound::play::remove_entities::RemoveEntitiesPacket;
 use spinel_core::network::clientbound::play::spawn_entity::SpawnEntityPacket;
 use spinel_core::network::clientbound::play::sync_player_pos::SyncPlayerPositionPacket;
+use spinel_core::network::serverbound::play::accept_teleportation::AcceptTeleportationPacket;
 use spinel_macros::packet_listener;
 use spinel_network::types::Vector3d;
+use std::sync::Arc;
 
 #[packet_listener(state: spinel_network::ConnectionState::Play)]
 fn on_spawn_entity(
@@ -108,7 +110,11 @@ fn on_chunk_data(
     packet: ChunkDataAndUpdateLightPacket,
     client: &mut MinecraftClient,
 ) -> bool {
-    client.track_chunk(packet.chunk_x, packet.chunk_z, packet.chunk_data);
+    client.track_chunk(
+        packet.chunk_x,
+        packet.chunk_z,
+        Arc::unwrap_or_clone(packet.chunk_data),
+    );
     true
 }
 
@@ -124,10 +130,18 @@ fn on_forget_level_chunk(
 
 #[packet_listener(state: spinel_network::ConnectionState::Play)]
 fn on_sync_player_position(
-    _server: &mut Server,
+    server: &mut Server,
     packet: SyncPlayerPositionPacket,
     client: &mut MinecraftClient,
 ) -> bool {
+    if (AcceptTeleportationPacket {
+        id: packet.teleport_id,
+    })
+    .dispatch(server)
+    .is_err()
+    {
+        return false;
+    }
     client.synchronize_position(
         packet.x,
         packet.y,

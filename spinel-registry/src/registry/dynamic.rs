@@ -81,6 +81,14 @@ impl<T> DynamicRegistry<T> {
     }
 
     #[must_use]
+    pub fn key_by_id(&self, entry_id: i32) -> Option<&RegistryKey<T>> {
+        usize::try_from(entry_id)
+            .ok()
+            .and_then(|entry_id| self.entries.get(entry_id))
+            .map(RegistryEntry::key)
+    }
+
+    #[must_use]
     pub fn iter(&self) -> impl Iterator<Item = (usize, &RegistryEntry<T>)> {
         self.entries.iter().enumerate()
     }
@@ -157,7 +165,3 @@ pub enum RegisterError {
     Frozen,
     DuplicateKey,
 }
-
-#[cfg(test)]
-#[path = "dynamic_tests.rs"]
-mod dynamic_tests;

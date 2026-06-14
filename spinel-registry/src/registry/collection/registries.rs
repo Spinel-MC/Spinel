@@ -109,6 +109,76 @@ impl Registries {
         &mut self.biomes
     }
 
+    pub fn cat_variant(&self) -> &DynamicRegistry<cat_variant::CatVariant> {
+        &self.cat_variants
+    }
+
+    pub fn cat_variant_mut(&mut self) -> &mut DynamicRegistry<cat_variant::CatVariant> {
+        &mut self.cat_variants
+    }
+
+    pub fn chicken_variant(&self) -> &DynamicRegistry<chicken_variant::ChickenVariant> {
+        &self.chicken_variants
+    }
+
+    pub fn chicken_variant_mut(&mut self) -> &mut DynamicRegistry<chicken_variant::ChickenVariant> {
+        &mut self.chicken_variants
+    }
+
+    pub fn cow_variant(&self) -> &DynamicRegistry<cow_variant::CowVariant> {
+        &self.cow_variants
+    }
+
+    pub fn cow_variant_mut(&mut self) -> &mut DynamicRegistry<cow_variant::CowVariant> {
+        &mut self.cow_variants
+    }
+
+    pub fn frog_variant(&self) -> &DynamicRegistry<frog_variant::FrogVariant> {
+        &self.frog_variants
+    }
+
+    pub fn frog_variant_mut(&mut self) -> &mut DynamicRegistry<frog_variant::FrogVariant> {
+        &mut self.frog_variants
+    }
+
+    pub fn pig_variant(&self) -> &DynamicRegistry<pig_variant::PigVariant> {
+        &self.pig_variants
+    }
+
+    pub fn pig_variant_mut(&mut self) -> &mut DynamicRegistry<pig_variant::PigVariant> {
+        &mut self.pig_variants
+    }
+
+    pub fn wolf_variant(&self) -> &DynamicRegistry<wolf_variant::WolfVariant> {
+        &self.wolf_variants
+    }
+
+    pub fn wolf_variant_mut(&mut self) -> &mut DynamicRegistry<wolf_variant::WolfVariant> {
+        &mut self.wolf_variants
+    }
+
+    pub fn wolf_sound_variant(&self) -> &DynamicRegistry<wolf_sound_variant::WolfSoundVariant> {
+        &self.wolf_sound_variants
+    }
+
+    pub fn wolf_sound_variant_mut(
+        &mut self,
+    ) -> &mut DynamicRegistry<wolf_sound_variant::WolfSoundVariant> {
+        &mut self.wolf_sound_variants
+    }
+
+    pub fn zombie_nautilus_variant(
+        &self,
+    ) -> &DynamicRegistry<zombie_nautilus_variant::ZombieNautilusVariant> {
+        &self.zombie_nautilus_variants
+    }
+
+    pub fn zombie_nautilus_variant_mut(
+        &mut self,
+    ) -> &mut DynamicRegistry<zombie_nautilus_variant::ZombieNautilusVariant> {
+        &mut self.zombie_nautilus_variants
+    }
+
     pub fn damage_type(
         &self,
         key: &RegistryKey<damage_type::DamageType>,
@@ -135,11 +205,18 @@ impl Registries {
         self.blocks.key_for(block).map(RegistryKey::key)
     }
 
+    pub fn instrument(&self, key: &Identifier) -> Option<&instrument::Instrument> {
+        self.instruments.get(&RegistryKey::new(key.clone()))
+    }
+
     pub fn dynamic_registry_id(
         &self,
         registry_name: &Identifier,
         entry_name: &Identifier,
     ) -> Option<i32> {
+        if registry_name == &DIMENSION_TYPE_REGISTRY {
+            return dynamic_registry_id_for(&self.dimension_types, entry_name);
+        }
         if registry_name == &DAMAGE_TYPE_REGISTRY {
             return dynamic_registry_id_for(&self.damage_types, entry_name);
         }

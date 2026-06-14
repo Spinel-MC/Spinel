@@ -1,13 +1,19 @@
 use spinel::{
     macros::event_listener,
-    server::{MinecraftServer, events::network::inbound_packet_error::InboundPacketErrorEvent},
+    server::{MinecraftServer, events::network::packet_error::PacketErrorEvent},
 };
 
 #[event_listener]
-fn on_inbound_packet_error(event: &mut InboundPacketErrorEvent, _server: &mut MinecraftServer) {
+fn on_packet_error(event: &mut PacketErrorEvent, _server: &mut MinecraftServer) {
     let client_address = event.client().addr;
     println!(
-        "[InboundPacketError]: Stage={:?}, State={:?}, PacketId={:?}, PacketName={:?}, Client={}, Error={}",
-        event.stage, event.state, event.packet_id, event.packet_name, client_address, event.message
+        "[PacketError]: Recipient={:?}, Stage={:?}, State={:?}, PacketId={:?}, PacketName={:?}, Client={}, Error={}",
+        event.recipient,
+        event.stage,
+        event.state,
+        event.packet_id,
+        event.packet_name,
+        client_address,
+        event.message
     );
 }

@@ -1,10 +1,18 @@
 use crate::entity::metadata::definitions;
+use crate::entity::physics::EntityMovement;
 use crate::entity::{EntityPosition, GenericEntity};
+use crate::world::WorldSnapshot;
+use spinel_core::network::clientbound::play::spawn_entity::SpawnEntityPacket;
 use spinel_network::types::Slot;
 use spinel_network::types::entity_metadata::MetadataValue;
 use spinel_registry::{EntityType, ItemStack};
 use std::ops::{Deref, DerefMut};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, Instant};
+
+const NO_MERGE_DELAY: u64 = u64::MAX;
+const SERVER_TICK_MILLIS: u64 = 50;
+static MERGE_DELAY_TICKS: AtomicU64 = AtomicU64::new(10);
 
 pub struct ItemEntity {
     entity: GenericEntity,
@@ -14,6 +22,8 @@ pub struct ItemEntity {
     merge_range: f32,
     spawned_at: Instant,
     pickup_delay: Duration,
+    last_merge_check_tick: u64,
+    previous_on_ground: bool,
 }
 
 impl ItemEntity {
@@ -26,6 +36,8 @@ impl ItemEntity {
             merge_range: 1.0,
             spawned_at: Instant::now(),
             pickup_delay: Duration::ZERO,
+            last_merge_check_tick: 0,
+            previous_on_ground: false,
         };
         item_entity.set_bounding_box_dimensions(0.25, 0.25, 0.25);
         item_entity.set_item_stack(item_stack);
@@ -42,6 +54,23 @@ impl ItemEntity {
             MetadataValue::Slot(Slot::from_item_stack(&item_stack)),
         );
         self.item_stack = item_stack;
+    }
+
+    pub fn spawn_packet(&self) -> SpawnEntityPacket {
+        let mut packet = self.entity.spawn_packet();
+        packet.data = 1;
+        packet.velocity = self.entity.protocol_velocity();
+        packet
+    }
+
+    pub(crate) fn movement_tick(&mut self, world: &WorldSnapshot) -> Option<EntityMovement> {
+        let movement = self.entity.movement_tick(world);
+        let has_landed = !self.previous_on_ground && self.entity.is_on_ground();
+        if has_landed {
+            self.entity.synchronize_next_tick();
+        }
+        self.previous_on_ground = self.entity.is_on_ground();
+        movement
     }
 
     pub fn is_pickable(&self) -> bool {
@@ -78,6 +107,34 @@ impl ItemEntity {
 
     pub fn time_since_spawn(&self) -> Duration {
         self.spawned_at.elapsed()
+    }
+
+    pub fn merge_delay() -> Option<Duration> {
+        let merge_delay_ticks = MERGE_DELAY_TICKS.load(Ordering::Relaxed);
+        (merge_delay_ticks != NO_MERGE_DELAY)
+            .then(|| Duration::from_millis(merge_delay_ticks.saturating_mul(SERVER_TICK_MILLIS)))
+    }
+
+    pub fn set_merge_delay(merge_delay: Option<Duration>) {
+        let merge_delay_ticks = merge_delay.map_or(NO_MERGE_DELAY, |merge_delay| {
+            let merge_delay_millis = u64::try_from(merge_delay.as_millis()).unwrap_or(u64::MAX);
+            merge_delay_millis.div_ceil(SERVER_TICK_MILLIS)
+        });
+        MERGE_DELAY_TICKS.store(merge_delay_ticks, Ordering::Relaxed);
+    }
+
+    pub(crate) fn should_check_merge(&mut self, current_tick: u64) -> bool {
+        if !self.is_mergeable() || !self.is_pickable() {
+            return false;
+        }
+        let merge_delay_ticks = MERGE_DELAY_TICKS.load(Ordering::Relaxed);
+        if merge_delay_ticks != NO_MERGE_DELAY
+            && current_tick.saturating_sub(self.last_merge_check_tick) < merge_delay_ticks
+        {
+            return false;
+        }
+        self.last_merge_check_tick = current_tick;
+        true
     }
 
     pub fn spawn(&mut self, position: EntityPosition) {

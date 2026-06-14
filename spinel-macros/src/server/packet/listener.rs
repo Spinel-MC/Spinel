@@ -61,15 +61,16 @@ impl PacketListenerGenerator {
                     Ok(packet) => packet,
                     Err(error) => {
                         let context = unsafe { &mut *(context_ptr as *mut #context_type) };
-                        let mut inbound_packet_error_event =
-                            #server_path::events::network::inbound_packet_error::InboundPacketErrorEvent::new(
-                                #server_path::events::network::inbound_packet_error::InboundPacketErrorStage::PacketDecode,
+                        let mut packet_error_event =
+                            #server_path::events::network::packet_error::PacketErrorEvent::new(
+                                #network_path::Recipient::Server,
+                                #server_path::events::network::packet_error::PacketErrorStage::PacketDecode,
                                 connection.state,
                                 Some(#packet_type::get_id_const()),
                                 Some(stringify!(#packet_type).to_string()),
                                 error.to_string(),
                             );
-                        inbound_packet_error_event.dispatch(context, connection);
+                        packet_error_event.dispatch(context, connection);
                         return false;
                     }
                 };

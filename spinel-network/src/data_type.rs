@@ -1,4 +1,5 @@
 use std::io::{self, Read, Write};
+use std::sync::Arc;
 use uuid::Uuid;
 
 use crate::types::var_int::VarIntWrapper;
@@ -178,6 +179,16 @@ impl<T: DataType> DataType for Option<T> {
         } else {
             Ok(None)
         }
+    }
+}
+
+impl<T: DataType> DataType for Arc<T> {
+    fn encode<W: Write>(&self, w: &mut W) -> io::Result<()> {
+        self.as_ref().encode(w)
+    }
+
+    fn decode<R: Read>(r: &mut R) -> io::Result<Self> {
+        T::decode(r).map(Arc::new)
     }
 }
 

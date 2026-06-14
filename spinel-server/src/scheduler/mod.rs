@@ -5,7 +5,7 @@ mod task_builder;
 mod task_future;
 mod task_schedule;
 #[cfg(test)]
-mod test;
+mod tests;
 mod timer;
 
 pub use execution_type::ExecutionType;

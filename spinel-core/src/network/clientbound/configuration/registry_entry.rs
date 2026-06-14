@@ -1,6 +1,6 @@
-use ::spinel_nbt::Nbt;
-use ::spinel_network::encoder::NetworkBuffer;
-use ::spinel_network::types::{Identifier, Optional};
+use spinel_nbt::Nbt;
+use spinel_network::encoder::NetworkBuffer;
+use spinel_network::types::{Identifier, Optional};
 
 #[derive(Clone, Debug)]
 pub struct RegistryEntry {

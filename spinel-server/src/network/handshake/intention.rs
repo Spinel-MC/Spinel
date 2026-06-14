@@ -27,7 +27,7 @@ fn on_intention(
     match packet.intention {
         1 => client.state = ConnectionState::Status,
         2 => client.state = ConnectionState::Login,
-        3 => client.disconnect(),
+        3 => client.close_connection(),
         _ => {
             return false;
         }

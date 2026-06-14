@@ -1,7 +1,6 @@
 use spinel::{
     nbt::{Nbt, NbtCompound},
-    registry::block_entity_type::BlockEntityType,
-    server::world::{Block, BlockEntity, BlockPosition, ChunkPosition, World},
+    server::world::{Block, BlockInstance, BlockPosition, ChunkPosition, World},
 };
 use std::io;
 
@@ -35,13 +34,10 @@ impl ShowcaseSigns {
             entry.position.z.div_euclid(16),
         );
         let _ = world.load_chunk(chunk_position)?;
-        world.set_block(entry.position, Block::OAK_SIGN)?;
-        let chunk = world.load_chunk(chunk_position)?;
-        chunk.set_block_entity(BlockEntity::new(
+        world.set_block_instance(
             entry.position,
-            BlockEntityType::Sign,
-            Self::sign_nbt(entry),
-        ));
+            BlockInstance::from(Block::OAK_SIGN).with_nbt(Some(Self::sign_nbt(entry))),
+        )?;
         Ok(())
     }
 

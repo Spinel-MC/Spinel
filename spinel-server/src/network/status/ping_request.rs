@@ -1,9 +1,9 @@
 use crate::events::ping::PingEvent;
 use crate::network::client::instance::Client;
 use crate::server::MinecraftServer;
-use ::spinel_core::network::clientbound::status::pong_response::PongResponsePacket;
-use ::spinel_core::network::serverbound::status::ping_request::PingRequestPacket;
-use ::spinel_macros::packet_listener;
+use spinel_core::network::clientbound::status::pong_response::PongResponsePacket;
+use spinel_core::network::serverbound::status::ping_request::PingRequestPacket;
+use spinel_macros::packet_listener;
 
 #[packet_listener(module: "ping")]
 fn on_ping_request(

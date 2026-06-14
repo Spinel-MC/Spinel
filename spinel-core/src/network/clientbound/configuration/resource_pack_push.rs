@@ -69,3 +69,4 @@ impl PacketStruct for ResourcePackPushPacket {
         ConnectionState::Configuration
     }
 }
+spinel_network::register_packet_codec!(ResourcePackPushPacket, spinel_network::Recipient::Client);

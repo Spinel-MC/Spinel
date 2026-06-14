@@ -385,18 +385,27 @@ impl<'a> UnitModifier<'a> {
             self.sections[section_index].fill_block(block);
             return Ok(());
         }
-        for block_x in fill_start.x..fill_end.x {
-            for block_y in fill_start.y..fill_end.y {
-                for block_z in fill_start.z..fill_end.z {
-                    self.sections[section_index].set_block(
-                        block_x - section_start.x,
-                        block_y - section_start.y,
-                        block_z - section_start.z,
-                        block,
-                    );
-                }
-            }
+        let fills_complete_horizontal_layers = fill_start.x == section_start.x
+            && fill_end.x == section_end.x
+            && fill_start.z == section_start.z
+            && fill_end.z == section_end.z;
+        if fills_complete_horizontal_layers {
+            self.sections[section_index].fill_block_layers(
+                fill_start.y - section_start.y,
+                fill_end.y - section_start.y,
+                block,
+            );
+            return Ok(());
         }
+        self.sections[section_index].fill_block_area(
+            fill_start.x - section_start.x,
+            fill_start.y - section_start.y,
+            fill_start.z - section_start.z,
+            fill_end.x - section_start.x,
+            fill_end.y - section_start.y,
+            fill_end.z - section_start.z,
+            block,
+        );
         Ok(())
     }
 
@@ -404,15 +413,29 @@ impl<'a> UnitModifier<'a> {
         &self,
         position: BlockPosition,
     ) -> Option<(usize, i32, i32, i32)> {
-        let section_position = SectionPosition::new(
-            position.x.div_euclid(16),
-            position.y.div_euclid(16),
-            position.z.div_euclid(16),
-        );
-        let section_index = self
-            .section_positions
-            .iter()
-            .position(|stored_position| *stored_position == section_position)?;
+        let minimum_section_x = self.absolute_start.x.div_euclid(16);
+        let minimum_section_y = self.absolute_start.y.div_euclid(16);
+        let minimum_section_z = self.absolute_start.z.div_euclid(16);
+        let section_x = position.x.div_euclid(16) - minimum_section_x;
+        let section_y = position.y.div_euclid(16) - minimum_section_y;
+        let section_z = position.z.div_euclid(16) - minimum_section_z;
+        let section_width = (self.size.x + 15).div_euclid(16);
+        let section_height = (self.size.y + 15).div_euclid(16);
+        let section_depth = (self.size.z + 15).div_euclid(16);
+        if section_x < 0
+            || section_y < 0
+            || section_z < 0
+            || section_x >= section_width
+            || section_y >= section_height
+            || section_z >= section_depth
+        {
+            return None;
+        }
+        let section_index =
+            ((section_x * section_depth + section_z) * section_height + section_y) as usize;
+        if section_index >= self.sections.len() {
+            return None;
+        }
         Some((
             section_index,
             position.x.rem_euclid(16),

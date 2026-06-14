@@ -14,8 +14,12 @@ impl ChunkUpdateLimitChecker {
         }
     }
 
+    pub(crate) fn is_enabled(&self) -> bool {
+        self.history_size > 0
+    }
+
     pub(crate) fn add_to_history(&mut self, chunk: PlayerChunk) -> bool {
-        if self.history_size == 0 {
+        if !self.is_enabled() {
             return true;
         }
         let chunk_was_already_updated = self.chunk_history.contains(&chunk);

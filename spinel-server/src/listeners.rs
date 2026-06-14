@@ -3,7 +3,7 @@ use spinel_network::ConnectionState;
 use std::cmp::Reverse;
 use std::collections::HashMap;
 
-use crate::module_manager::ServerModuleManager;
+use crate::modules::ServerModuleManager;
 
 pub fn listeners() -> (
     HashMap<(ConnectionState, i32), Vec<&'static ServerPacketListener>>,

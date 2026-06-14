@@ -1,19 +1,23 @@
-use crate::entity::{EntityId, TimedPotionEffect};
+use crate::entity::{Entity, EntityId, TimedPotionEffect};
 use spinel_macros::event_dispatcher;
 
 #[event_dispatcher]
 pub struct EntityPotionRemoveEvent {
-    entity_id: EntityId,
+    entity: *mut Entity,
     effect: TimedPotionEffect,
 }
 
 impl EntityPotionRemoveEvent {
-    pub fn new(entity_id: EntityId, effect: TimedPotionEffect) -> Self {
-        Self { entity_id, effect }
+    pub fn new(entity: *mut Entity, effect: TimedPotionEffect) -> Self {
+        Self { entity, effect }
+    }
+
+    pub fn entity(&mut self) -> &mut Entity {
+        unsafe { &mut *self.entity }
     }
 
     pub fn entity_id(&self) -> EntityId {
-        self.entity_id
+        unsafe { (&*self.entity).entity_id() }
     }
 
     pub fn effect(&self) -> &TimedPotionEffect {

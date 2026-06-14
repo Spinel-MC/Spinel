@@ -2,6 +2,10 @@ use crate::world::generator::GenerationUnit;
 
 pub trait Generator {
     fn generate(&self, unit: &mut GenerationUnit) -> Result<(), GenerateChunkError>;
+
+    fn generate_all(&self, units: &mut [GenerationUnit]) -> Result<(), GenerateChunkError> {
+        units.iter_mut().try_for_each(|unit| self.generate(unit))
+    }
 }
 
 impl<F> Generator for F

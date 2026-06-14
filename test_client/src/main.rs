@@ -11,5 +11,10 @@ pub use spinel::client::ClientPacketListener;
 
 #[tokio::main]
 async fn main() {
-    application::TestClientApplication::new().run().await;
+    let Some(application) = application::TestClientApplication::new() else {
+        println!("{}", application::REQUIRED_FLAGS);
+        return;
+    };
+
+    application.run().await;
 }

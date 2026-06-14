@@ -1,16 +1,19 @@
 use crate::events::player_block_interact::BlockFace;
 use crate::events::player_cancel_digging::PlayerCancelDiggingEvent;
 use crate::events::player_finish_digging::PlayerFinishDiggingEvent;
+use crate::events::player_stab::PlayerStabEvent;
 use crate::events::player_start_digging::PlayerStartDiggingEvent;
 use crate::network::client::instance::Client;
 use crate::network::play::block_break_calculation;
 use crate::server::MinecraftServer;
-use crate::world::{Block, BlockPosition};
+use crate::world::{Block, BlockPosition, BlockState};
 use spinel_core::entity::game_mode::GameMode;
 use spinel_core::network::clientbound::play::acknowledge_block_change::AcknowledgeBlockChangePacket;
 use spinel_core::network::serverbound::play::player_action::PlayerActionPacket;
 use spinel_macros::packet_listener;
-use spinel_registry::data_components::vanilla_components::{CAN_BREAK, TOOL};
+use spinel_nbt::NbtCompound;
+use spinel_network::types::TeleportFlags;
+use spinel_registry::data_components::vanilla_components::{CAN_BREAK, PIERCING_WEAPON, TOOL};
 use spinel_registry::{BlockPredicates, Registries, Tool};
 
 #[packet_listener]
@@ -34,6 +37,15 @@ fn on_player_action(
         return false;
     };
     let player = unsafe { &mut *player };
+    if packet.status == PlayerActionPacket::STAB {
+        if player
+            .item_in_hand(crate::entity::PlayerHand::Main)
+            .has(PIERCING_WEAPON)
+        {
+            PlayerStabEvent::new(player).dispatch(server, client);
+        }
+        return true;
+    }
     let action_result = match packet.status {
         PlayerActionPacket::DROP_ITEM_STACK => player.drop_main_hand_item(true, server, client),
         PlayerActionPacket::DROP_ITEM => player.drop_main_hand_item(false, server, client),
@@ -64,7 +76,7 @@ fn acknowledge_digging(
     server: &mut MinecraftServer,
 ) -> bool {
     let Some(digging_input) = digging_event_input(&packet, client, server) else {
-        return acknowledge_block_change(packet.sequence, client);
+        return true;
     };
     match packet.status {
         PlayerActionPacket::START_DESTROY_BLOCK => {
@@ -83,10 +95,15 @@ fn finish_digging(
     client: &mut Client,
 ) -> bool {
     let Some(digging_input) = digging_event_input(&packet, client, server) else {
-        return acknowledge_block_change(packet.sequence, client);
+        return true;
     };
     let player = unsafe { &mut *digging_input.player };
-    if should_prevent_breaking(player, digging_input.block, &server.registries) {
+    if should_prevent_breaking(
+        player,
+        digging_input.block_state,
+        digging_input.client_block_entity_nbt.as_ref(),
+        &server.registries,
+    ) {
         return fail_digging(
             digging_input.block_position,
             packet.sequence,
@@ -121,17 +138,21 @@ fn finish_digging(
         digging_input.block_position,
     );
     event.dispatch(server, client);
-    let block_was_broken = server
-        .break_block_in_world(
-            client,
-            player.entity_id(),
-            digging_input.block_position,
-            digging_input.block_face,
-            true,
-        )
-        .unwrap_or(false);
+    let previous_block = event.block();
+    let block_was_broken = attempt_block_break(
+        digging_input.player,
+        previous_block,
+        digging_input.block_position,
+        digging_input.block_face,
+        server,
+        client,
+    );
     let block_change_is_acknowledged = acknowledge_block_change(packet.sequence, client);
-    block_was_broken && block_change_is_acknowledged
+    if block_was_broken {
+        return block_change_is_acknowledged;
+    }
+    block_change_is_acknowledged
+        && refresh_failed_digging_block_entity(digging_input.block_position, server, client)
 }
 
 fn start_digging(
@@ -141,7 +162,12 @@ fn start_digging(
     server: &mut MinecraftServer,
 ) -> bool {
     let player = unsafe { &mut *digging_input.player };
-    if should_prevent_breaking(player, digging_input.block, &server.registries) {
+    if should_prevent_breaking(
+        player,
+        digging_input.block_state,
+        digging_input.client_block_entity_nbt.as_ref(),
+        &server.registries,
+    ) {
         return fail_digging(digging_input.block_position, sequence, server, client);
     }
     let player_is_in_water = player_is_in_water(player, server, client);
@@ -152,16 +178,20 @@ fn start_digging(
         player_is_in_water,
     );
     if break_ticks == 0 {
-        let block_was_broken = server
-            .break_block_in_world(
-                client,
-                player.entity_id(),
-                digging_input.block_position,
-                digging_input.block_face,
-                true,
-            )
-            .unwrap_or(false);
-        return block_was_broken && acknowledge_block_change(sequence, client);
+        let block_was_broken = attempt_block_break(
+            digging_input.player,
+            digging_input.block,
+            digging_input.block_position,
+            digging_input.block_face,
+            server,
+            client,
+        );
+        let block_change_is_acknowledged = acknowledge_block_change(sequence, client);
+        if block_was_broken {
+            return block_change_is_acknowledged;
+        }
+        return block_change_is_acknowledged
+            && refresh_failed_digging_block_entity(digging_input.block_position, server, client);
     }
     let mut event = PlayerStartDiggingEvent::new(
         digging_input.player,
@@ -191,6 +221,60 @@ fn cancel_digging(
     acknowledge_block_change(sequence, client)
 }
 
+fn attempt_block_break(
+    player: *mut crate::entity::Player,
+    previous_block: Block,
+    block_position: BlockPosition,
+    block_face: BlockFace,
+    server: &mut MinecraftServer,
+    client: &Client,
+) -> bool {
+    let player_id = unsafe { &*player }.entity_id();
+    let block_was_broken = server
+        .break_block_in_world(client, player_id, block_position, block_face, true)
+        .unwrap_or(false);
+    if block_was_broken {
+        return true;
+    }
+    correct_player_after_failed_digging(player, previous_block, block_position, server, client);
+    false
+}
+
+fn correct_player_after_failed_digging(
+    player: *mut crate::entity::Player,
+    previous_block: Block,
+    block_position: BlockPosition,
+    server: &mut MinecraftServer,
+    client: &Client,
+) {
+    if !previous_block.is_solid() {
+        return;
+    }
+    let player = unsafe { &*player };
+    let position = player.position();
+    let block_below_player = BlockPosition::new(
+        position.x().floor() as i32,
+        position.y().floor() as i32 - 1,
+        position.z().floor() as i32,
+    );
+    if block_below_player != block_position {
+        return;
+    }
+    let Some(world_uuid) = server.world_manager.world_uuid_for_client(client) else {
+        return;
+    };
+    let Some(world) = server.world_manager.world_mut(world_uuid) else {
+        return;
+    };
+    let _ = world.teleport_player(
+        player.uuid(),
+        position,
+        None,
+        TeleportFlags::absolute(),
+        true,
+    );
+}
+
 fn digging_event_input(
     packet: &PlayerActionPacket,
     client: &Client,
@@ -204,12 +288,16 @@ fn digging_event_input(
     if !server.block_position_is_loaded_in_world(client, block_position) {
         return None;
     }
-    let block = server.loaded_block_in_world(client, block_position)?;
+    let block_state = server.loaded_block_state_in_world(client, block_position)?;
+    let client_block_entity_nbt = server.client_block_entity_nbt_in_world(client, block_position);
+    let block = block_state.block();
     let block_face = BlockFace::from_network_direction(packet.block_face.into())?;
     let player = server.world_manager.player_pointer_for_client(client)?;
     Some(DiggingEventInput {
         player,
         block,
+        block_state,
+        client_block_entity_nbt,
         block_position,
         block_face,
     })
@@ -222,10 +310,18 @@ fn fail_digging(
     client: &mut Client,
 ) -> bool {
     let block_change_is_acknowledged = acknowledge_block_change(sequence, client);
-    let block_entity_is_refreshed = server
-        .refresh_block_entity_in_world(client, position)
-        .is_ok();
+    let block_entity_is_refreshed = refresh_failed_digging_block_entity(position, server, client);
     block_change_is_acknowledged && block_entity_is_refreshed
+}
+
+fn refresh_failed_digging_block_entity(
+    position: BlockPosition,
+    server: &mut MinecraftServer,
+    client: &mut Client,
+) -> bool {
+    server
+        .refresh_block_entity_in_world(client, position)
+        .is_ok()
 }
 
 fn acknowledge_block_change(sequence: i32, client: &mut Client) -> bool {
@@ -252,16 +348,18 @@ fn player_is_in_water(
 
 pub(crate) fn should_prevent_breaking(
     player: &crate::entity::Player,
-    block: Block,
+    block_state: impl Into<BlockState>,
+    client_block_entity_nbt: Option<&NbtCompound>,
     registries: &Registries,
 ) -> bool {
+    let block_state = block_state.into();
     let main_hand_item = player.item_in_hand(crate::entity::PlayerHand::Main);
     match player.game_mode() {
         GameMode::Spectator => true,
         GameMode::Adventure => {
             let can_break_block = main_hand_item
                 .get_or(CAN_BREAK, BlockPredicates::default())
-                .test(block, registries);
+                .test_state_with_nbt(block_state, client_block_entity_nbt, registries);
             !can_break_block
         }
         GameMode::Creative => main_hand_item
@@ -274,6 +372,8 @@ pub(crate) fn should_prevent_breaking(
 struct DiggingEventInput {
     player: *mut crate::entity::Player,
     block: Block,
+    block_state: BlockState,
+    client_block_entity_nbt: Option<NbtCompound>,
     block_position: BlockPosition,
     block_face: BlockFace,
 }

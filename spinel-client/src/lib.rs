@@ -11,6 +11,9 @@ mod listeners;
 pub use entity::player::Player;
 pub use instance::{ClientPosition, MinecraftClient};
 
+#[cfg(test)]
+mod tests;
+
 use spinel_network::ConnectionState;
 use spinel_utils::Priority;
 

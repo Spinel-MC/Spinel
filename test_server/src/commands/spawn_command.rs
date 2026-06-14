@@ -68,26 +68,3 @@ impl SpawnCommand {
             })
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::SpawnCommand;
-    use spinel::core::network::clientbound::play::commands::ArgumentParserType;
-
-    #[test]
-    fn spawn_command_uses_minestom_entity_type_argument_for_vanilla_autocomplete() {
-        let command = SpawnCommand::command();
-        let entity_argument = &command.syntaxes()[0].arguments()[0];
-
-        assert_eq!(command.name(), "spawn");
-        assert_eq!(
-            entity_argument.parser(),
-            ArgumentParserType::ResourceLocation
-        );
-        assert_eq!(
-            entity_argument.suggestions_type().as_deref(),
-            Some("minecraft:summonable_entities")
-        );
-        assert!(SpawnCommand::command_autocompletes_every_vanilla_entity_type(&command));
-    }
-}

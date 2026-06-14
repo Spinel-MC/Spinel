@@ -10,10 +10,14 @@ mod dynamic_registry_assets;
 mod entity_entries;
 mod item_entries;
 mod sound_entries;
+mod static_protocol_entries;
 mod tag_entries;
 mod tag_registry_specs;
 
-use block_entries::{block_entries_by_key, sorted_block_entries};
+use block_entries::{
+    BlockShapeBoxEntry, BlockStateEntry, block_entries_by_key, block_shapes, sorted_block_entries,
+    sorted_block_state_entries,
+};
 use dynamic_registry_assets::DYNAMIC_REGISTRY_ASSETS;
 use entity_entries::entity_entries;
 use item_entries::item_entries;
@@ -36,10 +40,19 @@ impl BuildScript {
         self.emit_rerun_instructions();
         fs::create_dir_all(GENERATED_DIRECTORY)?;
         self.write("vanilla_world_blocks.rs", self.world_blocks()?);
+        self.write("vanilla_block_states.rs", self.block_states()?);
         self.write("vanilla_blocks.rs", self.static_blocks()?);
         self.write("vanilla_items.rs", self.static_items()?);
         self.write("vanilla_entity_types.rs", self.entity_types()?);
         self.write("vanilla_sound_events.rs", self.sound_events()?);
+        self.write(
+            "vanilla_villager_types.rs",
+            self.static_protocol_values("villager_type", "VillagerType")?,
+        );
+        self.write(
+            "vanilla_villager_professions.rs",
+            self.static_protocol_values("villager_profession", "VillagerProfession")?,
+        );
         self.write("vanilla_materials.rs", self.materials()?);
         self.write(
             "vanilla_biomes.rs",
@@ -80,12 +93,34 @@ impl BuildScript {
                 )
             })
             .collect::<String>();
+        let ids = blocks
+            .iter()
+            .map(|block| format!("            Self::{} => {},\n", block.variant, block.id))
+            .collect::<String>();
+        let id_matches = blocks
+            .iter()
+            .map(|block| {
+                format!(
+                    "            {} => Some(Self::{}),\n",
+                    block.id, block.variant
+                )
+            })
+            .collect::<String>();
         let paths = blocks
             .iter()
             .map(|block| {
                 format!(
                     "            Self::{} => \"{}\",\n",
                     block.variant, block.path
+                )
+            })
+            .collect::<String>();
+        let path_matches = blocks
+            .iter()
+            .map(|block| {
+                format!(
+                    "            \"{}\" => Some(Self::{}),\n",
+                    block.path, block.variant
                 )
             })
             .collect::<String>();
@@ -111,6 +146,15 @@ impl BuildScript {
                 )
             })
             .collect::<String>();
+        let replaceable_flags = blocks
+            .iter()
+            .map(|block| {
+                format!(
+                    "            Self::{} => {},\n",
+                    block.variant, block.is_replaceable
+                )
+            })
+            .collect::<String>();
         let hardness_values = blocks
             .iter()
             .map(|block| {
@@ -118,6 +162,16 @@ impl BuildScript {
                     "            Self::{} => {},\n",
                     block.variant,
                     rust_f32(block.hardness)
+                )
+            })
+            .collect::<String>();
+        let friction_values = blocks
+            .iter()
+            .map(|block| {
+                format!(
+                    "            Self::{} => {},\n",
+                    block.variant,
+                    rust_f32(block.friction)
                 )
             })
             .collect::<String>();
@@ -130,13 +184,17 @@ impl BuildScript {
                 )
             })
             .collect::<String>();
-        let emitted_light_levels = blocks
+        let block_entity_types = blocks
             .iter()
             .map(|block| {
+                let block_entity_type = block
+                    .block_entity_type
+                    .as_deref()
+                    .map(|path| format!("Some(BlockEntityType::{})", path.to_upper_camel_case()))
+                    .unwrap_or_else(|| "None".to_string());
                 format!(
                     "            Self::{} => {},\n",
-                    block.variant,
-                    emitted_light_level(&block.path)
+                    block.variant, block_entity_type
                 )
             })
             .collect::<String>();
@@ -145,7 +203,75 @@ impl BuildScript {
             .map(|block| format!("            Self::{},\n", block.variant))
             .collect::<String>();
         Ok(format!(
-            "#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]\npub enum Block {{\n{variants}}}\nimpl Block {{\n    pub const ALL: &'static [Self] = &[\n{all}    ];\n    pub const fn state_id(self) -> i32 {{\n        match self {{\n{state_ids}        }}\n    }}\n    pub const fn path(self) -> &'static str {{\n        match self {{\n{paths}        }}\n    }}\n    pub const fn is_air(self) -> bool {{\n        match self {{\n{air_flags}        }}\n    }}\n    pub const fn is_solid(self) -> bool {{\n        match self {{\n{solid_flags}        }}\n    }}\n    pub const fn is_liquid(self) -> bool {{\n        match self {{\n{liquid_flags}        }}\n    }}\n    pub const fn hardness(self) -> f32 {{\n        match self {{\n{hardness_values}        }}\n    }}\n    pub const fn requires_tool(self) -> bool {{\n        match self {{\n{requires_tool_flags}        }}\n    }}\n    pub const fn emitted_light_level(self) -> u8 {{\n        match self {{\n{emitted_light_levels}        }}\n    }}\n    pub const fn from_state_id(state_id: i32) -> Option<Self> {{\n        let mut block_index = 0usize;\n        while block_index < Self::ALL.len() {{\n            let block = Self::ALL[block_index];\n            if block.state_id() == state_id {{\n                return Some(block);\n            }}\n            block_index += 1;\n        }}\n        None\n    }}\n}}\n"
+            "use crate::{{block_entity_type::BlockEntityType, vanilla_block_states::BlockState}};\n#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]\npub enum Block {{\n{variants}}}\nimpl Block {{\n    pub const ALL: &'static [Self] = &[\n{all}    ];\n    pub const fn id(self) -> i32 {{\n        match self {{\n{ids}        }}\n    }}\n    pub const fn state_id(self) -> i32 {{\n        match self {{\n{state_ids}        }}\n    }}\n    pub const fn default_state(self) -> BlockState {{\n        BlockState::from_state_id_or_panic(self.state_id())\n    }}\n    pub const fn path(self) -> &'static str {{\n        match self {{\n{paths}        }}\n    }}\n    pub const fn is_air(self) -> bool {{\n        match self {{\n{air_flags}        }}\n    }}\n    pub const fn is_solid(self) -> bool {{\n        match self {{\n{solid_flags}        }}\n    }}\n    pub const fn is_liquid(self) -> bool {{\n        match self {{\n{liquid_flags}        }}\n    }}\n    pub const fn is_replaceable(self) -> bool {{\n        match self {{\n{replaceable_flags}        }}\n    }}\n    pub const fn hardness(self) -> f32 {{\n        match self {{\n{hardness_values}        }}\n    }}\n    pub const fn friction(self) -> f32 {{\n        match self {{\n{friction_values}        }}\n    }}\n    pub const fn requires_tool(self) -> bool {{\n        match self {{\n{requires_tool_flags}        }}\n    }}\n    pub const fn block_entity_type(self) -> Option<BlockEntityType> {{\n        match self {{\n{block_entity_types}        }}\n    }}\n    pub const fn emitted_light_level(self) -> u8 {{ self.default_state().light_emission() }}\n    pub const fn from_id(id: i32) -> Option<Self> {{\n        match id {{\n{id_matches}            _ => None,\n        }}\n    }}\n    pub fn from_key(key: &str) -> Option<Self> {{\n        let path = key.strip_prefix(\"minecraft:\").unwrap_or(key);\n        match path {{\n{path_matches}            _ => None,\n        }}\n    }}\n    pub const fn from_state_id(state_id: i32) -> Option<Self> {{\n        match BlockState::from_state_id(state_id) {{\n            Some(state) => Some(state.block()),\n            None => None,\n        }}\n    }}\n}}\n"
+        ))
+    }
+
+    fn block_states(&self) -> io::Result<String> {
+        let states = sorted_block_state_entries()?;
+        let shapes = block_shapes()?;
+        let state_count = states.len();
+        states.iter().enumerate().for_each(|(expected_id, state)| {
+            assert_eq!(
+                state.id, expected_id as i32,
+                "block state ids must be contiguous"
+            );
+        });
+        let blocks = states
+            .iter()
+            .map(|state| format!("    Block::{},\n", state.block_variant))
+            .collect::<String>();
+        let light_emissions = numeric_array(states.iter().map(|state| state.light_emission));
+        let light_blocks = numeric_array(states.iter().map(|state| state.light_block));
+        let skylight_flags =
+            boolean_array(states.iter().map(|state| state.propagates_skylight_down));
+        let shape_occlusion_flags = boolean_array(
+            states
+                .iter()
+                .map(|state| state.uses_shape_for_light_occlusion),
+        );
+        let collision_shapes = numeric_array(states.iter().map(|state| state.collision_shape));
+        let occlusion_shapes = numeric_array(states.iter().map(|state| state.occlusion_shape));
+        let face_occlusion_shapes = states
+            .iter()
+            .map(|state| {
+                format!(
+                    "    [{}, {}, {}, {}, {}, {}],\n",
+                    face_shape(state, "down"),
+                    face_shape(state, "up"),
+                    face_shape(state, "north"),
+                    face_shape(state, "south"),
+                    face_shape(state, "west"),
+                    face_shape(state, "east"),
+                )
+            })
+            .collect::<String>();
+        let properties = states
+            .iter()
+            .map(|state| {
+                let entries = state
+                    .properties
+                    .iter()
+                    .map(|(name, value)| {
+                        format!(
+                            "BlockStateProperty {{ name: {:?}, value: {:?} }}, ",
+                            name, value
+                        )
+                    })
+                    .collect::<String>();
+                format!("    &[{entries}],\n")
+            })
+            .collect::<String>();
+        let shape_boxes = shapes
+            .iter()
+            .map(|shape| {
+                let boxes = shape.iter().map(block_shape_box).collect::<String>();
+                format!("    &[{boxes}],\n")
+            })
+            .collect::<String>();
+        Ok(format!(
+            "use crate::vanilla_world_blocks::Block;\n\n#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]\npub struct BlockState(u16);\n\n#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]\npub struct BlockStateProperty {{\n    pub name: &'static str,\n    pub value: &'static str,\n}}\n\n#[derive(Clone, Copy, Debug, PartialEq)]\npub struct BlockShapeBox {{\n    pub min_x: f64,\n    pub min_y: f64,\n    pub min_z: f64,\n    pub max_x: f64,\n    pub max_y: f64,\n    pub max_z: f64,\n}}\n\n#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]\npub enum BlockFaceDirection {{ Down, Up, North, South, West, East }}\n\nimpl BlockFaceDirection {{\n    const fn index(self) -> usize {{\n        match self {{ Self::Down => 0, Self::Up => 1, Self::North => 2, Self::South => 3, Self::West => 4, Self::East => 5 }}\n    }}\n}}\n\nimpl BlockState {{\n    pub const COUNT: usize = {state_count};\n    pub const fn from_state_id(state_id: i32) -> Option<Self> {{\n        if state_id < 0 || state_id as usize >= Self::COUNT {{ return None; }}\n        Some(Self(state_id as u16))\n    }}\n    pub(crate) const fn from_state_id_or_panic(state_id: i32) -> Self {{\n        match Self::from_state_id(state_id) {{ Some(state) => state, None => panic!(\"invalid generated block state id\") }}\n    }}\n    pub const fn state_id(self) -> i32 {{ self.0 as i32 }}\n    pub const fn block(self) -> Block {{ BLOCKS[self.0 as usize] }}\n    pub const fn light_emission(self) -> u8 {{ LIGHT_EMISSIONS[self.0 as usize] }}\n    pub const fn light_block(self) -> u8 {{ LIGHT_BLOCKS[self.0 as usize] }}\n    pub const fn propagates_skylight_down(self) -> bool {{ PROPAGATES_SKYLIGHT_DOWN[self.0 as usize] }}\n    pub const fn uses_shape_for_light_occlusion(self) -> bool {{ USES_SHAPE_FOR_LIGHT_OCCLUSION[self.0 as usize] }}\n    pub fn properties(self) -> &'static [BlockStateProperty] {{ STATE_PROPERTIES[self.0 as usize] }}\n    pub fn property(self, name: &str) -> Option<&'static str> {{ self.properties().iter().find(|property| property.name == name).map(|property| property.value) }}\n    pub fn with_property(self, name: &str, value: &str) -> Option<Self> {{\n        if self.property(name).is_none() {{ return None; }}\n        (0..Self::COUNT).find_map(|state_id| {{\n            let candidate = Self(state_id as u16);\n            if candidate.block() != self.block() {{ return None; }}\n            let candidate_properties = candidate.properties();\n            if candidate_properties.len() != self.properties().len() {{ return None; }}\n            let properties_match = self.properties().iter().all(|property| {{\n                let expected_value = if property.name == name {{ value }} else {{ property.value }};\n                candidate.property(property.name) == Some(expected_value)\n            }});\n            properties_match.then_some(candidate)\n        }})\n    }}\n    pub fn collision_shape(self) -> &'static [BlockShapeBox] {{ BLOCK_SHAPES[COLLISION_SHAPES[self.0 as usize] as usize] }}\n    pub fn occlusion_shape(self) -> &'static [BlockShapeBox] {{ BLOCK_SHAPES[OCCLUSION_SHAPES[self.0 as usize] as usize] }}\n    pub fn face_occlusion_shape(self, face: BlockFaceDirection) -> &'static [BlockShapeBox] {{\n        let shape = FACE_OCCLUSION_SHAPES[self.0 as usize][face.index()];\n        BLOCK_SHAPES[shape as usize]\n    }}\n}}\n\nimpl From<Block> for BlockState {{ fn from(block: Block) -> Self {{ block.default_state() }} }}\n\nconst BLOCKS: [Block; {state_count}] = [\n{blocks}];\nconst LIGHT_EMISSIONS: [u8; {state_count}] = [{light_emissions}];\nconst LIGHT_BLOCKS: [u8; {state_count}] = [{light_blocks}];\nconst PROPAGATES_SKYLIGHT_DOWN: [bool; {state_count}] = [{skylight_flags}];\nconst USES_SHAPE_FOR_LIGHT_OCCLUSION: [bool; {state_count}] = [{shape_occlusion_flags}];\nconst COLLISION_SHAPES: [u16; {state_count}] = [{collision_shapes}];\nconst OCCLUSION_SHAPES: [u16; {state_count}] = [{occlusion_shapes}];\nconst FACE_OCCLUSION_SHAPES: [[u16; 6]; {state_count}] = [\n{face_occlusion_shapes}];\nconst STATE_PROPERTIES: [&[BlockStateProperty]; {state_count}] = [\n{properties}];\nconst BLOCK_SHAPES: [&[BlockShapeBox]; {}] = [\n{shape_boxes}];\n",
+            shapes.len()
         ))
     }
 
@@ -274,6 +400,10 @@ impl BuildScript {
             .iter()
             .map(|entity_type| self.entity_attachment_table(entity_type))
             .collect::<String>();
+        let default_attribute_tables = entity_types
+            .iter()
+            .map(|entity_type| self.entity_default_attribute_table(entity_type))
+            .collect::<String>();
         let attachment_matches = entity_types
             .iter()
             .map(|entity_type| {
@@ -284,8 +414,18 @@ impl BuildScript {
                 )
             })
             .collect::<String>();
+        let default_attribute_matches = entity_types
+            .iter()
+            .map(|entity_type| {
+                format!(
+                    "            Self::{} => {}_DEFAULT_ATTRIBUTES,\n",
+                    const_name(&entity_type.path),
+                    const_name(&entity_type.path)
+                )
+            })
+            .collect::<String>();
         Ok(format!(
-            "use crate::entity::{{EntityAttachmentOffset, EntityPacketType, EntityType}};\n{attachment_tables}impl EntityType {{\n{constants}    pub const ALL: &'static [Self] = &[\n{all}    ];\n    pub fn attachments(self) -> &'static [EntityAttachmentOffset] {{\n        match self {{\n{attachment_matches}            _ => &[],\n        }}\n    }}\n}}\n"
+            "use crate::Attribute;\nuse crate::entity::{{EntityAttachmentOffset, EntityDefaultAttribute, EntityPacketType, EntityType}};\n{attachment_tables}{default_attribute_tables}impl EntityType {{\n{constants}    pub const ALL: &'static [Self] = &[\n{all}    ];\n    pub fn attachments(self) -> &'static [EntityAttachmentOffset] {{\n        match self {{\n{attachment_matches}            _ => &[],\n        }}\n    }}\n    pub fn default_attributes(self) -> &'static [EntityDefaultAttribute] {{\n        match self {{\n{default_attribute_matches}            _ => &[],\n        }}\n    }}\n}}\n"
         ))
     }
 
@@ -327,6 +467,44 @@ impl BuildScript {
         ))
     }
 
+    fn static_protocol_values(&self, registry_name: &str, type_name: &str) -> io::Result<String> {
+        let entries = static_protocol_entries::static_protocol_entries(registry_name)?;
+        let constants = entries
+            .iter()
+            .map(|entry| {
+                format!(
+                    "    pub const {}: Self = Self::new({}, Identifier::vanilla_static(\"{}\"));\n",
+                    const_name(&entry.name),
+                    entry.id,
+                    vanilla_path(&entry.name)
+                )
+            })
+            .collect::<String>();
+        let id_matches = entries
+            .iter()
+            .map(|entry| {
+                format!(
+                    "            {} => Some(Self::{}),\n",
+                    entry.id,
+                    const_name(&entry.name)
+                )
+            })
+            .collect::<String>();
+        let key_matches = entries
+            .iter()
+            .map(|entry| {
+                format!(
+                    "            \"{}\" => Some(Self::{}),\n",
+                    vanilla_path(&entry.name),
+                    const_name(&entry.name)
+                )
+            })
+            .collect::<String>();
+        Ok(format!(
+            "use crate::{{Identifier, {type_name}}};\nimpl {type_name} {{\n{constants}    pub fn from_protocol_id(protocol_id: i32) -> Option<Self> {{\n        match protocol_id {{\n{id_matches}            _ => None,\n        }}\n    }}\n    pub fn from_key(key: &Identifier) -> Option<Self> {{\n        match key.path.as_ref() {{\n{key_matches}            _ => None,\n        }}\n    }}\n}}\n"
+        ))
+    }
+
     fn entity_attachment_table(&self, entity_type: &entity_entries::EntityEntry) -> String {
         let attachments = entity_type
             .attachments
@@ -346,6 +524,25 @@ impl BuildScript {
             "const {}_ATTACHMENTS: &'static [EntityAttachmentOffset] = &[\n{}];\n",
             const_name(&entity_type.path),
             attachments
+        )
+    }
+
+    fn entity_default_attribute_table(&self, entity_type: &entity_entries::EntityEntry) -> String {
+        let attributes = entity_type
+            .default_attributes
+            .iter()
+            .map(|(name, base_value)| {
+                format!(
+                    "    EntityDefaultAttribute::new(Attribute::{}, {}),\n",
+                    const_name(name),
+                    rust_float(*base_value)
+                )
+            })
+            .collect::<String>();
+        format!(
+            "const {}_DEFAULT_ATTRIBUTES: &'static [EntityDefaultAttribute] = &[\n{}];\n",
+            const_name(&entity_type.path),
+            attributes
         )
     }
 
@@ -436,23 +633,6 @@ fn enum_variant(value: &str) -> String {
     value.to_upper_camel_case()
 }
 
-fn emitted_light_level(path: &str) -> u8 {
-    match path {
-        "beacon" | "conduit" | "end_gateway" | "end_portal" | "fire" | "glowstone"
-        | "jack_o_lantern" | "lantern" | "lava" | "sea_lantern" | "shroomlight" | "soul_fire"
-        | "campfire" | "soul_campfire" => 15,
-        "end_rod" | "torch" | "wall_torch" => 14,
-        "furnace" | "blast_furnace" | "smoker" | "respawn_anchor" => 13,
-        "redstone_torch" | "redstone_wall_torch" => 7,
-        "magma_block" | "brewing_stand" => 3,
-        "brown_mushroom" | "dragon_egg" | "ender_chest" => 1,
-        _ if path.ends_with("_froglight") => 15,
-        _ if path.ends_with("_candle") || path.ends_with("_candle_cake") => 3,
-        _ if path == "light" => 15,
-        _ => 0,
-    }
-}
-
 fn const_name(key: &str) -> String {
     let name = vanilla_path(key).to_shouty_snake_case();
     if name
@@ -479,4 +659,39 @@ fn rust_f32(value: f32) -> String {
         return value_text;
     }
     format!("{value_text}.0")
+}
+
+fn numeric_array<T: std::fmt::Display>(values: impl Iterator<Item = T>) -> String {
+    values.map(|value| format!("{value},")).collect::<String>()
+}
+
+fn boolean_array(values: impl Iterator<Item = bool>) -> String {
+    values.map(|value| format!("{value},")).collect::<String>()
+}
+
+fn face_shape(state: &BlockStateEntry, face: &str) -> u16 {
+    state
+        .face_occlusion_shapes
+        .get(face)
+        .copied()
+        .unwrap_or(state.occlusion_shape)
+}
+
+fn block_shape_box(shape_box: &BlockShapeBoxEntry) -> String {
+    format!(
+        "BlockShapeBox {{ min_x: {}, min_y: {}, min_z: {}, max_x: {}, max_y: {}, max_z: {} }}, ",
+        rust_f64(shape_box.min_x),
+        rust_f64(shape_box.min_y),
+        rust_f64(shape_box.min_z),
+        rust_f64(shape_box.max_x),
+        rust_f64(shape_box.max_y),
+        rust_f64(shape_box.max_z),
+    )
+}
+
+fn rust_f64(value: f64) -> String {
+    if value.fract() == 0.0 {
+        return format!("{value:.1}");
+    }
+    value.to_string()
 }

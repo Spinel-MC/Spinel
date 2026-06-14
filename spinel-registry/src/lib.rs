@@ -7,11 +7,13 @@ pub mod generated;
 pub mod identifier;
 pub mod item_stack;
 pub mod material;
+pub mod particle;
 pub mod registry;
 pub mod registry_values;
 pub mod sound;
 
 pub use biome::{Biome, BiomeAttribute, BiomeAttributes, BiomeEffects, Color, GrassColorModifier};
+pub use blocks::{BlockFaceDirection, BlockShapeBox, BlockState, BlockStateProperty};
 pub use data_components::{
     ArmorTrim, AttackRange, AttributeList, AttributeModifierDisplay, AttributeModifierEntry,
     AttributeOperation, BannerPatternLayer, BannerPatterns, Bee, BlockPredicate, BlockPredicates,
@@ -30,14 +32,23 @@ pub use data_components::{
     UseCooldown, UseEffects, Weapon, WorldPosition, WritableBookContent, WrittenBookContent,
     dye_color_from_nbt_name, dye_color_nbt_name, dye_color_protocol_id,
 };
-pub use entity::{EntityAttachmentOffset, EntityBoundingBox, EntityPacketType, EntityType};
+pub use data_components::{
+    AxolotlVariant, FoxVariant, HorseColor, LlamaVariant, MooshroomVariant, ParrotColor,
+    RabbitVariant, SalmonSize, TropicalFishPattern,
+};
+pub use entity::{
+    EntityAttachmentOffset, EntityBoundingBox, EntityDefaultAttribute, EntityPacketType,
+    EntityType, EntityTypeRegistryEntry,
+};
 pub use generated::{
-    vanilla_biomes, vanilla_blocks, vanilla_dimension_types, vanilla_entity_types, vanilla_items,
-    vanilla_materials, vanilla_sound_events, vanilla_world_blocks,
+    vanilla_biomes, vanilla_block_states, vanilla_blocks, vanilla_dimension_types,
+    vanilla_entity_types, vanilla_items, vanilla_materials, vanilla_sound_events,
+    vanilla_world_blocks,
 };
 pub use identifier::{Axis, BlockStateId, Identifier, Todo};
 pub use item_stack::{ItemStack, ItemStackBuilder};
 pub use material::Material;
+pub use particle::{ParticlePayloadShape, ParticleType};
 pub use registry::{
     BANNER_PATTERN_REGISTRY, BIOME_REGISTRY, BLOCKS_REGISTRY, CAT_VARIANT_REGISTRY,
     CHAT_TYPE_REGISTRY, CHICKEN_VARIANT_REGISTRY, COW_VARIANT_REGISTRY, DAMAGE_TYPE_REGISTRY,
@@ -55,6 +66,8 @@ pub use registry::{
     vanilla_wolf_sound_variants, vanilla_wolf_variants, vanilla_zombie_nautilus_variants,
 };
 pub use registry_values::attribute::{ALL_ATTRIBUTES, Attribute};
+pub use registry_values::villager_profession::VillagerProfession;
+pub use registry_values::villager_type::VillagerType;
 pub use sound::BuiltinSoundEvent;
 
 pub mod sound_event {
@@ -111,7 +124,8 @@ pub mod enchantment {
 
 pub mod entity_type {
     pub use crate::entity::{
-        EntityAttachmentOffset, EntityBoundingBox, EntityPacketType, EntityType,
+        EntityAttachmentOffset, EntityBoundingBox, EntityDefaultAttribute, EntityPacketType,
+        EntityType, EntityTypeRegistryEntry,
     };
 }
 

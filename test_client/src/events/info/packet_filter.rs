@@ -16,20 +16,8 @@ const FILTERED_PACKET_NAMES: [&str; 14] = [
 ];
 
 pub fn packet_is_filtered(packet_name: &str) -> bool {
-    FILTERED_PACKET_NAMES.contains(&packet_name)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::packet_is_filtered;
-
-    #[test]
-    fn filters_server_inbound_and_outbound_packet_names() {
-        assert!(packet_is_filtered("move_entity_pos_rot"));
-        assert!(packet_is_filtered("move_entity_pos"));
-        assert!(packet_is_filtered("entity_position_sync"));
-        assert!(packet_is_filtered("level_chunk_with_light"));
-        assert!(packet_is_filtered("chunk_batch_received"));
-        assert!(!packet_is_filtered("disconnect"));
+    if std::env::var_os("SPINEL_TRACE_ALL_PACKETS").is_some() {
+        return false;
     }
+    FILTERED_PACKET_NAMES.contains(&packet_name)
 }

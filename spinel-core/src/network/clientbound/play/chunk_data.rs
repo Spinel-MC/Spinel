@@ -1,11 +1,12 @@
 use spinel_macros::packet;
 use spinel_network::types::{chunk::ChunkData, light::LightData};
+use std::sync::Arc;
 
 #[packet(id: "level_chunk_with_light", state: ConnectionState::Play, recipient: Recipient::Client)]
 pub struct ChunkDataAndUpdateLightPacket {
     pub chunk_x: i32,
     pub chunk_z: i32,
-    pub chunk_data: ChunkData,
+    pub chunk_data: Arc<ChunkData>,
     pub light_data: LightData,
 }
 
@@ -13,13 +14,13 @@ impl ChunkDataAndUpdateLightPacket {
     pub fn with_light_data(
         chunk_x: i32,
         chunk_z: i32,
-        chunk_data: ChunkData,
+        chunk_data: impl Into<Arc<ChunkData>>,
         light_data: LightData,
     ) -> Self {
         Self {
             chunk_x,
             chunk_z,
-            chunk_data,
+            chunk_data: chunk_data.into(),
             light_data,
         }
     }

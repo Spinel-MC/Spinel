@@ -20,10 +20,12 @@ mod shift_click;
 mod skin;
 mod spawn;
 mod spawn_point;
+mod viewer_snapshot;
 
 pub use below_name_tag::BelowNameTag;
 pub(crate) use chunk_update_limit_checker::ChunkUpdateLimitChecker;
 pub(crate) use chunks::{PlayerChunk, PlayerChunkTransition};
+pub use input::PlayerInputs;
 pub(crate) use instance::QueuedPlayerChunk;
 pub use instance::{Player, PlayerHand, PlayerMessageType, QueuedPlayerPacket};
 pub(crate) use item_use::PlayerItemUseCompletion;
@@ -32,3 +34,6 @@ pub(crate) use resource_pack::PendingResourcePacks;
 pub use resource_pack::{ResourcePackCallback, ResourcePackFuture, ResourcePackRequest};
 pub use skin::PlayerSkin;
 pub use spawn_point::PlayerSpawnPoint;
+pub(crate) use viewer_snapshot::PlayerViewerSnapshot;
+#[cfg(test)]
+mod tests;

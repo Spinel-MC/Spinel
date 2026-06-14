@@ -1,7 +1,7 @@
 use crate::entity::EntityId;
 use spinel_macros::event_dispatcher;
 
-#[event_dispatcher(with_client: true)]
+#[event_dispatcher]
 pub struct EntityAttackEvent {
     entity_id: EntityId,
     target_id: EntityId,
@@ -12,7 +12,6 @@ impl EntityAttackEvent {
         Self {
             entity_id,
             target_id,
-            connection_ptr: None,
         }
     }
 

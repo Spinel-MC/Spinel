@@ -1,8 +1,9 @@
 use crate::ClientPacketListener;
 use crate::events::disconnect::DisconnectEvent;
-use crate::events::network::inbound_packet::InboundPacketEvent;
-use crate::events::network::outbound_packet::OutboundPacketEvent;
+use crate::events::network::packet::PacketEvent;
+use crate::events::network::packet_error::{PacketErrorEvent, PacketErrorStage};
 use crate::hit_target::{BlockHitTarget, ClientHitTargetTracker, HitTarget, TrackedEntity};
+use crate::network::play::chunk_batch::ChunkBatchSizeCalculator;
 use crate::network::server::instance::Server;
 use crate::network::socket::connect_to_server;
 use spinel_core::network::serverbound::play::chunk_batch_received::ChunkBatchReceivedPacket;
@@ -14,7 +15,7 @@ use spinel_core::network::serverbound::play::swing::SwingPacket;
 use spinel_core::network::serverbound::play::use_item::UseItemPacket;
 use spinel_network::packet_names::PacketNameRegistry;
 use spinel_network::types::{Position, Vector3d, chunk::ChunkData};
-use spinel_network::{ConnectionState, PacketSender};
+use spinel_network::{ConnectionState, PacketCodecRegistry, PacketSender, Recipient};
 use spinel_utils::component::text::TextComponent;
 use std::collections::HashMap;
 use std::io;
@@ -92,6 +93,7 @@ pub struct MinecraftClient {
     pitch: Arc<Mutex<f32>>,
     hit_target_tracker: Arc<Mutex<ClientHitTargetTracker>>,
     active_destroying_block: Arc<Mutex<Option<BlockHitTarget>>>,
+    chunk_batch_size_calculator: Arc<Mutex<ChunkBatchSizeCalculator>>,
     pub registries: Arc<Mutex<crate::registry_manager::ClientRegistries>>,
     assigned_packet_listeners:
         Arc<HashMap<(ConnectionState, i32), Vec<&'static ClientPacketListener>>>,
@@ -109,10 +111,29 @@ impl PacketSender for MinecraftClient {
             .ok_or_else(|| io::Error::new(io::ErrorKind::NotConnected, "Server missing"))?;
         server.state = self.state;
         let packet_name = PacketNameRegistry::get_serverbound_packet_name(server.state, id);
-        let mut outbound_packet_event =
-            OutboundPacketEvent::new(server.state, id, packet_name, payload.len());
-        outbound_packet_event.dispatch(self, server);
-        server.send_packet(id, payload)
+        let mut packet_event = PacketEvent::new(
+            Recipient::Server,
+            server.state,
+            id,
+            packet_name.clone(),
+            payload.len(),
+        );
+        packet_event.dispatch(self, server);
+        match server.send_packet(id, payload) {
+            Ok(()) => Ok(()),
+            Err(error) => {
+                let mut packet_error_event = PacketErrorEvent::new(
+                    Recipient::Server,
+                    PacketErrorStage::PacketWrite,
+                    server.state,
+                    Some(id),
+                    Some(packet_name),
+                    error.to_string(),
+                );
+                packet_error_event.dispatch(self, server);
+                Err(error)
+            }
+        }
     }
 }
 
@@ -127,6 +148,7 @@ impl MinecraftClient {
             pitch: Arc::new(Mutex::new(0.0)),
             hit_target_tracker: Arc::new(Mutex::new(ClientHitTargetTracker::default())),
             active_destroying_block: Arc::new(Mutex::new(None)),
+            chunk_batch_size_calculator: Arc::new(Mutex::new(ChunkBatchSizeCalculator::new())),
             registries: Arc::new(Mutex::new(crate::registry_manager::ClientRegistries::new())),
             assigned_packet_listeners: Arc::new(assigned),
             generic_packet_listeners: Arc::new(generic),
@@ -226,6 +248,19 @@ impl MinecraftClient {
             desired_chunks_per_tick,
         }
         .dispatch(self)
+    }
+
+    pub(crate) fn start_chunk_batch(&self) {
+        if let Ok(mut calculator) = self.chunk_batch_size_calculator.lock() {
+            calculator.start_batch();
+        }
+    }
+
+    pub(crate) fn finish_chunk_batch(&self, batch_size: i32) -> f32 {
+        self.chunk_batch_size_calculator
+            .lock()
+            .map(|mut calculator| calculator.finish_batch(batch_size))
+            .unwrap_or(1.0)
     }
 
     pub fn respawn(&mut self) -> io::Result<()> {
@@ -345,6 +380,18 @@ impl MinecraftClient {
         if let Ok(mut tracker) = self.hit_target_tracker.lock() {
             tracker.remove_chunk(chunk_x, chunk_z);
         }
+    }
+
+    pub fn tracked_chunk_count_in_square(&self, radius: i32) -> usize {
+        let position = self.position();
+        let center_chunk_x = (position.x().floor() as i32).div_euclid(16);
+        let center_chunk_z = (position.z().floor() as i32).div_euclid(16);
+        self.hit_target_tracker
+            .lock()
+            .map(|tracker| {
+                tracker.tracked_chunk_count_in_square(center_chunk_x, center_chunk_z, radius)
+            })
+            .unwrap_or_default()
     }
 
     pub fn attack_entity(&mut self, entity_id: i32) -> io::Result<()> {
@@ -473,6 +520,10 @@ impl MinecraftClient {
             || self.generic_packet_listeners.contains_key(state)
     }
 
+    pub fn has_codec_for(&self, packet_id: i32, state: ConnectionState) -> bool {
+        PacketCodecRegistry::contains(Recipient::Client, state, packet_id)
+    }
+
     pub fn dispatch_packet(
         &self,
         packet_id: i32,
@@ -480,9 +531,25 @@ impl MinecraftClient {
         payload: Vec<u8>,
     ) -> bool {
         let key = (server_conn.state, packet_id);
-
         let mut client_handle = self.clone();
         let client_ptr = &mut client_handle as *mut MinecraftClient as *mut ();
+        let packet_name =
+            PacketNameRegistry::get_clientbound_packet_name(server_conn.state, packet_id);
+        let Some(packet_codec) =
+            PacketCodecRegistry::codec(Recipient::Client, server_conn.state, packet_id)
+        else {
+            self.dispatch_packet_error(
+                server_conn,
+                packet_id,
+                packet_name,
+                "received an undefined packet id".to_string(),
+            );
+            return false;
+        };
+        if let Err(error) = (packet_codec.decode)(&payload) {
+            self.dispatch_packet_error(server_conn, packet_id, packet_name, error.to_string());
+            return false;
+        }
 
         let specific = self
             .assigned_packet_listeners
@@ -495,16 +562,18 @@ impl MinecraftClient {
             .cloned()
             .unwrap_or_default();
 
-        if specific.is_empty() && generic.is_empty() {
-            return false;
-        }
-
-        let packet_name =
-            PacketNameRegistry::get_clientbound_packet_name(server_conn.state, packet_id);
-        let mut inbound_packet_event =
-            InboundPacketEvent::new(server_conn.state, packet_id, packet_name, payload.len());
+        let mut packet_event = PacketEvent::new(
+            Recipient::Client,
+            server_conn.state,
+            packet_id,
+            packet_name,
+            payload.len(),
+        );
         let mut event_client_handle = self.clone();
-        inbound_packet_event.dispatch(&mut event_client_handle, server_conn);
+        packet_event.dispatch(&mut event_client_handle, server_conn);
+        if specific.is_empty() && generic.is_empty() {
+            return true;
+        }
 
         server_conn.payload_cursor = Some(Cursor::new(payload));
 
@@ -524,6 +593,25 @@ impl MinecraftClient {
         }
         server_conn.payload_cursor = None;
         true
+    }
+
+    fn dispatch_packet_error(
+        &self,
+        server: &mut Server,
+        packet_id: i32,
+        packet_name: String,
+        message: String,
+    ) {
+        let mut packet_error_event = PacketErrorEvent::new(
+            Recipient::Client,
+            PacketErrorStage::PacketDecode,
+            server.state,
+            Some(packet_id),
+            Some(packet_name),
+            message,
+        );
+        let mut client_handle = self.clone();
+        packet_error_event.dispatch(&mut client_handle, server);
     }
 }
 

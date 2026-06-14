@@ -3,8 +3,7 @@ use crate::types::var_int::VarIntWrapper;
 use aes::Aes128;
 use cfb8::Encryptor;
 use cfb8::cipher::{BlockEncryptMut, KeyIvInit, generic_array::GenericArray};
-use flate2::Compression;
-use flate2::write::ZlibEncoder;
+use flate2::{Compress, Compression, FlushCompress, Status};
 use std::io::{self, Write};
 use std::net::TcpStream;
 
@@ -13,6 +12,7 @@ pub use crate::network_buffer::NetworkBuffer;
 pub struct PacketEncoder {
     encryptor: Option<Encryptor<Aes128>>,
     compression_threshold: Option<i32>,
+    compressor: Compress,
 }
 
 impl PacketEncoder {
@@ -20,6 +20,7 @@ impl PacketEncoder {
         Self {
             encryptor: None,
             compression_threshold: None,
+            compressor: Compress::new(Compression::fast(), true),
         }
     }
 
@@ -43,6 +44,11 @@ impl PacketEncoder {
         packet_id: i32,
         payload: &[u8],
     ) -> io::Result<()> {
+        let output_buffer = self.encode_frame(packet_id, payload)?;
+        stream.write_all(&output_buffer)
+    }
+
+    pub fn encode_frame(&mut self, packet_id: i32, payload: &[u8]) -> io::Result<Vec<u8>> {
         let mut raw_packet = Vec::new();
         VarIntWrapper(packet_id).encode(&mut raw_packet)?;
         raw_packet.extend_from_slice(payload);
@@ -53,9 +59,18 @@ impl PacketEncoder {
                 let mut comp_frame = Vec::new();
                 VarIntWrapper(data_len as i32).encode(&mut comp_frame)?;
 
-                let mut encoder = ZlibEncoder::new(Vec::new(), Compression::default());
-                encoder.write_all(&raw_packet)?;
-                let compressed = encoder.finish()?;
+                let mut compressed =
+                    Vec::with_capacity(data_len + data_len.saturating_div(100) + 64);
+                self.compressor.reset();
+                let status = self
+                    .compressor
+                    .compress_vec(&raw_packet, &mut compressed, FlushCompress::Finish)
+                    .map_err(io::Error::other)?;
+                if status != Status::StreamEnd {
+                    return Err(io::Error::other(
+                        "packet compression output buffer was too small",
+                    ));
+                }
                 comp_frame.extend_from_slice(&compressed);
 
                 comp_frame
@@ -83,7 +98,7 @@ impl PacketEncoder {
             }
         }
 
-        stream.write_all(&output_buffer)
+        Ok(output_buffer)
     }
 }
 

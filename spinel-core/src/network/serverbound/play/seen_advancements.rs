@@ -61,3 +61,4 @@ impl DataType for SeenAdvancementsPacket {
         })
     }
 }
+spinel_network::register_packet_codec!(SeenAdvancementsPacket, spinel_network::Recipient::Server);

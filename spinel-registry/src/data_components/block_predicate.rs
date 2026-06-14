@@ -1,8 +1,8 @@
+use crate::blocks::{Block, BlockState};
 use crate::data_components::nbt_reader::{
     compound_from_nbt, string_field, string_map_from_compound,
 };
 use crate::data_components::{DataComponentValue, RegistryTagReference};
-use crate::vanilla_world_blocks::Block;
 use crate::{Identifier, Registries};
 use spinel_nbt::{Nbt, NbtCompound};
 use std::collections::HashMap;
@@ -49,9 +49,22 @@ impl BlockPredicates {
     }
 
     pub fn test(&self, block: Block, registries: &Registries) -> bool {
+        self.test_state(block.default_state(), registries)
+    }
+
+    pub fn test_state(&self, block_state: BlockState, registries: &Registries) -> bool {
+        self.test_state_with_nbt(block_state, None, registries)
+    }
+
+    pub fn test_state_with_nbt(
+        &self,
+        block_state: BlockState,
+        client_nbt: Option<&NbtCompound>,
+        registries: &Registries,
+    ) -> bool {
         self.predicates
             .iter()
-            .any(|predicate| predicate.test(block, registries))
+            .any(|predicate| predicate.test_state_with_nbt(block_state, client_nbt, registries))
     }
 }
 
@@ -92,6 +105,20 @@ impl BlockPredicate {
     }
 
     pub fn test(&self, block: Block, registries: &Registries) -> bool {
+        self.test_state(block.default_state(), registries)
+    }
+
+    pub fn test_state(&self, block_state: BlockState, registries: &Registries) -> bool {
+        self.test_state_with_nbt(block_state, None, registries)
+    }
+
+    pub fn test_state_with_nbt(
+        &self,
+        block_state: BlockState,
+        client_nbt: Option<&NbtCompound>,
+        registries: &Registries,
+    ) -> bool {
+        let block = block_state.block();
         if self
             .blocks
             .as_ref()
@@ -99,7 +126,14 @@ impl BlockPredicate {
         {
             return false;
         }
-        if self.state.is_some() || self.nbt.is_some() {
+        if self
+            .state
+            .as_ref()
+            .is_some_and(|state| !state.test(block_state))
+        {
+            return false;
+        }
+        if self.nbt.as_ref() != client_nbt {
             return false;
         }
         true
@@ -140,6 +174,44 @@ impl PropertiesPredicate {
     #[must_use]
     pub fn properties(&self) -> &HashMap<String, PropertyValuePredicate> {
         &self.properties
+    }
+
+    pub fn test(&self, block_state: BlockState) -> bool {
+        self.properties.iter().all(|(property, predicate)| {
+            block_state
+                .property(property)
+                .is_some_and(|value| predicate.test(value))
+        })
+    }
+}
+
+impl PropertyValuePredicate {
+    fn test(&self, value: &str) -> bool {
+        match self {
+            Self::Exact(Some(expected)) => value == expected,
+            Self::Exact(None) => false,
+            Self::Range { min, max } => {
+                min.as_ref()
+                    .is_none_or(|minimum| value_is_at_least(value, minimum))
+                    && max
+                        .as_ref()
+                        .is_none_or(|maximum| value_is_at_most(value, maximum))
+            }
+        }
+    }
+}
+
+fn value_is_at_least(value: &str, minimum: &str) -> bool {
+    match (value.parse::<i64>(), minimum.parse::<i64>()) {
+        (Ok(value), Ok(minimum)) => value >= minimum,
+        _ => value >= minimum,
+    }
+}
+
+fn value_is_at_most(value: &str, maximum: &str) -> bool {
+    match (value.parse::<i64>(), maximum.parse::<i64>()) {
+        (Ok(value), Ok(maximum)) => value <= maximum,
+        _ => value <= maximum,
     }
 }
 

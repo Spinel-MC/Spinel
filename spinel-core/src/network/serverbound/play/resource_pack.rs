@@ -46,3 +46,4 @@ impl PacketStruct for ResourcePackStatusPacket {
         ConnectionState::Play
     }
 }
+spinel_network::register_packet_codec!(ResourcePackStatusPacket, spinel_network::Recipient::Server);

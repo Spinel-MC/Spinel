@@ -13,7 +13,7 @@ mod suggestion;
 mod syntax;
 
 #[cfg(test)]
-mod test;
+mod tests;
 
 pub use argument::{
     CommandArgument, CommandArgumentKind, CommandArgumentValue, CoordinateType, RelativeCoordinate,

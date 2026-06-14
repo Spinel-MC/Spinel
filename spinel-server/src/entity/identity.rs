@@ -21,7 +21,11 @@ impl EntityId {
 
     pub fn next() -> Self {
         static LAST_ENTITY_ID: AtomicI32 = AtomicI32::new(0);
-        Self(LAST_ENTITY_ID.fetch_add(1, Ordering::SeqCst) + 1)
+        Self(
+            LAST_ENTITY_ID
+                .fetch_add(1, Ordering::SeqCst)
+                .wrapping_add(1),
+        )
     }
 
     pub const fn value(self) -> i32 {

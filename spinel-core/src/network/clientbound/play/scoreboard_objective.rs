@@ -172,3 +172,7 @@ impl PacketStruct for ScoreboardObjectivePacket {
         ConnectionState::Play
     }
 }
+spinel_network::register_packet_codec!(
+    ScoreboardObjectivePacket,
+    spinel_network::Recipient::Client
+);

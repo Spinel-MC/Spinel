@@ -1,6 +1,6 @@
 use crate::entity::{EntityId, EntityPosition};
 use crate::server::MinecraftServer;
-use crate::world::{Block, BlockPosition, ChunkPosition};
+use crate::world::{Block, BlockPosition, BlockState, ChunkPosition};
 use spinel_nbt::NbtCompound;
 use spinel_registry::EntityType;
 use std::io;
@@ -70,12 +70,28 @@ impl WorldHandle {
         world.block_at(position)
     }
 
+    pub fn block_state_at(self, position: BlockPosition) -> io::Result<BlockState> {
+        let server = unsafe { &mut *(self.server as *mut MinecraftServer) };
+        let Some(world) = server.world_manager.world_mut(self.uuid) else {
+            return Err(io::Error::new(io::ErrorKind::NotFound, "World not found."));
+        };
+        world.block_state_at(position)
+    }
+
     pub fn loaded_block_at(self, position: BlockPosition) -> io::Result<Option<Block>> {
         let server = unsafe { &mut *(self.server as *mut MinecraftServer) };
         let Some(world) = server.world_manager.world(self.uuid) else {
             return Err(io::Error::new(io::ErrorKind::NotFound, "World not found."));
         };
         Ok(world.loaded_block_at(position))
+    }
+
+    pub fn loaded_block_state_at(self, position: BlockPosition) -> io::Result<Option<BlockState>> {
+        let server = unsafe { &mut *(self.server as *mut MinecraftServer) };
+        let Some(world) = server.world_manager.world(self.uuid) else {
+            return Err(io::Error::new(io::ErrorKind::NotFound, "World not found."));
+        };
+        Ok(world.loaded_block_state_at(position))
     }
 
     pub fn block_position_is_loaded(self, position: BlockPosition) -> io::Result<bool> {

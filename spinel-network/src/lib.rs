@@ -1,6 +1,7 @@
 pub mod decoder;
 pub mod encoder;
 pub mod network_buffer;
+pub mod packet_codec;
 pub mod packet_names;
 pub mod types;
 
@@ -16,6 +17,7 @@ pub use wrappers::{JsonTextComponent, NbtTextComponent};
 pub use decoder::PacketDecoder;
 pub use encoder as encoder_module;
 pub use encoder::PacketEncoder;
+pub use packet_codec::{PacketCodec, PacketCodecRegistry};
 
 pub use inventory;
 pub use spinel_utils::Priority;

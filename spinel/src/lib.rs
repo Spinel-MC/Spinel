@@ -13,7 +13,6 @@ pub mod server {
     pub use spinel_server::entity;
     pub use spinel_server::events;
     pub use spinel_server::inventory;
-    pub use spinel_server::module_manager;
     pub use spinel_server::modules;
     pub use spinel_server::network;
     pub use spinel_server::scheduler;

@@ -28,7 +28,9 @@ impl WorldShowcase {
         let base_y = origin.y() as i32;
         let base_z = origin.z() as i32;
         world.set_time(6_000)?;
-        world.set_weather(Weather::new(0.5, 0.0))?;
+        let weather = Weather::new(0.5, 0.0)
+            .map_err(|error| io::Error::new(io::ErrorKind::InvalidInput, error))?;
+        world.set_weather(weather)?;
         world.set_block(
             BlockPosition::new(base_x, base_y - 1, base_z + 3),
             Block::EMERALD_BLOCK,

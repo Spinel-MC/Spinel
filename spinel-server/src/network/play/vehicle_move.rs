@@ -1,5 +1,4 @@
 use crate::entity::EntityPosition;
-use crate::events::player_vehicle_move::PlayerVehicleMoveEvent;
 use crate::network::client::instance::Client;
 use crate::server::MinecraftServer;
 use spinel_core::network::serverbound::play::move_vehicle::ServerboundVehicleMovePacket;
@@ -18,12 +17,7 @@ fn on_move_vehicle(
         return true;
     };
     let position = EntityPosition::new(packet.x, packet.y, packet.z, packet.yaw, packet.pitch);
-    let mut event = PlayerVehicleMoveEvent::new(player, vehicle, position, packet.on_ground);
-    event.dispatch(server, client);
-    if event.is_cancelled() {
-        return false;
-    }
     server
         .world_manager
-        .move_client_world_entity(client, vehicle, event.new_position())
+        .move_client_world_entity(client, vehicle, position)
 }

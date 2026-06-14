@@ -1,9 +1,16 @@
 use crate::data_type::DataType;
+use crate::types::game_profile::{
+    GameProfile as NetworkGameProfile, GameProfileProperty as NetworkGameProfileProperty,
+};
 use crate::types::position::Position;
+use crate::types::resolvable_profile::{
+    PartialGameProfile, PlayerSkinPatch, ResolvableProfile as NetworkResolvableProfile,
+    ResolvableProfileIdentity,
+};
 use crate::types::slot::Slot;
 use crate::types::sound::SoundEvent;
 use crate::types::var_int::VarIntWrapper;
-use crate::wrappers::JsonTextComponent;
+use crate::wrappers::{JsonTextComponent, NbtTextComponent};
 use spinel_nbt::Nbt;
 use spinel_registry::block_entity_type::BlockEntityType;
 use spinel_registry::data_components::vanilla_components::{
@@ -38,15 +45,15 @@ use spinel_registry::{
     JUKEBOX_SONG_REGISTRY, KineticWeapon, KineticWeaponCondition, LodestoneTracker,
     MapPostProcessing, Material, PAINTING_VARIANT_REGISTRY, PIG_VARIANT_REGISTRY, PiercingWeapon,
     PotDecorations, PotionContents, PotionEffectSettings, PropertyValuePredicate, Registries,
-    RegistryTagReference, ResolvableProfile, SuspiciousStewEffects, SwingAnimation,
-    TRIM_MATERIAL_REGISTRY, TRIM_PATTERN_REGISTRY, Tool, TooltipDisplay, TypedCustomData,
-    UseCooldown, UseEffects, WOLF_SOUND_VARIANT_REGISTRY, WOLF_VARIANT_REGISTRY, Weapon,
-    WorldPosition, WritableBookContent, WrittenBookContent, ZOMBIE_NAUTILUS_VARIANT_REGISTRY,
-    dye_color_protocol_id,
+    RegistryTagReference, ResolvableProfile as ComponentResolvableProfile, SuspiciousStewEffects,
+    SwingAnimation, TRIM_MATERIAL_REGISTRY, TRIM_PATTERN_REGISTRY, Tool, TooltipDisplay,
+    TypedCustomData, UseCooldown, UseEffects, WOLF_SOUND_VARIANT_REGISTRY, WOLF_VARIANT_REGISTRY,
+    Weapon, WorldPosition, WritableBookContent, WrittenBookContent,
+    ZOMBIE_NAUTILUS_VARIANT_REGISTRY, dye_color_protocol_id,
 };
 use spinel_utils::color::{Color, DyeColor};
 use spinel_utils::component::text::TextComponent;
-use std::io::{self, Read, Write};
+use std::io::{self, Cursor, Read, Write};
 use std::sync::LazyLock;
 use uuid::Uuid;
 
@@ -82,35 +89,12 @@ impl DataType for ComponentChanges {
     }
 
     fn decode<R: Read>(r: &mut R) -> io::Result<Self> {
-        let added_count = VarIntWrapper::decode(r)?.0 as usize;
-        let removed_count = VarIntWrapper::decode(r)?.0 as usize;
-
-        if added_count + removed_count > 256 {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                format!(
-                    "Data component map too large: {}",
-                    added_count + removed_count
-                ),
-            ));
-        }
+        let (added_count, removed_count) = decode_component_counts(r)?;
 
         let mut added = Vec::with_capacity(added_count);
         for _ in 0..added_count {
             let type_id = VarIntWrapper::decode(r)?.0;
-            let component_descriptor =
-                DataComponentDescriptor::from_id(type_id).ok_or_else(|| {
-                    io::Error::new(
-                        io::ErrorKind::InvalidData,
-                        format!("Unknown data component id: {type_id}"),
-                    )
-                })?;
-            if !component_descriptor.is_synced() {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    format!("Data component has no network codec: {type_id}"),
-                ));
-            }
+            validate_added_component(type_id)?;
             added.push(ComponentEntry {
                 type_id,
                 data: decode_component_payload(type_id, r)?,
@@ -120,17 +104,135 @@ impl DataType for ComponentChanges {
         let mut removed = Vec::with_capacity(removed_count);
         for _ in 0..removed_count {
             let type_id = VarIntWrapper::decode(r)?.0;
-            DataComponentDescriptor::from_id(type_id).ok_or_else(|| {
-                io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    format!("Unknown data component id: {type_id}"),
-                )
-            })?;
+            validate_removed_component(type_id)?;
             removed.push(type_id);
         }
 
         Ok(ComponentChanges { added, removed })
     }
+}
+
+impl ComponentChanges {
+    pub(crate) fn encode_length_prefixed<W: Write>(&self, writer: &mut W) -> io::Result<()> {
+        VarIntWrapper(self.added.len() as i32).encode(writer)?;
+        VarIntWrapper(self.removed.len() as i32).encode(writer)?;
+        for component in &self.added {
+            VarIntWrapper(component.type_id).encode(writer)?;
+            VarIntWrapper(component.data.len() as i32).encode(writer)?;
+            writer.write_all(&component.data)?;
+        }
+        for component_id in &self.removed {
+            VarIntWrapper(*component_id).encode(writer)?;
+        }
+        Ok(())
+    }
+
+    pub(crate) fn decode_length_prefixed<R: Read>(reader: &mut R) -> io::Result<Self> {
+        let (added_count, removed_count) = decode_component_counts(reader)?;
+        let mut added = Vec::with_capacity(added_count);
+        for _ in 0..added_count {
+            let type_id = VarIntWrapper::decode(reader)?.0;
+            validate_added_component(type_id)?;
+            let payload_length = VarIntWrapper::decode(reader)?.0;
+            if payload_length < 0 {
+                return Err(io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    format!("Negative component payload length: {payload_length}"),
+                ));
+            }
+            let mut encoded_payload = vec![0; payload_length as usize];
+            reader.read_exact(&mut encoded_payload)?;
+            let mut payload_reader = Cursor::new(encoded_payload);
+            let data = decode_component_payload(type_id, &mut payload_reader)?;
+            if payload_reader.position() != payload_reader.get_ref().len() as u64 {
+                return Err(io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    format!("Component payload was not fully consumed: {type_id}"),
+                ));
+            }
+            added.push(ComponentEntry { type_id, data });
+        }
+        let mut removed = Vec::with_capacity(removed_count);
+        for _ in 0..removed_count {
+            let type_id = VarIntWrapper::decode(reader)?.0;
+            validate_removed_component(type_id)?;
+            removed.push(type_id);
+        }
+        Ok(Self { added, removed })
+    }
+
+    pub fn custom_data(&self) -> io::Result<Option<spinel_nbt::NbtCompound>> {
+        self.decode_component(CUSTOM_DATA.id())
+    }
+
+    pub fn custom_name(&self) -> io::Result<Option<TextComponent>> {
+        self.decode_component::<NbtTextComponent>(CUSTOM_NAME.id())
+            .map(|component| component.map(TextComponent::from))
+    }
+
+    fn decode_component<T: DataType>(&self, component_id: i32) -> io::Result<Option<T>> {
+        self.added
+            .iter()
+            .find(|component| component.type_id == component_id)
+            .map(|component| {
+                let mut component_payload = component.data.as_slice();
+                let decoded_component = T::decode(&mut component_payload)?;
+                if !component_payload.is_empty() {
+                    return Err(io::Error::new(
+                        io::ErrorKind::InvalidData,
+                        format!("Component payload was not fully consumed: {component_id}"),
+                    ));
+                }
+                Ok(decoded_component)
+            })
+            .transpose()
+    }
+}
+
+fn decode_component_counts<R: Read>(reader: &mut R) -> io::Result<(usize, usize)> {
+    let added_count = VarIntWrapper::decode(reader)?.0;
+    let removed_count = VarIntWrapper::decode(reader)?.0;
+    if added_count < 0 || removed_count < 0 {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            "Data component counts must not be negative",
+        ));
+    }
+    let total_count = added_count as usize + removed_count as usize;
+    if total_count > 256 {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            format!("Data component map too large: {total_count}"),
+        ));
+    }
+    Ok((added_count as usize, removed_count as usize))
+}
+
+fn validate_added_component(type_id: i32) -> io::Result<()> {
+    let component_descriptor = DataComponentDescriptor::from_id(type_id).ok_or_else(|| {
+        io::Error::new(
+            io::ErrorKind::InvalidData,
+            format!("Unknown data component id: {type_id}"),
+        )
+    })?;
+    if !component_descriptor.is_synced() {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            format!("Data component has no network codec: {type_id}"),
+        ));
+    }
+    Ok(())
+}
+
+fn validate_removed_component(type_id: i32) -> io::Result<()> {
+    DataComponentDescriptor::from_id(type_id)
+        .map(|_| ())
+        .ok_or_else(|| {
+            io::Error::new(
+                io::ErrorKind::InvalidData,
+                format!("Unknown data component id: {type_id}"),
+            )
+        })
 }
 
 struct CapturingReader<'a, R: Read> {
@@ -209,7 +311,7 @@ fn decode_text_component_list_payload<R: Read>(
 ) -> io::Result<Vec<u8>> {
     capture_component_payload(reader, |capturing_reader| {
         decode_list_payload(capturing_reader, maximum_length, |entry_reader| {
-            JsonTextComponent::decode(entry_reader).map(|_| ())
+            NbtTextComponent::decode(entry_reader).map(|_| ())
         })
     })
 }
@@ -870,7 +972,7 @@ fn decode_nested_component_payload<R: Read>(
             Ok(())
         }
         id if id == CUSTOM_NAME.id() || id == ITEM_NAME.id() => {
-            JsonTextComponent::decode(reader)?;
+            NbtTextComponent::decode(reader)?;
             Ok(())
         }
         id if id == ITEM_MODEL.id()
@@ -938,7 +1040,7 @@ fn decode_component_payload<R: Read>(component_id: i32, reader: &mut R) -> io::R
             })
         }
         id if id == CUSTOM_NAME.id() || id == ITEM_NAME.id() => {
-            decode_data_type_payload::<JsonTextComponent, R>(reader)
+            decode_data_type_payload::<NbtTextComponent, R>(reader)
         }
         id if id == LORE.id() => decode_text_component_list_payload(reader, 256),
         id if id == ITEM_MODEL.id() || id == TOOLTIP_STYLE.id() || id == NOTE_BLOCK_SOUND.id() => {
@@ -1551,14 +1653,14 @@ fn encode_string_list_component(component_nbt: &Nbt, data: &mut Vec<u8>) -> Opti
 
 fn encode_text_component(component_nbt: &Nbt, data: &mut Vec<u8>) -> Option<()> {
     let component = TextComponent::from_component_nbt(component_nbt)?;
-    JsonTextComponent(component).encode(data).ok()
+    NbtTextComponent(component).encode(data).ok()
 }
 
 fn encode_text_component_list(component_nbt: &Nbt, data: &mut Vec<u8>) -> Option<()> {
     let components = Vec::<TextComponent>::from_component_nbt(component_nbt)?;
     VarIntWrapper(components.len() as i32).encode(data).ok()?;
     for component in components {
-        JsonTextComponent(component).encode(data).ok()?;
+        NbtTextComponent(component).encode(data).ok()?;
     }
     Some(())
 }
@@ -2575,348 +2677,40 @@ fn encode_written_book_content_component(component_nbt: &Nbt, data: &mut Vec<u8>
 }
 
 fn encode_profile_component(component_nbt: &Nbt, data: &mut Vec<u8>) -> Option<()> {
-    let profile = ResolvableProfile::from_component_nbt(component_nbt)?;
-    let full_profile = profile
-        .uuid()
-        .zip(profile.name())
-        .filter(|(_, name)| name.len() <= 16);
-    match full_profile {
-        Some((uuid, name)) => {
-            true.encode(data).ok()?;
-            uuid.parse::<Uuid>().ok()?.encode(data).ok()?;
-            name.to_string().encode(data).ok()?;
-        }
-        None => {
-            false.encode(data).ok()?;
-            profile.name().map(str::to_string).encode(data).ok()?;
-            profile
-                .uuid()
-                .and_then(|uuid| uuid.parse::<Uuid>().ok())
-                .encode(data)
-                .ok()?;
-        }
-    }
-    encode_profile_properties(profile.properties(), data)?;
-    profile.texture().map(str::to_string).encode(data).ok()?;
-    Option::<String>::None.encode(data).ok()?;
-    Option::<String>::None.encode(data).ok()?;
-    Option::<bool>::None.encode(data).ok()
-}
-
-fn encode_profile_properties(
-    properties: &[spinel_registry::GameProfileProperty],
-    data: &mut Vec<u8>,
-) -> Option<()> {
-    VarIntWrapper(properties.len() as i32).encode(data).ok()?;
-    for property in properties {
-        property.name().to_string().encode(data).ok()?;
-        property.value().to_string().encode(data).ok()?;
-        property.signature().map(str::to_string).encode(data).ok()?;
-    }
-    Some(())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::ComponentChanges;
-    use crate::data_type::DataType;
-    use crate::types::var_int::VarIntWrapper;
-    use spinel_nbt::NbtCompound;
-    use spinel_registry::data_components::UnitComponent;
-    use spinel_registry::data_components::vanilla_components::{
-        ATTRIBUTE_MODIFIERS, BREAK_SOUND, BUNDLE_CONTENTS, ENTITY_DATA, FOOD, GLIDER, INSTRUMENT,
-        INTANGIBLE_PROJECTILE, MAX_STACK_SIZE, POTION_CONTENTS, PROFILE, TOOLTIP_STYLE,
-        USE_COOLDOWN, USE_EFFECTS, USE_REMAINDER, VILLAGER_VARIANT,
+    let profile = ComponentResolvableProfile::from_component_nbt(component_nbt)?;
+    let uuid = profile.uuid().and_then(|uuid| uuid.parse::<Uuid>().ok());
+    let name = profile.name().map(str::to_string);
+    let properties = profile
+        .properties()
+        .iter()
+        .map(|property| NetworkGameProfileProperty {
+            name: property.name().to_string(),
+            value: property.value().to_string(),
+            signature: property.signature().map(str::to_string),
+        })
+        .collect();
+    let identity = match (uuid, name.as_ref().filter(|name| name.len() <= 16)) {
+        (Some(uuid), Some(name)) => ResolvableProfileIdentity::Complete(NetworkGameProfile {
+            uuid,
+            username: name.clone(),
+            properties,
+        }),
+        _ => ResolvableProfileIdentity::Partial(PartialGameProfile {
+            name,
+            uuid,
+            properties,
+        }),
     };
-    use spinel_registry::{
-        AttributeList, AttributeModifierDisplay, AttributeModifierEntry, AttributeOperation,
-        BuiltinSoundEvent, DataComponentMap, EquipmentSlotGroup, Food, GameProfileProperty,
-        Identifier, InstrumentComponent, ItemStack, Material, PotionContents, ResolvableProfile,
-        TypedCustomData, UseCooldown, UseEffects,
-    };
-
-    fn decode_single_component_change(component_changes: &ComponentChanges) -> ComponentChanges {
-        let mut payload = Vec::new();
-
-        component_changes.encode(&mut payload).unwrap();
-
-        ComponentChanges::decode(&mut payload.as_slice()).unwrap()
+    let body = profile.texture().map(str::parse).transpose().ok()?;
+    NetworkResolvableProfile {
+        identity,
+        skin_patch: PlayerSkinPatch {
+            body,
+            cape: None,
+            elytra: None,
+            is_slim: None,
+        },
     }
-
-    #[test]
-    fn synced_unit_component_writes_empty_payload_entry() {
-        let component_patch = DataComponentMap::new().with(GLIDER, UnitComponent);
-        let component_changes = ComponentChanges::from(&component_patch);
-
-        assert_eq!(component_changes.added.len(), 1);
-        assert_eq!(component_changes.added[0].type_id, GLIDER.id());
-        assert_eq!(component_changes.added[0].data, Vec::<u8>::new());
-    }
-
-    #[test]
-    fn serialized_only_component_is_not_sent_in_component_changes() {
-        let component_patch = DataComponentMap::new().with(INTANGIBLE_PROJECTILE, UnitComponent);
-        let component_changes = ComponentChanges::from(&component_patch);
-
-        assert!(component_changes.added.is_empty());
-        assert!(component_changes.removed.is_empty());
-    }
-
-    #[test]
-    fn string_component_encoder_writes_minestom_string_payload_shape() {
-        let component_patch = DataComponentMap::new().with(TOOLTIP_STYLE, "abc".to_string());
-        let mut payload = Vec::new();
-
-        ComponentChanges::from(&component_patch)
-            .encode(&mut payload)
-            .unwrap();
-
-        assert_eq!(
-            payload,
-            vec![1, 0, TOOLTIP_STYLE.id() as u8, 3, b'a', b'b', b'c']
-        );
-    }
-
-    #[test]
-    fn dynamic_registry_key_component_writes_registry_id_payload() {
-        let component_patch =
-            DataComponentMap::new().with(super::DAMAGE_TYPE, Identifier::minecraft("in_fire"));
-        let component_changes = ComponentChanges::from(&component_patch);
-
-        assert_eq!(component_changes.added.len(), 1);
-        assert_eq!(component_changes.added[0].type_id, super::DAMAGE_TYPE.id());
-        assert!(!component_changes.added[0].data.is_empty());
-    }
-
-    #[test]
-    fn villager_variant_component_writes_minestom_enum_ordinal() {
-        let component_patch =
-            DataComponentMap::new().with(VILLAGER_VARIANT, Identifier::minecraft("plains"));
-        let component_changes = ComponentChanges::from(&component_patch);
-
-        assert_eq!(component_changes.added.len(), 1);
-        assert_eq!(component_changes.added[0].data, vec![2]);
-    }
-
-    #[test]
-    fn instrument_component_writes_registry_key_either_branch() {
-        let component_patch = DataComponentMap::new().with(
-            INSTRUMENT,
-            InstrumentComponent::new(Identifier::minecraft("ponder_goat_horn")),
-        );
-        let component_changes = ComponentChanges::from(&component_patch);
-
-        assert_eq!(component_changes.added.len(), 1);
-        assert_eq!(component_changes.added[0].data[0], 0);
-    }
-
-    #[test]
-    fn potion_contents_component_writes_optional_fields_and_static_potion_id() {
-        let component_patch = DataComponentMap::new().with(
-            POTION_CONTENTS,
-            PotionContents::new(Some(Identifier::minecraft("water")), None, vec![], None),
-        );
-        let component_changes = ComponentChanges::from(&component_patch);
-
-        assert_eq!(component_changes.added.len(), 1);
-        assert_eq!(component_changes.added[0].data, vec![1, 0, 0, 0, 0]);
-    }
-
-    #[test]
-    fn entity_data_component_writes_entity_type_id_then_custom_nbt() {
-        let component_patch = DataComponentMap::new().with(
-            ENTITY_DATA,
-            TypedCustomData::new(Identifier::minecraft("wolf"), NbtCompound::new()),
-        );
-        let component_changes = ComponentChanges::from(&component_patch);
-
-        assert_eq!(component_changes.added.len(), 1);
-        assert_eq!(component_changes.added[0].type_id, ENTITY_DATA.id());
-        assert_eq!(component_changes.added[0].data[0], 148);
-    }
-
-    #[test]
-    fn builtin_sound_event_component_writes_minestom_builtin_id_branch() {
-        let sound_identifier = Identifier::minecraft("entity.generic.eat");
-        let builtin_sound_event = BuiltinSoundEvent::from_key(&sound_identifier).unwrap();
-        let component_patch = DataComponentMap::new().with(BREAK_SOUND, sound_identifier);
-        let component_changes = ComponentChanges::from(&component_patch);
-        let mut expected_payload = Vec::new();
-
-        VarIntWrapper(builtin_sound_event.id() + 1)
-            .encode(&mut expected_payload)
-            .unwrap();
-
-        assert_eq!(component_changes.added.len(), 1);
-        assert_eq!(component_changes.added[0].data, expected_payload);
-    }
-
-    #[test]
-    fn custom_sound_event_component_writes_minestom_named_branch() {
-        let component_patch =
-            DataComponentMap::new().with(BREAK_SOUND, Identifier::new("custom", "snap"));
-        let component_changes = ComponentChanges::from(&component_patch);
-        let mut expected_payload = Vec::new();
-
-        VarIntWrapper(0).encode(&mut expected_payload).unwrap();
-        "custom:snap"
-            .to_string()
-            .encode(&mut expected_payload)
-            .unwrap();
-        Option::<f32>::None.encode(&mut expected_payload).unwrap();
-
-        assert_eq!(component_changes.added.len(), 1);
-        assert_eq!(component_changes.added[0].data, expected_payload);
-    }
-
-    #[test]
-    fn var_int_component_encoder_writes_minestom_var_int_payload_shape() {
-        let component_patch = DataComponentMap::new().with(MAX_STACK_SIZE, 16);
-        let component_changes = ComponentChanges::from(&component_patch);
-        let mut expected_payload = Vec::new();
-
-        VarIntWrapper(16).encode(&mut expected_payload).unwrap();
-
-        assert_eq!(component_changes.added.len(), 1);
-        assert_eq!(component_changes.added[0].data, expected_payload);
-    }
-
-    #[test]
-    fn non_empty_component_changes_decode_preserves_synced_payload_bytes() {
-        let mut payload = Vec::new();
-
-        VarIntWrapper(1).encode(&mut payload).unwrap();
-        VarIntWrapper(0).encode(&mut payload).unwrap();
-        VarIntWrapper(MAX_STACK_SIZE.id())
-            .encode(&mut payload)
-            .unwrap();
-        VarIntWrapper(16).encode(&mut payload).unwrap();
-
-        let component_changes = ComponentChanges::decode(&mut payload.as_slice()).unwrap();
-
-        assert_eq!(component_changes.added.len(), 1);
-        assert_eq!(component_changes.added[0].type_id, MAX_STACK_SIZE.id());
-        assert_eq!(component_changes.added[0].data, vec![16]);
-    }
-
-    #[test]
-    fn use_cooldown_component_decode_preserves_minestom_network_payload() {
-        let component_patch = DataComponentMap::new().with(
-            USE_COOLDOWN,
-            UseCooldown::new(1.5, Some("minecraft:ender_pearl".to_string())),
-        );
-        let component_changes = ComponentChanges::from(&component_patch);
-
-        let decoded_component_changes = decode_single_component_change(&component_changes);
-
-        assert_eq!(decoded_component_changes, component_changes);
-    }
-
-    #[test]
-    fn food_component_decode_preserves_minestom_network_payload() {
-        let component_patch = DataComponentMap::new().with(FOOD, Food::new(4, 0.3, true));
-        let component_changes = ComponentChanges::from(&component_patch);
-
-        let decoded_component_changes = decode_single_component_change(&component_changes);
-
-        assert_eq!(decoded_component_changes, component_changes);
-    }
-
-    #[test]
-    fn use_effects_component_decode_preserves_minestom_network_payload() {
-        let component_patch =
-            DataComponentMap::new().with(USE_EFFECTS, UseEffects::new(true, false, 0.5));
-        let component_changes = ComponentChanges::from(&component_patch);
-
-        let decoded_component_changes = decode_single_component_change(&component_changes);
-
-        assert_eq!(decoded_component_changes, component_changes);
-    }
-
-    #[test]
-    fn attribute_modifiers_component_decode_preserves_minestom_network_payload() {
-        let attribute_modifiers = AttributeList::new(vec![AttributeModifierEntry::new(
-            Identifier::minecraft("attack_speed"),
-            Identifier::minecraft("base_attack_speed"),
-            -2.8,
-            AttributeOperation::AddValue,
-            EquipmentSlotGroup::MainHand,
-            AttributeModifierDisplay::Default,
-        )]);
-        let component_patch =
-            DataComponentMap::new().with(ATTRIBUTE_MODIFIERS, attribute_modifiers);
-        let component_changes = ComponentChanges::from(&component_patch);
-
-        let decoded_component_changes = decode_single_component_change(&component_changes);
-
-        assert_eq!(decoded_component_changes, component_changes);
-    }
-
-    #[test]
-    fn profile_component_decode_preserves_minestom_network_payload() {
-        let profile = ResolvableProfile::new(
-            Some("Wayne".to_string()),
-            Some("00000000-0000-0000-0000-000000000001".to_string()),
-            vec![GameProfileProperty::new(
-                "textures".to_string(),
-                "abc".to_string(),
-                Some("sig".to_string()),
-            )],
-            Some("minecraft:textures/entity/player/wide/steve".to_string()),
-        );
-        let component_patch = DataComponentMap::new().with(PROFILE, profile);
-        let component_changes = ComponentChanges::from(&component_patch);
-
-        let decoded_component_changes = decode_single_component_change(&component_changes);
-
-        assert_eq!(decoded_component_changes, component_changes);
-    }
-
-    #[test]
-    fn use_remainder_component_decode_preserves_nested_item_stack_payload() {
-        let nested_item_stack = ItemStack::of(Material::STONE).with_amount(2);
-        let component_patch = DataComponentMap::new().with(USE_REMAINDER, nested_item_stack);
-        let component_changes = ComponentChanges::from(&component_patch);
-
-        let decoded_component_changes = decode_single_component_change(&component_changes);
-
-        assert_eq!(decoded_component_changes, component_changes);
-    }
-
-    #[test]
-    fn bundle_contents_component_decode_preserves_nested_item_stack_list_payload() {
-        let nested_item_stack = ItemStack::of(Material::STONE).with_amount(2);
-        let component_patch =
-            DataComponentMap::new().with(BUNDLE_CONTENTS, vec![nested_item_stack]);
-        let component_changes = ComponentChanges::from(&component_patch);
-
-        let decoded_component_changes = decode_single_component_change(&component_changes);
-
-        assert_eq!(decoded_component_changes, component_changes);
-    }
-
-    #[test]
-    fn component_changes_decode_rejects_unknown_component_id() {
-        let mut payload = Vec::new();
-
-        VarIntWrapper(1).encode(&mut payload).unwrap();
-        VarIntWrapper(0).encode(&mut payload).unwrap();
-        VarIntWrapper(999_999).encode(&mut payload).unwrap();
-
-        let error = ComponentChanges::decode(&mut payload.as_slice()).unwrap_err();
-
-        assert_eq!(error.kind(), std::io::ErrorKind::InvalidData);
-    }
-
-    #[test]
-    fn component_changes_decode_rejects_maps_larger_than_minestom_limit() {
-        let mut payload = Vec::new();
-
-        VarIntWrapper(257).encode(&mut payload).unwrap();
-        VarIntWrapper(0).encode(&mut payload).unwrap();
-
-        let error = ComponentChanges::decode(&mut payload.as_slice()).unwrap_err();
-
-        assert_eq!(error.kind(), std::io::ErrorKind::InvalidData);
-    }
+    .encode(data)
+    .ok()
 }

@@ -24,6 +24,7 @@ pub(crate) struct EntityEntry {
     pub(crate) eye_height: f64,
     pub(crate) client_tracking_range: i32,
     pub(crate) fire_immune: bool,
+    pub(crate) default_attributes: BTreeMap<String, f64>,
     pub(crate) attachments: BTreeMap<String, Vec<f64>>,
 }
 
@@ -49,6 +50,8 @@ struct ExtractedEntityType {
     client_tracking_range: i32,
     #[serde(rename = "fireImmune")]
     fire_immune: bool,
+    #[serde(rename = "defaultAttributes")]
+    default_attributes: BTreeMap<String, f64>,
     attachments: BTreeMap<String, Vec<f64>>,
 }
 
@@ -64,6 +67,7 @@ impl ExtractedEntityType {
             eye_height: self.eye_height,
             client_tracking_range: self.client_tracking_range,
             fire_immune: self.fire_immune,
+            default_attributes: self.default_attributes,
             attachments: self.attachments,
         }
     }

@@ -1,10 +1,21 @@
 use crate::RegistryCodec;
 use spinel_nbt::{Nbt, NbtCompound};
+use std::borrow::Cow;
+use std::io::{Error, ErrorKind, Result};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct DamageType {
-    message_id: &'static str,
+    message_id: Cow<'static, str>,
     scaling: DamageScaling,
+    exhaustion: f32,
+    effects: DamageEffects,
+    death_message_type: DeathMessageType,
+}
+
+#[derive(Default)]
+pub struct DamageTypeBuilder {
+    message_id: Option<Cow<'static, str>>,
+    scaling: Option<DamageScaling>,
     exhaustion: f32,
     effects: DamageEffects,
     death_message_type: DeathMessageType,
@@ -35,15 +46,15 @@ pub enum DeathMessageType {
 }
 
 impl DamageType {
-    pub const fn new(
-        message_id: &'static str,
+    pub fn new(
+        message_id: impl Into<Cow<'static, str>>,
         scaling: DamageScaling,
         exhaustion: f32,
         effects: DamageEffects,
         death_message_type: DeathMessageType,
     ) -> Self {
         Self {
-            message_id,
+            message_id: message_id.into(),
             scaling,
             exhaustion,
             effects,
@@ -51,8 +62,12 @@ impl DamageType {
         }
     }
 
-    pub const fn message_id(&self) -> &'static str {
-        self.message_id
+    pub fn builder() -> DamageTypeBuilder {
+        DamageTypeBuilder::default()
+    }
+
+    pub fn message_id(&self) -> &str {
+        &self.message_id
     }
 
     pub const fn scaling(&self) -> DamageScaling {
@@ -72,12 +87,68 @@ impl DamageType {
     }
 }
 
+impl DamageTypeBuilder {
+    pub fn message_id(mut self, message_id: impl Into<Cow<'static, str>>) -> Self {
+        self.message_id = Some(message_id.into());
+        self
+    }
+
+    pub const fn scaling(mut self, scaling: DamageScaling) -> Self {
+        self.scaling = Some(scaling);
+        self
+    }
+
+    pub const fn exhaustion(mut self, exhaustion: f32) -> Self {
+        self.exhaustion = exhaustion;
+        self
+    }
+
+    pub const fn effects(mut self, effects: DamageEffects) -> Self {
+        self.effects = effects;
+        self
+    }
+
+    pub const fn death_message_type(mut self, death_message_type: DeathMessageType) -> Self {
+        self.death_message_type = death_message_type;
+        self
+    }
+
+    pub fn build(self) -> Result<DamageType> {
+        let message_id = self
+            .message_id
+            .filter(|message_id| !message_id.is_empty())
+            .ok_or_else(|| Error::new(ErrorKind::InvalidInput, "missing message id"))?;
+        let scaling = self
+            .scaling
+            .ok_or_else(|| Error::new(ErrorKind::InvalidInput, "missing scaling"))?;
+        Ok(DamageType::new(
+            message_id,
+            scaling,
+            self.exhaustion,
+            self.effects,
+            self.death_message_type,
+        ))
+    }
+}
+
+impl Default for DamageEffects {
+    fn default() -> Self {
+        Self::Hurt
+    }
+}
+
+impl Default for DeathMessageType {
+    fn default() -> Self {
+        Self::Default
+    }
+}
+
 impl RegistryCodec for DamageType {
     fn registry_nbt(&self) -> NbtCompound {
         let mut compound = NbtCompound::new();
         compound.insert(
             "message_id".to_owned(),
-            Nbt::String(self.message_id.to_owned()),
+            Nbt::String(self.message_id.to_string()),
         );
         compound.insert(
             "scaling".to_owned(),
@@ -130,46 +201,5 @@ impl DeathMessageType {
             Self::FallVariants => "fall_variants",
             Self::IntentionalGameDesign => "intentional_game_design",
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::{DamageEffects, DamageScaling, DamageType, DeathMessageType};
-    use crate::{Registries, RegistryCodec};
-    use spinel_nbt::Nbt;
-
-    #[test]
-    fn generated_vanilla_damage_types_preserve_datapack_metadata() {
-        let registries = Registries::new_vanilla();
-        let damage_type = registries
-            .damage_type(&DamageType::BAD_RESPAWN_POINT)
-            .unwrap();
-
-        assert_eq!(damage_type.message_id(), "badRespawnPoint");
-        assert_eq!(damage_type.scaling(), DamageScaling::Always);
-        assert_eq!(damage_type.exhaustion(), 0.1);
-        assert_eq!(damage_type.effects(), DamageEffects::Hurt);
-        assert_eq!(
-            damage_type.death_message_type(),
-            DeathMessageType::IntentionalGameDesign
-        );
-        assert_eq!(
-            damage_type.registry_nbt().get("death_message_type"),
-            Some(&Nbt::String("intentional_game_design".to_owned()))
-        );
-    }
-
-    #[test]
-    fn generated_vanilla_damage_types_preserve_non_default_effect_categories() {
-        let registries = Registries::new_vanilla();
-        let damage_type = registries.damage_type(&DamageType::ON_FIRE).unwrap();
-
-        assert_eq!(damage_type.message_id(), "onFire");
-        assert_eq!(damage_type.effects(), DamageEffects::Burning);
-        assert_eq!(
-            damage_type.registry_nbt().get("effects"),
-            Some(&Nbt::String("burning".to_owned()))
-        );
     }
 }

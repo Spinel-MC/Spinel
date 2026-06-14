@@ -38,7 +38,7 @@ impl ShowcaseWorld {
             unit.modifier().fill_biome(custom_biome_key.clone());
             unit.modifier()
                 .set_biome(BlockPosition::new(10, 10, 10), custom_biome_key.clone());
-            unit.modifier().set_all(showcase_block);
+            generate_showcase_blocks(unit);
         });
 
         ShowcaseSigns::install(world)?;
@@ -47,26 +47,63 @@ impl ShowcaseWorld {
     }
 }
 
-fn showcase_block(x: i32, y: i32, z: i32) -> Block {
-    if y == 0 {
-        return Block::BEDROCK;
+fn generate_showcase_blocks(unit: &mut spinel::server::world::GenerationUnit) {
+    let start = unit.absolute_start();
+    let end = unit.absolute_end();
+    let mut modifier = unit.modifier();
+    modifier.fill_height(start.y, 0, Block::STONE);
+    modifier.fill_height(0, 1, Block::BEDROCK);
+    modifier.fill_height(1, 3, Block::STONE);
+    modifier.fill_height(3, 4, Block::GRASS_BLOCK);
+    fill_terrain_surface(&mut modifier, start, end);
+
+    for x in start.x.max(-8)..end.x.min(9) {
+        for z in start.z.max(-8)..end.z.min(9) {
+            modifier.set_block(BlockPosition::new(x, 3, z), spawn_platform_block(x, z));
+        }
     }
-    if y < 3 {
-        return Block::STONE;
+    for x in start.x..end.x {
+        for z in start.z..end.z {
+            if marker_position(x, z) {
+                modifier.set_block(BlockPosition::new(x, 4, z), Block::SEA_LANTERN);
+            }
+            if !pillar_position(x, z) {
+                continue;
+            }
+            for y in 4..=8 {
+                modifier.set_block(BlockPosition::new(x, y, z), pillar_block(x, z));
+            }
+        }
     }
-    if y == 3 && (-8..=8).contains(&x) && (-8..=8).contains(&z) {
-        return spawn_platform_block(x, z);
+}
+
+fn fill_terrain_surface(
+    modifier: &mut spinel::server::world::UnitModifier<'_>,
+    start: BlockPosition,
+    end: BlockPosition,
+) {
+    for x in (start.x..end.x).step_by(8) {
+        for z in (start.z..end.z).step_by(8) {
+            if (x.div_euclid(8) - z.div_euclid(8)).rem_euclid(7) == 0 {
+                modifier.fill_area(
+                    BlockPosition::new(x, 3, z),
+                    BlockPosition::new(x + 8, 4, z + 8),
+                    Block::DARK_PRISMARINE,
+                );
+            }
+        }
     }
-    if y == 3 {
-        return terrain_surface_block(x, z);
+    for x in (start.x..end.x).step_by(4) {
+        for z in (start.z..end.z).step_by(4) {
+            if (x.div_euclid(4) + z.div_euclid(4)).rem_euclid(5) == 0 {
+                modifier.fill_area(
+                    BlockPosition::new(x, 3, z),
+                    BlockPosition::new(x + 4, 4, z + 4),
+                    Block::MOSS_BLOCK,
+                );
+            }
+        }
     }
-    if y == 4 && marker_position(x, z) {
-        return Block::SEA_LANTERN;
-    }
-    if (4..=8).contains(&y) && pillar_position(x, z) {
-        return pillar_block(x, z);
-    }
-    Block::AIR
 }
 
 fn spawn_platform_block(x: i32, z: i32) -> Block {
@@ -80,16 +117,6 @@ fn spawn_platform_block(x: i32, z: i32) -> Block {
         return Block::EMERALD_BLOCK;
     }
     Block::QUARTZ_BLOCK
-}
-
-fn terrain_surface_block(x: i32, z: i32) -> Block {
-    if (x.div_euclid(4) + z.div_euclid(4)).rem_euclid(5) == 0 {
-        return Block::MOSS_BLOCK;
-    }
-    if (x.div_euclid(8) - z.div_euclid(8)).rem_euclid(7) == 0 {
-        return Block::DARK_PRISMARINE;
-    }
-    Block::GRASS_BLOCK
 }
 
 fn marker_position(x: i32, z: i32) -> bool {

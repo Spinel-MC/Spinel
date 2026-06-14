@@ -1,14 +1,17 @@
 use crate::entity::{EntityId, EntityPosition, PlayerHand};
 use crate::events::player_block_interact::BlockFace;
-use crate::world::{Block, BlockPosition};
+use crate::world::{Block, BlockPosition, BlockState};
 use spinel_nbt::{Nbt, Tag};
 use spinel_network::types::Identifier;
 use std::collections::HashMap;
+use std::fmt;
+use std::hash::{Hash, Hasher};
+use std::ops::Deref;
 use std::sync::Arc;
 
 #[derive(Clone, Debug)]
 pub struct BlockHandlerPlacement {
-    block: Block,
+    block_state: BlockState,
     previous_block: Block,
     world: uuid::Uuid,
     block_position: BlockPosition,
@@ -81,36 +84,136 @@ pub trait BlockHandler: Send + Sync {
     }
 }
 
+#[derive(Clone)]
+pub struct BlockHandlerHandle {
+    handler: Arc<dyn BlockHandler>,
+}
+
+impl BlockHandlerHandle {
+    pub fn new(handler: impl BlockHandler + 'static) -> Self {
+        Self {
+            handler: Arc::new(handler),
+        }
+    }
+
+    pub fn key(&self) -> &Identifier {
+        self.handler.key()
+    }
+
+    pub fn is_same_handler(&self, other: &Self) -> bool {
+        Arc::ptr_eq(&self.handler, &other.handler)
+    }
+}
+
+impl Deref for BlockHandlerHandle {
+    type Target = dyn BlockHandler;
+
+    fn deref(&self) -> &Self::Target {
+        self.handler.as_ref()
+    }
+}
+
+impl fmt::Debug for BlockHandlerHandle {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("BlockHandlerHandle")
+            .field("key", self.key())
+            .finish()
+    }
+}
+
+impl PartialEq for BlockHandlerHandle {
+    fn eq(&self, other: &Self) -> bool {
+        self.is_same_handler(other)
+    }
+}
+
+impl Eq for BlockHandlerHandle {}
+
+impl Hash for BlockHandlerHandle {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        std::ptr::hash(Arc::as_ptr(&self.handler), state);
+    }
+}
+
+type BlockHandlerSupplier = Arc<dyn Fn() -> BlockHandlerHandle + Send + Sync>;
+
 #[derive(Default)]
 pub struct BlockHandlerRegistry {
-    handlers: HashMap<Block, Arc<dyn BlockHandler>>,
+    block_handlers: HashMap<Block, BlockHandlerHandle>,
+    handler_suppliers: HashMap<Identifier, BlockHandlerSupplier>,
+    dummy_handlers: HashMap<Identifier, BlockHandlerHandle>,
 }
 
 impl BlockHandlerRegistry {
     pub fn register(&mut self, block: Block, handler: impl BlockHandler + 'static) {
-        self.handlers.insert(block, Arc::new(handler));
+        self.block_handlers
+            .insert(block, BlockHandlerHandle::new(handler));
     }
 
-    pub fn handler(&self, block: Block) -> Option<Arc<dyn BlockHandler>> {
-        self.handlers.get(&block).cloned()
+    pub fn register_supplier<Handler>(
+        &mut self,
+        key: Identifier,
+        handler_supplier: impl Fn() -> Handler + Send + Sync + 'static,
+    ) where
+        Handler: BlockHandler + 'static,
+    {
+        self.handler_suppliers.insert(
+            key,
+            Arc::new(move || BlockHandlerHandle::new(handler_supplier())),
+        );
+    }
+
+    pub fn handler(&self, key: &Identifier) -> Option<BlockHandlerHandle> {
+        self.handler_suppliers.get(key).map(|supplier| supplier())
+    }
+
+    pub fn handler_or_dummy(&mut self, key: &Identifier) -> BlockHandlerHandle {
+        if let Some(handler) = self.handler(key) {
+            return handler;
+        }
+        self.dummy_handlers
+            .entry(key.clone())
+            .or_insert_with(|| BlockHandlerHandle::new(DummyBlockHandler::new(key.clone())))
+            .clone()
+    }
+
+    pub fn handler_for_block(&self, block: Block) -> Option<BlockHandlerHandle> {
+        self.block_handlers.get(&block).cloned()
     }
 
     pub fn has_tickable_handler(&self, block: Block) -> bool {
-        self.handlers
+        self.block_handlers
             .get(&block)
             .is_some_and(|handler| handler.is_tickable())
     }
 }
 
+struct DummyBlockHandler {
+    key: Identifier,
+}
+
+impl DummyBlockHandler {
+    fn new(key: Identifier) -> Self {
+        Self { key }
+    }
+}
+
+impl BlockHandler for DummyBlockHandler {
+    fn key(&self) -> &Identifier {
+        &self.key
+    }
+}
+
 impl BlockHandlerPlacement {
     pub fn new(
-        block: Block,
+        block_state: impl Into<BlockState>,
         previous_block: Block,
         world: uuid::Uuid,
         block_position: BlockPosition,
     ) -> Self {
         Self {
-            block,
+            block_state: block_state.into(),
             previous_block,
             world,
             block_position,
@@ -136,7 +239,11 @@ impl BlockHandlerPlacement {
     }
 
     pub const fn block(&self) -> Block {
-        self.block
+        self.block_state.block()
+    }
+
+    pub const fn block_state(&self) -> BlockState {
+        self.block_state
     }
 
     pub const fn previous_block(&self) -> Block {

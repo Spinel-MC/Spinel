@@ -1,17 +1,17 @@
 use std::collections::{HashMap, HashSet, VecDeque};
 
 use crate::ServerPacketListener;
-use spinel_events::{RegisteredEvent, RegisteredModule, RegisteredModuleDependency};
+use spinel_events::{RegisteredEvent, RegisteredModuleDependency, RegisteredServerModule};
 
-pub struct ModuleManager {
+pub struct ServerModuleManager {
     pub independent_events: HashSet<&'static str>,
     pub active_unqualified_modules: HashSet<&'static str>,
 }
 
-impl ModuleManager {
+impl ServerModuleManager {
     pub fn new() -> Self {
         let mut all_module_names: HashSet<&'static str> = HashSet::new();
-        for module in inventory::iter::<&'static RegisteredModule>() {
+        for module in inventory::iter::<&'static RegisteredServerModule>() {
             all_module_names.insert(module.name);
         }
         for dependency in inventory::iter::<&'static RegisteredModuleDependency>() {
@@ -35,7 +35,7 @@ impl ModuleManager {
         };
 
         let mut modules_to_resolve: HashSet<&'static str> =
-            inventory::iter::<&'static RegisteredModule>()
+            inventory::iter::<&'static RegisteredServerModule>()
                 .map(|module| module.name)
                 .collect();
         for dependency in inventory::iter::<&'static RegisteredModuleDependency>() {
@@ -52,7 +52,7 @@ impl ModuleManager {
             .collect();
 
         let mut starting_active_modules = HashSet::new();
-        for module in inventory::iter::<&'static RegisteredModule>() {
+        for module in inventory::iter::<&'static RegisteredServerModule>() {
             if let Some(resolved) = resolved_name_cache.get(module.name) {
                 starting_active_modules.insert(resolved.clone());
             }
@@ -107,7 +107,18 @@ impl ModuleManager {
                 }),
         );
 
-        ModuleManager {
+        active_unqualified_modules.extend(
+            inventory::iter::<&'static spinel_events::RegisteredListener>()
+                .flat_map(|listener| listener.modules)
+                .copied()
+                .filter(|unqualified_name| {
+                    let resolved_name =
+                        resolve_ambiguous_module(unqualified_name, &module_resolution_map);
+                    active_modules.contains(&resolved_name)
+                }),
+        );
+
+        ServerModuleManager {
             independent_events,
             active_unqualified_modules,
         }

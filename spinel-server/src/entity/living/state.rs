@@ -1,11 +1,14 @@
-use crate::entity::{Damage, EntityAttributeState, EntityId, EntityPosition, LivingAttributes};
+use crate::entity::{
+    Damage, EntityAttributeState, EntityId, EntityPosition, EquipmentSlot, LivingAttributes,
+};
 use spinel_core::network::clientbound::play::entity_effect::EntityEffectPacket;
 use spinel_core::network::clientbound::play::remove_entity_effect::RemoveEntityEffectPacket;
+use spinel_core::network::clientbound::play::set_equipment::EntityEquipmentEntry;
 use spinel_core::network::clientbound::play::update_attributes::UpdateAttributesPacket;
-use spinel_registry::{Attribute, EntityBoundingBox};
+use spinel_registry::{Attribute, EntityBoundingBox, EntityType, ItemStack};
 use std::collections::BTreeMap;
 
-use super::TimedPotionEffect;
+use super::{LivingEquipment, TimedPotionEffect};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct LivingState {
@@ -23,28 +26,32 @@ pub struct LivingState {
     team: Option<String>,
     bed_position: Option<EntityPosition>,
     is_flying_with_elytra: bool,
+    equipment: LivingEquipment,
     attributes: LivingAttributes,
     effects: BTreeMap<i32, TimedPotionEffect>,
 }
 
 impl LivingState {
-    pub fn new(bounding_box: EntityBoundingBox) -> Self {
+    pub fn new(entity_type: EntityType) -> Self {
+        let attributes = LivingAttributes::from_entity_type(entity_type);
+        let max_health = attributes.attribute_value(Attribute::MAX_HEALTH) as f32;
         Self {
             arrow_count: 0,
             fire_ticks: 0,
-            health: 20.0,
-            max_health: 20.0,
+            health: max_health,
+            max_health,
             dead: false,
             invulnerable: false,
             last_damage: None,
             last_damage_source: None,
             item_pickup_cooldown: 0,
             can_pickup_item: true,
-            expanded_bounding_box: expanded_bounding_box(bounding_box),
+            expanded_bounding_box: expanded_bounding_box(entity_type.bounding_box()),
             team: None,
             bed_position: None,
             is_flying_with_elytra: false,
-            attributes: LivingAttributes::default(),
+            equipment: LivingEquipment::default(),
+            attributes,
             effects: BTreeMap::new(),
         }
     }
@@ -190,6 +197,24 @@ impl LivingState {
 
     pub fn attributes_mut(&mut self) -> &mut LivingAttributes {
         &mut self.attributes
+    }
+
+    pub fn equipment(&self, equipment_slot: EquipmentSlot) -> &ItemStack {
+        self.equipment.item_stack(equipment_slot)
+    }
+
+    pub fn set_equipment(&mut self, equipment_slot: EquipmentSlot, item_stack: ItemStack) {
+        let previous_item_stack = self.equipment.item_stack(equipment_slot).clone();
+        self.equipment.set_item_stack(equipment_slot, item_stack);
+        self.attributes.update_equipment_attributes(
+            &previous_item_stack,
+            self.equipment.item_stack(equipment_slot),
+            equipment_slot,
+        );
+    }
+
+    pub fn visible_equipment_entries(&self) -> Vec<EntityEquipmentEntry> {
+        self.equipment.visible_entries()
     }
 
     pub fn update_attributes_packet(&self, entity_id: EntityId) -> UpdateAttributesPacket {

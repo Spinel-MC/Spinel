@@ -1,17 +1,21 @@
-use crate::entity::EntityId;
+use crate::entity::{Entity, EntityId};
 use spinel_macros::event_dispatcher;
 
 #[event_dispatcher]
 pub struct EntityDeathEvent {
-    entity_id: EntityId,
+    entity: *mut Entity,
 }
 
 impl EntityDeathEvent {
-    pub fn new(entity_id: EntityId) -> Self {
-        Self { entity_id }
+    pub fn new(entity: *mut Entity) -> Self {
+        Self { entity }
+    }
+
+    pub fn entity(&mut self) -> &mut Entity {
+        unsafe { &mut *self.entity }
     }
 
     pub fn entity_id(&self) -> EntityId {
-        self.entity_id
+        unsafe { (&*self.entity).entity_id() }
     }
 }
