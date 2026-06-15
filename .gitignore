@@ -3,11 +3,3 @@
 /other/Spinel/.obsidian
 /other/datagen/
 /not_public
-/spinel-client/tests
-/spinel-server/tests/*
-!/spinel-server/tests/experience_orb_api.rs
-
-# Mojang assets
-/spinel-registry/build_assets/datapacks/default/
-
-

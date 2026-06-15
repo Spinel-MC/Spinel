@@ -1,4 +1,5 @@
 use crate::entity::{EntityId, EntityPosition};
+use spinel_core::network::clientbound::play::entity_head_look::EntityHeadLookPacket;
 use spinel_core::network::clientbound::play::entity_position_and_rotation::EntityPositionAndRotationPacket;
 use spinel_core::network::clientbound::play::entity_teleport::EntityTeleportPacket;
 use spinel_core::network::clientbound::play::spawn_entity::EntityAngle;
@@ -13,6 +14,7 @@ pub(crate) struct EntityMovement {
     entity_id: EntityId,
     position: EntityPosition,
     packet: Option<EntityMovementPacket>,
+    head_look_packet: Option<EntityHeadLookPacket>,
 }
 
 impl EntityMovement {
@@ -20,11 +22,13 @@ impl EntityMovement {
         entity_id: EntityId,
         position: EntityPosition,
         packet: Option<EntityMovementPacket>,
+        head_look_packet: Option<EntityHeadLookPacket>,
     ) -> Self {
         Self {
             entity_id,
             position,
             packet,
+            head_look_packet,
         }
     }
 
@@ -36,8 +40,10 @@ impl EntityMovement {
         self.position
     }
 
-    pub(crate) fn packet(self) -> Option<EntityMovementPacket> {
-        self.packet
+    pub(crate) fn into_packets(
+        self,
+    ) -> (Option<EntityMovementPacket>, Option<EntityHeadLookPacket>) {
+        (self.packet, self.head_look_packet)
     }
 }
 

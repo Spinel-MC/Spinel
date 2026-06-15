@@ -6,5 +6,6 @@ pub use entity_type::BlockEntityType;
 
 mod entity_type;
 mod face_direction;
+mod tag;
 #[cfg(test)]
 mod tests;

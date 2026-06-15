@@ -2240,7 +2240,7 @@ impl World {
         true
     }
 
-    pub(crate) fn player_by_uuid_mut(&mut self, player_uuid: Uuid) -> Option<&mut Player> {
+    pub fn player_by_uuid_mut(&mut self, player_uuid: Uuid) -> Option<&mut Player> {
         self.entities.iter_mut().find_map(|entity| match entity {
             Entity::Creature(_) => None,
             Entity::ExperienceOrb(_) => None,
@@ -2844,14 +2844,7 @@ impl World {
             || player_coordinate_is_too_large(y)
             || player_coordinate_is_too_large(z)
         {
-            let Some(client) = player.client_mut() else {
-                return Ok(());
-            };
-            let Some(server_ptr) = client.server_ptr else {
-                return Ok(());
-            };
-            let server = unsafe { &mut *(server_ptr as *mut crate::server::MinecraftServer) };
-            return server.kick(client, Component::text("You moved too far away!"));
+            return player.kick(Component::text("You moved too far away!"));
         }
         if previous_position.x() == x && previous_position.y() == y && previous_position.z() == z {
             return Ok(());
@@ -2947,14 +2940,7 @@ impl World {
             || player_coordinate_is_too_large(y)
             || player_coordinate_is_too_large(z)
         {
-            let Some(client) = player.client_mut() else {
-                return Ok(());
-            };
-            let Some(server_ptr) = client.server_ptr else {
-                return Ok(());
-            };
-            let server = unsafe { &mut *(server_ptr as *mut crate::server::MinecraftServer) };
-            return server.kick(client, Component::text("You moved too far away!"));
+            return player.kick(Component::text("You moved too far away!"));
         }
         let packet_position = EntityPosition::new(x, y, z, yaw, pitch);
         if previous_position == packet_position {
@@ -4117,10 +4103,11 @@ impl World {
                             expired_fire_entities.push(entity.entity_id());
                         }
                         let previous_position = entity.position();
+                        entity.tick_before_movement(&world_snapshot, self.world_age as u64);
                         if let Some(movement) = entity.movement_tick(&world_snapshot) {
                             entity_movements.push(movement);
                         }
-                        entity.tick(&world_snapshot, self.world_age as u64);
+                        entity.tick_after_movement(&world_snapshot, self.world_age as u64);
                         if let Some(movement) = entity.position_movement_after_tick() {
                             entity_movements.push(movement);
                         }
@@ -4318,7 +4305,8 @@ impl World {
         self.entity_tracker
             .move_entity(entity_id, movement.position());
         self.refresh_passenger_positions(entity_id);
-        let Some(packet) = movement.packet() else {
+        let (movement_packet, head_look_packet) = movement.into_packets();
+        let Some(packet) = movement_packet else {
             return;
         };
         match packet {
@@ -4328,6 +4316,9 @@ impl World {
             EntityMovementPacket::Teleport(packet) => {
                 let _ = self.send_packet_to_entity_viewers(entity_id, packet);
             }
+        }
+        if let Some(packet) = head_look_packet {
+            let _ = self.send_packet_to_entity_viewers(entity_id, packet);
         }
     }
 
@@ -6367,14 +6358,22 @@ impl World {
     }
 
     pub fn block_light(&mut self, position: BlockPosition) -> u8 {
-        if self.chunks.values().any(Chunk::lighting_is_invalidated) {
+        let chunk_position = ChunkPosition::from(position);
+        let requested_chunk_uses_world_lighting = self
+            .chunks
+            .get(&chunk_position)
+            .is_some_and(Chunk::is_lighting_chunk);
+        if requested_chunk_uses_world_lighting
+            && self.chunks.values().any(Chunk::lighting_is_invalidated)
+        {
             WorldLighting::relight(
                 &mut self.chunks,
                 self.cached_dimension_type.has_skylight,
                 None,
             );
+        } else if let Some(chunk) = self.chunks.get_mut(&chunk_position) {
+            chunk.relight_block_light_at(position.y);
         }
-        let chunk_position = ChunkPosition::from(position);
         self.chunks
             .get(&chunk_position)
             .filter(|chunk| chunk.is_loaded())
@@ -6383,14 +6382,22 @@ impl World {
     }
 
     pub fn sky_light(&mut self, position: BlockPosition) -> u8 {
-        if self.chunks.values().any(Chunk::lighting_is_invalidated) {
+        let chunk_position = ChunkPosition::from(position);
+        let requested_chunk_uses_world_lighting = self
+            .chunks
+            .get(&chunk_position)
+            .is_some_and(Chunk::is_lighting_chunk);
+        if requested_chunk_uses_world_lighting
+            && self.chunks.values().any(Chunk::lighting_is_invalidated)
+        {
             WorldLighting::relight(
                 &mut self.chunks,
                 self.cached_dimension_type.has_skylight,
                 None,
             );
+        } else if let Some(chunk) = self.chunks.get_mut(&chunk_position) {
+            chunk.relight_sky_light_at(position.y);
         }
-        let chunk_position = ChunkPosition::from(position);
         self.chunks
             .get(&chunk_position)
             .filter(|chunk| chunk.is_loaded())
@@ -7792,9 +7799,9 @@ fn entity_box_start(
     bounding_box: spinel_registry::EntityBoundingBox,
 ) -> Vector3d {
     Vector3d {
-        x: position.x() - bounding_box.width() / 2.0,
-        y: position.y(),
-        z: position.z() - bounding_box.depth() / 2.0,
+        x: position.x() + bounding_box.minimum_x(),
+        y: position.y() + bounding_box.minimum_y(),
+        z: position.z() + bounding_box.minimum_z(),
     }
 }
 
@@ -7803,9 +7810,9 @@ fn entity_box_end(
     bounding_box: spinel_registry::EntityBoundingBox,
 ) -> Vector3d {
     Vector3d {
-        x: position.x() + bounding_box.width() / 2.0,
-        y: position.y() + bounding_box.height(),
-        z: position.z() + bounding_box.depth() / 2.0,
+        x: position.x() + bounding_box.maximum_x(),
+        y: position.y() + bounding_box.maximum_y(),
+        z: position.z() + bounding_box.maximum_z(),
     }
 }
 

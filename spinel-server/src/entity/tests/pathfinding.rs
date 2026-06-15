@@ -12,7 +12,7 @@ use crate::entity::{CreatureEntity, Entity, EntityPosition, GenericEntity};
 use crate::world::{Block, BlockPosition, Chunk, ChunkPosition, World, WorldBorder};
 use spinel_network::types::{Identifier, Vector3d, Velocity};
 use spinel_registry::dimension_type::DimensionType;
-use spinel_registry::{Attribute, EntityBoundingBox, EntityType};
+use spinel_registry::{EntityBoundingBox, EntityType};
 use std::collections::HashSet;
 use std::sync::{
     Arc, Mutex,
@@ -21,7 +21,7 @@ use std::sync::{
 
 #[test]
 fn path_state_owner_records_every_minestom_state_transition() {
-    let mut path = Path::new(40.0, 8.0, None);
+    let path = Path::new(40.0, 8.0, None);
     let states = [
         PathState::Calculating,
         PathState::Following,
@@ -167,7 +167,12 @@ fn path_node_owner_exposes_generation_mutation_points() {
     node.set_cost(3.0);
     node.set_heuristic(4.0);
     node.set_node_type(PathNodeType::Jump);
-    node.set_parent_coordinates(Some((0, 65, 0)));
+    node.set_parent(Some(PathNode::new(
+        EntityPosition::new(0.5, 65.0, 0.5, 0.0, 0.0),
+        0.0,
+        0.0,
+        PathNodeType::Walk,
+    )));
 
     assert_eq!(node.position(), next_position);
     assert_eq!(node.cost(), 3.0);
@@ -724,7 +729,7 @@ fn flying_generator_emits_minestom_neighbor_shape() {
 }
 
 #[test]
-fn water_generator_only_emits_water_nodes() {
+fn water_generator_matches_minestom_default_direct_movement_rejection() {
     let mut world = pathfinding_world();
     world
         .set_block(BlockPosition::new(8, 70, 9), Block::WATER)
@@ -748,13 +753,11 @@ fn water_generator_only_emits_water_nodes() {
         EntityType::PLAYER.bounding_box(),
     );
 
-    assert_eq!(nodes.len(), 1);
-    assert_eq!(nodes[0].block_coordinates(), (8, 70, 9));
-    assert_eq!(nodes[0].node_type(), PathNodeType::Fly);
+    assert!(nodes.is_empty());
 }
 
 #[test]
-fn ground_follower_applies_speed_rotation_collision_and_jump_behavior() {
+fn ground_follower_applies_minestom_speed_rotation_collision_and_jump_behavior() {
     let world = pathfinding_world();
     let snapshot = world.update_snapshot();
     let follower = GroundNodeFollower;
@@ -771,10 +774,9 @@ fn ground_follower_applies_speed_rotation_collision_and_jump_behavior() {
         EntityPosition::new(1.5, 66.0, 0.5, 0.0, 0.0),
     );
 
-    entity.movement_tick(&snapshot);
     assert!(entity.position().x() > 0.5);
     assert_eq!(entity.position().yaw().round() as i32, -90);
-    assert_eq!(entity.position().pitch(), 0.0);
+    assert_eq!(entity.position().pitch().round() as i32, -45);
     assert!(follower.is_at_point(&entity, entity.position()));
 
     let mut blocked_world = pathfinding_world();
@@ -797,24 +799,18 @@ fn ground_follower_applies_speed_rotation_collision_and_jump_behavior() {
         movement_speed,
         EntityPosition::new(1.5, 65.0, 0.5, 0.0, 0.0),
     );
-    entity.movement_tick(&blocked_snapshot);
     assert!(entity.position().x() >= blocked_start.x());
     assert!(entity.position().x() < 1.0);
 
     entity.set_on_ground(true);
-    let horizontal_velocity_before_jump = entity.velocity();
     follower.jump(
         &mut entity,
         Some(EntityPosition::new(1.5, 66.0, 0.5, 0.0, 0.0)),
         Some(EntityPosition::new(2.5, 66.0, 0.5, 0.0, 0.0)),
     );
-    let jump_strength = entity.attribute_value(
-        Attribute::JUMP_STRENGTH.protocol_id(),
-        Attribute::JUMP_STRENGTH.default_value(),
-    );
-    assert!((entity.velocity().0.y - jump_strength * 20.0).abs() < 0.000_001);
-    assert_eq!(entity.velocity().0.x, horizontal_velocity_before_jump.0.x);
-    assert_eq!(entity.velocity().0.z, horizontal_velocity_before_jump.0.z);
+    assert_eq!(entity.velocity().0.x, 0.0);
+    assert_eq!(entity.velocity().0.y, 10.0);
+    assert_eq!(entity.velocity().0.z, 0.0);
 }
 
 #[test]
@@ -828,7 +824,7 @@ fn node_follower_uses_living_entity_default_and_minestom_non_living_fallback() {
 }
 
 #[test]
-fn ground_follower_scales_extracted_minecraft_zombie_speed_as_vanilla_mob_input() {
+fn ground_follower_uses_extracted_minecraft_zombie_speed_as_minestom_displacement() {
     let world = pathfinding_world();
     let snapshot = world.update_snapshot();
     let follower = GroundNodeFollower;
@@ -845,8 +841,7 @@ fn ground_follower_scales_extracted_minecraft_zombie_speed_as_vanilla_mob_input(
         EntityPosition::new(4.5, 65.0, 0.5, 0.0, 0.0),
     );
 
-    zombie.movement_tick(&snapshot);
-    assert!((zombie.position().x() - (0.5 + movement_speed * movement_speed)).abs() < 0.000_001);
+    assert!((zombie.position().x() - (0.5 + movement_speed)).abs() < 0.000_001);
     assert!((movement_speed - 0.23000000417232513).abs() < f64::EPSILON);
 }
 
@@ -1255,12 +1250,12 @@ impl NodeGenerator for SingleBestEffortNodeGenerator {
     fn walkable(
         &self,
         _world: &crate::world::WorldSnapshot,
-        visited: &HashSet<(i32, i32, i32)>,
+        visited: &HashSet<PathNode>,
         current: &PathNode,
         goal: EntityPosition,
         _bounding_box: EntityBoundingBox,
     ) -> Vec<PathNode> {
-        if current.block_coordinates() != (0, 65, 0) || visited.contains(&(2, 65, 0)) {
+        if current.block_coordinates() != (0, 65, 0) {
             return Vec::new();
         }
         let position = EntityPosition::new(2.5, 65.0, 0.5, 0.0, 0.0);
@@ -1270,7 +1265,10 @@ impl NodeGenerator for SingleBestEffortNodeGenerator {
             self.heuristic(position, goal),
             PathNodeType::Walk,
         );
-        node.set_parent_coordinates(Some(current.block_coordinates()));
+        node.set_parent(Some(current.clone()));
+        if visited.contains(&node) {
+            return Vec::new();
+        }
         vec![node]
     }
 
@@ -1297,7 +1295,7 @@ impl NodeGenerator for PriorityTieNodeGenerator {
     fn walkable(
         &self,
         _world: &crate::world::WorldSnapshot,
-        _visited: &HashSet<(i32, i32, i32)>,
+        _visited: &HashSet<PathNode>,
         current: &PathNode,
         _goal: EntityPosition,
         _bounding_box: EntityBoundingBox,
@@ -1346,7 +1344,7 @@ impl NodeGenerator for FrontierBudgetNodeGenerator {
     fn walkable(
         &self,
         _world: &crate::world::WorldSnapshot,
-        _visited: &HashSet<(i32, i32, i32)>,
+        _visited: &HashSet<PathNode>,
         current: &PathNode,
         goal: EntityPosition,
         _bounding_box: EntityBoundingBox,
@@ -1371,7 +1369,7 @@ impl NodeGenerator for FrontierBudgetNodeGenerator {
                             self.heuristic(position, goal),
                             PathNodeType::Walk,
                         );
-                        node.set_parent_coordinates(Some(current.block_coordinates()));
+                        node.set_parent(Some(current.clone()));
                         node
                     })
                 })

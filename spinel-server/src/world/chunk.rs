@@ -500,10 +500,9 @@ impl Chunk {
     }
 
     pub(crate) fn lighting_is_invalidated(&self) -> bool {
-        self.is_lighting_chunk()
-            && self.sections.iter().any(|section| {
-                section.sky_light_is_invalidated() || section.block_light_is_invalidated()
-            })
+        self.sections.iter().any(|section| {
+            section.sky_light_is_invalidated() || section.block_light_is_invalidated()
+        })
     }
 
     pub(crate) fn clear_light(&mut self) {
@@ -611,9 +610,6 @@ impl Chunk {
     }
 
     pub fn relight_block_light_at(&mut self, block_y: i32) -> bool {
-        if !self.is_lighting_chunk() {
-            return false;
-        }
         let Some(section) = self.section_at_block_y_mut(block_y) else {
             return false;
         };
@@ -625,9 +621,6 @@ impl Chunk {
     }
 
     pub fn relight_sky_light_at(&mut self, block_y: i32) -> bool {
-        if !self.is_lighting_chunk() {
-            return false;
-        }
         let Some(section) = self.section_at_block_y_mut(block_y) else {
             return false;
         };
@@ -639,9 +632,6 @@ impl Chunk {
     }
 
     pub fn invalidate_section(&mut self, section_y: i32) -> bool {
-        if !self.is_lighting_chunk() {
-            return false;
-        }
         let Some(section) = Arc::make_mut(&mut self.sections)
             .iter_mut()
             .find(|section| section.y == section_y)

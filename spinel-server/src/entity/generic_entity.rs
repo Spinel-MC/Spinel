@@ -4527,7 +4527,12 @@ impl GenericEntity {
         let should_suppress_movement_packet =
             self.entity_type.synchronizes_position_only() || scheduled_synchronization_is_imminent;
         if should_suppress_movement_packet {
-            return Some(EntityMovement::new(self.entity_id, self.position, None));
+            return Some(EntityMovement::new(
+                self.entity_id,
+                self.position,
+                None,
+                None,
+            ));
         }
         let last_synced_position = self.synchronization.last_position();
         let packet = EntityMovementPacket::between(
@@ -4536,11 +4541,18 @@ impl GenericEntity {
             self.position,
             self.on_ground,
         );
+        let view_changed = self.position.yaw() != last_synced_position.yaw()
+            || self.position.pitch() != last_synced_position.pitch();
+        let head_look_packet = match (&packet, view_changed) {
+            (EntityMovementPacket::Position(_), true) => Some(self.head_look_packet()),
+            _ => None,
+        };
         self.synchronization.record_position(self.position);
         Some(EntityMovement::new(
             self.entity_id,
             self.position,
             Some(packet),
+            head_look_packet,
         ))
     }
 
@@ -4608,22 +4620,18 @@ impl GenericEntity {
     }
 
     pub fn relative_start(&self) -> Vector3d {
-        let half_width = self.bounding_box.width() / 2.0;
-        let half_depth = self.bounding_box.depth() / 2.0;
         Vector3d {
-            x: self.position.x() - half_width,
-            y: self.position.y(),
-            z: self.position.z() - half_depth,
+            x: self.position.x() + self.bounding_box.minimum_x(),
+            y: self.position.y() + self.bounding_box.minimum_y(),
+            z: self.position.z() + self.bounding_box.minimum_z(),
         }
     }
 
     pub fn relative_end(&self) -> Vector3d {
-        let half_width = self.bounding_box.width() / 2.0;
-        let half_depth = self.bounding_box.depth() / 2.0;
         Vector3d {
-            x: self.position.x() + half_width,
-            y: self.position.y() + self.bounding_box.height(),
-            z: self.position.z() + half_depth,
+            x: self.position.x() + self.bounding_box.maximum_x(),
+            y: self.position.y() + self.bounding_box.maximum_y(),
+            z: self.position.z() + self.bounding_box.maximum_z(),
         }
     }
 
@@ -5109,17 +5117,17 @@ fn clamp_entity_coordinate(coordinate: f64) -> f64 {
 
 fn box_start(position: Vector3d, bounding_box: EntityBoundingBox) -> Vector3d {
     Vector3d {
-        x: position.x - bounding_box.width() / 2.0,
-        y: position.y,
-        z: position.z - bounding_box.depth() / 2.0,
+        x: position.x + bounding_box.minimum_x(),
+        y: position.y + bounding_box.minimum_y(),
+        z: position.z + bounding_box.minimum_z(),
     }
 }
 
 fn box_end(position: Vector3d, bounding_box: EntityBoundingBox) -> Vector3d {
     Vector3d {
-        x: position.x + bounding_box.width() / 2.0,
-        y: position.y + bounding_box.height(),
-        z: position.z + bounding_box.depth() / 2.0,
+        x: position.x + bounding_box.maximum_x(),
+        y: position.y + bounding_box.maximum_y(),
+        z: position.z + bounding_box.maximum_z(),
     }
 }
 

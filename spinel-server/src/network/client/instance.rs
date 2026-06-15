@@ -79,7 +79,7 @@ impl Client {
         self.is_online.store(false, Ordering::SeqCst);
         self.outbound_packet_queue.clear();
         if let Some(writer) = &self.outbound_packet_writer {
-            writer.close(Shutdown::Both);
+            writer.close(Shutdown::Both, true);
         } else {
             let _ = self.stream.shutdown(Shutdown::Both);
         }
@@ -89,7 +89,7 @@ impl Client {
         self.is_online.store(false, Ordering::SeqCst);
         self.outbound_packet_queue.clear();
         if let Some(writer) = &self.outbound_packet_writer {
-            writer.close(Shutdown::Write);
+            writer.close(Shutdown::Write, false);
         } else {
             let _ = self.stream.shutdown(Shutdown::Write);
         }

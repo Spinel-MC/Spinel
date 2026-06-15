@@ -2,6 +2,8 @@ mod entity;
 mod inventory;
 mod player;
 mod signs;
+#[cfg(test)]
+mod tests;
 mod world;
 
 pub use entity::EntityShowcase;

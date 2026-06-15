@@ -222,12 +222,12 @@ pub(crate) fn position_is_simulatable(
     if !world.world_border().contains(position.x(), position.z()) {
         return false;
     }
-    let minimum_x = (position.x() - bounding_box.width() / 2.0).floor() as i32;
-    let maximum_x = (position.x() + bounding_box.width() / 2.0).floor() as i32;
-    let minimum_y = position.y().floor() as i32;
-    let maximum_y = (position.y() + bounding_box.height()).ceil() as i32 - 1;
-    let minimum_z = (position.z() - bounding_box.depth() / 2.0).floor() as i32;
-    let maximum_z = (position.z() + bounding_box.depth() / 2.0).floor() as i32;
+    let minimum_x = (position.x() + bounding_box.minimum_x()).floor() as i32;
+    let maximum_x = (position.x() + bounding_box.maximum_x()).floor() as i32;
+    let minimum_y = (position.y() + bounding_box.minimum_y()).floor() as i32;
+    let maximum_y = (position.y() + bounding_box.maximum_y()).ceil() as i32 - 1;
+    let minimum_z = (position.z() + bounding_box.minimum_z()).floor() as i32;
+    let maximum_z = (position.z() + bounding_box.maximum_z()).floor() as i32;
     let dimension = world.cached_dimension_type();
     let maximum_dimension_y = dimension.min_y + dimension.height - 1;
     if minimum_y < dimension.min_y || maximum_y > maximum_dimension_y {

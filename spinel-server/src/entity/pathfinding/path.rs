@@ -1,5 +1,6 @@
 use crate::entity::EntityPosition;
 use crate::entity::pathfinding::{PathNode, PathNodeType};
+use std::fmt::{Display, Formatter};
 use std::sync::atomic::{AtomicU8, Ordering};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -68,7 +69,7 @@ impl Path {
         PathState::from_id(self.state.load(Ordering::Acquire))
     }
 
-    pub fn set_state(&mut self, state: PathState) {
+    pub fn set_state(&self, state: PathState) {
         self.state.store(state.id(), Ordering::Release);
     }
 
@@ -120,5 +121,18 @@ impl Path {
         if let Some(on_complete) = self.on_complete.take() {
             on_complete();
         }
+    }
+}
+
+impl Display for Path {
+    fn fmt(&self, formatter: &mut Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str("[")?;
+        for (index, node) in self.nodes.iter().enumerate() {
+            if index > 0 {
+                formatter.write_str(", ")?;
+            }
+            Display::fmt(node, formatter)?;
+        }
+        formatter.write_str("]")
     }
 }

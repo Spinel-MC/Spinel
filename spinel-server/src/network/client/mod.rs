@@ -1,3 +1,4 @@
+mod disconnect;
 pub mod heartbeat;
 pub mod instance;
 pub mod login;

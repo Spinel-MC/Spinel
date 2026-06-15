@@ -64,7 +64,6 @@ impl PathGenerator {
         );
         let mut open = BinaryHeap::from([OpenNode::new(0, start_node.score())]);
         let mut nodes = vec![start_node];
-        let mut parents = vec![None];
         let mut closed = HashSet::new();
         let mut closest_distance = f64::MAX;
         let mut closest = None;
@@ -99,9 +98,8 @@ impl PathGenerator {
                     }
                     let candidate_index = nodes.len();
                     open.push(OpenNode::new(candidate_index, candidate.score()));
-                    closed.insert(candidate.block_coordinates());
+                    closed.insert(candidate.clone());
                     nodes.push(candidate);
-                    parents.push(Some(current_index));
                 });
         }
 
@@ -110,32 +108,29 @@ impl PathGenerator {
             nodes[destination].position().distance_squared(goal)
                 < minimum_distance * minimum_distance
         });
-        let destination = if reached_destination {
+        let destination_index = if reached_destination {
             frontier_destination
         } else {
             closest
         };
-        let Some(destination) = destination else {
+        let Some(destination_index) = destination_index else {
             path.set_state(PathState::Invalid);
             return path;
         };
         let should_repath = !reached_destination && !open.is_empty();
-        let mut path_nodes = Vec::new();
-        let mut current = Some(destination);
-        while let Some(index) = current {
-            if index == 0 {
-                break;
-            }
-            path_nodes.push(nodes[index].clone());
-            current = parents[index];
-        }
-        path_nodes.reverse();
+        let mut current = nodes[destination_index].clone();
         if should_repath {
             let mut repath =
                 PathNode::new(EntityPosition::default(), 0.0, 0.0, PathNodeType::Repath);
-            repath.set_parent_coordinates(path_nodes.last().map(PathNode::block_coordinates));
-            path_nodes.push(repath);
+            repath.set_parent(Some(current));
+            current = repath;
         }
+        let mut path_nodes = Vec::new();
+        while let Some(parent) = current.parent().cloned() {
+            path_nodes.push(current);
+            current = parent;
+        }
+        path_nodes.reverse();
         if path_nodes.first().map(PathNode::node_type) == Some(PathNodeType::Repath)
             || path_nodes.is_empty()
         {

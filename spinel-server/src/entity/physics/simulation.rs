@@ -186,17 +186,15 @@ fn earliest_block_intersection(
     bounding_box: EntityBoundingBox,
     world: &WorldSnapshot,
 ) -> Option<BlockIntersection> {
-    let half_width = bounding_box.width() / 2.0;
-    let half_depth = bounding_box.depth() / 2.0;
     let start_minimum = Vector3d {
-        x: position.x() - half_width,
-        y: position.y(),
-        z: position.z() - half_depth,
+        x: position.x() + bounding_box.minimum_x(),
+        y: position.y() + bounding_box.minimum_y(),
+        z: position.z() + bounding_box.minimum_z(),
     };
     let start_maximum = Vector3d {
-        x: position.x() + half_width,
-        y: position.y() + bounding_box.height(),
-        z: position.z() + half_depth,
+        x: position.x() + bounding_box.maximum_x(),
+        y: position.y() + bounding_box.maximum_y(),
+        z: position.z() + bounding_box.maximum_z(),
     };
     let end_minimum = add_vector(start_minimum, delta);
     let end_maximum = add_vector(start_maximum, delta);
@@ -240,17 +238,15 @@ fn intersect_block_shape(
     block_position: BlockPosition,
     shape: &BlockShapeBox,
 ) -> Option<RaycastIntersection> {
-    let half_width = bounding_box.width() / 2.0;
-    let half_depth = bounding_box.depth() / 2.0;
     let entity_minimum = Vector3d {
-        x: position.x() - half_width,
-        y: position.y(),
-        z: position.z() - half_depth,
+        x: position.x() + bounding_box.minimum_x(),
+        y: position.y() + bounding_box.minimum_y(),
+        z: position.z() + bounding_box.minimum_z(),
     };
     let entity_maximum = Vector3d {
-        x: position.x() + half_width,
-        y: position.y() + bounding_box.height(),
-        z: position.z() + half_depth,
+        x: position.x() + bounding_box.maximum_x(),
+        y: position.y() + bounding_box.maximum_y(),
+        z: position.z() + bounding_box.maximum_z(),
     };
     let shape_minimum = Vector3d {
         x: f64::from(block_position.x) + shape.min_x,
@@ -294,14 +290,14 @@ fn intersect_block_shape(
     }
     let expanded_shape = RaycastBoundingBox::new(
         Vector3d {
-            x: shape_minimum.x - half_width,
-            y: shape_minimum.y - bounding_box.height(),
-            z: shape_minimum.z - half_depth,
+            x: shape_minimum.x - bounding_box.maximum_x(),
+            y: shape_minimum.y - bounding_box.maximum_y(),
+            z: shape_minimum.z - bounding_box.maximum_z(),
         },
         Vector3d {
-            x: shape_maximum.x + half_width,
-            y: shape_maximum.y,
-            z: shape_maximum.z + half_depth,
+            x: shape_maximum.x - bounding_box.minimum_x(),
+            y: shape_maximum.y - bounding_box.minimum_y(),
+            z: shape_maximum.z - bounding_box.minimum_z(),
         },
     );
     RaycastIntersection::between_ray_and_box(position.as_vector(), delta, expanded_shape)

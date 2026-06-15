@@ -2,6 +2,7 @@ pub mod decoder;
 pub mod encoder;
 pub mod network_buffer;
 pub mod packet_codec;
+pub mod packet_fixtures;
 pub mod packet_names;
 pub mod types;
 
@@ -18,6 +19,8 @@ pub use decoder::PacketDecoder;
 pub use encoder as encoder_module;
 pub use encoder::PacketEncoder;
 pub use packet_codec::{PacketCodec, PacketCodecRegistry};
+pub use packet_fixtures::{PacketFixture, PacketFixtureCatalog};
+pub use packet_names::PacketNameRegistry;
 
 pub use inventory;
 pub use spinel_utils::Priority;

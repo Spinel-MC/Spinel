@@ -7,7 +7,8 @@ mod path_generator;
 pub mod perfect;
 
 pub use follower::{
-    FlyingNodeFollower, GroundNodeFollower, NoPhysicsNodeFollower, NodeFollower, WaterNodeFollower,
+    FlyingNodeFollower, GroundNodeFollower, NoPhysicsNodeFollower, NodeFollower,
+    NodeFollowerPhysicsTiming, VanillaGroundNodeFollower, WaterNodeFollower,
 };
 pub use generator::{
     FlyingNodeGenerator, GroundNodeGenerator, NodeGenerator, PreciseGroundNodeGenerator,

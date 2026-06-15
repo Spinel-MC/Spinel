@@ -2,6 +2,8 @@ use std::sync::{Arc, Mutex, OnceLock, mpsc};
 
 type ChunkLoadingTask = Box<dyn FnOnce() + Send + 'static>;
 
+const MINIMUM_CHUNK_LOADING_WORKERS: usize = 16;
+
 pub(crate) struct ChunkLoadingExecutor {
     task_sender: mpsc::Sender<ChunkLoadingTask>,
 }
@@ -21,7 +23,8 @@ impl ChunkLoadingExecutor {
         let task_receiver = Arc::new(Mutex::new(task_receiver));
         let worker_count = std::thread::available_parallelism()
             .map(usize::from)
-            .unwrap_or(1);
+            .unwrap_or(1)
+            .max(MINIMUM_CHUNK_LOADING_WORKERS);
 
         (0..worker_count).for_each(|_| {
             let task_receiver = task_receiver.clone();

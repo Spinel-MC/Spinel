@@ -9,6 +9,7 @@ pub(crate) struct OutboundPacketWriter {
     command_sender: mpsc::Sender<OutboundWriteCommand>,
     errors: Arc<Mutex<VecDeque<OutboundWriteError>>>,
     is_online: Arc<AtomicBool>,
+    cancel_pending: Arc<AtomicBool>,
     pending_packet_count: Arc<AtomicUsize>,
 }
 
@@ -36,6 +37,8 @@ impl OutboundPacketWriter {
         let errors = Arc::new(Mutex::new(VecDeque::new()));
         let writer_errors = errors.clone();
         let writer_is_online = is_online.clone();
+        let cancel_pending = Arc::new(AtomicBool::new(false));
+        let writer_cancel_pending = cancel_pending.clone();
         let pending_packet_count = Arc::new(AtomicUsize::new(0));
         let writer_pending_packet_count = pending_packet_count.clone();
         std::thread::spawn(move || {
@@ -47,7 +50,7 @@ impl OutboundPacketWriter {
                         packet_name,
                         payload,
                     } => {
-                        if !writer_is_online.load(Ordering::SeqCst) {
+                        if writer_cancel_pending.load(Ordering::SeqCst) {
                             writer_pending_packet_count.fetch_sub(1, Ordering::SeqCst);
                             continue;
                         }
@@ -76,7 +79,7 @@ impl OutboundPacketWriter {
                         encoder.enable_encryption(&key);
                     }
                     OutboundWriteCommand::Raw(bytes) => {
-                        if !writer_is_online.load(Ordering::SeqCst) {
+                        if writer_cancel_pending.load(Ordering::SeqCst) {
                             writer_pending_packet_count.fetch_sub(1, Ordering::SeqCst);
                             continue;
                         }
@@ -102,6 +105,7 @@ impl OutboundPacketWriter {
             command_sender,
             errors,
             is_online,
+            cancel_pending,
             pending_packet_count,
         }
     }
@@ -159,7 +163,9 @@ impl OutboundPacketWriter {
             })
     }
 
-    pub(crate) fn close(&self, shutdown: Shutdown) {
+    pub(crate) fn close(&self, shutdown: Shutdown, should_cancel_pending: bool) {
+        self.cancel_pending
+            .store(should_cancel_pending, Ordering::SeqCst);
         self.is_online.store(false, Ordering::SeqCst);
         let _ = self
             .command_sender

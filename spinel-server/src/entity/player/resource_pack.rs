@@ -174,14 +174,7 @@ impl Player {
                 "Required resource pack was not loaded.",
                 TextColor::from_named(NamedTextColor::Red),
             );
-            let Some(client) = self.client_mut() else {
-                return Ok(());
-            };
-            let Some(server_ptr) = client.server_ptr else {
-                return Ok(());
-            };
-            let server = unsafe { &mut *(server_ptr as *mut crate::server::MinecraftServer) };
-            return server.kick(client, disconnect_reason);
+            return self.kick(disconnect_reason);
         }
         Ok(())
     }

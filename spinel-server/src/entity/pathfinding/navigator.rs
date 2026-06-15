@@ -1,8 +1,8 @@
 use crate::entity::EntityPosition;
 use crate::entity::GenericEntity;
 use crate::entity::pathfinding::{
-    GroundNodeFollower, GroundNodeGenerator, NodeFollower, NodeGenerator, Path, PathGenerator,
-    PathNode, PathNodeType, PathState,
+    GroundNodeFollower, GroundNodeGenerator, NodeFollower, NodeFollowerPhysicsTiming,
+    NodeGenerator, Path, PathGenerator, PathNode, PathNodeType, PathState,
 };
 use crate::world::{ChunkPosition, WorldSnapshot};
 use spinel_registry::EntityBoundingBox;
@@ -106,9 +106,7 @@ impl Navigator {
             return false;
         }
         self.minimum_distance = minimum_distance;
-        if start.distance_squared(goal) < minimum_distance * minimum_distance
-            || same_block(start, goal)
-        {
+        if start.distance_squared(goal).sqrt() < minimum_distance || same_block(start, goal) {
             if let Some(on_complete) = on_complete {
                 on_complete();
             }
@@ -191,6 +189,10 @@ impl Navigator {
         self.node_follower = Box::new(node_follower);
     }
 
+    pub fn physics_timing(&self) -> NodeFollowerPhysicsTiming {
+        self.node_follower.physics_timing()
+    }
+
     pub fn tick(
         &mut self,
         entity: &mut GenericEntity,
@@ -226,9 +228,7 @@ impl Navigator {
         if path.state() != PathState::Following {
             return;
         }
-        if entity.position().distance_squared(goal_position)
-            < self.minimum_distance * self.minimum_distance
-        {
+        if entity.position().distance_squared(goal_position).sqrt() < self.minimum_distance {
             path.complete();
             self.path = None;
             return;

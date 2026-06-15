@@ -1098,12 +1098,7 @@ impl Player {
 
     pub fn add_packet_to_queue(&mut self, packet: QueuedPlayerPacket) -> bool {
         if self.packet_queue.len() >= Self::PLAYER_PACKET_QUEUE_SIZE {
-            if let Some(client) = self.client_mut()
-                && let Some(server_ptr) = client.server_ptr
-            {
-                let server = unsafe { &mut *(server_ptr as *mut crate::server::MinecraftServer) };
-                let _ = server.kick(client, Self::too_many_packets_text());
-            }
+            let _ = self.kick(Self::too_many_packets_text());
             return false;
         }
         self.packet_queue.push_back(packet);

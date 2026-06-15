@@ -6,6 +6,7 @@ use spinel::{
         entity::{
             CreatureEntity, Entity, EntityId, EntityPosition,
             ai::{EntityAiGroupBuilder, goal::RandomLookAroundGoal},
+            pathfinding::VanillaGroundNodeFollower,
         },
         world::{BlockPosition, World},
     },
@@ -22,10 +23,17 @@ impl EntityShowcase {
         world_id: Uuid,
         origin: EntityPosition,
     ) -> io::Result<ItemStack> {
-        let zombie_position = EntityPosition::new(
+        let minestom_zombie_position = EntityPosition::new(
             origin.x() + 3.0,
             origin.y(),
             origin.z(),
+            origin.yaw(),
+            origin.pitch(),
+        );
+        let vanilla_zombie_position = EntityPosition::new(
+            origin.x() + 3.0,
+            origin.y(),
+            origin.z() + 2.0,
             origin.yaw(),
             origin.pitch(),
         );
@@ -42,21 +50,40 @@ impl EntityShowcase {
                 "Player world was not found.",
             ));
         };
-        let mut zombie = Self::zombie(zombie_position);
-        zombie.add_ai_group(
+        let mut minestom_zombie = Self::zombie(minestom_zombie_position, "Minestom Physics");
+        minestom_zombie.add_ai_group(
             EntityAiGroupBuilder::default()
                 .add_goal_selector(RandomLookAroundGoal::new(20))
                 .build(),
         );
-        let zombie_id = zombie.entity_id();
-        if !world.add_entity(Entity::Creature(zombie)) {
+        let minestom_zombie_id = minestom_zombie.entity_id();
+        if !world.add_entity(Entity::Creature(minestom_zombie)) {
             return Err(io::Error::new(
                 io::ErrorKind::Interrupted,
-                "Zombie add cancelled.",
+                "Minestom physics zombie add cancelled.",
+            ));
+        }
+        let mut vanilla_zombie = Self::zombie(vanilla_zombie_position, "Vanilla Physics");
+        vanilla_zombie
+            .navigator_mut()
+            .set_node_follower(VanillaGroundNodeFollower::default());
+        vanilla_zombie.add_ai_group(
+            EntityAiGroupBuilder::default()
+                .add_goal_selector(RandomLookAroundGoal::new(20))
+                .build(),
+        );
+        let vanilla_zombie_id = vanilla_zombie.entity_id();
+        if !world.add_entity(Entity::Creature(vanilla_zombie)) {
+            return Err(io::Error::new(
+                io::ErrorKind::Interrupted,
+                "Vanilla physics zombie add cancelled.",
             ));
         }
         world.spawn_item_entity(ItemStack::of(Material::DIAMOND), item_position)?;
-        Ok(Self::pathfinding_stick(zombie_id))
+        Ok(Self::pathfinding_stick(
+            minestom_zombie_id,
+            vanilla_zombie_id,
+        ))
     }
 
     pub fn pathfind(
@@ -64,7 +91,12 @@ impl EntityShowcase {
         pathfinding_stick: &ItemStack,
         block_position: BlockPosition,
     ) -> bool {
-        let Some(zombie_id) = pathfinding_stick.get_tag(&Self::zombie_id_tag()) else {
+        let Some(minestom_zombie_id) = pathfinding_stick.get_tag(&Self::minestom_zombie_id_tag())
+        else {
+            return false;
+        };
+        let Some(vanilla_zombie_id) = pathfinding_stick.get_tag(&Self::vanilla_zombie_id_tag())
+        else {
             return false;
         };
         let destination = EntityPosition::new(
@@ -75,25 +107,41 @@ impl EntityShowcase {
             0.0,
         );
         let world_snapshot = world.update_snapshot();
-        let Some(zombie) = world.creature_by_id_mut(EntityId::from_raw(zombie_id)) else {
-            return false;
-        };
-        zombie.set_path_to_default(&world_snapshot, Some(destination))
+        let minestom_path_was_accepted = world
+            .creature_by_id_mut(EntityId::from_raw(minestom_zombie_id))
+            .is_some_and(|zombie| zombie.set_path_to_default(&world_snapshot, Some(destination)));
+        let vanilla_path_was_accepted = world
+            .creature_by_id_mut(EntityId::from_raw(vanilla_zombie_id))
+            .is_some_and(|zombie| zombie.set_path_to_default(&world_snapshot, Some(destination)));
+        minestom_path_was_accepted || vanilla_path_was_accepted
     }
 
-    pub(super) fn zombie(position: EntityPosition) -> CreatureEntity {
+    pub(super) fn zombie(position: EntityPosition, physics_name: &str) -> CreatureEntity {
         let mut zombie = CreatureEntity::new(EntityType::ZOMBIE);
         zombie.set_position(position);
+        zombie.set_custom_name(Some(Component::text(physics_name).build()));
+        zombie.set_custom_name_visible(true);
         zombie
     }
 
-    fn pathfinding_stick(zombie_id: EntityId) -> ItemStack {
+    fn pathfinding_stick(minestom_zombie_id: EntityId, vanilla_zombie_id: EntityId) -> ItemStack {
         ItemStack::of(Material::STICK)
-            .with_custom_name(Component::text("Zombie Pathfinder").build())
-            .with_tag(&Self::zombie_id_tag(), Some(zombie_id.value()))
+            .with_custom_name(Component::text("Dual Zombie Pathfinder").build())
+            .with_tag(
+                &Self::minestom_zombie_id_tag(),
+                Some(minestom_zombie_id.value()),
+            )
+            .with_tag(
+                &Self::vanilla_zombie_id_tag(),
+                Some(vanilla_zombie_id.value()),
+            )
     }
 
-    fn zombie_id_tag() -> Tag<i32> {
-        Tag::<i32>::integer("spinel_showcase_zombie_id")
+    fn minestom_zombie_id_tag() -> Tag<i32> {
+        Tag::<i32>::integer("spinel_showcase_minestom_zombie_id")
+    }
+
+    fn vanilla_zombie_id_tag() -> Tag<i32> {
+        Tag::<i32>::integer("spinel_showcase_vanilla_zombie_id")
     }
 }

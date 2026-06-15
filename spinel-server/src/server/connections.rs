@@ -3,9 +3,6 @@ use crate::events::disconnection::DisconnectionEvent;
 use crate::events::player_disconnect::PlayerDisconnectEvent;
 use crate::network::client::instance::Client;
 use crate::server::MinecraftServer;
-use spinel_core::network::clientbound::configuration::disconnect::ConfigurationDisconnectPacket;
-use spinel_core::network::clientbound::login::disconnect::LoginDisconnectPacket;
-use spinel_core::network::clientbound::play::disconnect::PlayDisconnectPacket;
 use spinel_network::ConnectionState;
 use spinel_utils::component::text::TextComponent;
 use std::io;
@@ -99,18 +96,9 @@ impl MinecraftServer {
     ) -> io::Result<()> {
         let reason = reason.into();
         let reason_text = reason.to_plain_string();
-        client.discard_queued_outbound_packets();
-        let kick_result = match client.state {
-            ConnectionState::Login => LoginDisconnectPacket::new(reason).dispatch(client),
-            ConnectionState::Configuration => {
-                ConfigurationDisconnectPacket::new(reason).dispatch(client)
-            }
-            ConnectionState::Play => PlayDisconnectPacket::new(reason).dispatch(client),
-            _ => Ok(()),
-        };
         let client_address = client.addr;
+        let kick_result = client.kick(reason);
         println!("Kicked client {client_address}: {reason_text}");
-        client.close_after_disconnect_packet();
         self.handle_connection_closed_with_client(client_address, client);
         kick_result
     }

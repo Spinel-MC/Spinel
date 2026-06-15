@@ -1,6 +1,7 @@
-use crate::entity::{Entity, EntityPosition, GenericEntity, Player};
+use crate::entity::{CreatureEntity, Entity, EntityPosition, GenericEntity, Player};
 use crate::network::client::instance::Client;
-use crate::world::World;
+use crate::world::{Block, BlockPosition, ChunkPosition, World};
+use spinel_core::network::clientbound::play::entity_head_look::EntityHeadLookPacket;
 use spinel_core::network::clientbound::play::entity_position_and_rotation::EntityPositionAndRotationPacket;
 use spinel_core::network::clientbound::play::entity_position_sync::EntityPositionSyncPacket;
 use spinel_core::network::clientbound::play::entity_velocity::EntityVelocityPacket;
@@ -147,6 +148,47 @@ fn ordinary_physics_movement_sends_relative_packet_for_non_synchronization_only_
         viewer_client
             .queued_outbound_packet_ids()
             .contains(&EntityPositionAndRotationPacket::get_id())
+    );
+}
+
+#[test]
+fn creature_pathfinding_tick_sends_body_and_head_rotation_to_viewers() {
+    let mut world = World::new(Identifier::minecraft("pathfinding_synchronization"));
+    world.load_chunk(ChunkPosition::new(0, 0)).unwrap();
+    for block_x in 0..=5 {
+        world
+            .set_block(BlockPosition::new(block_x, 64, 0), Block::STONE)
+            .unwrap();
+    }
+    let mut viewer_client = queued_client();
+    let viewer = entered_player(&mut viewer_client);
+    let mut creature = CreatureEntity::new(EntityType::ZOMBIE);
+    creature.set_position(EntityPosition::new(0.5, 65.0, 0.5, 0.0, 0.0));
+    creature.set_on_ground(true);
+    let creature_id = creature.entity_id();
+    world.add_entity(Entity::Player(viewer));
+    world.add_entity(Entity::Creature(creature));
+    world.process_pending_entity_visibility_refreshes().unwrap();
+    viewer_client.discard_queued_outbound_packets();
+    let snapshot = world.update_snapshot();
+    assert!(
+        world
+            .creature_by_id_mut(creature_id)
+            .unwrap()
+            .set_path_to_default(
+                &snapshot,
+                Some(EntityPosition::new(4.5, 65.0, 0.5, 0.0, 0.0)),
+            )
+    );
+
+    world.tick_with_registries(&Registries::new_vanilla());
+
+    assert_eq!(
+        viewer_client.queued_outbound_packet_ids(),
+        vec![
+            EntityPositionAndRotationPacket::get_id(),
+            EntityHeadLookPacket::get_id(),
+        ]
     );
 }
 

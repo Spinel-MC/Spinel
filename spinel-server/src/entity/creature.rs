@@ -1,5 +1,5 @@
 use crate::entity::ai::{CreatureAiAction, EntityAiGroup};
-use crate::entity::pathfinding::Navigator;
+use crate::entity::pathfinding::{Navigator, NodeFollowerPhysicsTiming};
 use crate::entity::{EntityId, EntityPosition, GenericEntity};
 use crate::world::WorldSnapshot;
 use spinel_registry::EntityType;
@@ -194,11 +194,29 @@ impl CreatureEntity {
         self.entity.set_world(world);
     }
 
-    pub fn tick(&mut self, world: &WorldSnapshot, _time: u64) {
-        self.ai_tick(world, _time);
+    pub(crate) fn tick_before_movement(&mut self, world: &WorldSnapshot, time: u64) {
+        if self.navigator.physics_timing() != NodeFollowerPhysicsTiming::BeforePhysics {
+            return;
+        }
+        self.tick_navigation(world, time);
+    }
+
+    pub(crate) fn tick_after_movement(&mut self, world: &WorldSnapshot, time: u64) {
+        if self.navigator.physics_timing() == NodeFollowerPhysicsTiming::AfterPhysics {
+            self.tick_navigation(world, time);
+        }
+        self.entity.tick();
+    }
+
+    pub fn tick(&mut self, world: &WorldSnapshot, time: u64) {
+        self.tick_navigation(world, time);
+        self.entity.tick();
+    }
+
+    fn tick_navigation(&mut self, world: &WorldSnapshot, time: u64) {
+        self.ai_tick(world, time);
         let entity_is_dead = self.entity.is_dead();
         self.navigator.tick(&mut self.entity, world, entity_is_dead);
-        self.entity.tick();
     }
 }
 

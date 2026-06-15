@@ -63,15 +63,19 @@ fn run_showcase_sign_command(
             let _ = InventoryShowcase::apply(event.player());
         }
         ShowcaseSignCommand::Entity => {
-            let Some((world_id, position, _)) = sign_player_context(event) else {
+            let Some((world_id, position, player_uuid)) = sign_player_context(event) else {
                 return;
             };
             let Ok(pathfinding_stick) = EntityShowcase::spawn(server, world_id, position) else {
                 return;
             };
-            event
-                .player()
-                .set_item_in_hand(PlayerHand::Main, pathfinding_stick);
+            let Some(world) = server.world_manager.world_mut(world_id) else {
+                return;
+            };
+            let Some(player) = world.player_by_uuid_mut(player_uuid) else {
+                return;
+            };
+            player.set_item_in_hand(PlayerHand::Main, pathfinding_stick);
         }
         ShowcaseSignCommand::World => {
             let Some((world_id, position, _)) = sign_player_context(event) else {
@@ -104,12 +108,8 @@ fn sign_player_context(
 ) -> Option<(
     spinel::uuid::Uuid,
     spinel::server::entity::EntityPosition,
-    spinel::server::entity::EntityId,
+    spinel::uuid::Uuid,
 )> {
     let player = event.player();
-    Some((
-        player.world()?.uuid(),
-        player.position(),
-        player.entity_id(),
-    ))
+    Some((player.current_world()?, player.position(), player.uuid()))
 }

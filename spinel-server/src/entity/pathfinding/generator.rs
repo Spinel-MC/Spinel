@@ -13,7 +13,7 @@ pub trait NodeGenerator: Send {
     fn walkable(
         &self,
         world: &WorldSnapshot,
-        visited: &HashSet<(i32, i32, i32)>,
+        visited: &HashSet<PathNode>,
         current: &PathNode,
         goal: EntityPosition,
         bounding_box: EntityBoundingBox,
@@ -74,7 +74,7 @@ impl NodeGenerator for GroundNodeGenerator {
     fn walkable(
         &self,
         world: &WorldSnapshot,
-        visited: &HashSet<(i32, i32, i32)>,
+        visited: &HashSet<PathNode>,
         current: &PathNode,
         goal: EntityPosition,
         bounding_box: EntityBoundingBox,
@@ -121,7 +121,7 @@ impl NodeGenerator for PreciseGroundNodeGenerator {
     fn walkable(
         &self,
         world: &WorldSnapshot,
-        visited: &HashSet<(i32, i32, i32)>,
+        visited: &HashSet<PathNode>,
         current: &PathNode,
         goal: EntityPosition,
         bounding_box: EntityBoundingBox,
@@ -192,14 +192,13 @@ impl NodeGenerator for FlyingNodeGenerator {
     fn walkable(
         &self,
         world: &WorldSnapshot,
-        visited: &HashSet<(i32, i32, i32)>,
+        visited: &HashSet<PathNode>,
         current: &PathNode,
         goal: EntityPosition,
         bounding_box: EntityBoundingBox,
     ) -> Vec<PathNode> {
         flying_neighbors(current.position(), bounding_box, 0.5)
             .into_iter()
-            .filter(|neighbor| !visited.contains(&block_coordinates(neighbor.position)))
             .filter(|neighbor| {
                 self.can_move_towards(world, current.position(), neighbor.position, bounding_box)
             })
@@ -210,9 +209,10 @@ impl NodeGenerator for FlyingNodeGenerator {
                     self.heuristic(neighbor.position, goal),
                     PathNodeType::Fly,
                 );
-                candidate_node.set_parent_coordinates(Some(current.block_coordinates()));
+                candidate_node.set_parent(Some(current.clone()));
                 candidate_node
             })
+            .filter(|candidate| !visited.contains(candidate))
             .collect()
     }
 
@@ -235,14 +235,13 @@ impl NodeGenerator for WaterNodeGenerator {
     fn walkable(
         &self,
         world: &WorldSnapshot,
-        visited: &HashSet<(i32, i32, i32)>,
+        visited: &HashSet<PathNode>,
         current: &PathNode,
         goal: EntityPosition,
         bounding_box: EntityBoundingBox,
     ) -> Vec<PathNode> {
         water_neighbors(world, current.position(), bounding_box)
             .into_iter()
-            .filter(|neighbor| !visited.contains(&block_coordinates(neighbor.position)))
             .filter(|neighbor| {
                 self.can_move_towards(world, current.position(), neighbor.position, bounding_box)
             })
@@ -253,9 +252,10 @@ impl NodeGenerator for WaterNodeGenerator {
                     self.heuristic(neighbor.position, goal),
                     PathNodeType::Fly,
                 );
-                candidate_node.set_parent_coordinates(Some(current.block_coordinates()));
+                candidate_node.set_parent(Some(current.clone()));
                 candidate_node
             })
+            .filter(|candidate| !visited.contains(candidate))
             .collect()
     }
 
@@ -271,17 +271,6 @@ impl NodeGenerator for WaterNodeGenerator {
         _maximum_fall: i32,
     ) -> Option<f64> {
         Some(position.y())
-    }
-
-    fn can_move_towards(
-        &self,
-        world: &WorldSnapshot,
-        start: EntityPosition,
-        end: EntityPosition,
-        bounding_box: EntityBoundingBox,
-    ) -> bool {
-        world.block(position_block(end)) == Block::WATER
-            && movement_has_no_collision(world, start, end, bounding_box)
     }
 }
 
@@ -318,7 +307,7 @@ impl GroundNeighborStrategy {
 fn ground_neighbors(
     generator: &dyn NodeGenerator,
     world: &WorldSnapshot,
-    visited: &HashSet<(i32, i32, i32)>,
+    visited: &HashSet<PathNode>,
     current: &PathNode,
     goal: EntityPosition,
     bounding_box: EntityBoundingBox,
@@ -434,16 +423,13 @@ fn ground_neighbors(
 fn create_ground_walk_node(
     generator: &dyn NodeGenerator,
     world: &WorldSnapshot,
-    visited: &HashSet<(i32, i32, i32)>,
+    visited: &HashSet<PathNode>,
     current: &PathNode,
     goal: EntityPosition,
     bounding_box: EntityBoundingBox,
     candidate: EntityPosition,
     cost: f64,
 ) -> Option<PathNode> {
-    if visited.contains(&block_coordinates(candidate)) {
-        return None;
-    }
     let current_position = current.position();
     let vertical_delta = candidate.y() - current_position.y();
     let is_fall = vertical_delta.abs() > PRECISE_MOVEMENT_EPSILON && vertical_delta < 0.0;
@@ -464,7 +450,7 @@ fn create_ground_walk_node(
     if !generator.can_move_towards(world, current_position, movement_target, bounding_box) {
         return None;
     }
-    Some(path_node_with_parent(
+    let candidate_node = path_node_with_parent(
         candidate,
         current.cost() + cost,
         generator.heuristic(candidate, goal),
@@ -474,13 +460,14 @@ fn create_ground_walk_node(
             PathNodeType::Walk
         },
         current,
-    ))
+    );
+    (!visited.contains(&candidate_node)).then_some(candidate_node)
 }
 
 fn create_ground_jump_node(
     generator: &dyn NodeGenerator,
     world: &WorldSnapshot,
-    visited: &HashSet<(i32, i32, i32)>,
+    visited: &HashSet<PathNode>,
     current: &PathNode,
     goal: EntityPosition,
     bounding_box: EntityBoundingBox,
@@ -499,22 +486,21 @@ fn create_ground_jump_node(
     {
         return None;
     }
-    if visited.contains(&candidate_coordinates)
-        || generator.point_is_invalid(world, candidate, bounding_box)
-    {
+    if generator.point_is_invalid(world, candidate, bounding_box) {
         return None;
     }
     let start_headroom = current_position.offset(0.0, 1.0, 0.0);
     if generator.point_is_invalid(world, start_headroom, bounding_box) {
         return None;
     }
-    Some(path_node_with_parent(
+    let candidate_node = path_node_with_parent(
         candidate,
         current.cost() + cost,
         generator.heuristic(candidate, goal),
         PathNodeType::Jump,
         current,
-    ))
+    );
+    (!visited.contains(&candidate_node)).then_some(candidate_node)
 }
 
 fn path_node_with_parent(
@@ -525,7 +511,7 @@ fn path_node_with_parent(
     parent: &PathNode,
 ) -> PathNode {
     let mut candidate_node = PathNode::new(position, cost, heuristic, node_type);
-    candidate_node.set_parent_coordinates(Some(parent.block_coordinates()));
+    candidate_node.set_parent(Some(parent.clone()));
     candidate_node
 }
 
@@ -700,12 +686,12 @@ fn occupancy_positions(
     position: EntityPosition,
     bounding_box: EntityBoundingBox,
 ) -> Vec<BlockPosition> {
-    let minimum_x = (position.x() - bounding_box.width() / 2.0).floor() as i32;
-    let maximum_x = (position.x() + bounding_box.width() / 2.0).floor() as i32;
-    let minimum_y = position.y().floor() as i32;
-    let maximum_y = (position.y() + bounding_box.height()).ceil() as i32 - 1;
-    let minimum_z = (position.z() - bounding_box.depth() / 2.0).floor() as i32;
-    let maximum_z = (position.z() + bounding_box.depth() / 2.0).floor() as i32;
+    let minimum_x = (position.x() + bounding_box.minimum_x()).floor() as i32;
+    let maximum_x = (position.x() + bounding_box.maximum_x()).floor() as i32;
+    let minimum_y = (position.y() + bounding_box.minimum_y()).floor() as i32;
+    let maximum_y = (position.y() + bounding_box.maximum_y()).floor() as i32;
+    let minimum_z = (position.z() + bounding_box.minimum_z()).floor() as i32;
+    let maximum_z = (position.z() + bounding_box.maximum_z()).floor() as i32;
     (minimum_x..=maximum_x)
         .flat_map(|x| {
             (minimum_y..=maximum_y).flat_map(move |y| {
@@ -720,11 +706,11 @@ fn footprint_positions(
     bounding_box: EntityBoundingBox,
     y_offset: i32,
 ) -> Vec<BlockPosition> {
-    let minimum_x = (position.x() - bounding_box.width() / 2.0).floor() as i32;
-    let maximum_x = (position.x() + bounding_box.width() / 2.0).floor() as i32;
-    let minimum_z = (position.z() - bounding_box.depth() / 2.0).floor() as i32;
-    let maximum_z = (position.z() + bounding_box.depth() / 2.0).floor() as i32;
-    let y = position.y().floor() as i32 + y_offset;
+    let minimum_x = (position.x() + bounding_box.minimum_x()).floor() as i32;
+    let maximum_x = (position.x() + bounding_box.maximum_x()).floor() as i32;
+    let minimum_z = (position.z() + bounding_box.minimum_z()).floor() as i32;
+    let maximum_z = (position.z() + bounding_box.maximum_z()).floor() as i32;
+    let y = (position.y() + bounding_box.minimum_y()).floor() as i32 + y_offset;
     (minimum_x..=maximum_x)
         .flat_map(|x| (minimum_z..=maximum_z).map(move |z| BlockPosition::new(x, y, z)))
         .collect()
