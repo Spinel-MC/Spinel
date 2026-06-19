@@ -1,4 +1,4 @@
-use crate::entity::{CreatureEntity, Entity, EntityId, EntityPosition, GenericEntity, Player};
+use crate::entity::{Entity, EntityCreature, EntityId, EntityPosition, GenericEntity, Player};
 use crate::events::entity_attack::EntityAttackEvent;
 use crate::network::client::instance::Client;
 use crate::server::MinecraftServer;
@@ -26,24 +26,22 @@ fn creature_attack_listener(event: &mut EntityAttackEvent, _server: &mut Minecra
 }
 
 #[test]
-fn creature_attack_entity_dispatches_entity_attack_event_without_client_context() {
+fn entity_creature_attack_dispatches_entity_attack_event_without_client_context() {
     let _lock = ENTITY_ATTACK_TEST_LOCK.lock().unwrap();
     reset_entity_attack_state();
     let mut server = MinecraftServer::new();
     let mut world = event_world("creature_attack_event", &mut server);
-    let creature = CreatureEntity::new(EntityType::ZOMBIE);
-    let target = GenericEntity::new(EntityType::PLAYER);
+    let creature = EntityCreature::new(EntityType::ZOMBIE);
+    let target = Entity::Generic(GenericEntity::new(EntityType::PLAYER));
     let creature_id = creature.entity_id();
     let target_id = target.entity_id();
     *ENTITY_ATTACK_TEST_PAIR.lock().unwrap() = Some((creature_id, target_id));
-    world.add_entity(Entity::Creature(creature));
-    world.add_entity(Entity::Generic(target));
+    let mut creature = creature;
+    creature.attack(&target);
+    creature.set_instance(&mut world);
+    target.set_instance(&mut world);
 
-    assert!(
-        world
-            .creature_attack_entity(creature_id, target_id, false)
-            .unwrap()
-    );
+    world.tick();
 
     assert_eq!(
         ENTITY_ATTACK_EVENT_LOG.lock().unwrap().as_slice(),
@@ -52,7 +50,7 @@ fn creature_attack_entity_dispatches_entity_attack_event_without_client_context(
 }
 
 #[test]
-fn creature_attack_entity_swings_main_hand_before_dispatching_attack_event() {
+fn entity_creature_attack_with_swing_swings_main_hand_before_dispatching_attack_event() {
     let _lock = ENTITY_ATTACK_TEST_LOCK.lock().unwrap();
     reset_entity_attack_state();
     let mut server = MinecraftServer::new();
@@ -60,27 +58,24 @@ fn creature_attack_entity_swings_main_hand_before_dispatching_attack_event() {
     let mut viewer_client = queued_client();
     let viewer = entered_player("AttackViewer", &mut viewer_client);
     let viewer_id = viewer.entity_id();
-    let mut creature = CreatureEntity::new(EntityType::ZOMBIE);
+    let mut creature = EntityCreature::new(EntityType::ZOMBIE);
     creature.set_position(EntityPosition::new(1.0, 64.0, 1.0, 0.0, 0.0));
-    let target = GenericEntity::new(EntityType::PLAYER);
+    let target = Entity::Generic(GenericEntity::new(EntityType::PLAYER));
     let creature_id = creature.entity_id();
     let target_id = target.entity_id();
     *ENTITY_ATTACK_TEST_PAIR.lock().unwrap() = Some((creature_id, target_id));
-    world.add_entity(Entity::Player(viewer));
-    world.add_entity(Entity::Creature(creature));
-    world.add_entity(Entity::Generic(target));
+    creature.attack_with_swing(&target);
+    Entity::Player(viewer).set_instance(&mut world);
+    creature.set_instance(&mut world);
+    target.set_instance(&mut world);
     world.add_entity_viewer(creature_id, viewer_id).unwrap();
     viewer_client.discard_queued_outbound_packets();
 
-    assert!(
-        world
-            .creature_attack_entity(creature_id, target_id, true)
-            .unwrap()
-    );
+    world.tick();
 
     assert_eq!(
-        viewer_client.queued_outbound_packet_ids(),
-        vec![EntityAnimationPacket::get_id()]
+        viewer_client.queued_outbound_packet_ids().first().copied(),
+        Some(EntityAnimationPacket::get_id())
     );
     assert_eq!(
         ENTITY_ATTACK_EVENT_LOG.lock().unwrap().as_slice(),

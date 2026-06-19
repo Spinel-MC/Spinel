@@ -144,8 +144,16 @@ pub mod fox {
     flag_definition!(is_sleeping, 18, 0x20, false);
     flag_definition!(is_faceplanted, 18, 0x40, false);
     flag_definition!(is_defending, 18, -0x80i8, false);
-    value_definition!(first_uuid, 19, MetadataValue::OptionalUuid(None));
-    value_definition!(second_uuid, 20, MetadataValue::OptionalUuid(None));
+    value_definition!(
+        first_uuid,
+        19,
+        MetadataValue::OptionalLivingEntityReference(None)
+    );
+    value_definition!(
+        second_uuid,
+        20,
+        MetadataValue::OptionalLivingEntityReference(None)
+    );
 }
 
 pub mod frog {
@@ -249,7 +257,11 @@ pub mod tameable_animal {
     value_definition!(flags, 17, MetadataValue::Byte(0));
     flag_definition!(is_sitting, 17, 0x01, false);
     flag_definition!(is_tamed, 17, 0x04, false);
-    value_definition!(owner, 18, MetadataValue::OptionalUuid(None));
+    value_definition!(
+        owner,
+        18,
+        MetadataValue::OptionalLivingEntityReference(None)
+    );
 }
 
 pub mod cat {

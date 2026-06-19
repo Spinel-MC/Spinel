@@ -2,12 +2,13 @@ use crate::entity::EntityPosition;
 use crate::entity::EntityView;
 use crate::entity::ExperienceOrb;
 use crate::entity::TimedPotionEffect;
-use crate::entity::creature::CreatureEntity;
+use crate::entity::entity_creature::EntityCreature;
 use crate::entity::generic_entity::GenericEntity;
 use crate::entity::identity::EntityId;
 use crate::entity::item::ItemEntity;
 use crate::entity::player::Player;
 use crate::entity::projectile::ProjectileEntity;
+use crate::world::World;
 use spinel_core::network::clientbound::play::attach_entity::AttachEntityPacket;
 use spinel_core::network::clientbound::play::entity_effect::EntityEffectPacket;
 use spinel_core::network::clientbound::play::entity_position_sync::EntityPositionSyncPacket;
@@ -21,12 +22,18 @@ use std::collections::BTreeSet;
 use uuid::Uuid;
 
 pub enum Entity {
-    Creature(CreatureEntity),
+    Creature(EntityCreature),
     ExperienceOrb(ExperienceOrb),
     Generic(GenericEntity),
     Item(ItemEntity),
     Player(Player),
     Projectile(ProjectileEntity),
+}
+
+impl From<EntityCreature> for Entity {
+    fn from(entity_creature: EntityCreature) -> Self {
+        Self::Creature(entity_creature)
+    }
 }
 
 impl Entity {
@@ -136,6 +143,15 @@ impl Entity {
             Self::Player(player) => player.set_position(position),
             Self::Projectile(entity) => entity.set_position(position),
         }
+    }
+
+    pub fn set_instance(self, world: &mut World) -> bool {
+        world.add_entity(self)
+    }
+
+    pub fn set_instance_at(mut self, world: &mut World, position: EntityPosition) -> bool {
+        self.set_position(position);
+        self.set_instance(world)
     }
 
     pub fn velocity(&self) -> Velocity {
@@ -296,7 +312,7 @@ impl Entity {
         }
     }
 
-    pub(crate) fn add_passenger(&mut self, passenger_id: EntityId) -> bool {
+    pub(crate) fn attach_passenger(&mut self, passenger_id: EntityId) -> bool {
         match self {
             Self::Creature(entity) => entity.add_passenger(passenger_id),
             Self::ExperienceOrb(entity) => entity.add_passenger(passenger_id),
@@ -307,7 +323,7 @@ impl Entity {
         }
     }
 
-    pub(crate) fn remove_passenger(&mut self, passenger_id: EntityId) -> bool {
+    pub(crate) fn detach_passenger(&mut self, passenger_id: EntityId) -> bool {
         match self {
             Self::Creature(entity) => entity.remove_passenger(passenger_id),
             Self::ExperienceOrb(entity) => entity.remove_passenger(passenger_id),

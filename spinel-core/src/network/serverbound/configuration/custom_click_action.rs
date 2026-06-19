@@ -1,12 +1,12 @@
 use spinel_network::data_type::DataType;
-use spinel_network::types::Identifier;
+use spinel_network::types::{CustomClickActionPayload, Identifier};
 use spinel_network::{ConnectionState, PacketStruct};
 use std::io::{self, Read, Write};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ConfigurationCustomClickActionPacket {
-    pub key: Identifier,
-    pub payload: Vec<u8>,
+    pub click_action_id: Identifier,
+    pub payload: CustomClickActionPayload,
 }
 
 impl ConfigurationCustomClickActionPacket {
@@ -18,25 +18,22 @@ impl ConfigurationCustomClickActionPacket {
         ConnectionState::Configuration
     }
 
-    pub fn payload_without_end_tag(&self) -> Option<&[u8]> {
-        if self.payload.first() == Some(&0) {
-            return None;
-        }
-        Some(&self.payload)
+    pub fn payload_bytes(&self) -> Option<&[u8]> {
+        self.payload.bytes()
     }
 }
 
 impl DataType for ConfigurationCustomClickActionPacket {
     fn encode<W: Write>(&self, writer: &mut W) -> io::Result<()> {
-        self.key.encode(writer)?;
-        writer.write_all(&self.payload)
+        self.click_action_id.encode(writer)?;
+        self.payload.encode(writer)
     }
 
     fn decode<R: Read>(reader: &mut R) -> io::Result<Self> {
-        let key = Identifier::decode(reader)?;
-        let mut payload = Vec::new();
-        reader.read_to_end(&mut payload)?;
-        Ok(Self { key, payload })
+        Ok(Self {
+            click_action_id: Identifier::decode(reader)?,
+            payload: CustomClickActionPayload::decode(reader)?,
+        })
     }
 }
 

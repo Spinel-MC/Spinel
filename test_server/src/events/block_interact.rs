@@ -7,7 +7,6 @@ use spinel::{
     registry::{ItemStack, Material},
     server::{
         MinecraftServer,
-        entity::PlayerHand,
         events::player_block_interact::PlayerBlockInteractEvent,
         inventory::{Inventory, InventoryType},
         world::Block,
@@ -66,7 +65,7 @@ fn run_showcase_sign_command(
             let Some((world_id, position, player_uuid)) = sign_player_context(event) else {
                 return;
             };
-            let Ok(pathfinding_stick) = EntityShowcase::spawn(server, world_id, position) else {
+            let Ok(pathfinding_sticks) = EntityShowcase::spawn(server, world_id, position) else {
                 return;
             };
             let Some(world) = server.world_manager.world_mut(world_id) else {
@@ -75,7 +74,7 @@ fn run_showcase_sign_command(
             let Some(player) = world.player_by_uuid_mut(player_uuid) else {
                 return;
             };
-            player.set_item_in_hand(PlayerHand::Main, pathfinding_stick);
+            pathfinding_sticks.give_to_player(player);
         }
         ShowcaseSignCommand::World => {
             let Some((world_id, position, _)) = sign_player_context(event) else {

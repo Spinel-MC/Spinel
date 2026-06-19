@@ -1,4 +1,4 @@
-use crate::entity::{CreatureEntity, EntityId};
+use crate::entity::{EntityCreature, EntityId};
 use crate::world::WorldSnapshot;
 use std::sync::{
     Arc, Mutex, MutexGuard,
@@ -50,21 +50,21 @@ impl GoalSelectorHandle {
 pub trait GoalSelector: Send {
     fn should_start(
         &mut self,
-        creature: &CreatureEntity,
+        creature: &EntityCreature,
         world: &WorldSnapshot,
         target_selectors: &mut [Box<dyn TargetSelector>],
     ) -> bool;
 
     fn start(
         &mut self,
-        creature: &mut CreatureEntity,
+        creature: &mut EntityCreature,
         world: &WorldSnapshot,
         target_selectors: &mut [Box<dyn TargetSelector>],
     );
 
     fn tick(
         &mut self,
-        creature: &mut CreatureEntity,
+        creature: &mut EntityCreature,
         world: &WorldSnapshot,
         target_selectors: &mut [Box<dyn TargetSelector>],
         time: u64,
@@ -72,21 +72,21 @@ pub trait GoalSelector: Send {
 
     fn should_end(
         &mut self,
-        creature: &CreatureEntity,
+        creature: &EntityCreature,
         world: &WorldSnapshot,
         target_selectors: &mut [Box<dyn TargetSelector>],
     ) -> bool;
 
     fn end(
         &mut self,
-        creature: &mut CreatureEntity,
+        creature: &mut EntityCreature,
         world: &WorldSnapshot,
         target_selectors: &mut [Box<dyn TargetSelector>],
     );
 
     fn find_target(
         &mut self,
-        creature: &CreatureEntity,
+        creature: &EntityCreature,
         world: &WorldSnapshot,
         target_selectors: &mut [Box<dyn TargetSelector>],
     ) -> Option<EntityId> {
@@ -97,6 +97,6 @@ pub trait GoalSelector: Send {
 }
 
 pub trait TargetSelector: Send {
-    fn find_target(&mut self, creature: &CreatureEntity, world: &WorldSnapshot)
+    fn find_target(&mut self, creature: &EntityCreature, world: &WorldSnapshot)
     -> Option<EntityId>;
 }

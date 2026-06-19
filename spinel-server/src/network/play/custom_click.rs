@@ -13,7 +13,7 @@ fn on_custom_click_action(
     let Some(player) = server.world_manager.player_pointer_for_client(client) else {
         return false;
     };
-    let payload = packet.payload_without_end_tag().map(ToOwned::to_owned);
-    PlayerCustomClickEvent::new(player, packet.key, payload).dispatch(server, client);
+    let payload = packet.payload_bytes().map(ToOwned::to_owned);
+    PlayerCustomClickEvent::new(player, packet.click_action_id, payload).dispatch(server, client);
     true
 }

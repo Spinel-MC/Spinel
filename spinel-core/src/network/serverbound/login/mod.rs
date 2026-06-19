@@ -1,3 +1,4 @@
+pub mod cookie_response;
 mod dependency;
 pub mod encryption_response;
 pub mod login_acknowledge;

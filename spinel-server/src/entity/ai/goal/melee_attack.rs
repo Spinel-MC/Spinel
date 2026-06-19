@@ -1,5 +1,6 @@
 use crate::entity::ai::{AiCooldown, GoalSelector, TargetSelector};
-use crate::entity::{CreatureEntity, EntityId};
+use crate::entity::pathfinding::PathRequest;
+use crate::entity::{EntityCreature, EntityId};
 use crate::world::WorldSnapshot;
 use std::time::Duration;
 
@@ -36,7 +37,7 @@ impl MeleeAttackGoal {
 impl GoalSelector for MeleeAttackGoal {
     fn should_start(
         &mut self,
-        creature: &CreatureEntity,
+        creature: &EntityCreature,
         world: &WorldSnapshot,
         target_selectors: &mut [Box<dyn TargetSelector>],
     ) -> bool {
@@ -46,7 +47,7 @@ impl GoalSelector for MeleeAttackGoal {
 
     fn start(
         &mut self,
-        creature: &mut CreatureEntity,
+        creature: &mut EntityCreature,
         world: &WorldSnapshot,
         _target_selectors: &mut [Box<dyn TargetSelector>],
     ) {
@@ -56,13 +57,18 @@ impl GoalSelector for MeleeAttackGoal {
             .and_then(|target| world.entity(target))
             .map(|target| target.position())
         {
-            creature.set_path_to_default(world, Some(target_position));
+            if creature
+                .set_path_to_in_world(world, PathRequest::from(target_position))
+                .is_err()
+            {
+                self.should_stop = true;
+            }
         }
     }
 
     fn tick(
         &mut self,
-        creature: &mut CreatureEntity,
+        creature: &mut EntityCreature,
         world: &WorldSnapshot,
         target_selectors: &mut [Box<dyn TargetSelector>],
         time: u64,
@@ -80,7 +86,7 @@ impl GoalSelector for MeleeAttackGoal {
         if distance_squared <= self.range_squared {
             creature.look_at_position(target.position());
             if cooldown_is_ready(time, self.last_hit_tick, self.delay_ticks) {
-                creature.queue_attack(target.entity_id(), true);
+                creature.attack_entity_with_swing(target.entity_id());
                 self.last_hit_tick = Some(time);
             }
             return;
@@ -91,12 +97,17 @@ impl GoalSelector for MeleeAttackGoal {
             return;
         }
         self.cooldown.refresh_last_update(time);
-        creature.set_path_to_default(world, Some(target.position()));
+        if creature
+            .set_path_to_in_world(world, PathRequest::from(target.position()))
+            .is_err()
+        {
+            self.should_stop = true;
+        }
     }
 
     fn should_end(
         &mut self,
-        _creature: &CreatureEntity,
+        _creature: &EntityCreature,
         _world: &WorldSnapshot,
         _target_selectors: &mut [Box<dyn TargetSelector>],
     ) -> bool {
@@ -105,7 +116,7 @@ impl GoalSelector for MeleeAttackGoal {
 
     fn end(
         &mut self,
-        creature: &mut CreatureEntity,
+        creature: &mut EntityCreature,
         _world: &WorldSnapshot,
         _target_selectors: &mut [Box<dyn TargetSelector>],
     ) {

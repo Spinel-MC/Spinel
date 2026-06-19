@@ -1,3 +1,14 @@
+mod chat_message;
+mod chat_session;
 mod chunk;
 mod component_changes;
+mod custom_click_action_payload;
 mod entity_metadata;
+mod exact_data_component_predicate;
+mod map_data;
+mod merchant_offer;
+mod message_signature;
+mod score_number_format;
+mod section_position;
+mod statistic;
+mod waypoint;

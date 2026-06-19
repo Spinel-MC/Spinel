@@ -7,7 +7,7 @@ use crate::types::var_int::VarIntWrapper;
 use crate::types::{
     GlobalPos, MainHand, Particle, Position, Quaternionf, ResolvableProfile, Slot, Vector3f,
 };
-use crate::wrappers::JsonTextComponent;
+use crate::wrappers::NbtTextComponent;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct MetadataEntry {
@@ -30,7 +30,7 @@ pub enum MetadataValue {
     Position(Position),
     OptionalPosition(Option<Position>),
     Direction(i32),
-    OptionalUuid(Option<Uuid>),
+    OptionalLivingEntityReference(Option<Uuid>),
     BlockState(i32),
     OptionalBlockState(i32),
     Particle(Particle),
@@ -102,11 +102,11 @@ impl DataType for MetadataValue {
             }
             MetadataValue::Text(v) => {
                 VarIntWrapper(5).encode(w)?;
-                JsonTextComponent(v.clone()).encode(w)
+                NbtTextComponent(v.clone()).encode(w)
             }
             MetadataValue::OptionalText(v) => {
                 VarIntWrapper(6).encode(w)?;
-                v.clone().map(JsonTextComponent).encode(w)
+                v.clone().map(NbtTextComponent).encode(w)
             }
             MetadataValue::Slot(v) => {
                 VarIntWrapper(7).encode(w)?;
@@ -134,7 +134,7 @@ impl DataType for MetadataValue {
                 VarIntWrapper(12).encode(w)?;
                 VarIntWrapper(*v).encode(w)
             }
-            MetadataValue::OptionalUuid(v) => {
+            MetadataValue::OptionalLivingEntityReference(v) => {
                 VarIntWrapper(13).encode(w)?;
                 v.encode(w)
             }
@@ -251,9 +251,9 @@ impl DataType for MetadataValue {
             2 => Ok(MetadataValue::Long(i64::decode(r)?)),
             3 => Ok(MetadataValue::Float(f32::decode(r)?)),
             4 => Ok(MetadataValue::String(String::decode(r)?)),
-            5 => Ok(MetadataValue::Text(JsonTextComponent::decode(r)?.0)),
+            5 => Ok(MetadataValue::Text(NbtTextComponent::decode(r)?.0)),
             6 => Ok(MetadataValue::OptionalText(
-                Option::<JsonTextComponent>::decode(r)?.map(|w| w.0),
+                Option::<NbtTextComponent>::decode(r)?.map(|component| component.0),
             )),
             7 => Ok(MetadataValue::Slot(Slot::decode(r)?)),
             8 => Ok(MetadataValue::Boolean(bool::decode(r)?)),
@@ -267,7 +267,9 @@ impl DataType for MetadataValue {
                 r,
             )?)),
             12 => Ok(MetadataValue::Direction(VarIntWrapper::decode(r)?.0)),
-            13 => Ok(MetadataValue::OptionalUuid(Option::<Uuid>::decode(r)?)),
+            13 => Ok(MetadataValue::OptionalLivingEntityReference(
+                Option::<Uuid>::decode(r)?,
+            )),
             14 => Ok(MetadataValue::BlockState(VarIntWrapper::decode(r)?.0)),
             15 => Ok(MetadataValue::OptionalBlockState(
                 VarIntWrapper::decode(r)?.0,

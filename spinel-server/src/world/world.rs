@@ -1816,7 +1816,7 @@ impl World {
         })
     }
 
-    pub fn add_entity(&mut self, mut entity: Entity) -> bool {
+    pub(crate) fn add_entity(&mut self, mut entity: Entity) -> bool {
         if self.dispatch_add_entity_to_instance_event(&mut entity) {
             return false;
         }
@@ -1884,26 +1884,24 @@ impl World {
         self.entities.iter()
     }
 
-    pub fn entity_by_id(&self, entity_id: EntityId) -> Option<&Entity> {
+    pub fn entity(&self, entity_id: EntityId) -> Option<&Entity> {
         self.entities
             .iter()
             .find(|entity| entity.entity_id() == entity_id)
     }
 
-    pub fn creature_by_id_mut(
-        &mut self,
-        entity_id: EntityId,
-    ) -> Option<&mut crate::entity::CreatureEntity> {
-        self.entities.iter_mut().find_map(|entity| match entity {
-            Entity::Creature(creature) if creature.entity_id() == entity_id => Some(creature),
-            _ => None,
-        })
-    }
-
-    pub(crate) fn entity_by_id_mut(&mut self, entity_id: EntityId) -> Option<&mut Entity> {
+    pub fn entity_mut(&mut self, entity_id: EntityId) -> Option<&mut Entity> {
         self.entities
             .iter_mut()
             .find(|entity| entity.entity_id() == entity_id)
+    }
+
+    pub(crate) fn entity_by_id(&self, entity_id: EntityId) -> Option<&Entity> {
+        self.entity(entity_id)
+    }
+
+    pub(crate) fn entity_by_id_mut(&mut self, entity_id: EntityId) -> Option<&mut Entity> {
+        self.entity_mut(entity_id)
     }
 
     pub fn entity_by_uuid(&self, entity_uuid: Uuid) -> Option<&Entity> {
@@ -1976,7 +1974,12 @@ impl World {
         Ok(true)
     }
 
-    pub fn add_passenger(&mut self, vehicle_id: EntityId, passenger_id: EntityId) -> Result<bool> {
+    #[cfg(test)]
+    pub(crate) fn add_passenger(
+        &mut self,
+        vehicle_id: EntityId,
+        passenger_id: EntityId,
+    ) -> Result<bool> {
         if vehicle_id == passenger_id {
             return Ok(false);
         }
@@ -1999,23 +2002,31 @@ impl World {
         else {
             return Ok(false);
         };
-        let Some(passenger_index) = self
+        let passenger_index = self
             .entities
             .iter()
-            .position(|entity| entity.entity_id() == passenger_id)
-        else {
-            return Ok(false);
+            .position(|entity| entity.entity_id() == passenger_id);
+        let Some(passenger_index) = passenger_index else {
+            let vehicle = &mut self.entities[vehicle_index];
+            if !vehicle.detach_passenger(passenger_id) {
+                return Ok(false);
+            }
+            let passenger_packet = vehicle.passenger_packet();
+            self.send_packet_to_player_viewers_and_self(vehicle_id, passenger_packet)?;
+            return Ok(true);
         };
-        let passenger_position =
-            self.entities[vehicle_index].passenger_position(&self.entities[passenger_index]);
         let passenger_packet = {
             let (vehicle, passenger) =
                 distinct_entities_mut(&mut self.entities, vehicle_index, passenger_index);
-            vehicle.add_passenger(passenger_id);
-            passenger.set_vehicle(vehicle_id);
-            passenger.set_position(passenger_position);
+            let passenger_was_added = vehicle
+                .add_passenger(passenger)
+                .map_err(|passenger_error| Error::other(passenger_error.to_string()))?;
+            if !passenger_was_added {
+                return Ok(false);
+            }
             vehicle.passenger_packet()
         };
+        let passenger_position = self.entities[passenger_index].position();
         self.entity_tracker
             .move_entity(passenger_id, passenger_position);
         self.schedule_entity_visibility_refresh(passenger_id);
@@ -2030,7 +2041,7 @@ impl World {
         Ok(true)
     }
 
-    pub fn remove_passenger(
+    pub(crate) fn remove_passenger(
         &mut self,
         vehicle_id: EntityId,
         passenger_id: EntityId,
@@ -2045,16 +2056,30 @@ impl World {
         else {
             return Ok(false);
         };
-        let passenger_packet = {
+        let passenger_index = self
+            .entities
+            .iter()
+            .position(|entity| entity.entity_id() == passenger_id);
+        let Some(passenger_index) = passenger_index else {
             let vehicle = &mut self.entities[vehicle_index];
-            if !vehicle.remove_passenger(passenger_id) {
+            if !vehicle.detach_passenger(passenger_id) {
+                return Ok(false);
+            }
+            let passenger_packet = vehicle.passenger_packet();
+            self.send_packet_to_player_viewers_and_self(vehicle_id, passenger_packet)?;
+            return Ok(true);
+        };
+        let passenger_packet = {
+            let (vehicle, passenger) =
+                distinct_entities_mut(&mut self.entities, vehicle_index, passenger_index);
+            let passenger_was_removed = vehicle
+                .remove_passenger(passenger)
+                .map_err(|passenger_error| Error::other(passenger_error.to_string()))?;
+            if !passenger_was_removed {
                 return Ok(false);
             }
             vehicle.passenger_packet()
         };
-        if let Some(passenger) = self.entity_by_id_mut(passenger_id) {
-            passenger.clear_vehicle();
-        }
         self.send_packet_to_player_viewers_and_self(vehicle_id, passenger_packet)?;
         if let Some(position_sync_packet) = self
             .entity_by_id_mut(passenger_id)

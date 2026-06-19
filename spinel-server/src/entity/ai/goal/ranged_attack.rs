@@ -1,12 +1,13 @@
 use crate::entity::ai::goal::melee_attack::{cooldown_is_ready, duration_to_ticks};
 use crate::entity::ai::{AiCooldown, GoalSelector, TargetSelector};
-use crate::entity::{CreatureEntity, EntityId, ProjectileEntity};
+use crate::entity::pathfinding::PathRequest;
+use crate::entity::{EntityCreature, EntityId, ProjectileEntity};
 use crate::world::WorldSnapshot;
 use spinel_registry::EntityType;
 use std::io::{Error, ErrorKind, Result};
 use std::time::Duration;
 
-type ProjectileGenerator = Box<dyn Fn(&CreatureEntity) -> ProjectileEntity + Send>;
+type ProjectileGenerator = Box<dyn Fn(&EntityCreature) -> ProjectileEntity + Send>;
 
 pub struct RangedAttackGoal {
     delay_ticks: u64,
@@ -64,7 +65,7 @@ impl RangedAttackGoal {
 
     pub fn set_projectile_generator(
         &mut self,
-        projectile_generator: impl Fn(&CreatureEntity) -> ProjectileEntity + Send + 'static,
+        projectile_generator: impl Fn(&EntityCreature) -> ProjectileEntity + Send + 'static,
     ) {
         self.projectile_generator = Box::new(projectile_generator);
     }
@@ -73,7 +74,7 @@ impl RangedAttackGoal {
 impl GoalSelector for RangedAttackGoal {
     fn should_start(
         &mut self,
-        creature: &CreatureEntity,
+        creature: &EntityCreature,
         world: &WorldSnapshot,
         target_selectors: &mut [Box<dyn TargetSelector>],
     ) -> bool {
@@ -83,7 +84,7 @@ impl GoalSelector for RangedAttackGoal {
 
     fn start(
         &mut self,
-        creature: &mut CreatureEntity,
+        creature: &mut EntityCreature,
         world: &WorldSnapshot,
         _target_selectors: &mut [Box<dyn TargetSelector>],
     ) {
@@ -93,13 +94,18 @@ impl GoalSelector for RangedAttackGoal {
             .and_then(|target| world.entity(target))
             .map(|target| target.position())
         {
-            creature.set_path_to_default(world, Some(target_position));
+            if creature
+                .set_path_to_in_world(world, PathRequest::from(target_position))
+                .is_err()
+            {
+                self.should_stop = true;
+            }
         }
     }
 
     fn tick(
         &mut self,
-        creature: &mut CreatureEntity,
+        creature: &mut EntityCreature,
         world: &WorldSnapshot,
         target_selectors: &mut [Box<dyn TargetSelector>],
         time: u64,
@@ -141,12 +147,17 @@ impl GoalSelector for RangedAttackGoal {
             return;
         }
         self.cooldown.refresh_last_update(time);
-        creature.set_path_to_default(world, Some(target.position()));
+        if creature
+            .set_path_to_in_world(world, PathRequest::from(target.position()))
+            .is_err()
+        {
+            self.should_stop = true;
+        }
     }
 
     fn should_end(
         &mut self,
-        _creature: &CreatureEntity,
+        _creature: &EntityCreature,
         _world: &WorldSnapshot,
         _target_selectors: &mut [Box<dyn TargetSelector>],
     ) -> bool {
@@ -155,7 +166,7 @@ impl GoalSelector for RangedAttackGoal {
 
     fn end(
         &mut self,
-        creature: &mut CreatureEntity,
+        creature: &mut EntityCreature,
         _world: &WorldSnapshot,
         _target_selectors: &mut [Box<dyn TargetSelector>],
     ) {

@@ -9,7 +9,7 @@ pub struct CommandSuggestionsRequestPacket {
 
 impl CommandSuggestionsRequestPacket {
     pub const fn get_id_const() -> i32 {
-        0x0f
+        0x0e
     }
 
     pub const fn get_state_const() -> ConnectionState {
@@ -33,7 +33,7 @@ impl DataType for CommandSuggestionsRequestPacket {
 
 impl PacketStruct for CommandSuggestionsRequestPacket {
     fn get_id() -> i32 {
-        0x0f
+        0x0e
     }
 
     fn get_state() -> ConnectionState {

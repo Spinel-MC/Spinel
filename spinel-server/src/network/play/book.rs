@@ -9,7 +9,7 @@ use spinel_registry::ItemStack;
 #[packet_listener]
 fn on_edit_book(client: &mut Client, packet: EditBookPacket, server: &mut MinecraftServer) -> bool {
     let minestom_slot =
-        slot_conversion::convert_player_inventory_slot_to_minestom_slot(packet.slot);
+        slot_conversion::convert_player_inventory_slot_to_minestom_slot(packet.slot.0);
     if !slot_conversion::is_hotbar_or_offhand_slot(minestom_slot) {
         return true;
     }

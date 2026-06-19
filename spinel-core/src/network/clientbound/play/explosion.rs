@@ -87,7 +87,7 @@ impl DataType for ExplosionParticle {
 
     fn decode<R: Read>(reader: &mut R) -> io::Result<Self> {
         match VarIntWrapper::decode(reader)?.0 {
-            15 => Ok(Self::Explosion),
+            23 => Ok(Self::Explosion),
             particle_id => Err(io::Error::new(
                 io::ErrorKind::InvalidData,
                 format!("Unknown explosion particle type: {particle_id}"),
@@ -99,7 +99,7 @@ impl DataType for ExplosionParticle {
 impl ExplosionParticle {
     pub const fn protocol_id(self) -> i32 {
         match self {
-            Self::Explosion => 15,
+            Self::Explosion => 23,
         }
     }
 }

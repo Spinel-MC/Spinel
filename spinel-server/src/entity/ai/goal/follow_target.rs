@@ -1,5 +1,6 @@
 use crate::entity::ai::{GoalSelector, TargetSelector};
-use crate::entity::{CreatureEntity, EntityId, EntityPosition};
+use crate::entity::pathfinding::PathRequest;
+use crate::entity::{EntityCreature, EntityId, EntityPosition};
 use crate::world::WorldSnapshot;
 use std::time::Duration;
 
@@ -26,7 +27,7 @@ impl FollowTargetGoal {
 impl GoalSelector for FollowTargetGoal {
     fn should_start(
         &mut self,
-        creature: &CreatureEntity,
+        creature: &EntityCreature,
         world: &WorldSnapshot,
         target_selectors: &mut [Box<dyn TargetSelector>],
     ) -> bool {
@@ -45,7 +46,7 @@ impl GoalSelector for FollowTargetGoal {
 
     fn start(
         &mut self,
-        creature: &mut CreatureEntity,
+        creature: &mut EntityCreature,
         world: &WorldSnapshot,
         _target_selectors: &mut [Box<dyn TargetSelector>],
     ) {
@@ -67,12 +68,17 @@ impl GoalSelector for FollowTargetGoal {
             self.should_force_end = true;
             return;
         }
-        creature.set_path_to_default(world, Some(target.position()));
+        if creature
+            .set_path_to_in_world(world, PathRequest::from(target.position()))
+            .is_err()
+        {
+            self.should_force_end = true;
+        }
     }
 
     fn tick(
         &mut self,
-        creature: &mut CreatureEntity,
+        creature: &mut EntityCreature,
         world: &WorldSnapshot,
         _target_selectors: &mut [Box<dyn TargetSelector>],
         time: u64,
@@ -98,12 +104,17 @@ impl GoalSelector for FollowTargetGoal {
         }
         self.last_update_tick = time;
         self.last_target_position = Some(target_position);
-        creature.set_path_to_default(world, Some(target_position));
+        if creature
+            .set_path_to_in_world(world, PathRequest::from(target_position))
+            .is_err()
+        {
+            self.should_force_end = true;
+        }
     }
 
     fn should_end(
         &mut self,
-        creature: &CreatureEntity,
+        creature: &EntityCreature,
         world: &WorldSnapshot,
         _target_selectors: &mut [Box<dyn TargetSelector>],
     ) -> bool {
@@ -118,7 +129,7 @@ impl GoalSelector for FollowTargetGoal {
 
     fn end(
         &mut self,
-        creature: &mut CreatureEntity,
+        creature: &mut EntityCreature,
         _world: &WorldSnapshot,
         _target_selectors: &mut [Box<dyn TargetSelector>],
     ) {

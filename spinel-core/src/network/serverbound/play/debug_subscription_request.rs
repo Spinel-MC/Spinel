@@ -10,7 +10,7 @@ pub struct DebugSubscriptionRequestPacket {
 
 impl DebugSubscriptionRequestPacket {
     pub const fn get_id_const() -> i32 {
-        0x0E
+        0x16
     }
 
     pub const fn get_state_const() -> ConnectionState {

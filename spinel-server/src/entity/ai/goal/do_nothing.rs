@@ -1,4 +1,4 @@
-use crate::entity::CreatureEntity;
+use crate::entity::EntityCreature;
 use crate::entity::ai::{GoalSelector, TargetSelector};
 use crate::world::WorldSnapshot;
 use rand::Rng;
@@ -23,7 +23,7 @@ impl DoNothingGoal {
 impl GoalSelector for DoNothingGoal {
     fn should_start(
         &mut self,
-        _creature: &CreatureEntity,
+        _creature: &EntityCreature,
         _world: &WorldSnapshot,
         _target_selectors: &mut [Box<dyn TargetSelector>],
     ) -> bool {
@@ -32,7 +32,7 @@ impl GoalSelector for DoNothingGoal {
 
     fn start(
         &mut self,
-        _creature: &mut CreatureEntity,
+        _creature: &mut EntityCreature,
         _world: &WorldSnapshot,
         _target_selectors: &mut [Box<dyn TargetSelector>],
     ) {
@@ -41,7 +41,7 @@ impl GoalSelector for DoNothingGoal {
 
     fn tick(
         &mut self,
-        _creature: &mut CreatureEntity,
+        _creature: &mut EntityCreature,
         _world: &WorldSnapshot,
         _target_selectors: &mut [Box<dyn TargetSelector>],
         _time: u64,
@@ -50,7 +50,7 @@ impl GoalSelector for DoNothingGoal {
 
     fn should_end(
         &mut self,
-        _creature: &CreatureEntity,
+        _creature: &EntityCreature,
         _world: &WorldSnapshot,
         _target_selectors: &mut [Box<dyn TargetSelector>],
     ) -> bool {
@@ -60,7 +60,7 @@ impl GoalSelector for DoNothingGoal {
 
     fn end(
         &mut self,
-        _creature: &mut CreatureEntity,
+        _creature: &mut EntityCreature,
         _world: &WorldSnapshot,
         _target_selectors: &mut [Box<dyn TargetSelector>],
     ) {

@@ -1,27 +1,34 @@
 use crate::entity::ai::{CreatureAiAction, EntityAiGroup};
-use crate::entity::pathfinding::{Navigator, NodeFollowerPhysicsTiming};
-use crate::entity::{EntityId, EntityPosition, GenericEntity};
-use crate::world::WorldSnapshot;
+use crate::entity::metadata::EntityMeta;
+use crate::entity::pathfinding::{
+    Navigator, NodeFollowerPhysicsTiming, PathRequest, SetPathToError,
+};
+use crate::entity::{Entity, EntityId, EntityPosition, GenericEntity};
+use crate::world::{World, WorldSnapshot};
 use spinel_registry::EntityType;
 use std::ops::{Deref, DerefMut};
 use uuid::Uuid;
 
-pub struct CreatureEntity {
+pub struct EntityCreature {
     entity: GenericEntity,
     ai_groups: Vec<EntityAiGroup>,
     navigator: Navigator,
     target: Option<EntityId>,
+    pending_path_request: Option<PathRequest>,
+    last_path_error: Option<SetPathToError>,
     pending_ai_actions: Vec<CreatureAiAction>,
     removal_animation_delay_millis: i32,
 }
 
-impl CreatureEntity {
+impl EntityCreature {
     pub fn new(entity_type: EntityType) -> Self {
         Self {
             entity: GenericEntity::new(entity_type),
             ai_groups: Vec::new(),
             navigator: Navigator::default(),
             target: None,
+            pending_path_request: None,
+            last_path_error: None,
             pending_ai_actions: Vec::new(),
             removal_animation_delay_millis: 1000,
         }
@@ -35,12 +42,24 @@ impl CreatureEntity {
         &mut self.entity
     }
 
+    pub fn entity_meta_mut(&mut self) -> EntityMeta<'_> {
+        self.entity.entity_meta_mut()
+    }
+
     pub const fn navigator(&self) -> &Navigator {
         &self.navigator
     }
 
     pub fn navigator_mut(&mut self) -> &mut Navigator {
         &mut self.navigator
+    }
+
+    pub const fn last_path_error(&self) -> Option<SetPathToError> {
+        self.last_path_error
+    }
+
+    pub fn take_last_path_error(&mut self) -> Option<SetPathToError> {
+        self.last_path_error.take()
     }
 
     pub fn ai_groups(&self) -> &[EntityAiGroup] {
@@ -86,7 +105,19 @@ impl CreatureEntity {
         true
     }
 
-    pub(crate) fn queue_attack(&mut self, target: EntityId, should_swing_main_hand: bool) {
+    pub fn attack(&mut self, target: &Entity) {
+        self.queue_attack(target.entity_id(), false);
+    }
+
+    pub fn attack_with_swing(&mut self, target: &Entity) {
+        self.queue_attack(target.entity_id(), true);
+    }
+
+    pub(crate) fn attack_entity_with_swing(&mut self, target: EntityId) {
+        self.queue_attack(target, true);
+    }
+
+    fn queue_attack(&mut self, target: EntityId, should_swing_main_hand: bool) {
         self.pending_ai_actions.push(CreatureAiAction::Attack {
             source: self.entity_id(),
             target,
@@ -114,71 +145,55 @@ impl CreatureEntity {
         std::mem::take(&mut self.pending_ai_actions)
     }
 
-    pub fn set_path_to_default(
+    pub fn set_path_to(&mut self, request: PathRequest) -> Result<bool, SetPathToError> {
+        self.last_path_error = None;
+        if request.destination().is_none() {
+            self.pending_path_request = None;
+            self.navigator.reset();
+            return Ok(false);
+        }
+        if self.entity.world().is_none() {
+            return Err(SetPathToError::EntityHasNoWorld);
+        }
+        self.pending_path_request = Some(request);
+        Ok(true)
+    }
+
+    pub(crate) fn set_path_to_in_world(
         &mut self,
         world: &WorldSnapshot,
-        goal: Option<EntityPosition>,
-    ) -> bool {
-        if self.entity.world().is_none() {
-            return false;
+        request: PathRequest,
+    ) -> Result<bool, SetPathToError> {
+        self.last_path_error = None;
+        if request.destination().is_none() {
+            self.navigator.reset();
+            return Ok(false);
         }
+        if self.entity.world().is_none() {
+            return Err(SetPathToError::EntityHasNoWorld);
+        }
+        self.resolve_path_request(world, request)
+    }
+
+    fn resolve_path_request(
+        &mut self,
+        world: &WorldSnapshot,
+        request: PathRequest,
+    ) -> Result<bool, SetPathToError> {
         let start = self.entity.position();
         let bounding_box = self.entity.bounding_box();
         let is_on_ground = self.entity.is_on_ground();
         self.navigator
-            .set_path_to_default(world, start, goal, bounding_box, is_on_ground)
+            .set_path_to(world, start, bounding_box, is_on_ground, request)
     }
 
-    pub fn set_path_to_with_completion(
-        &mut self,
-        world: &WorldSnapshot,
-        goal: Option<EntityPosition>,
-        minimum_distance: f64,
-        on_complete: Option<Box<dyn FnOnce() + Send>>,
-    ) -> bool {
-        if self.entity.world().is_none() {
-            return false;
-        }
-        let start = self.entity.position();
-        let bounding_box = self.entity.bounding_box();
-        let is_on_ground = self.entity.is_on_ground();
-        self.navigator.set_path_to_with_completion(
-            world,
-            start,
-            goal,
-            bounding_box,
-            is_on_ground,
-            minimum_distance,
-            on_complete,
-        )
+    pub fn set_instance(self, world: &mut World) -> bool {
+        world.add_entity(crate::entity::Entity::Creature(self))
     }
 
-    pub fn set_path_to(
-        &mut self,
-        world: &WorldSnapshot,
-        goal: Option<EntityPosition>,
-        minimum_distance: f64,
-        maximum_distance: f64,
-        variance: f64,
-        on_complete: Option<Box<dyn FnOnce() + Send>>,
-    ) -> bool {
-        if self.entity.world().is_none() {
-            return false;
-        }
-        let start = self.entity.position();
-        let bounding_box = self.entity.bounding_box();
-        let is_on_ground = self.entity.is_on_ground();
-        self.navigator.set_path_to(
-            world,
-            start,
-            goal,
-            bounding_box,
-            is_on_ground,
-            minimum_distance,
-            maximum_distance,
-            variance,
-            on_complete,
-        )
+    pub fn set_instance_at(mut self, world: &mut World, position: EntityPosition) -> bool {
+        self.set_position(position);
+        self.set_instance(world)
     }
 
     pub fn ai_tick(&mut self, world: &WorldSnapshot, time: u64) {
@@ -215,12 +230,22 @@ impl CreatureEntity {
 
     fn tick_navigation(&mut self, world: &WorldSnapshot, time: u64) {
         self.ai_tick(world, time);
+        self.resolve_pending_path_request(world);
         let entity_is_dead = self.entity.is_dead();
         self.navigator.tick(&mut self.entity, world, entity_is_dead);
     }
+
+    pub(crate) fn resolve_pending_path_request(&mut self, world: &WorldSnapshot) {
+        let Some(request) = self.pending_path_request.take() else {
+            return;
+        };
+        if let Err(path_error) = self.resolve_path_request(world, request) {
+            self.last_path_error = Some(path_error);
+        }
+    }
 }
 
-impl Deref for CreatureEntity {
+impl Deref for EntityCreature {
     type Target = GenericEntity;
 
     fn deref(&self) -> &Self::Target {
@@ -228,8 +253,20 @@ impl Deref for CreatureEntity {
     }
 }
 
-impl DerefMut for CreatureEntity {
+impl DerefMut for EntityCreature {
     fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.entity
+    }
+}
+
+impl AsRef<GenericEntity> for EntityCreature {
+    fn as_ref(&self) -> &GenericEntity {
+        &self.entity
+    }
+}
+
+impl AsMut<GenericEntity> for EntityCreature {
+    fn as_mut(&mut self) -> &mut GenericEntity {
         &mut self.entity
     }
 }

@@ -47,6 +47,29 @@ impl DataType for Vector3d {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Vector3i {
+    pub x: i32,
+    pub y: i32,
+    pub z: i32,
+}
+
+impl DataType for Vector3i {
+    fn encode<W: Write>(&self, w: &mut W) -> io::Result<()> {
+        self.x.encode(w)?;
+        self.y.encode(w)?;
+        self.z.encode(w)
+    }
+
+    fn decode<R: Read>(r: &mut R) -> io::Result<Self> {
+        Ok(Vector3i {
+            x: i32::decode(r)?,
+            y: i32::decode(r)?,
+            z: i32::decode(r)?,
+        })
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Quaternionf {
     pub x: f32,

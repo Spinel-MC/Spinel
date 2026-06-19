@@ -1,5 +1,5 @@
 use crate::entity::metadata::{
-    ArmadilloState, AxolotlVariant, CopperGolemState, CopperGolemWeatherState, CreeperState,
+    AxolotlVariant, CopperGolemState, CopperGolemWeatherState, CreeperState, EntityMeta,
     FoxVariant, HorseVariant, LlamaVariant, MetadataHolder, MooshroomVariant, PandaGene,
     ParrotColor, PufferfishState, RabbitVariant, SalmonSize, SnifferState, SpellcasterIllagerSpell,
     TropicalFishPattern, TropicalFishVariant, VillagerData, definitions,
@@ -236,6 +236,10 @@ impl GenericEntity {
 
     pub const fn metadata_mut(&mut self) -> &mut MetadataHolder {
         &mut self.metadata
+    }
+
+    pub fn entity_meta_mut(&mut self) -> EntityMeta<'_> {
+        EntityMeta::new(self)
     }
 
     pub fn component<T>(&self, component: DataComponentType<T>) -> Option<T>
@@ -1119,22 +1123,6 @@ impl GenericEntity {
         );
     }
 
-    pub fn armadillo_state(&self) -> ArmadilloState {
-        match self.metadata.value(&definitions::armadillo::state()) {
-            MetadataValue::ArmadilloState(state) => {
-                ArmadilloState::from_protocol_id(state).unwrap_or_default()
-            }
-            _ => ArmadilloState::default(),
-        }
-    }
-
-    pub fn set_armadillo_state(&mut self, state: ArmadilloState) {
-        self.metadata.set(
-            &definitions::armadillo::state(),
-            MetadataValue::ArmadilloState(state.protocol_id()),
-        );
-    }
-
     pub fn sniffer_state(&self) -> SnifferState {
         match self.metadata.value(&definitions::sniffer::state()) {
             MetadataValue::SnifferState(state) => {
@@ -1165,47 +1153,6 @@ impl GenericEntity {
         self.metadata.set(
             &definitions::sniffer::drop_seed_at_tick(),
             MetadataValue::VarInt(tick),
-        );
-    }
-
-    pub fn is_angry_bee(&self) -> bool {
-        self.metadata.flag(&definitions::bee::is_angry())
-    }
-
-    pub fn set_angry_bee(&mut self, is_angry: bool) {
-        self.metadata
-            .set_flag(&definitions::bee::is_angry(), is_angry);
-    }
-
-    pub fn has_bee_stung(&self) -> bool {
-        self.metadata.flag(&definitions::bee::has_stung())
-    }
-
-    pub fn set_bee_has_stung(&mut self, has_stung: bool) {
-        self.metadata
-            .set_flag(&definitions::bee::has_stung(), has_stung);
-    }
-
-    pub fn bee_has_nectar(&self) -> bool {
-        self.metadata.flag(&definitions::bee::has_nectar())
-    }
-
-    pub fn set_bee_has_nectar(&mut self, has_nectar: bool) {
-        self.metadata
-            .set_flag(&definitions::bee::has_nectar(), has_nectar);
-    }
-
-    pub fn bee_anger_ticks(&self) -> i64 {
-        match self.metadata.value(&definitions::bee::anger_time_ticks()) {
-            MetadataValue::Long(anger_ticks) => anger_ticks,
-            _ => -1,
-        }
-    }
-
-    pub fn set_bee_anger_ticks(&mut self, anger_ticks: i64) {
-        self.metadata.set(
-            &definitions::bee::anger_time_ticks(),
-            MetadataValue::Long(anger_ticks),
         );
     }
 
@@ -1659,7 +1606,7 @@ impl GenericEntity {
 
     pub fn fox_first_uuid(&self) -> Option<Uuid> {
         match self.metadata.value(&definitions::fox::first_uuid()) {
-            MetadataValue::OptionalUuid(uuid) => uuid,
+            MetadataValue::OptionalLivingEntityReference(uuid) => uuid,
             _ => None,
         }
     }
@@ -1667,13 +1614,13 @@ impl GenericEntity {
     pub fn set_fox_first_uuid(&mut self, uuid: Option<Uuid>) {
         self.metadata.set(
             &definitions::fox::first_uuid(),
-            MetadataValue::OptionalUuid(uuid),
+            MetadataValue::OptionalLivingEntityReference(uuid),
         );
     }
 
     pub fn fox_second_uuid(&self) -> Option<Uuid> {
         match self.metadata.value(&definitions::fox::second_uuid()) {
-            MetadataValue::OptionalUuid(uuid) => uuid,
+            MetadataValue::OptionalLivingEntityReference(uuid) => uuid,
             _ => None,
         }
     }
@@ -1681,7 +1628,7 @@ impl GenericEntity {
     pub fn set_fox_second_uuid(&mut self, uuid: Option<Uuid>) {
         self.metadata.set(
             &definitions::fox::second_uuid(),
-            MetadataValue::OptionalUuid(uuid),
+            MetadataValue::OptionalLivingEntityReference(uuid),
         );
     }
 
@@ -1969,7 +1916,7 @@ impl GenericEntity {
 
     pub fn tameable_animal_owner(&self) -> Option<Uuid> {
         match self.metadata.value(&definitions::tameable_animal::owner()) {
-            MetadataValue::OptionalUuid(owner) => owner,
+            MetadataValue::OptionalLivingEntityReference(owner) => owner,
             _ => None,
         }
     }
@@ -1977,7 +1924,7 @@ impl GenericEntity {
     pub fn set_tameable_animal_owner(&mut self, owner: Option<Uuid>) {
         self.metadata.set(
             &definitions::tameable_animal::owner(),
-            MetadataValue::OptionalUuid(owner),
+            MetadataValue::OptionalLivingEntityReference(owner),
         );
     }
 
@@ -2387,20 +2334,6 @@ impl GenericEntity {
         );
     }
 
-    pub fn is_attacking_ghast(&self) -> bool {
-        match self.metadata.value(&definitions::ghast::is_attacking()) {
-            MetadataValue::Boolean(is_attacking) => is_attacking,
-            _ => false,
-        }
-    }
-
-    pub fn set_attacking_ghast(&mut self, is_attacking: bool) {
-        self.metadata.set(
-            &definitions::ghast::is_attacking(),
-            MetadataValue::Boolean(is_attacking),
-        );
-    }
-
     pub fn phantom_size(&self) -> i32 {
         match self.metadata.value(&definitions::phantom::size()) {
             MetadataValue::VarInt(size) => size,
@@ -2413,24 +2346,7 @@ impl GenericEntity {
             .set(&definitions::phantom::size(), MetadataValue::VarInt(size));
     }
 
-    pub fn guardian_is_retracting_spikes(&self) -> bool {
-        match self
-            .metadata
-            .value(&definitions::guardian::is_retracting_spikes())
-        {
-            MetadataValue::Boolean(is_retracting) => is_retracting,
-            _ => false,
-        }
-    }
-
-    pub fn set_guardian_retracting_spikes(&mut self, is_retracting: bool) {
-        self.metadata.set(
-            &definitions::guardian::is_retracting_spikes(),
-            MetadataValue::Boolean(is_retracting),
-        );
-    }
-
-    pub fn guardian_target_entity_id(&self) -> i32 {
+    pub(crate) fn guardian_target_entity_id(&self) -> i32 {
         match self
             .metadata
             .value(&definitions::guardian::target_entity_id())
@@ -2440,7 +2356,7 @@ impl GenericEntity {
         }
     }
 
-    pub fn set_guardian_target_entity_id(&mut self, entity_id: i32) {
+    pub(crate) fn set_guardian_target_entity_id(&mut self, entity_id: i32) {
         self.metadata.set(
             &definitions::guardian::target_entity_id(),
             MetadataValue::VarInt(entity_id),
@@ -2499,15 +2415,6 @@ impl GenericEntity {
     pub fn set_climbing_spider(&mut self, is_climbing: bool) {
         self.metadata
             .set_flag(&definitions::spider::is_climbing(), is_climbing);
-    }
-
-    pub fn is_attacking_vex(&self) -> bool {
-        self.metadata.flag(&definitions::vex::is_attacking())
-    }
-
-    pub fn set_attacking_vex(&mut self, is_attacking: bool) {
-        self.metadata
-            .set_flag(&definitions::vex::is_attacking(), is_attacking);
     }
 
     pub fn warden_anger_level(&self) -> i32 {

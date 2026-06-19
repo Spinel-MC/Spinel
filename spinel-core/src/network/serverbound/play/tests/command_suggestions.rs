@@ -12,6 +12,6 @@ fn command_suggestions_request_round_trips_minestom_shape() {
     packet.encode(&mut payload).unwrap();
     let decoded_packet = CommandSuggestionsRequestPacket::decode(&mut payload.as_slice()).unwrap();
 
-    assert_eq!(CommandSuggestionsRequestPacket::get_id(), 0x0f);
+    assert_eq!(CommandSuggestionsRequestPacket::get_id(), 0x0e);
     assert_eq!(decoded_packet, packet);
 }

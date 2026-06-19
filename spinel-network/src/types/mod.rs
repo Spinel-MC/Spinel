@@ -1,12 +1,17 @@
 pub mod array;
 pub mod bit_set;
 pub mod block_hit_result;
+pub mod block_rotation;
 pub mod chat;
+pub mod chat_message;
+pub mod chat_session;
 pub mod chunk;
 pub mod chunk_pos;
 pub mod client_information;
 pub mod component_changes;
+pub mod custom_click_action_payload;
 pub mod entity_metadata;
+pub mod exact_data_component_predicate;
 pub mod game_profile;
 pub mod global_pos;
 pub mod identifier;
@@ -15,44 +20,76 @@ pub mod int_list;
 pub mod item_stack_hash;
 pub mod light;
 pub mod main_hand;
+pub mod map_data;
 pub mod math;
+pub mod merchant_offer;
+pub mod message_signature;
 pub mod particle;
 pub mod player_spawn_info;
 pub mod position;
+pub mod recipe_book;
 pub mod resolvable_profile;
+pub mod score_number_format;
+pub mod section_position;
+pub mod server_links;
 pub mod slot;
 pub mod sound;
+pub mod statistic;
+pub mod structure_block;
 pub mod teleport_flags;
+pub mod test_block_mode;
 pub mod untrusted_slot;
 pub mod var_int;
 pub mod var_long;
 pub mod velocity;
+pub mod waypoint;
 
 pub use array::Array;
 pub use bit_set::BitSet;
 pub use block_hit_result::BlockHitResult;
+pub use block_rotation::BlockRotation;
+pub use chat::ChatType;
+pub use chat_message::{
+    FilterMask, FilterMaskType, PackedLastSeenMessages, SignedMessageBodyPacked,
+};
+pub use chat_session::{ProfilePublicKeyData, RemoteChatSessionData};
 pub use chunk_pos::ChunkPos;
 pub use client_information::ClientInformation;
 pub use component_changes::ComponentChanges;
+pub use custom_click_action_payload::CustomClickActionPayload;
+pub use exact_data_component_predicate::ExactDataComponentPredicate;
 pub use global_pos::GlobalPos;
 pub use instant::NetworkInstant;
 pub use int_list::IntList;
 pub use item_stack_hash::{ItemStackHash, ItemStackHashComponent};
 pub use main_hand::MainHand;
-pub use math::{Quaternionf, Vector3d, Vector3f};
+pub use map_data::{MapColorPatch, MapDecoration, MapId};
+pub use math::{Quaternionf, Vector3d, Vector3f, Vector3i};
+pub use merchant_offer::{ItemCost, MerchantOffer, MerchantOffers};
+pub use message_signature::{MessageSignature, PackedMessageSignature};
 pub use particle::{Particle, ParticlePayload, VibrationParticlePayload};
 pub use player_spawn_info::CommonPlayerSpawnInfo;
 pub use position::Position;
+pub use recipe_book::{
+    RecipeBookSettings, RecipeBookType, RecipeBookTypeSettings, RecipeDisplayId,
+};
 pub use resolvable_profile::{
     PartialGameProfile, PlayerSkinPatch, ResolvableProfile, ResolvableProfileIdentity,
 };
+pub use score_number_format::ScoreNumberFormat;
+pub use section_position::SectionPosition;
+pub use server_links::{ServerLinkEntry, ServerLinkLabel, ServerLinkType};
 pub use slot::Slot;
 pub use spinel_registry::Identifier;
+pub use statistic::Statistic;
+pub use structure_block::{StructureBlockMirror, StructureBlockMode, StructureBlockUpdateType};
 pub use teleport_flags::TeleportFlags;
+pub use test_block_mode::TestBlockMode;
 pub use untrusted_slot::UntrustedSlot;
 pub use var_int::VarInt;
 pub use var_long::VarLong;
 pub use velocity::Velocity;
+pub use waypoint::{TrackedWaypoint, TrackedWaypointId, WaypointIcon};
 
 pub type ByteArray = Array<i8>;
 pub type ContainerId = i32;

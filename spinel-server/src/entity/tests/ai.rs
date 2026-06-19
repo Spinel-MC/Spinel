@@ -4,7 +4,7 @@ use crate::entity::ai::goal::{
 };
 use crate::entity::ai::target::{ClosestEntityTarget, LastEntityDamagerTarget};
 use crate::entity::ai::{CreatureAiAction, EntityAiGroupBuilder, GoalSelector, TargetSelector};
-use crate::entity::{CreatureEntity, Damage, Entity, EntityId, EntityPosition};
+use crate::entity::{Damage, Entity, EntityCreature, EntityId, EntityPosition};
 use crate::world::{Block, BlockPosition, ChunkPosition, World, WorldSnapshot};
 use spinel_network::types::Identifier;
 use spinel_registry::EntityType;
@@ -17,7 +17,7 @@ use std::time::Duration;
 
 #[test]
 fn creature_kill_uses_minestom_removal_animation_delay() {
-    let mut animated_creature = CreatureEntity::new(EntityType::ZOMBIE);
+    let mut animated_creature = EntityCreature::new(EntityType::ZOMBIE);
 
     assert_eq!(animated_creature.removal_animation_delay_millis(), 1000);
     assert!(animated_creature.kill());
@@ -29,7 +29,7 @@ fn creature_kill_uses_minestom_removal_animation_delay() {
     animated_creature.entity_mut().tick();
     assert!(animated_creature.is_removed());
 
-    let mut immediately_removed_creature = CreatureEntity::new(EntityType::ZOMBIE);
+    let mut immediately_removed_creature = EntityCreature::new(EntityType::ZOMBIE);
     immediately_removed_creature.set_removal_animation_delay_millis(0);
 
     assert!(immediately_removed_creature.kill());
@@ -59,7 +59,7 @@ fn ai_group_preempts_lower_priority_goal_in_minestom_order() {
         .add_goal_selector(high)
         .add_goal_selector(low)
         .build();
-    let mut creature = CreatureEntity::new(EntityType::ZOMBIE);
+    let mut creature = EntityCreature::new(EntityType::ZOMBIE);
     creature.add_ai_group(group);
     let world = ai_world();
     let snapshot = world.update_snapshot();
@@ -117,7 +117,7 @@ fn active_goal_identity_survives_goal_selector_reordering() {
         .add_goal_selector(high)
         .add_goal_selector(low)
         .build();
-    let mut creature = CreatureEntity::new(EntityType::ZOMBIE);
+    let mut creature = EntityCreature::new(EntityType::ZOMBIE);
     creature.add_ai_group(group);
     let world = ai_world();
     let snapshot = world.update_snapshot();
@@ -144,7 +144,7 @@ fn removed_active_goal_keeps_running_until_it_ends() {
     let group = EntityAiGroupBuilder::default()
         .add_goal_selector(goal)
         .build();
-    let mut creature = CreatureEntity::new(EntityType::ZOMBIE);
+    let mut creature = EntityCreature::new(EntityType::ZOMBIE);
     creature.add_ai_group(group);
     let world = ai_world();
     let snapshot = world.update_snapshot();
@@ -179,7 +179,7 @@ fn current_goal_selector_rejects_a_selector_attached_to_another_group() {
 
 #[test]
 fn goal_target_lookup_uses_target_selector_priority() {
-    let mut creature = CreatureEntity::new(EntityType::ZOMBIE);
+    let mut creature = EntityCreature::new(EntityType::ZOMBIE);
     let expected = creature.entity_id();
     let world = ai_world();
     let snapshot = world.update_snapshot();
@@ -209,13 +209,13 @@ fn goal_target_lookup_uses_target_selector_priority() {
 #[test]
 fn closest_and_last_damager_targets_match_minestom_selection_rules() {
     let mut world = ai_world();
-    let mut creature = CreatureEntity::new(EntityType::ZOMBIE);
+    let mut creature = EntityCreature::new(EntityType::ZOMBIE);
     creature.set_position(EntityPosition::new(1.5, 65.0, 1.5, 0.0, 0.0));
     let creature_id = creature.entity_id();
-    let mut near_target = CreatureEntity::new(EntityType::COW);
+    let mut near_target = EntityCreature::new(EntityType::COW);
     near_target.set_position(EntityPosition::new(3.5, 65.0, 1.5, 0.0, 0.0));
     let near_target_id = near_target.entity_id();
-    let mut far_target = CreatureEntity::new(EntityType::COW);
+    let mut far_target = EntityCreature::new(EntityType::COW);
     far_target.set_position(EntityPosition::new(8.5, 65.0, 1.5, 0.0, 0.0));
     world.add_entity(Entity::Creature(creature));
     world.add_entity(Entity::Creature(near_target));
@@ -253,10 +253,10 @@ fn closest_and_last_damager_targets_match_minestom_selection_rules() {
 #[test]
 fn follow_target_owns_creature_target_and_starts_navigation() {
     let mut world = ai_world();
-    let mut creature = CreatureEntity::new(EntityType::ZOMBIE);
+    let mut creature = EntityCreature::new(EntityType::ZOMBIE);
     creature.set_position(EntityPosition::new(1.5, 65.0, 1.5, 0.0, 0.0));
     let creature_id = creature.entity_id();
-    let mut target = CreatureEntity::new(EntityType::COW);
+    let mut target = EntityCreature::new(EntityType::COW);
     target.set_position(EntityPosition::new(8.5, 65.0, 1.5, 0.0, 0.0));
     let target_id = target.entity_id();
     let group = EntityAiGroupBuilder::default()
@@ -289,7 +289,7 @@ fn follow_target_owns_creature_target_and_starts_navigation() {
 fn random_look_and_stroll_goal_public_configuration_matches_minestom_surface() {
     let world = ai_world();
     let snapshot = world.update_snapshot();
-    let mut creature = CreatureEntity::new(EntityType::ZOMBIE);
+    let mut creature = EntityCreature::new(EntityType::ZOMBIE);
     creature.set_position(EntityPosition::new(1.5, 65.0, 1.5, 0.0, 0.0));
     let mut look = RandomLookAroundGoal::with_generators(1, || 1, |_| (1.0, 0.0, 0.0));
     let mut targets = Vec::new();
@@ -310,7 +310,7 @@ fn random_look_and_stroll_goal_public_configuration_matches_minestom_surface() {
 fn do_nothing_goal_clamps_chance_and_ends_after_its_duration() {
     let world = ai_world();
     let snapshot = world.update_snapshot();
-    let mut creature = CreatureEntity::new(EntityType::ZOMBIE);
+    let mut creature = EntityCreature::new(EntityType::ZOMBIE);
     let mut targets = Vec::new();
     let mut goal = DoNothingGoal::new(0, 2.0);
 
@@ -323,10 +323,10 @@ fn do_nothing_goal_clamps_chance_and_ends_after_its_duration() {
 #[test]
 fn melee_and_combined_goals_queue_minestom_attack_branches() {
     let mut world = ai_world();
-    let mut creature = CreatureEntity::new(EntityType::ZOMBIE);
+    let mut creature = EntityCreature::new(EntityType::ZOMBIE);
     creature.set_position(EntityPosition::new(1.5, 65.0, 1.5, 0.0, 0.0));
     let creature_id = creature.entity_id();
-    let mut target = CreatureEntity::new(EntityType::COW);
+    let mut target = EntityCreature::new(EntityType::COW);
     target.set_position(EntityPosition::new(2.5, 65.0, 1.5, 0.0, 0.0));
     let target_id = target.entity_id();
     world.add_entity(Entity::Creature(creature));
@@ -369,10 +369,10 @@ fn melee_and_combined_goals_queue_minestom_attack_branches() {
 #[test]
 fn ranged_goal_world_tick_spawns_and_shoots_default_arrow() {
     let mut world = ai_world();
-    let mut creature = CreatureEntity::new(EntityType::SKELETON);
+    let mut creature = EntityCreature::new(EntityType::SKELETON);
     creature.set_position(EntityPosition::new(1.5, 65.0, 1.5, 0.0, 0.0));
     let creature_id = creature.entity_id();
-    let mut target = CreatureEntity::new(EntityType::COW);
+    let mut target = EntityCreature::new(EntityType::COW);
     target.set_position(EntityPosition::new(6.5, 65.0, 1.5, 0.0, 0.0));
     let target_id = target.entity_id();
     let ranged = RangedAttackGoal::new(Duration::ZERO, 10, 8, false, 1.0, 0.0).unwrap();
@@ -436,7 +436,7 @@ impl RecordingGoal {
 impl GoalSelector for RecordingGoal {
     fn should_start(
         &mut self,
-        _creature: &CreatureEntity,
+        _creature: &EntityCreature,
         _world: &WorldSnapshot,
         _target_selectors: &mut [Box<dyn TargetSelector>],
     ) -> bool {
@@ -445,7 +445,7 @@ impl GoalSelector for RecordingGoal {
 
     fn start(
         &mut self,
-        _creature: &mut CreatureEntity,
+        _creature: &mut EntityCreature,
         _world: &WorldSnapshot,
         _target_selectors: &mut [Box<dyn TargetSelector>],
     ) {
@@ -454,7 +454,7 @@ impl GoalSelector for RecordingGoal {
 
     fn tick(
         &mut self,
-        _creature: &mut CreatureEntity,
+        _creature: &mut EntityCreature,
         _world: &WorldSnapshot,
         _target_selectors: &mut [Box<dyn TargetSelector>],
         _time: u64,
@@ -464,7 +464,7 @@ impl GoalSelector for RecordingGoal {
 
     fn should_end(
         &mut self,
-        _creature: &CreatureEntity,
+        _creature: &EntityCreature,
         _world: &WorldSnapshot,
         _target_selectors: &mut [Box<dyn TargetSelector>],
     ) -> bool {
@@ -473,7 +473,7 @@ impl GoalSelector for RecordingGoal {
 
     fn end(
         &mut self,
-        _creature: &mut CreatureEntity,
+        _creature: &mut EntityCreature,
         _world: &WorldSnapshot,
         _target_selectors: &mut [Box<dyn TargetSelector>],
     ) {
@@ -486,7 +486,7 @@ struct FixedTarget(Option<EntityId>);
 impl TargetSelector for FixedTarget {
     fn find_target(
         &mut self,
-        _creature: &CreatureEntity,
+        _creature: &EntityCreature,
         _world: &WorldSnapshot,
     ) -> Option<EntityId> {
         self.0

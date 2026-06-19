@@ -1,4 +1,5 @@
-use crate::entity::{CreatureEntity, Entity, EntityPosition, GenericEntity, Player};
+use crate::entity::pathfinding::PathRequest;
+use crate::entity::{Entity, EntityCreature, EntityPosition, GenericEntity, Player};
 use crate::network::client::instance::Client;
 use crate::world::{Block, BlockPosition, ChunkPosition, World};
 use spinel_core::network::clientbound::play::entity_head_look::EntityHeadLookPacket;
@@ -162,7 +163,7 @@ fn creature_pathfinding_tick_sends_body_and_head_rotation_to_viewers() {
     }
     let mut viewer_client = queued_client();
     let viewer = entered_player(&mut viewer_client);
-    let mut creature = CreatureEntity::new(EntityType::ZOMBIE);
+    let mut creature = EntityCreature::new(EntityType::ZOMBIE);
     creature.set_position(EntityPosition::new(0.5, 65.0, 0.5, 0.0, 0.0));
     creature.set_on_ground(true);
     let creature_id = creature.entity_id();
@@ -170,16 +171,18 @@ fn creature_pathfinding_tick_sends_body_and_head_rotation_to_viewers() {
     world.add_entity(Entity::Creature(creature));
     world.process_pending_entity_visibility_refreshes().unwrap();
     viewer_client.discard_queued_outbound_packets();
-    let snapshot = world.update_snapshot();
-    assert!(
-        world
-            .creature_by_id_mut(creature_id)
-            .unwrap()
-            .set_path_to_default(
-                &snapshot,
-                Some(EntityPosition::new(4.5, 65.0, 0.5, 0.0, 0.0)),
-            )
-    );
+    {
+        let Entity::Creature(creature) = world.entity_by_id_mut(creature_id).unwrap() else {
+            panic!("creature entity must preserve its subtype");
+        };
+        assert!(
+            creature
+                .set_path_to(PathRequest::from(EntityPosition::new(
+                    4.5, 65.0, 0.5, 0.0, 0.0
+                )))
+                .unwrap()
+        );
+    }
 
     world.tick_with_registries(&Registries::new_vanilla());
 

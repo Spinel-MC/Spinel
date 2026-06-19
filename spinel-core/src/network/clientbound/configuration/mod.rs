@@ -1,7 +1,8 @@
+pub mod clear_dialog;
+pub mod code_of_conduct;
 pub mod cookie_request;
 pub mod custom_report_details;
 pub mod disconnect;
-pub mod feature_flags;
 pub mod features;
 pub mod finish_configuration;
 pub mod keep_alive;
@@ -14,6 +15,9 @@ pub mod reset_chat;
 pub mod resource_pack_pop;
 pub mod resource_pack_push;
 pub mod server_links;
+pub mod show_dialog;
 pub mod store_cookie;
+#[cfg(test)]
+mod tests;
 pub mod transfer;
 pub mod update_tags;

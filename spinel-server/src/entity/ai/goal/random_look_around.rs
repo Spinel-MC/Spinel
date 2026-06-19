@@ -1,5 +1,5 @@
 use crate::entity::ai::{GoalSelector, TargetSelector};
-use crate::entity::{CreatureEntity, EntityPosition};
+use crate::entity::{EntityCreature, EntityPosition};
 use crate::world::WorldSnapshot;
 use rand::Rng;
 use std::f64::consts::TAU;
@@ -7,7 +7,7 @@ use std::f64::consts::TAU;
 pub struct RandomLookAroundGoal {
     chance_per_tick: u32,
     minimum_look_time: Box<dyn FnMut() -> i32 + Send>,
-    random_direction: Box<dyn FnMut(&CreatureEntity) -> (f64, f64, f64) + Send>,
+    random_direction: Box<dyn FnMut(&EntityCreature) -> (f64, f64, f64) + Send>,
     look_direction: Option<(f64, f64, f64)>,
     remaining_look_ticks: i32,
 }
@@ -27,7 +27,7 @@ impl RandomLookAroundGoal {
     pub fn with_generators(
         chance_per_tick: u32,
         minimum_look_time: impl FnMut() -> i32 + Send + 'static,
-        random_direction: impl FnMut(&CreatureEntity) -> (f64, f64, f64) + Send + 'static,
+        random_direction: impl FnMut(&EntityCreature) -> (f64, f64, f64) + Send + 'static,
     ) -> Self {
         Self {
             chance_per_tick,
@@ -42,7 +42,7 @@ impl RandomLookAroundGoal {
 impl GoalSelector for RandomLookAroundGoal {
     fn should_start(
         &mut self,
-        creature: &CreatureEntity,
+        creature: &EntityCreature,
         _world: &WorldSnapshot,
         _target_selectors: &mut [Box<dyn TargetSelector>],
     ) -> bool {
@@ -53,7 +53,7 @@ impl GoalSelector for RandomLookAroundGoal {
 
     fn start(
         &mut self,
-        creature: &mut CreatureEntity,
+        creature: &mut EntityCreature,
         _world: &WorldSnapshot,
         _target_selectors: &mut [Box<dyn TargetSelector>],
     ) {
@@ -63,7 +63,7 @@ impl GoalSelector for RandomLookAroundGoal {
 
     fn tick(
         &mut self,
-        creature: &mut CreatureEntity,
+        creature: &mut EntityCreature,
         _world: &WorldSnapshot,
         _target_selectors: &mut [Box<dyn TargetSelector>],
         _time: u64,
@@ -87,7 +87,7 @@ impl GoalSelector for RandomLookAroundGoal {
 
     fn should_end(
         &mut self,
-        _creature: &CreatureEntity,
+        _creature: &EntityCreature,
         _world: &WorldSnapshot,
         _target_selectors: &mut [Box<dyn TargetSelector>],
     ) -> bool {
@@ -96,7 +96,7 @@ impl GoalSelector for RandomLookAroundGoal {
 
     fn end(
         &mut self,
-        _creature: &mut CreatureEntity,
+        _creature: &mut EntityCreature,
         _world: &WorldSnapshot,
         _target_selectors: &mut [Box<dyn TargetSelector>],
     ) {

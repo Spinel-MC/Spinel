@@ -31,10 +31,10 @@ fn entity_showcase_sign_interaction_keeps_player_valid_after_spawning_entities()
             0.0,
             0.0,
         ));
-        assert!(world.add_entity(Entity::Generic(entity)));
+        assert!(Entity::Generic(entity).set_instance(world));
     });
     let player = Player::new(player_uuid, "SignInteraction".to_string(), 0, client.addr);
-    assert!(world.add_entity(Entity::Player(player)));
+    assert!(Entity::Player(player).set_instance(world));
     assert!(matches!(
         ShowcaseSigns::command_at_position(sign_position),
         Some(test_server::showcase::ShowcaseSignCommand::Entity)
@@ -66,7 +66,7 @@ fn repeated_entity_showcase_sign_interactions_keep_player_valid() {
         0,
         client.addr,
     );
-    assert!(world.add_entity(Entity::Player(player)));
+    assert!(Entity::Player(player).set_instance(world));
 
     (1..=8).for_each(|sequence| {
         dispatch_sign_interaction(&mut server, &mut client, sign_position, sequence);
@@ -113,6 +113,14 @@ fn assert_player_has_pathfinding_stick(
     let player = world.player_by_uuid(player_uuid).unwrap();
     assert_eq!(
         player.item_in_hand(PlayerHand::Main).material(),
+        &Material::STICK
+    );
+    assert_eq!(
+        player.inventory_ref().item_stack(1).unwrap().material(),
+        &Material::STICK
+    );
+    assert_eq!(
+        player.inventory_ref().item_stack(2).unwrap().material(),
         &Material::STICK
     );
 }

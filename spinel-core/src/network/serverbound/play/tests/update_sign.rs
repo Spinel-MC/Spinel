@@ -14,6 +14,6 @@ fn update_sign_packet_matches_minestom_fixed_four_line_shape() {
     packet.encode(&mut payload).unwrap();
     let decoded_packet = UpdateSignPacket::decode(&mut payload.as_slice()).unwrap();
 
-    assert_eq!(UpdateSignPacket::get_id_const(), 0x3A);
+    assert_eq!(UpdateSignPacket::get_id_const(), 0x3B);
     assert_eq!(decoded_packet, packet);
 }

@@ -2,7 +2,8 @@ use crate::entity::EntityPosition;
 use crate::entity::GenericEntity;
 use crate::entity::pathfinding::{
     GroundNodeFollower, GroundNodeGenerator, NodeFollower, NodeFollowerPhysicsTiming,
-    NodeGenerator, Path, PathGenerator, PathNode, PathNodeType, PathState,
+    NodeGenerator, Path, PathGenerator, PathNode, PathNodeType, PathRequest, PathState,
+    SetPathToError,
 };
 use crate::world::{ChunkPosition, WorldSnapshot};
 use spinel_registry::EntityBoundingBox;
@@ -30,52 +31,6 @@ impl Default for Navigator {
 }
 
 impl Navigator {
-    pub fn set_path_to_default(
-        &mut self,
-        world: &WorldSnapshot,
-        start: EntityPosition,
-        goal: Option<EntityPosition>,
-        bounding_box: EntityBoundingBox,
-        is_on_ground: bool,
-    ) -> bool {
-        let center_to_corner = (bounding_box.width() * bounding_box.width()
-            + bounding_box.depth() * bounding_box.depth())
-        .sqrt()
-            / 2.0;
-        self.set_path_to_with_completion(
-            world,
-            start,
-            goal,
-            bounding_box,
-            is_on_ground,
-            center_to_corner,
-            None,
-        )
-    }
-
-    pub fn set_path_to_with_completion(
-        &mut self,
-        world: &WorldSnapshot,
-        start: EntityPosition,
-        goal: Option<EntityPosition>,
-        bounding_box: EntityBoundingBox,
-        is_on_ground: bool,
-        minimum_distance: f64,
-        on_complete: Option<Box<dyn FnOnce() + Send>>,
-    ) -> bool {
-        self.set_path_to(
-            world,
-            start,
-            goal,
-            bounding_box,
-            is_on_ground,
-            minimum_distance,
-            50.0,
-            20.0,
-            on_complete,
-        )
-    }
-
     pub fn state(&self) -> PathState {
         match (&self.path, &self.computing_path) {
             (Some(path), _) => path.state(),
@@ -88,29 +43,35 @@ impl Navigator {
         &mut self,
         world: &WorldSnapshot,
         start: EntityPosition,
-        goal: Option<EntityPosition>,
         bounding_box: EntityBoundingBox,
         is_on_ground: bool,
-        minimum_distance: f64,
-        maximum_distance: f64,
-        variance: f64,
-        on_complete: Option<Box<dyn FnOnce() + Send>>,
-    ) -> bool {
+        mut request: PathRequest,
+    ) -> Result<bool, SetPathToError> {
+        let center_to_corner = (bounding_box.width() * bounding_box.width()
+            + bounding_box.depth() * bounding_box.depth())
+        .sqrt()
+            / 2.0;
+        let minimum_distance = request.minimum_distance().unwrap_or(center_to_corner);
+        let maximum_distance = request.maximum_distance().unwrap_or(50.0);
+        let variance = request.variance().unwrap_or(20.0);
+        let on_complete = request.take_on_complete();
+        let goal = request.destination();
         let Some(goal) = goal else {
             self.path = None;
-            return false;
+            return Ok(false);
         };
-        if !world.world_border().contains(goal.x(), goal.z())
-            || !world.is_chunk_loaded(ChunkPosition::from(goal))
-        {
-            return false;
+        if !world.world_border().contains(goal.x(), goal.z()) {
+            return Err(SetPathToError::TargetOutsideWorldBorder { target: goal });
+        }
+        if !world.is_chunk_loaded(ChunkPosition::from(goal)) {
+            return Err(SetPathToError::TargetChunkUnloaded { target: goal });
         }
         self.minimum_distance = minimum_distance;
         if start.distance_squared(goal).sqrt() < minimum_distance || same_block(start, goal) {
             if let Some(on_complete) = on_complete {
                 on_complete();
             }
-            return false;
+            return Ok(false);
         }
         if let Some(computing_path) = self.computing_path.as_mut() {
             computing_path.set_state(PathState::Terminating);
@@ -128,7 +89,7 @@ impl Navigator {
             on_complete,
         ));
         self.goal_position = Some(goal);
-        true
+        Ok(true)
     }
 
     pub const fn goal_position(&self) -> Option<EntityPosition> {
@@ -231,6 +192,7 @@ impl Navigator {
         if entity.position().distance_squared(goal_position).sqrt() < self.minimum_distance {
             path.complete();
             self.path = None;
+            self.node_follower.stop_following_path(entity);
             return;
         }
         if path
@@ -263,8 +225,18 @@ impl Navigator {
         };
         let Some(next_target) = path.next_position() else {
             path.set_state(PathState::Invalid);
+            self.node_follower.stop_following_path(entity);
             return;
         };
+        if self
+            .node_follower
+            .should_advance_reached_node_before_moving()
+            && path.current_type() == Some(PathNodeType::Jump)
+            && self.node_follower.is_at_point(entity, current_target)
+        {
+            path.advance();
+            return;
+        }
         let next_is_repath = next_target.distance_squared(EntityPosition::default()) == 0.0;
         let look_at = if next_is_repath {
             current_target
@@ -280,7 +252,9 @@ impl Navigator {
         );
         if self.node_follower.is_at_point(entity, current_target) {
             path.advance();
-        } else if path.current_type() == Some(PathNodeType::Jump) {
+        } else if path.current_type() == Some(PathNodeType::Jump)
+            && self.node_follower.should_execute_path_node_jump()
+        {
             self.node_follower
                 .jump(entity, Some(current_target), Some(next_target));
         }

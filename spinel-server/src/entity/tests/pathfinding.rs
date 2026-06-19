@@ -4,11 +4,11 @@ use crate::entity::pathfinding::perfect::{
 };
 use crate::entity::pathfinding::{
     FlyingNodeGenerator, GroundNodeFollower, GroundNodeGenerator, Navigator, NoPhysicsNodeFollower,
-    NodeFollower, NodeGenerator, Path, PathGenerator, PathNode, PathNodeType, PathState,
-    PreciseGroundNodeGenerator, WaterNodeGenerator,
+    NodeFollower, NodeGenerator, Path, PathGenerator, PathNode, PathNodeType, PathRequest,
+    PathState, PreciseGroundNodeGenerator, SetPathToError, WaterNodeGenerator,
 };
 use crate::entity::physics::simulate_collision;
-use crate::entity::{CreatureEntity, Entity, EntityPosition, GenericEntity};
+use crate::entity::{Entity, EntityCreature, EntityPosition, GenericEntity};
 use crate::world::{Block, BlockPosition, Chunk, ChunkPosition, World, WorldBorder};
 use spinel_network::types::{Identifier, Vector3d, Velocity};
 use spinel_registry::dimension_type::DimensionType;
@@ -111,13 +111,17 @@ fn navigator_exposes_minestom_modifiable_node_collection() {
     let mut navigator = Navigator::default();
     let start = EntityPosition::new(0.5, 65.0, 0.5, 0.0, 0.0);
 
-    assert!(navigator.set_path_to_default(
-        &snapshot,
-        start,
-        Some(EntityPosition::new(3.5, 65.0, 0.5, 0.0, 0.0)),
-        EntityType::ZOMBIE.bounding_box(),
-        true,
-    ));
+    assert!(
+        navigator
+            .set_path_to(
+                &snapshot,
+                start,
+                EntityType::ZOMBIE.bounding_box(),
+                true,
+                PathRequest::from(EntityPosition::new(3.5, 65.0, 0.5, 0.0, 0.0)),
+            )
+            .unwrap()
+    );
     navigator.nodes_mut().unwrap().clear();
 
     assert!(navigator.nodes().unwrap().is_empty());
@@ -189,32 +193,30 @@ fn navigator_rejects_unloaded_and_out_of_border_targets() {
     let mut navigator = Navigator::default();
     let unloaded_goal = EntityPosition::new(32.5, 65.0, 0.5, 0.0, 0.0);
 
-    assert!(!navigator.set_path_to(
-        &world.update_snapshot(),
-        entity.position(),
-        Some(unloaded_goal),
-        entity.bounding_box(),
-        true,
-        0.5,
-        50.0,
-        20.0,
-        None,
+    assert!(matches!(
+        navigator.set_path_to(
+            &world.update_snapshot(),
+            entity.position(),
+            entity.bounding_box(),
+            true,
+            PathRequest::from(unloaded_goal).with_minimum_distance(0.5),
+        ),
+        Err(SetPathToError::TargetChunkUnloaded { target }) if target == unloaded_goal
     ));
 
     world
         .set_world_border(WorldBorder::DEFAULT.with_center(100_000_000.0, 100_000_000.0))
         .unwrap();
     let loaded_goal = EntityPosition::new(5.5, 65.0, 0.5, 0.0, 0.0);
-    assert!(!navigator.set_path_to(
-        &world.update_snapshot(),
-        entity.position(),
-        Some(loaded_goal),
-        entity.bounding_box(),
-        true,
-        0.5,
-        50.0,
-        20.0,
-        None,
+    assert!(matches!(
+        navigator.set_path_to(
+            &world.update_snapshot(),
+            entity.position(),
+            entity.bounding_box(),
+            true,
+            PathRequest::from(loaded_goal).with_minimum_distance(0.5),
+        ),
+        Err(SetPathToError::TargetOutsideWorldBorder { target }) if target == loaded_goal
     ));
 }
 
@@ -228,36 +230,40 @@ fn navigator_completes_same_block_and_minimum_distance_requests_immediately() {
     let same_block_completed = Arc::new(AtomicBool::new(false));
     let same_block_completed_for_callback = Arc::clone(&same_block_completed);
 
-    assert!(!navigator.set_path_to(
-        &snapshot,
-        entity.position(),
-        Some(EntityPosition::new(0.9, 65.0, 0.9, 0.0, 0.0)),
-        entity.bounding_box(),
-        true,
-        0.1,
-        50.0,
-        20.0,
-        Some(Box::new(move || {
-            same_block_completed_for_callback.store(true, Ordering::SeqCst);
-        })),
-    ));
+    assert!(
+        !navigator
+            .set_path_to(
+                &snapshot,
+                entity.position(),
+                entity.bounding_box(),
+                true,
+                PathRequest::from(EntityPosition::new(0.9, 65.0, 0.9, 0.0, 0.0))
+                    .with_minimum_distance(0.1)
+                    .on_complete(move || {
+                        same_block_completed_for_callback.store(true, Ordering::SeqCst);
+                    }),
+            )
+            .unwrap()
+    );
     assert!(same_block_completed.load(Ordering::SeqCst));
 
     let minimum_distance_completed = Arc::new(AtomicBool::new(false));
     let minimum_distance_completed_for_callback = Arc::clone(&minimum_distance_completed);
-    assert!(!navigator.set_path_to(
-        &snapshot,
-        entity.position(),
-        Some(EntityPosition::new(2.5, 65.0, 0.5, 0.0, 0.0)),
-        entity.bounding_box(),
-        true,
-        5.0,
-        50.0,
-        20.0,
-        Some(Box::new(move || {
-            minimum_distance_completed_for_callback.store(true, Ordering::SeqCst);
-        })),
-    ));
+    assert!(
+        !navigator
+            .set_path_to(
+                &snapshot,
+                entity.position(),
+                entity.bounding_box(),
+                true,
+                PathRequest::from(EntityPosition::new(2.5, 65.0, 0.5, 0.0, 0.0))
+                    .with_minimum_distance(5.0)
+                    .on_complete(move || {
+                        minimum_distance_completed_for_callback.store(true, Ordering::SeqCst);
+                    }),
+            )
+            .unwrap()
+    );
     assert!(minimum_distance_completed.load(Ordering::SeqCst));
 }
 
@@ -271,19 +277,21 @@ fn navigator_follows_computed_path_and_runs_completion_once() {
     let completed_for_callback = Arc::clone(&completed);
     let mut navigator = Navigator::default();
 
-    assert!(navigator.set_path_to(
-        &snapshot,
-        entity.position(),
-        Some(EntityPosition::new(5.5, 65.0, 0.5, 0.0, 0.0)),
-        entity.bounding_box(),
-        true,
-        0.5,
-        50.0,
-        20.0,
-        Some(Box::new(move || {
-            completed_for_callback.store(true, Ordering::SeqCst);
-        })),
-    ));
+    assert!(
+        navigator
+            .set_path_to(
+                &snapshot,
+                entity.position(),
+                entity.bounding_box(),
+                true,
+                PathRequest::from(EntityPosition::new(5.5, 65.0, 0.5, 0.0, 0.0))
+                    .with_minimum_distance(0.5)
+                    .on_complete(move || {
+                        completed_for_callback.store(true, Ordering::SeqCst);
+                    }),
+            )
+            .unwrap()
+    );
     assert!(matches!(
         navigator.state(),
         PathState::Computed | PathState::BestEffort
@@ -311,17 +319,18 @@ fn navigator_reset_and_no_physics_follower_match_public_lifecycle() {
     let mut navigator = Navigator::default();
     navigator.set_node_follower(NoPhysicsNodeFollower);
 
-    assert!(navigator.set_path_to(
-        &snapshot,
-        entity.position(),
-        Some(EntityPosition::new(3.5, 65.0, 0.5, 0.0, 0.0)),
-        entity.bounding_box(),
-        true,
-        0.5,
-        50.0,
-        20.0,
-        None,
-    ));
+    assert!(
+        navigator
+            .set_path_to(
+                &snapshot,
+                entity.position(),
+                entity.bounding_box(),
+                true,
+                PathRequest::from(EntityPosition::new(3.5, 65.0, 0.5, 0.0, 0.0))
+                    .with_minimum_distance(0.5),
+            )
+            .unwrap()
+    );
     navigator.tick(&mut entity, &snapshot, false);
     assert!(entity.position().x() > 0.5);
 
@@ -339,23 +348,31 @@ fn navigator_preserves_active_path_until_replacement_promotes_on_tick() {
     entity.set_position(EntityPosition::new(0.5, 65.0, 0.5, 0.0, 0.0));
     let mut navigator = Navigator::default();
 
-    assert!(navigator.set_path_to_default(
-        &snapshot,
-        entity.position(),
-        Some(EntityPosition::new(3.5, 65.0, 0.5, 0.0, 0.0)),
-        entity.bounding_box(),
-        true,
-    ));
+    assert!(
+        navigator
+            .set_path_to(
+                &snapshot,
+                entity.position(),
+                entity.bounding_box(),
+                true,
+                PathRequest::from(EntityPosition::new(3.5, 65.0, 0.5, 0.0, 0.0)),
+            )
+            .unwrap()
+    );
     navigator.tick(&mut entity, &snapshot, false);
     let active_goal_before_replacement = navigator.nodes().unwrap().last().unwrap().position();
 
-    assert!(navigator.set_path_to_default(
-        &snapshot,
-        entity.position(),
-        Some(EntityPosition::new(5.5, 65.0, 0.5, 0.0, 0.0)),
-        entity.bounding_box(),
-        true,
-    ));
+    assert!(
+        navigator
+            .set_path_to(
+                &snapshot,
+                entity.position(),
+                entity.bounding_box(),
+                true,
+                PathRequest::from(EntityPosition::new(5.5, 65.0, 0.5, 0.0, 0.0)),
+            )
+            .unwrap()
+    );
     let active_goal_during_replacement = navigator.nodes().unwrap().last().unwrap().position();
     navigator.tick(&mut entity, &snapshot, false);
     let active_goal_after_replacement = navigator.nodes().unwrap().last().unwrap().position();
@@ -377,13 +394,17 @@ fn navigator_waits_while_computing_path_is_terminating() {
     entity.set_position(EntityPosition::new(0.5, 65.0, 0.5, 0.0, 0.0));
     let mut navigator = Navigator::default();
 
-    assert!(navigator.set_path_to_default(
-        &snapshot,
-        entity.position(),
-        Some(EntityPosition::new(3.5, 65.0, 0.5, 0.0, 0.0)),
-        entity.bounding_box(),
-        true,
-    ));
+    assert!(
+        navigator
+            .set_path_to(
+                &snapshot,
+                entity.position(),
+                entity.bounding_box(),
+                true,
+                PathRequest::from(EntityPosition::new(3.5, 65.0, 0.5, 0.0, 0.0)),
+            )
+            .unwrap()
+    );
     navigator
         .path_mut()
         .unwrap()
@@ -404,13 +425,17 @@ fn navigator_uses_replaced_node_generator_and_preserves_best_effort_state() {
     let mut navigator = Navigator::default();
     navigator.set_node_generator(SingleBestEffortNodeGenerator);
 
-    assert!(navigator.set_path_to_default(
-        &snapshot,
-        entity.position(),
-        Some(EntityPosition::new(10.5, 65.0, 0.5, 0.0, 0.0)),
-        entity.bounding_box(),
-        true,
-    ));
+    assert!(
+        navigator
+            .set_path_to(
+                &snapshot,
+                entity.position(),
+                entity.bounding_box(),
+                true,
+                PathRequest::from(EntityPosition::new(10.5, 65.0, 0.5, 0.0, 0.0)),
+            )
+            .unwrap()
+    );
 
     assert_eq!(navigator.state(), PathState::BestEffort);
     assert_eq!(
@@ -433,17 +458,19 @@ fn path_generation_invalidates_repath_rooted_at_start() {
     let mut navigator = Navigator::default();
     navigator.set_node_generator(FrontierBudgetNodeGenerator);
 
-    assert!(navigator.set_path_to(
-        &snapshot,
-        entity.position(),
-        Some(EntityPosition::new(15.5, 65.0, 0.5, 0.0, 0.0)),
-        entity.bounding_box(),
-        true,
-        0.5,
-        5.0,
-        20.0,
-        None,
-    ));
+    assert!(
+        navigator
+            .set_path_to(
+                &snapshot,
+                entity.position(),
+                entity.bounding_box(),
+                true,
+                PathRequest::from(EntityPosition::new(15.5, 65.0, 0.5, 0.0, 0.0))
+                    .with_minimum_distance(0.5)
+                    .with_maximum_distance(5.0),
+            )
+            .unwrap()
+    );
 
     assert_eq!(navigator.state(), PathState::Invalid);
     assert!(navigator.nodes().is_some_and(<[PathNode]>::is_empty));
@@ -457,13 +484,17 @@ fn navigator_recomputes_after_repath_current_node() {
     entity.set_position(EntityPosition::new(0.5, 65.0, 0.5, 0.0, 0.0));
     let mut navigator = Navigator::default();
 
-    assert!(navigator.set_path_to_default(
-        &snapshot,
-        entity.position(),
-        Some(EntityPosition::new(4.5, 65.0, 0.5, 0.0, 0.0)),
-        entity.bounding_box(),
-        true,
-    ));
+    assert!(
+        navigator
+            .set_path_to(
+                &snapshot,
+                entity.position(),
+                entity.bounding_box(),
+                true,
+                PathRequest::from(EntityPosition::new(4.5, 65.0, 0.5, 0.0, 0.0)),
+            )
+            .unwrap()
+    );
     navigator.tick(&mut entity, &snapshot, false);
     let path = navigator.path_mut().unwrap();
     path.set_state(PathState::Following);
@@ -493,13 +524,17 @@ fn navigator_marks_path_invalid_without_next_target() {
     entity.set_position(EntityPosition::new(0.5, 65.0, 0.5, 0.0, 0.0));
     let mut navigator = Navigator::default();
 
-    assert!(navigator.set_path_to_default(
-        &snapshot,
-        entity.position(),
-        Some(EntityPosition::new(4.5, 65.0, 0.5, 0.0, 0.0)),
-        entity.bounding_box(),
-        true,
-    ));
+    assert!(
+        navigator
+            .set_path_to(
+                &snapshot,
+                entity.position(),
+                entity.bounding_box(),
+                true,
+                PathRequest::from(EntityPosition::new(4.5, 65.0, 0.5, 0.0, 0.0)),
+            )
+            .unwrap()
+    );
     navigator.tick(&mut entity, &snapshot, false);
     let path = navigator.path_mut().unwrap();
     path.set_state(PathState::Following);
@@ -523,13 +558,17 @@ fn dead_entity_does_not_tick_navigation() {
     entity.set_position(EntityPosition::new(0.5, 65.0, 0.5, 0.0, 0.0));
     let start = entity.position();
     let mut navigator = Navigator::default();
-    assert!(navigator.set_path_to_default(
-        &snapshot,
-        entity.position(),
-        Some(EntityPosition::new(3.5, 65.0, 0.5, 0.0, 0.0)),
-        entity.bounding_box(),
-        true,
-    ));
+    assert!(
+        navigator
+            .set_path_to(
+                &snapshot,
+                entity.position(),
+                entity.bounding_box(),
+                true,
+                PathRequest::from(EntityPosition::new(3.5, 65.0, 0.5, 0.0, 0.0)),
+            )
+            .unwrap()
+    );
 
     navigator.tick(&mut entity, &snapshot, true);
 
@@ -540,26 +579,56 @@ fn dead_entity_does_not_tick_navigation() {
 #[test]
 fn creature_rejects_path_requests_before_world_assignment() {
     let mut world = pathfinding_world();
-    let snapshot_before_assignment = world.update_snapshot();
-    let mut creature = CreatureEntity::new(EntityType::ZOMBIE);
+    let mut creature = EntityCreature::new(EntityType::ZOMBIE);
     creature.set_position(EntityPosition::new(0.5, 65.0, 0.5, 0.0, 0.0));
 
-    assert!(!creature.set_path_to_default(
-        &snapshot_before_assignment,
-        Some(EntityPosition::new(3.5, 65.0, 0.5, 0.0, 0.0)),
+    assert!(matches!(
+        creature.set_path_to(PathRequest::from(EntityPosition::new(
+            3.5, 65.0, 0.5, 0.0, 0.0
+        ))),
+        Err(SetPathToError::EntityHasNoWorld)
     ));
 
     let creature_id = creature.entity_id();
-    world.add_entity(Entity::Creature(creature));
-    let snapshot_after_assignment = world.update_snapshot();
+    creature.set_instance(&mut world);
     let Entity::Creature(creature) = world.entity_by_id_mut(creature_id).unwrap() else {
         panic!("creature entity must preserve its subtype");
     };
 
-    assert!(creature.set_path_to_default(
-        &snapshot_after_assignment,
-        Some(EntityPosition::new(3.5, 65.0, 0.5, 0.0, 0.0)),
-    ));
+    assert!(
+        creature
+            .set_path_to(PathRequest::from(EntityPosition::new(
+                3.5, 65.0, 0.5, 0.0, 0.0
+            )))
+            .unwrap()
+    );
+}
+
+#[test]
+fn entity_creature_set_path_to_owns_pathfinding_request() {
+    let mut world = pathfinding_world();
+    let mut creature = EntityCreature::new(EntityType::ZOMBIE);
+    creature.set_position(EntityPosition::new(0.5, 65.0, 0.5, 0.0, 0.0));
+    let creature_id = creature.entity_id();
+    creature.set_instance(&mut world);
+    let destination = EntityPosition::new(3.5, 65.0, 0.5, 0.0, 0.0);
+    {
+        let Entity::Creature(creature) = world.entity_by_id_mut(creature_id).unwrap() else {
+            panic!("creature entity must preserve its subtype");
+        };
+
+        assert!(
+            creature
+                .set_path_to(PathRequest::from(destination))
+                .unwrap()
+        );
+    }
+    world.tick();
+    let Entity::Creature(creature) = world.entity_by_id_mut(creature_id).unwrap() else {
+        panic!("creature entity must preserve its subtype");
+    };
+
+    assert_eq!(creature.navigator().goal_position(), Some(destination));
 }
 
 #[test]
@@ -1020,22 +1089,24 @@ fn perfect_planner_returns_success_cancelled_and_budget_results() {
 #[test]
 fn creature_owns_navigation_and_world_ticks_advance_it() {
     let mut world = pathfinding_world();
-    let mut creature = CreatureEntity::new(EntityType::ZOMBIE);
+    let mut creature = EntityCreature::new(EntityType::ZOMBIE);
     creature.set_position(EntityPosition::new(0.5, 65.0, 0.5, 0.0, 0.0));
     let initial_snapshot = world.update_snapshot();
     let initial_position = creature.position();
     let bounding_box = creature.bounding_box();
-    assert!(creature.navigator_mut().set_path_to(
-        &initial_snapshot,
-        initial_position,
-        Some(EntityPosition::new(4.5, 65.0, 0.5, 0.0, 0.0)),
-        bounding_box,
-        true,
-        0.5,
-        50.0,
-        20.0,
-        None,
-    ));
+    assert!(
+        creature
+            .navigator_mut()
+            .set_path_to(
+                &initial_snapshot,
+                initial_position,
+                bounding_box,
+                true,
+                PathRequest::from(EntityPosition::new(4.5, 65.0, 0.5, 0.0, 0.0))
+                    .with_minimum_distance(0.5),
+            )
+            .unwrap()
+    );
     let creature_id = creature.entity_id();
     world.add_entity(Entity::Creature(creature));
 
@@ -1051,17 +1122,19 @@ fn creature_owns_navigation_and_world_ticks_advance_it() {
     let start_x = creature.position().x();
     let start_position = creature.position();
     let bounding_box = creature.bounding_box();
-    assert!(creature.navigator_mut().set_path_to(
-        &snapshot,
-        start_position,
-        Some(EntityPosition::new(4.5, 65.0, 0.5, 0.0, 0.0)),
-        bounding_box,
-        true,
-        0.5,
-        50.0,
-        20.0,
-        None,
-    ));
+    assert!(
+        creature
+            .navigator_mut()
+            .set_path_to(
+                &snapshot,
+                start_position,
+                bounding_box,
+                true,
+                PathRequest::from(EntityPosition::new(4.5, 65.0, 0.5, 0.0, 0.0))
+                    .with_minimum_distance(0.5),
+            )
+            .unwrap()
+    );
 
     world.tick();
     world.tick();
@@ -1227,7 +1300,15 @@ fn assert_valid_default_path(
     let mut navigator = Navigator::default();
 
     assert!(
-        navigator.set_path_to_default(&snapshot, start, Some(goal), bounding_box, true),
+        navigator
+            .set_path_to(
+                &snapshot,
+                start,
+                bounding_box,
+                true,
+                PathRequest::from(goal)
+            )
+            .unwrap(),
         "path request was rejected from {start:?} to {goal:?}"
     );
     let nodes = navigator.nodes().unwrap();

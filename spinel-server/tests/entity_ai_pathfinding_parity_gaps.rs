@@ -3,10 +3,10 @@ use spinel_registry::{EntityBoundingBox, EntityType};
 use spinel_server::entity::ai::{EntityAiGroupBuilder, GoalSelector, TargetSelector};
 use spinel_server::entity::pathfinding::{
     FlyingNodeFollower, GroundNodeFollower, Navigator, NoPhysicsNodeFollower, NodeFollower,
-    NodeGenerator, PathGenerator, PathNode, PathNodeType, PathState, VanillaGroundNodeFollower,
-    WaterNodeFollower, WaterNodeGenerator,
+    NodeGenerator, PathGenerator, PathNode, PathNodeType, PathRequest, PathState,
+    VanillaGroundNodeFollower, WaterNodeFollower, WaterNodeGenerator,
 };
-use spinel_server::entity::{CreatureEntity, Entity, EntityPosition, GenericEntity};
+use spinel_server::entity::{Entity, EntityCreature, EntityPosition, GenericEntity};
 use spinel_server::world::{Block, BlockPosition, Chunk, ChunkPosition, World};
 use std::collections::HashSet;
 
@@ -83,9 +83,9 @@ fn ground_follower_resolves_collision_during_the_minestom_move() {
 fn ground_follower_jump_replaces_velocity_with_minestom_impulse() {
     let follower = GroundNodeFollower;
     let mut world = pathfinding_world();
-    let creature = CreatureEntity::new(EntityType::ZOMBIE);
+    let creature = EntityCreature::new(EntityType::ZOMBIE);
     let creature_id = creature.entity_id();
-    world.add_entity(Entity::Creature(creature));
+    creature.set_instance(&mut world);
     world
         .set_entity_velocity(
             creature_id,
@@ -96,7 +96,9 @@ fn ground_follower_jump_replaces_velocity_with_minestom_impulse() {
             }),
         )
         .unwrap();
-    let entity = world.creature_by_id_mut(creature_id).unwrap();
+    let Entity::Creature(entity) = world.entity_mut(creature_id).unwrap() else {
+        panic!("creature entity must preserve its subtype");
+    };
     entity.set_on_ground(true);
 
     follower.jump(
@@ -119,9 +121,9 @@ fn ground_follower_jump_replaces_velocity_with_minestom_impulse() {
 fn ground_follower_jump_is_a_minestom_no_op_while_airborne() {
     let follower = GroundNodeFollower;
     let mut world = pathfinding_world();
-    let creature = CreatureEntity::new(EntityType::ZOMBIE);
+    let creature = EntityCreature::new(EntityType::ZOMBIE);
     let creature_id = creature.entity_id();
-    world.add_entity(Entity::Creature(creature));
+    creature.set_instance(&mut world);
     let airborne_velocity = Velocity(Vector3d {
         x: 3.0,
         y: -1.0,
@@ -130,7 +132,9 @@ fn ground_follower_jump_is_a_minestom_no_op_while_airborne() {
     world
         .set_entity_velocity(creature_id, airborne_velocity)
         .unwrap();
-    let entity = world.creature_by_id_mut(creature_id).unwrap();
+    let Entity::Creature(entity) = world.entity_mut(creature_id).unwrap() else {
+        panic!("creature entity must preserve its subtype");
+    };
     entity.set_on_ground(false);
 
     follower.jump(
@@ -160,6 +164,34 @@ fn ground_follower_exposes_minestom_custom_jump_height() {
 }
 
 #[test]
+fn minestom_navigation_accepts_new_goal_after_jump_velocity() {
+    let world = pathfinding_world();
+    let snapshot = world.update_snapshot();
+    let follower = GroundNodeFollower;
+    let mut entity = grounded_zombie();
+    let mut navigator = Navigator::default();
+
+    follower.jump(
+        &mut entity,
+        Some(EntityPosition::new(1.5, 66.0, 0.5, 0.0, 0.0)),
+        None,
+    );
+    entity.set_on_ground(false);
+
+    assert!(
+        navigator
+            .set_path_to(
+                &snapshot,
+                entity.position(),
+                entity.bounding_box(),
+                entity.is_on_ground(),
+                PathRequest::from(EntityPosition::new(4.5, 65.0, 0.5, 0.0, 0.0)),
+            )
+            .unwrap()
+    );
+}
+
+#[test]
 fn no_physics_follower_matches_minestom_position_and_view() {
     let world = pathfinding_world();
     let snapshot = world.update_snapshot();
@@ -180,9 +212,9 @@ fn no_physics_follower_matches_minestom_position_and_view() {
 fn no_physics_follower_jump_replaces_velocity_with_minestom_impulse() {
     let follower = NoPhysicsNodeFollower;
     let mut world = pathfinding_world();
-    let creature = CreatureEntity::new(EntityType::ZOMBIE);
+    let creature = EntityCreature::new(EntityType::ZOMBIE);
     let creature_id = creature.entity_id();
-    world.add_entity(Entity::Creature(creature));
+    creature.set_instance(&mut world);
     world
         .set_entity_velocity(
             creature_id,
@@ -193,7 +225,9 @@ fn no_physics_follower_jump_replaces_velocity_with_minestom_impulse() {
             }),
         )
         .unwrap();
-    let entity = world.creature_by_id_mut(creature_id).unwrap();
+    let Entity::Creature(entity) = world.entity_mut(creature_id).unwrap() else {
+        panic!("creature entity must preserve its subtype");
+    };
     entity.set_on_ground(true);
 
     follower.jump(
@@ -256,22 +290,26 @@ fn no_physics_follower_jumps_toward_a_higher_minestom_target() {
 #[test]
 fn creature_navigation_moves_and_turns_on_the_first_world_tick() {
     let mut world = pathfinding_world();
-    let mut creature = CreatureEntity::new(EntityType::ZOMBIE);
+    let mut creature = EntityCreature::new(EntityType::ZOMBIE);
     creature.set_position(EntityPosition::new(0.5, 65.0, 0.5, 0.0, 0.0));
     creature.set_on_ground(true);
     let creature_id = creature.entity_id();
-    world.add_entity(Entity::Creature(creature));
-    let snapshot = world.update_snapshot();
-    let creature = world.creature_by_id_mut(creature_id).unwrap();
+    creature.set_instance(&mut world);
+    let Entity::Creature(creature) = world.entity_mut(creature_id).unwrap() else {
+        panic!("creature entity must preserve its subtype");
+    };
     let start = creature.position();
-    assert!(creature.set_path_to_default(
-        &snapshot,
-        Some(EntityPosition::new(4.5, 65.0, 0.5, 0.0, 0.0)),
-    ));
+    assert!(
+        creature
+            .set_path_to(PathRequest::from(EntityPosition::new(
+                4.5, 65.0, 0.5, 0.0, 0.0
+            )))
+            .unwrap()
+    );
 
     world.tick();
 
-    let Entity::Creature(creature) = world.entity_by_id(creature_id).unwrap() else {
+    let Entity::Creature(creature) = world.entity(creature_id).unwrap() else {
         panic!("creature entity must preserve its subtype");
     };
     assert!(creature.position().x() > start.x());
@@ -283,7 +321,7 @@ fn creature_navigation_moves_and_turns_on_the_first_world_tick() {
 #[test]
 fn creature_ai_path_start_moves_on_the_same_minestom_tick() {
     let mut world = pathfinding_world();
-    let mut creature = CreatureEntity::new(EntityType::ZOMBIE);
+    let mut creature = EntityCreature::new(EntityType::ZOMBIE);
     creature.set_position(EntityPosition::new(0.5, 65.0, 0.5, 0.0, 0.0));
     creature.set_on_ground(true);
     creature.add_ai_group(
@@ -296,11 +334,11 @@ fn creature_ai_path_start_moves_on_the_same_minestom_tick() {
     );
     let creature_id = creature.entity_id();
     let start = creature.position();
-    world.add_entity(Entity::Creature(creature));
+    creature.set_instance(&mut world);
 
     world.tick();
 
-    let Entity::Creature(creature) = world.entity_by_id(creature_id).unwrap() else {
+    let Entity::Creature(creature) = world.entity(creature_id).unwrap() else {
         panic!("creature entity must preserve its subtype");
     };
     assert!(creature.position().x() > start.x());
@@ -309,7 +347,7 @@ fn creature_ai_path_start_moves_on_the_same_minestom_tick() {
 #[test]
 fn creature_ai_path_reset_prevents_movement_on_the_same_minestom_tick() {
     let mut world = pathfinding_world();
-    let mut creature = CreatureEntity::new(EntityType::ZOMBIE);
+    let mut creature = EntityCreature::new(EntityType::ZOMBIE);
     creature.set_position(EntityPosition::new(0.5, 65.0, 0.5, 0.0, 0.0));
     creature.set_on_ground(true);
     creature.add_ai_group(
@@ -322,11 +360,11 @@ fn creature_ai_path_reset_prevents_movement_on_the_same_minestom_tick() {
     );
     let creature_id = creature.entity_id();
     let start = creature.position();
-    world.add_entity(Entity::Creature(creature));
+    creature.set_instance(&mut world);
 
     world.tick();
 
-    let Entity::Creature(creature) = world.entity_by_id(creature_id).unwrap() else {
+    let Entity::Creature(creature) = world.entity(creature_id).unwrap() else {
         panic!("creature entity must preserve its subtype");
     };
     assert_eq!(creature.position(), start);
@@ -614,17 +652,18 @@ fn minestom_negative_completion_distance_does_not_complete_a_path_request() {
     let snapshot = world.update_snapshot();
     let mut navigator = Navigator::default();
 
-    assert!(navigator.set_path_to(
-        &snapshot,
-        EntityPosition::new(0.5, 65.0, 0.5, 0.0, 0.0),
-        Some(EntityPosition::new(1.5, 65.0, 0.5, 0.0, 0.0)),
-        EntityType::ZOMBIE.bounding_box(),
-        true,
-        -2.0,
-        50.0,
-        20.0,
-        None,
-    ));
+    assert!(
+        navigator
+            .set_path_to(
+                &snapshot,
+                EntityPosition::new(0.5, 65.0, 0.5, 0.0, 0.0),
+                EntityType::ZOMBIE.bounding_box(),
+                true,
+                PathRequest::from(EntityPosition::new(1.5, 65.0, 0.5, 0.0, 0.0))
+                    .with_minimum_distance(-2.0),
+            )
+            .unwrap()
+    );
 }
 
 #[test]
@@ -762,75 +801,189 @@ fn vanilla_ground_follower_preserves_yaw_during_move_control_jumping_state() {
 }
 
 #[test]
+fn vanilla_navigation_completion_clears_stale_jumping_control_before_the_next_goal() {
+    let world = pathfinding_world();
+    let snapshot = world.update_snapshot();
+    let mut entity = grounded_zombie();
+    let vanilla_follower = VanillaGroundNodeFollower::default();
+    vanilla_follower.jump(
+        &mut entity,
+        Some(EntityPosition::new(1.5, 66.0, 0.5, 0.0, 0.0)),
+        None,
+    );
+    let mut navigator = Navigator::default();
+    navigator.set_node_follower(vanilla_follower);
+    let completed_goal = EntityPosition::new(4.5, 65.0, 0.5, 0.0, 0.0);
+    assert!(
+        navigator
+            .set_path_to(
+                &snapshot,
+                entity.position(),
+                entity.bounding_box(),
+                true,
+                PathRequest::from(completed_goal).with_minimum_distance(0.75),
+            )
+            .unwrap()
+    );
+    entity.set_position(EntityPosition::new(4.4, 65.0, 0.5, 0.0, 0.0));
+    entity.set_on_ground(true);
+
+    navigator.tick(&mut entity, &snapshot, false);
+    assert!(navigator.path().is_none());
+    assert!(
+        navigator
+            .set_path_to(
+                &snapshot,
+                entity.position(),
+                entity.bounding_box(),
+                true,
+                PathRequest::from(EntityPosition::new(0.5, 65.0, 0.5, 0.0, 0.0))
+                    .with_minimum_distance(0.75),
+            )
+            .unwrap()
+    );
+    navigator.tick(&mut entity, &snapshot, false);
+
+    assert_eq!(entity.position().yaw(), 90.0);
+}
+
+#[test]
+fn vanilla_navigation_advances_reached_jump_node_without_jumping_again() {
+    let world = pathfinding_world();
+    let snapshot = world.update_snapshot();
+    let reached_jump_target = EntityPosition::new(1.5, 66.0, 0.5, 0.0, 0.0);
+    let next_target = EntityPosition::new(2.5, 66.0, 0.5, 0.0, 0.0);
+    let mut entity = grounded_zombie();
+    entity.set_position(reached_jump_target);
+    let mut navigator = navigator_following_nodes(
+        &snapshot,
+        &mut entity,
+        EntityPosition::new(4.5, 66.0, 0.5, 0.0, 0.0),
+        vec![
+            PathNode::new(reached_jump_target, 0.0, 0.0, PathNodeType::Jump),
+            PathNode::new(next_target, 0.0, 0.0, PathNodeType::Walk),
+        ],
+    );
+    navigator.set_node_follower(VanillaGroundNodeFollower::default());
+    entity.set_position(reached_jump_target);
+    entity.set_on_ground(true);
+
+    navigator.tick(&mut entity, &snapshot, false);
+
+    assert_eq!(navigator.path().unwrap().current(), Some(next_target));
+    assert_eq!(entity.velocity().0.y, 0.0);
+}
+
+#[test]
+fn vanilla_navigation_does_not_execute_minestom_jump_a_full_block_before_the_step() {
+    let mut world = pathfinding_world();
+    world
+        .set_block(BlockPosition::new(0, 65, 1), Block::STONE)
+        .unwrap();
+    let snapshot = world.update_snapshot();
+    let jump_target = EntityPosition::new(0.5, 66.0, 1.5, 0.0, 0.0);
+    let next_target = EntityPosition::new(0.5, 66.0, 2.5, 0.0, 0.0);
+    let mut entity = grounded_zombie();
+    let mut navigator = Navigator::default();
+    navigator.set_node_follower(VanillaGroundNodeFollower::default());
+    assert!(
+        navigator
+            .set_path_to(
+                &snapshot,
+                entity.position(),
+                entity.bounding_box(),
+                entity.is_on_ground(),
+                PathRequest::from(EntityPosition::new(0.5, 66.0, 2.5, 0.0, 0.0))
+                    .with_minimum_distance(0.1),
+            )
+            .unwrap()
+    );
+    navigator.path_mut().unwrap().set_state(PathState::Computed);
+    let path_nodes = navigator.nodes_mut().unwrap();
+    path_nodes.clear();
+    path_nodes.extend([
+        PathNode::new(jump_target, 0.0, 0.0, PathNodeType::Jump),
+        PathNode::new(next_target, 0.0, 0.0, PathNodeType::Walk),
+    ]);
+
+    navigator.tick(&mut entity, &snapshot, false);
+
+    assert_eq!(entity.velocity().0.y, 0.0);
+    assert!(entity.velocity().0.z > 0.0);
+    assert_eq!(navigator.path().unwrap().current(), Some(jump_target));
+}
+
+#[test]
 fn minestom_and_vanilla_followers_move_simultaneously_in_one_world() {
     let mut world = pathfinding_world();
-    let mut minestom_zombie = CreatureEntity::new(EntityType::ZOMBIE);
+    let mut minestom_zombie = EntityCreature::new(EntityType::ZOMBIE);
     minestom_zombie.set_position(EntityPosition::new(0.5, 65.0, 0.5, 0.0, 0.0));
     let minestom_id = minestom_zombie.entity_id();
-    let mut vanilla_zombie = CreatureEntity::new(EntityType::ZOMBIE);
+    let mut vanilla_zombie = EntityCreature::new(EntityType::ZOMBIE);
     vanilla_zombie.set_position(EntityPosition::new(0.5, 65.0, 3.5, 0.0, 0.0));
     vanilla_zombie
         .navigator_mut()
         .set_node_follower(VanillaGroundNodeFollower::default());
     let vanilla_id = vanilla_zombie.entity_id();
-    assert!(world.add_entity(Entity::Creature(minestom_zombie)));
-    assert!(world.add_entity(Entity::Creature(vanilla_zombie)));
-    let snapshot = world.update_snapshot();
-    let minestom_start = world.entity_by_id(minestom_id).unwrap().position();
-    let vanilla_start = world.entity_by_id(vanilla_id).unwrap().position();
+    assert!(minestom_zombie.set_instance(&mut world));
+    assert!(vanilla_zombie.set_instance(&mut world));
+    let minestom_start = world.entity(minestom_id).unwrap().position();
+    let vanilla_start = world.entity(vanilla_id).unwrap().position();
 
+    let Entity::Creature(minestom_zombie) = world.entity_mut(minestom_id).unwrap() else {
+        panic!("creature entity must preserve its subtype");
+    };
     assert!(
-        world
-            .creature_by_id_mut(minestom_id)
+        minestom_zombie
+            .set_path_to(PathRequest::from(EntityPosition::new(
+                6.5, 65.0, 0.5, 0.0, 0.0
+            )))
             .unwrap()
-            .set_path_to_default(
-                &snapshot,
-                Some(EntityPosition::new(6.5, 65.0, 0.5, 0.0, 0.0)),
-            )
     );
+    let Entity::Creature(vanilla_zombie) = world.entity_mut(vanilla_id).unwrap() else {
+        panic!("creature entity must preserve its subtype");
+    };
     assert!(
-        world
-            .creature_by_id_mut(vanilla_id)
+        vanilla_zombie
+            .set_path_to(PathRequest::from(EntityPosition::new(
+                6.5, 65.0, 3.5, 0.0, 0.0
+            )))
             .unwrap()
-            .set_path_to_default(
-                &snapshot,
-                Some(EntityPosition::new(6.5, 65.0, 3.5, 0.0, 0.0)),
-            )
     );
 
     world.tick();
     world.tick();
 
-    assert!(world.entity_by_id(minestom_id).unwrap().position().x() > minestom_start.x());
-    assert!(world.entity_by_id(vanilla_id).unwrap().position().x() > vanilla_start.x());
+    assert!(world.entity(minestom_id).unwrap().position().x() > minestom_start.x());
+    assert!(world.entity(vanilla_id).unwrap().position().x() > vanilla_start.x());
 }
 
 #[test]
 fn vanilla_navigation_acceleration_moves_the_entity_on_the_same_world_tick() {
     let mut world = pathfinding_world();
-    let mut vanilla_zombie = CreatureEntity::new(EntityType::ZOMBIE);
+    let mut vanilla_zombie = EntityCreature::new(EntityType::ZOMBIE);
     vanilla_zombie.set_position(EntityPosition::new(0.5, 65.0, 3.5, 0.0, 0.0));
     vanilla_zombie
         .navigator_mut()
         .set_node_follower(VanillaGroundNodeFollower::default());
     let vanilla_id = vanilla_zombie.entity_id();
-    assert!(world.add_entity(Entity::Creature(vanilla_zombie)));
-    let snapshot = world.update_snapshot();
-    let start = world.entity_by_id(vanilla_id).unwrap().position();
+    assert!(vanilla_zombie.set_instance(&mut world));
+    let start = world.entity(vanilla_id).unwrap().position();
 
+    let Entity::Creature(vanilla_zombie) = world.entity_mut(vanilla_id).unwrap() else {
+        panic!("creature entity must preserve its subtype");
+    };
     assert!(
-        world
-            .creature_by_id_mut(vanilla_id)
+        vanilla_zombie
+            .set_path_to(PathRequest::from(EntityPosition::new(
+                6.5, 65.0, 3.5, 0.0, 0.0
+            )))
             .unwrap()
-            .set_path_to_default(
-                &snapshot,
-                Some(EntityPosition::new(6.5, 65.0, 3.5, 0.0, 0.0)),
-            )
     );
 
     world.tick();
 
-    assert!(world.entity_by_id(vanilla_id).unwrap().position().x() > start.x());
+    assert!(world.entity(vanilla_id).unwrap().position().x() > start.x());
 }
 
 #[test]
@@ -909,17 +1062,17 @@ fn navigator_following_nodes(
 ) -> Navigator {
     let start = entity.position();
     let mut navigator = Navigator::default();
-    assert!(navigator.set_path_to(
-        world,
-        start,
-        Some(goal),
-        entity.bounding_box(),
-        true,
-        0.1,
-        50.0,
-        20.0,
-        None,
-    ));
+    assert!(
+        navigator
+            .set_path_to(
+                world,
+                start,
+                entity.bounding_box(),
+                true,
+                PathRequest::from(goal).with_minimum_distance(0.1),
+            )
+            .unwrap()
+    );
     navigator.tick(entity, world, false);
     entity.set_position(start);
     navigator
@@ -1017,7 +1170,7 @@ struct StartPathGoal {
 impl GoalSelector for StartPathGoal {
     fn should_start(
         &mut self,
-        _creature: &CreatureEntity,
+        _creature: &EntityCreature,
         _world: &spinel_server::world::WorldSnapshot,
         _target_selectors: &mut [Box<dyn TargetSelector>],
     ) -> bool {
@@ -1026,16 +1179,18 @@ impl GoalSelector for StartPathGoal {
 
     fn start(
         &mut self,
-        creature: &mut CreatureEntity,
-        world: &spinel_server::world::WorldSnapshot,
+        creature: &mut EntityCreature,
+        _world: &spinel_server::world::WorldSnapshot,
         _target_selectors: &mut [Box<dyn TargetSelector>],
     ) {
-        self.has_started = creature.set_path_to_default(world, Some(self.goal));
+        self.has_started = creature
+            .set_path_to(PathRequest::from(self.goal))
+            .is_ok_and(|path_was_accepted| path_was_accepted);
     }
 
     fn tick(
         &mut self,
-        _creature: &mut CreatureEntity,
+        _creature: &mut EntityCreature,
         _world: &spinel_server::world::WorldSnapshot,
         _target_selectors: &mut [Box<dyn TargetSelector>],
         _time: u64,
@@ -1044,7 +1199,7 @@ impl GoalSelector for StartPathGoal {
 
     fn should_end(
         &mut self,
-        _creature: &CreatureEntity,
+        _creature: &EntityCreature,
         _world: &spinel_server::world::WorldSnapshot,
         _target_selectors: &mut [Box<dyn TargetSelector>],
     ) -> bool {
@@ -1053,7 +1208,7 @@ impl GoalSelector for StartPathGoal {
 
     fn end(
         &mut self,
-        _creature: &mut CreatureEntity,
+        _creature: &mut EntityCreature,
         _world: &spinel_server::world::WorldSnapshot,
         _target_selectors: &mut [Box<dyn TargetSelector>],
     ) {
@@ -1068,7 +1223,7 @@ struct ResetPathGoal {
 impl GoalSelector for ResetPathGoal {
     fn should_start(
         &mut self,
-        _creature: &CreatureEntity,
+        _creature: &EntityCreature,
         _world: &spinel_server::world::WorldSnapshot,
         _target_selectors: &mut [Box<dyn TargetSelector>],
     ) -> bool {
@@ -1077,16 +1232,18 @@ impl GoalSelector for ResetPathGoal {
 
     fn start(
         &mut self,
-        creature: &mut CreatureEntity,
-        world: &spinel_server::world::WorldSnapshot,
+        creature: &mut EntityCreature,
+        _world: &spinel_server::world::WorldSnapshot,
         _target_selectors: &mut [Box<dyn TargetSelector>],
     ) {
-        self.has_started = creature.set_path_to_default(world, Some(self.goal));
+        self.has_started = creature
+            .set_path_to(PathRequest::from(self.goal))
+            .is_ok_and(|path_was_accepted| path_was_accepted);
     }
 
     fn tick(
         &mut self,
-        creature: &mut CreatureEntity,
+        creature: &mut EntityCreature,
         _world: &spinel_server::world::WorldSnapshot,
         _target_selectors: &mut [Box<dyn TargetSelector>],
         _time: u64,
@@ -1096,7 +1253,7 @@ impl GoalSelector for ResetPathGoal {
 
     fn should_end(
         &mut self,
-        _creature: &CreatureEntity,
+        _creature: &EntityCreature,
         _world: &spinel_server::world::WorldSnapshot,
         _target_selectors: &mut [Box<dyn TargetSelector>],
     ) -> bool {
@@ -1105,7 +1262,7 @@ impl GoalSelector for ResetPathGoal {
 
     fn end(
         &mut self,
-        _creature: &mut CreatureEntity,
+        _creature: &mut EntityCreature,
         _world: &spinel_server::world::WorldSnapshot,
         _target_selectors: &mut [Box<dyn TargetSelector>],
     ) {

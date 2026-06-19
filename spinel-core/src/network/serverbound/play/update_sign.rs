@@ -12,7 +12,7 @@ pub struct UpdateSignPacket {
 
 impl UpdateSignPacket {
     pub const fn get_id_const() -> i32 {
-        0x3A
+        0x3B
     }
 
     pub const fn get_state_const() -> ConnectionState {

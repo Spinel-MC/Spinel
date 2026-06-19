@@ -676,24 +676,39 @@ fn generic_entity_ender_dragon_metadata_api_matches_minestom_meta_surface() {
 fn generic_entity_bat_and_bee_metadata_api_matches_minestom_meta_surface() {
     let mut bat = GenericEntity::new(EntityType::BAT);
     let mut bee = GenericEntity::new(EntityType::BEE);
+    let mut zombie = GenericEntity::new(EntityType::ZOMBIE);
 
     assert!(!bat.is_hanging_bat());
-    assert!(!bee.is_angry_bee());
-    assert!(!bee.has_bee_stung());
-    assert!(!bee.bee_has_nectar());
-    assert_eq!(bee.bee_anger_ticks(), -1);
-
+    assert!(zombie.entity_meta_mut().bee().is_none());
     bat.set_hanging_bat(true);
-    bee.set_angry_bee(true);
-    bee.set_bee_has_stung(true);
-    bee.set_bee_has_nectar(true);
-    bee.set_bee_anger_ticks(45);
+    {
+        let mut bee_meta = bee
+            .entity_meta_mut()
+            .bee()
+            .expect("bee entity must expose BeeMeta");
+        assert!(!bee_meta.is_angry());
+        assert!(!bee_meta.has_stung());
+        assert!(!bee_meta.has_nectar());
+        assert_eq!(bee_meta.anger_ticks(), -1);
+        assert!(!bee_meta.is_baby());
 
+        bee_meta.set_angry(true);
+        bee_meta.set_has_stung(true);
+        bee_meta.set_has_nectar(true);
+        bee_meta.set_anger_ticks(45);
+        bee_meta.set_baby(true);
+
+        assert!(bee_meta.is_angry());
+        assert!(bee_meta.has_stung());
+        assert!(bee_meta.has_nectar());
+        assert_eq!(bee_meta.anger_ticks(), 45);
+        assert!(bee_meta.is_baby());
+    }
     assert!(bat.is_hanging_bat());
-    assert!(bee.is_angry_bee());
-    assert!(bee.has_bee_stung());
-    assert!(bee.bee_has_nectar());
-    assert_eq!(bee.bee_anger_ticks(), 45);
+    assert_eq!(
+        bee.bounding_box().width(),
+        EntityType::BEE.bounding_box().width() / 2.0
+    );
 }
 
 #[test]
@@ -704,19 +719,36 @@ fn generic_entity_allay_armadillo_and_sniffer_metadata_match_minestom() {
 
     assert!(!allay.is_dancing_allay());
     assert!(allay.allay_can_duplicate());
-    assert_eq!(armadillo.armadillo_state(), ArmadilloState::Idle);
+    {
+        let armadillo_meta = armadillo
+            .entity_meta_mut()
+            .armadillo()
+            .expect("armadillo entity must expose ArmadilloMeta");
+        assert_eq!(armadillo_meta.state(), ArmadilloState::Idle);
+    }
     assert_eq!(sniffer.sniffer_state(), SnifferState::Idling);
     assert_eq!(sniffer.sniffer_drop_seed_at_tick(), 0);
 
     allay.set_dancing_allay(true);
     allay.set_allay_can_duplicate(false);
-    armadillo.set_armadillo_state(ArmadilloState::Scared);
+    armadillo
+        .entity_meta_mut()
+        .armadillo()
+        .expect("armadillo entity must expose ArmadilloMeta")
+        .set_state(ArmadilloState::Scared);
     sniffer.set_sniffer_state(SnifferState::Digging);
     sniffer.set_sniffer_drop_seed_at_tick(42);
 
     assert!(allay.is_dancing_allay());
     assert!(!allay.allay_can_duplicate());
-    assert_eq!(armadillo.armadillo_state(), ArmadilloState::Scared);
+    assert_eq!(
+        armadillo
+            .entity_meta_mut()
+            .armadillo()
+            .expect("armadillo entity must expose ArmadilloMeta")
+            .state(),
+        ArmadilloState::Scared
+    );
     assert_eq!(sniffer.sniffer_state(), SnifferState::Digging);
     assert_eq!(sniffer.sniffer_drop_seed_at_tick(), 42);
 }
@@ -820,7 +852,12 @@ fn generic_entity_bogged_creaking_spider_and_vex_metadata_match_minestom() {
     assert!(!creaking.is_tearing_down_creaking());
     assert_eq!(creaking.creaking_home_position(), None);
     assert!(!spider.is_climbing_spider());
-    assert!(!vex.is_attacking_vex());
+    assert!(
+        !vex.entity_meta_mut()
+            .vex()
+            .expect("vex entity must expose VexMeta")
+            .is_attacking()
+    );
 
     bogged.set_sheared_bogged(true);
     creaking.set_creaking_can_move(false);
@@ -828,7 +865,10 @@ fn generic_entity_bogged_creaking_spider_and_vex_metadata_match_minestom() {
     creaking.set_tearing_down_creaking(true);
     creaking.set_creaking_home_position(Some(home_position));
     spider.set_climbing_spider(true);
-    vex.set_attacking_vex(true);
+    vex.entity_meta_mut()
+        .vex()
+        .expect("vex entity must expose VexMeta")
+        .set_attacking(true);
 
     assert!(bogged.is_sheared_bogged());
     assert!(!creaking.creaking_can_move());
@@ -836,7 +876,12 @@ fn generic_entity_bogged_creaking_spider_and_vex_metadata_match_minestom() {
     assert!(creaking.is_tearing_down_creaking());
     assert_eq!(creaking.creaking_home_position(), Some(home_position));
     assert!(spider.is_climbing_spider());
-    assert!(vex.is_attacking_vex());
+    assert!(
+        vex.entity_meta_mut()
+            .vex()
+            .expect("vex entity must expose VexMeta")
+            .is_attacking()
+    );
 }
 
 #[test]
@@ -850,8 +895,14 @@ fn generic_entity_guardian_raider_wither_warden_and_zombie_metadata_match_minest
     let mut zoglin = GenericEntity::new(EntityType::ZOGLIN);
     let mut zombie = GenericEntity::new(EntityType::ZOMBIE);
 
-    assert!(!guardian.guardian_is_retracting_spikes());
-    assert_eq!(guardian.guardian_target_entity_id(), 0);
+    {
+        let guardian_meta = guardian
+            .entity_meta_mut()
+            .guardian()
+            .expect("guardian entity must expose GuardianMeta");
+        assert!(!guardian_meta.is_retracting_spikes());
+        assert_eq!(guardian_meta.target_entity_id(), 0);
+    }
     assert!(!raider.raider_is_celebrating());
     assert!(!pillager.pillager_is_charging_crossbow());
     assert!(!witch.witch_is_drinking_potion());
@@ -864,8 +915,14 @@ fn generic_entity_guardian_raider_wither_warden_and_zombie_metadata_match_minest
     assert!(!zombie.is_baby_zombie());
     assert!(!zombie.zombie_is_becoming_drowned());
 
-    guardian.set_guardian_retracting_spikes(true);
-    guardian.set_guardian_target_entity_id(15);
+    {
+        let mut guardian_meta = guardian
+            .entity_meta_mut()
+            .guardian()
+            .expect("guardian entity must expose GuardianMeta");
+        guardian_meta.set_retracting_spikes(true);
+        guardian_meta.set_target_entity_id(15);
+    }
     raider.set_raider_celebrating(true);
     pillager.set_pillager_charging_crossbow(true);
     witch.set_witch_drinking_potion(true);
@@ -878,8 +935,14 @@ fn generic_entity_guardian_raider_wither_warden_and_zombie_metadata_match_minest
     zombie.set_baby_zombie(true);
     zombie.set_zombie_becoming_drowned(true);
 
-    assert!(guardian.guardian_is_retracting_spikes());
-    assert_eq!(guardian.guardian_target_entity_id(), 15);
+    {
+        let guardian_meta = guardian
+            .entity_meta_mut()
+            .guardian()
+            .expect("guardian entity must expose GuardianMeta");
+        assert!(guardian_meta.is_retracting_spikes());
+        assert_eq!(guardian_meta.target_entity_id(), 15);
+    }
     assert!(raider.raider_is_celebrating());
     assert!(pillager.pillager_is_charging_crossbow());
     assert!(witch.witch_is_drinking_potion());
@@ -909,7 +972,13 @@ fn generic_entity_piglin_enderman_ghast_and_phantom_metadata_match_minestom() {
     assert_eq!(enderman.enderman_carried_block(), None);
     assert!(!enderman.is_screaming_enderman());
     assert!(!enderman.is_staring_enderman());
-    assert!(!ghast.is_attacking_ghast());
+    assert!(
+        !ghast
+            .entity_meta_mut()
+            .ghast()
+            .expect("ghast entity must expose GhastMeta")
+            .is_attacking()
+    );
     assert_eq!(phantom.phantom_size(), 0);
 
     piglin.set_piglin_immune_to_zombification(true);
@@ -919,7 +988,11 @@ fn generic_entity_piglin_enderman_ghast_and_phantom_metadata_match_minestom() {
     enderman.set_enderman_carried_block(Some(stone));
     enderman.set_screaming_enderman(true);
     enderman.set_staring_enderman(true);
-    ghast.set_attacking_ghast(true);
+    ghast
+        .entity_meta_mut()
+        .ghast()
+        .expect("ghast entity must expose GhastMeta")
+        .set_attacking(true);
     phantom.set_phantom_size(4);
 
     assert!(piglin.piglin_is_immune_to_zombification());
@@ -929,7 +1002,13 @@ fn generic_entity_piglin_enderman_ghast_and_phantom_metadata_match_minestom() {
     assert_eq!(enderman.enderman_carried_block(), Some(stone));
     assert!(enderman.is_screaming_enderman());
     assert!(enderman.is_staring_enderman());
-    assert!(ghast.is_attacking_ghast());
+    assert!(
+        ghast
+            .entity_meta_mut()
+            .ghast()
+            .expect("ghast entity must expose GhastMeta")
+            .is_attacking()
+    );
     assert_eq!(phantom.phantom_size(), 4);
 
     enderman.set_enderman_carried_block(Some(air));

@@ -1,5 +1,5 @@
 use crate::entity::ai::TargetSelector;
-use crate::entity::{CreatureEntity, EntityId};
+use crate::entity::{EntityCreature, EntityId};
 use crate::world::WorldSnapshot;
 
 pub struct LastEntityDamagerTarget {
@@ -15,7 +15,7 @@ impl LastEntityDamagerTarget {
 impl TargetSelector for LastEntityDamagerTarget {
     fn find_target(
         &mut self,
-        creature: &CreatureEntity,
+        creature: &EntityCreature,
         world: &WorldSnapshot,
     ) -> Option<EntityId> {
         let source = creature.last_damage()?.source()?;

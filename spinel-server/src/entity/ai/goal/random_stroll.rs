@@ -1,5 +1,6 @@
 use crate::entity::ai::{GoalSelector, TargetSelector};
-use crate::entity::{CreatureEntity, EntityPosition};
+use crate::entity::pathfinding::PathRequest;
+use crate::entity::{EntityCreature, EntityPosition};
 use crate::world::WorldSnapshot;
 use rand::seq::IndexedRandom;
 use std::time::{Duration, Instant};
@@ -34,7 +35,7 @@ impl RandomStrollGoal {
 impl GoalSelector for RandomStrollGoal {
     fn should_start(
         &mut self,
-        _creature: &CreatureEntity,
+        _creature: &EntityCreature,
         _world: &WorldSnapshot,
         _target_selectors: &mut [Box<dyn TargetSelector>],
     ) -> bool {
@@ -44,7 +45,7 @@ impl GoalSelector for RandomStrollGoal {
 
     fn start(
         &mut self,
-        creature: &mut CreatureEntity,
+        creature: &mut EntityCreature,
         world: &WorldSnapshot,
         _target_selectors: &mut [Box<dyn TargetSelector>],
     ) {
@@ -64,7 +65,10 @@ impl GoalSelector for RandomStrollGoal {
                 position.yaw(),
                 position.pitch(),
             );
-            if creature.set_path_to_default(world, Some(target)) {
+            if creature
+                .set_path_to_in_world(world, PathRequest::from(target))
+                .is_ok_and(|path_was_accepted| path_was_accepted)
+            {
                 break;
             }
         }
@@ -72,7 +76,7 @@ impl GoalSelector for RandomStrollGoal {
 
     fn tick(
         &mut self,
-        _creature: &mut CreatureEntity,
+        _creature: &mut EntityCreature,
         _world: &WorldSnapshot,
         _target_selectors: &mut [Box<dyn TargetSelector>],
         _time: u64,
@@ -81,7 +85,7 @@ impl GoalSelector for RandomStrollGoal {
 
     fn should_end(
         &mut self,
-        _creature: &CreatureEntity,
+        _creature: &EntityCreature,
         _world: &WorldSnapshot,
         _target_selectors: &mut [Box<dyn TargetSelector>],
     ) -> bool {
@@ -90,7 +94,7 @@ impl GoalSelector for RandomStrollGoal {
 
     fn end(
         &mut self,
-        _creature: &mut CreatureEntity,
+        _creature: &mut EntityCreature,
         _world: &WorldSnapshot,
         _target_selectors: &mut [Box<dyn TargetSelector>],
     ) {

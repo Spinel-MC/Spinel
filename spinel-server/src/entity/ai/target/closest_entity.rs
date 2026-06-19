@@ -1,5 +1,5 @@
 use crate::entity::ai::TargetSelector;
-use crate::entity::{CreatureEntity, EntityId, EntityObservation};
+use crate::entity::{EntityCreature, EntityId, EntityObservation};
 use crate::world::WorldSnapshot;
 
 pub struct ClosestEntityTarget {
@@ -22,7 +22,7 @@ impl ClosestEntityTarget {
 impl TargetSelector for ClosestEntityTarget {
     fn find_target(
         &mut self,
-        creature: &CreatureEntity,
+        creature: &EntityCreature,
         world: &WorldSnapshot,
     ) -> Option<EntityId> {
         let maximum_distance_squared = self.range * self.range;

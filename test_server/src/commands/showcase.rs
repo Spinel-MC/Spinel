@@ -2,7 +2,6 @@ use crate::showcase::{EntityShowcase, InventoryShowcase, PlayerShowcase, WorldSh
 use spinel::server::{
     MinecraftServer,
     command::{Command, CommandContext, CommandExecutionResult, CommandSender},
-    entity::PlayerHand,
 };
 
 pub struct ShowcaseCommand;
@@ -39,11 +38,11 @@ impl ShowcaseCommand {
             return CommandExecutionResult::precondition_failed();
         };
         match EntityShowcase::spawn(server, world_id, position) {
-            Ok(pathfinding_stick) => {
+            Ok(pathfinding_sticks) => {
                 let Some(player) = sender.player(server) else {
                     return CommandExecutionResult::precondition_failed();
                 };
-                player.set_item_in_hand(PlayerHand::Main, pathfinding_stick);
+                pathfinding_sticks.give_to_player(player);
                 CommandExecutionResult::success()
             }
             Err(_) => CommandExecutionResult::precondition_failed(),

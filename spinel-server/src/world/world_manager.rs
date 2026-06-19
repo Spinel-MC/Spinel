@@ -303,7 +303,8 @@ impl WorldManager {
         Ok(())
     }
 
-    pub fn add_passenger(
+    #[cfg(test)]
+    pub(crate) fn add_passenger(
         &mut self,
         vehicle_id: EntityId,
         passenger_id: EntityId,

@@ -52,6 +52,16 @@ pub trait NodeFollower: Send {
     fn physics_timing(&self) -> NodeFollowerPhysicsTiming {
         NodeFollowerPhysicsTiming::AfterPhysics
     }
+
+    fn stop_following_path(&self, _entity: &mut GenericEntity) {}
+
+    fn should_advance_reached_node_before_moving(&self) -> bool {
+        false
+    }
+
+    fn should_execute_path_node_jump(&self) -> bool {
+        true
+    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -303,6 +313,18 @@ impl NodeFollower for VanillaGroundNodeFollower {
 
     fn physics_timing(&self) -> NodeFollowerPhysicsTiming {
         NodeFollowerPhysicsTiming::BeforePhysics
+    }
+
+    fn stop_following_path(&self, _entity: &mut GenericEntity) {
+        self.move_control_state.set(VanillaMoveControlState::Wait);
+    }
+
+    fn should_advance_reached_node_before_moving(&self) -> bool {
+        true
+    }
+
+    fn should_execute_path_node_jump(&self) -> bool {
+        false
     }
 }
 

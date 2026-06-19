@@ -1,4 +1,4 @@
-use crate::entity::CreatureEntity;
+use crate::entity::EntityCreature;
 use crate::entity::ai::{GoalSelectorHandle, TargetSelector};
 use crate::world::WorldSnapshot;
 use std::ops::{Deref, DerefMut};
@@ -86,7 +86,7 @@ impl EntityAiGroup {
         true
     }
 
-    pub fn tick(&mut self, creature: &mut CreatureEntity, world: &WorldSnapshot, time: u64) {
+    pub fn tick(&mut self, creature: &mut EntityCreature, world: &WorldSnapshot, time: u64) {
         let current_should_end = self.current_goal_selector.as_ref().is_some_and(|selector| {
             selector
                 .selector_mut()
@@ -128,6 +128,7 @@ impl EntityAiGroup {
             goal_selector
                 .selector_mut()
                 .start(creature, world, &mut self.target_selectors);
+            creature.resolve_pending_path_request(world);
             break;
         }
 
@@ -138,6 +139,7 @@ impl EntityAiGroup {
                 &mut self.target_selectors,
                 time,
             );
+            creature.resolve_pending_path_request(world);
         }
     }
 }
