@@ -14,7 +14,7 @@ fn on_teleport_to_entity(
     let Some(player) = server.world_manager.player_pointer_for_client(client) else {
         return true;
     };
-    if unsafe { &*player }.game_mode() != GameMode::Spectator {
+    if unsafe { &*player }.get_game_mode() != GameMode::Spectator {
         return true;
     }
     let Some(world_uuid) = server.world_manager.world_uuid_for_client(client) else {
@@ -24,11 +24,11 @@ fn on_teleport_to_entity(
         .world_manager
         .world(world_uuid)
         .and_then(|world| world.entity_by_uuid(packet.target))
-        .map(|entity| entity.entity_id())
+        .map(|entity| entity.get_entity_id())
     else {
         return true;
     };
-    if unsafe { &*player }.entity_id() == target_id {
+    if unsafe { &*player }.get_entity_id() == target_id {
         return true;
     }
     let mut event = PlayerSpectateEvent::new(player, target_id);

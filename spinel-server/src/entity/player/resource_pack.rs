@@ -67,7 +67,7 @@ impl ResourcePackRequest {
         self
     }
 
-    pub fn packs(&self) -> &[ResourcePackInfo] {
+    pub fn get_packs(&self) -> &[ResourcePackInfo] {
         &self.packs
     }
 
@@ -79,7 +79,7 @@ impl ResourcePackRequest {
         self.replace
     }
 
-    pub fn prompt_text(&self) -> Option<&TextComponent> {
+    pub fn get_prompt_text(&self) -> Option<&TextComponent> {
         self.prompt.as_ref()
     }
 }
@@ -105,7 +105,7 @@ impl ResourcePackFuture {
         Self { pending_count }
     }
 
-    pub const fn pending_count(&self) -> usize {
+    pub const fn get_pending_count(&self) -> usize {
         self.pending_count
     }
 }
@@ -115,11 +115,11 @@ impl Player {
         if request.should_replace() {
             self.clear_resource_packs()?;
         }
-        for resource_pack in request.packs() {
+        for resource_pack in request.get_packs() {
             self.send_resource_pack_push_packet(ResourcePackPushPacket::new(
                 resource_pack,
                 request.is_required(),
-                request.prompt_text().cloned(),
+                request.get_prompt_text().cloned(),
             ))?;
             self.pending_resource_packs.insert(
                 resource_pack.id(),
@@ -146,7 +146,7 @@ impl Player {
         self.send_resource_pack_pop_packet(ResourcePackPopPacket::new(None))
     }
 
-    pub fn resource_pack_future(&self) -> Option<ResourcePackFuture> {
+    pub fn get_resource_pack_future(&self) -> Option<ResourcePackFuture> {
         let pending_count = self.pending_resource_packs.len();
         if pending_count == 0 {
             return None;
@@ -154,7 +154,7 @@ impl Player {
         Some(ResourcePackFuture::new(pending_count))
     }
 
-    pub fn pending_resource_pack_count(&self) -> usize {
+    pub fn get_pending_resource_pack_count(&self) -> usize {
         self.pending_resource_packs.len()
     }
 
@@ -180,7 +180,7 @@ impl Player {
     }
 
     fn send_resource_pack_push_packet(&mut self, packet: ResourcePackPushPacket) -> io::Result<()> {
-        let Some(client) = self.client_mut() else {
+        let Some(client) = self.get_client_mut() else {
             return Ok(());
         };
         match client.state {
@@ -206,7 +206,7 @@ impl Player {
     }
 
     fn send_resource_pack_pop_packet(&mut self, packet: ResourcePackPopPacket) -> io::Result<()> {
-        let Some(client) = self.client_mut() else {
+        let Some(client) = self.get_client_mut() else {
             return Ok(());
         };
         match client.state {

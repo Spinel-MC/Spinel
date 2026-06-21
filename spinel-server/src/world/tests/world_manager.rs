@@ -54,7 +54,7 @@ fn world_manager_create_and_register_worlds_match_minestom_instance_manager_surf
     assert_eq!(
         worlds
             .world(nether_world)
-            .map(|world| world.dimension_type().clone()),
+            .map(|world| world.get_dimension_type().clone()),
         Some(DimensionType::THE_NETHER)
     );
     assert_eq!(
@@ -72,10 +72,10 @@ fn world_manager_add_passenger_moves_passenger_to_vehicle_world_first() {
     let passenger_world = worlds.create_world(Identifier::minecraft("the_nether"));
     let mut vehicle = GenericEntity::new(EntityType::PIG);
     vehicle.set_position(EntityPosition::new(12.0, 70.0, 8.0, 0.0, 0.0));
-    let vehicle_id = vehicle.entity_id();
+    let vehicle_id = vehicle.get_entity_id();
     let mut passenger = GenericEntity::new(EntityType::ZOMBIE);
     passenger.set_position(EntityPosition::new(-20.0, 40.0, 30.0, 0.0, 0.0));
-    let passenger_id = passenger.entity_id();
+    let passenger_id = passenger.get_entity_id();
     worlds
         .world_mut(vehicle_world)
         .unwrap()
@@ -91,21 +91,21 @@ fn world_manager_add_passenger_moves_passenger_to_vehicle_world_first() {
         worlds
             .world(passenger_world)
             .unwrap()
-            .entity_by_id(passenger_id)
+            .get_entity(passenger_id)
             .is_none()
     );
     let vehicle_world = worlds.world(vehicle_world).unwrap();
     assert!(
         vehicle_world
-            .entity_by_id(vehicle_id)
+            .get_entity(vehicle_id)
             .unwrap()
-            .passengers()
+            .get_passengers()
             .contains(&passenger_id)
     );
-    let passenger = vehicle_world.entity_by_id(passenger_id).unwrap();
-    assert_eq!(passenger.vehicle(), Some(vehicle_id));
+    let passenger = vehicle_world.get_entity(passenger_id).unwrap();
+    assert_eq!(passenger.get_vehicle(), Some(vehicle_id));
     assert_eq!(
-        passenger.position(),
-        EntityPosition::new(12.0, 70.0 + EntityType::PIG.height() * 0.75, 8.0, 0.0, 0.0,)
+        passenger.get_position(),
+        EntityPosition::new(12.0, 70.0 + EntityType::PIG.get_height() * 0.75, 8.0, 0.0, 0.0,)
     );
 }

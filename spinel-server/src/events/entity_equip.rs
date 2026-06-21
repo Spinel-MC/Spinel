@@ -18,11 +18,11 @@ impl EntityEquipEvent {
         }
     }
 
-    pub fn entity_id(&self) -> EntityId {
+    pub fn get_entity_id(&self) -> EntityId {
         self.entity_id
     }
 
-    pub fn equipped_item(&self) -> &ItemStack {
+    pub fn get_equipped_item(&self) -> &ItemStack {
         &self.equipped_item
     }
 
@@ -30,11 +30,11 @@ impl EntityEquipEvent {
         self.equipped_item = equipped_item;
     }
 
-    pub fn item_stack(&self) -> &ItemStack {
+    pub fn get_item_stack(&self) -> &ItemStack {
         &self.equipped_item
     }
 
-    pub fn slot(&self) -> EquipmentSlot {
+    pub fn get_slot(&self) -> EquipmentSlot {
         self.slot
     }
 }

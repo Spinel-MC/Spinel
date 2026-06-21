@@ -8,7 +8,7 @@ pub enum CopperGolemWeatherState {
 }
 
 impl CopperGolemWeatherState {
-    pub const fn protocol_id(self) -> i32 {
+    pub const fn get_protocol_id(self) -> i32 {
         self as i32
     }
 
@@ -34,7 +34,7 @@ pub enum CopperGolemState {
 }
 
 impl CopperGolemState {
-    pub const fn protocol_id(self) -> i32 {
+    pub const fn get_protocol_id(self) -> i32 {
         self as i32
     }
 

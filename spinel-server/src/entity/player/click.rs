@@ -19,7 +19,7 @@ impl Player {
             return false;
         };
         let Some(mut click) = self
-            .click_preprocessor()
+            .get_click_preprocessor()
             .process_click(packet, container_size)
         else {
             return false;
@@ -61,7 +61,7 @@ impl Player {
         if container_id == 0 {
             return Some(None);
         }
-        let inventory = self.opened_inventory()?;
+        let inventory = self.get_opened_inventory()?;
         if inventory.id() != container_id {
             return None;
         }
@@ -69,10 +69,10 @@ impl Player {
     }
 
     fn click_is_creative_only(&self, click: &Click) -> bool {
-        self.game_mode() != GameMode::Creative
+        self.get_game_mode() != GameMode::Creative
             && self
                 .click_preprocessor
-                .is_creative_click(click, !self.inventory_ref().cursor_item().is_air())
+                .is_creative_click(click, !self.get_inventory_ref().cursor_item().is_air())
     }
 
     fn resync_inventory(&self, client: &mut Client) -> bool {
@@ -136,6 +136,6 @@ impl Player {
     }
 
     fn cursor_mismatch(&self, packet: &ContainerClickPacket) -> bool {
-        ItemStackHash::from_item_stack(self.inventory_ref().cursor_item()) != packet.carried_item
+        ItemStackHash::from_item_stack(self.get_inventory_ref().cursor_item()) != packet.carried_item
     }
 }

@@ -43,14 +43,14 @@ impl InventoryItemChangeEvent {
         if !self.in_open_inventory {
             return None;
         }
-        self.player().opened_inventory()
+        self.player().get_opened_inventory()
     }
 
     pub fn player_inventory(&mut self) -> Option<&PlayerInventory> {
         if self.in_open_inventory {
             return None;
         }
-        Some(self.player().inventory_ref())
+        Some(self.player().get_inventory_ref())
     }
 
     pub fn slot(&self) -> i32 {

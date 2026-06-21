@@ -68,8 +68,8 @@ impl PerfectMotionState {
                 y: 0.0,
                 z: 0.0,
             },
-            yaw: position.yaw(),
-            pitch: position.pitch(),
+            yaw: position.get_yaw(),
+            pitch: position.get_pitch(),
             on_ground: false,
             horizontal_collision: false,
             tick: 0,
@@ -151,13 +151,13 @@ impl PerfectMotionSimulator {
         position: EntityPosition,
         velocity: Vector3d,
     ) -> MoveResult {
-        let after_x = position.offset(velocity.x, 0.0, 0.0);
+        let after_x = position.get_offset(velocity.x, 0.0, 0.0);
         let x_blocked = !position_is_simulatable(world, after_x, bounding_box);
         let position = if x_blocked { position } else { after_x };
-        let after_z = position.offset(0.0, 0.0, velocity.z);
+        let after_z = position.get_offset(0.0, 0.0, velocity.z);
         let z_blocked = !position_is_simulatable(world, after_z, bounding_box);
         let position = if z_blocked { position } else { after_z };
-        let after_y = position.offset(0.0, velocity.y, 0.0);
+        let after_y = position.get_offset(0.0, velocity.y, 0.0);
         let y_blocked = !position_is_simulatable(world, after_y, bounding_box);
         let on_ground = y_blocked && velocity.y < 0.0;
         let position = if y_blocked { position } else { after_y };
@@ -219,15 +219,15 @@ pub(crate) fn position_is_simulatable(
     position: EntityPosition,
     bounding_box: EntityBoundingBox,
 ) -> bool {
-    if !world.world_border().contains(position.x(), position.z()) {
+    if !world.get_world_border().contains(position.get_x(), position.get_z()) {
         return false;
     }
-    let minimum_x = (position.x() + bounding_box.minimum_x()).floor() as i32;
-    let maximum_x = (position.x() + bounding_box.maximum_x()).floor() as i32;
-    let minimum_y = (position.y() + bounding_box.minimum_y()).floor() as i32;
-    let maximum_y = (position.y() + bounding_box.maximum_y()).ceil() as i32 - 1;
-    let minimum_z = (position.z() + bounding_box.minimum_z()).floor() as i32;
-    let maximum_z = (position.z() + bounding_box.maximum_z()).floor() as i32;
+    let minimum_x = (position.get_x() + bounding_box.minimum_x()).floor() as i32;
+    let maximum_x = (position.get_x() + bounding_box.maximum_x()).floor() as i32;
+    let minimum_y = (position.get_y() + bounding_box.minimum_y()).floor() as i32;
+    let maximum_y = (position.get_y() + bounding_box.maximum_y()).ceil() as i32 - 1;
+    let minimum_z = (position.get_z() + bounding_box.minimum_z()).floor() as i32;
+    let maximum_z = (position.get_z() + bounding_box.maximum_z()).floor() as i32;
     let dimension = world.cached_dimension_type();
     let maximum_dimension_y = dimension.min_y + dimension.height - 1;
     if minimum_y < dimension.min_y || maximum_y > maximum_dimension_y {

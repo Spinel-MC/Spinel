@@ -38,16 +38,16 @@ impl EntityTracker {
     }
 
     pub fn register(&mut self, entity: &Entity) {
-        let entity_id = entity.entity_id();
-        let position = entity.position();
+        let entity_id = entity.get_entity_id();
+        let position = entity.get_position();
         self.entries_by_entity_id.insert(
             entity_id,
             EntityTrackerEntry {
-                uuid: entity.uuid(),
+                uuid: entity.get_uuid(),
                 position,
             },
         );
-        self.entries_by_entity_uuid.insert(entity.uuid(), entity_id);
+        self.entries_by_entity_uuid.insert(entity.get_uuid(), entity_id);
         self.targets_for_entity(entity)
             .into_iter()
             .for_each(|target| self.register_target(entity_id, position, target));
@@ -182,11 +182,11 @@ impl EntityTracker {
                 EntityTrackerTarget::Entities,
                 EntityTrackerTarget::ExperienceOrbs,
             ],
-            Entity::Generic(entity) if entity.entity_type() == EntityType::ITEM => {
+            Entity::Generic(entity) if entity.get_entity_type() == EntityType::ITEM => {
                 vec![EntityTrackerTarget::Entities, EntityTrackerTarget::Items]
             }
             Entity::Item(_) => vec![EntityTrackerTarget::Entities, EntityTrackerTarget::Items],
-            Entity::Generic(entity) if entity.entity_type() == EntityType::EXPERIENCE_ORB => {
+            Entity::Generic(entity) if entity.get_entity_type() == EntityType::EXPERIENCE_ORB => {
                 vec![
                     EntityTrackerTarget::Entities,
                     EntityTrackerTarget::ExperienceOrbs,
@@ -265,14 +265,14 @@ impl EntityTrackerTargetEntry {
 
 fn entity_chunk_position(position: EntityPosition) -> ChunkPosition {
     ChunkPosition::new(
-        (position.x().floor() as i32).div_euclid(CHUNK_SIZE_X),
-        (position.z().floor() as i32).div_euclid(CHUNK_SIZE_Z),
+        (position.get_x().floor() as i32).div_euclid(CHUNK_SIZE_X),
+        (position.get_z().floor() as i32).div_euclid(CHUNK_SIZE_Z),
     )
 }
 
 fn entity_distance_squared(first: EntityPosition, second: EntityPosition) -> f64 {
-    let x_distance = first.x() - second.x();
-    let y_distance = first.y() - second.y();
-    let z_distance = first.z() - second.z();
+    let x_distance = first.get_x() - second.get_x();
+    let y_distance = first.get_y() - second.get_y();
+    let z_distance = first.get_z() - second.get_z();
     x_distance * x_distance + y_distance * y_distance + z_distance * z_distance
 }

@@ -4,7 +4,7 @@ use crate::inventory::slot_conversion::{
     convert_minestom_slot_to_window_slot, is_player_inventory_slot,
 };
 use spinel_registry::ItemStack;
-use std::collections::HashSet;
+use std::collections::{BTreeSet, HashSet};
 use uuid::Uuid;
 
 pub const INVENTORY_SIZE: usize = 46;
@@ -15,6 +15,7 @@ pub struct PlayerInventory {
     pub(super) item_stacks: Vec<ItemStack>,
     cursor_item: ItemStack,
     viewers: HashSet<Uuid>,
+    dirty_slots: BTreeSet<usize>,
 }
 
 impl PlayerInventory {
@@ -23,10 +24,11 @@ impl PlayerInventory {
             item_stacks: vec![ItemStack::air(); INVENTORY_SIZE],
             cursor_item: ItemStack::air(),
             viewers: HashSet::new(),
+            dirty_slots: BTreeSet::new(),
         }
     }
 
-    pub fn item_stack(&self, slot: usize) -> Option<&ItemStack> {
+    pub fn get_item_stack(&self, slot: usize) -> Option<&ItemStack> {
         self.item_stacks.get(slot)
     }
 
@@ -53,7 +55,15 @@ impl PlayerInventory {
         &self.item_stacks
     }
 
-    pub fn size(&self) -> usize {
+    pub(crate) fn mark_dirty_slots(&mut self, slots: impl IntoIterator<Item = usize>) {
+        self.dirty_slots.extend(slots);
+    }
+
+    pub(crate) fn drain_dirty_slots(&mut self) -> Vec<usize> {
+        std::mem::take(&mut self.dirty_slots).into_iter().collect()
+    }
+
+    pub fn get_size(&self) -> usize {
         INVENTORY_SIZE
     }
 
@@ -89,12 +99,12 @@ impl PlayerInventory {
         self.set_cursor_item(cursor_item);
     }
 
-    pub fn equipment(&self, equipment_slot: EquipmentSlot, held_slot: i32) -> ItemStack {
+    pub fn get_equipment(&self, equipment_slot: EquipmentSlot, held_slot: i32) -> ItemStack {
         let slot = self.slot_for_equipment(equipment_slot, held_slot);
         if slot < 0 {
             return ItemStack::air();
         }
-        self.item_stack(slot as usize)
+        self.get_item_stack(slot as usize)
             .cloned()
             .unwrap_or_else(ItemStack::air)
     }
@@ -145,7 +155,7 @@ impl PlayerInventory {
         match equipment_slot {
             EquipmentSlot::MainHand => held_slot,
             EquipmentSlot::OffHand => OFFHAND_SLOT,
-            _ => equipment_slot.armor_slot(),
+            _ => equipment_slot.get_armor_slot(),
         }
     }
 

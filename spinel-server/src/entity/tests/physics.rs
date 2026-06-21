@@ -17,8 +17,8 @@ fn generic_entity_movement_tick_applies_minestom_gravity_in_blocks_per_second() 
 
     assert!(entity.movement_tick(&snapshot).is_none());
 
-    assert_eq!(entity.position().y(), 64.0);
-    assert!((entity.velocity().0.y - -1.568).abs() < 0.000001);
+    assert_eq!(entity.get_position().get_y(), 64.0);
+    assert!((entity.get_velocity().0.y - -1.568).abs() < 0.000001);
     assert_eq!(entity.gravity_tick_count(), 1);
 }
 
@@ -39,7 +39,7 @@ fn generic_entity_movement_tick_collides_with_extracted_block_collision_shape() 
 
     entity.movement_tick(&snapshot);
 
-    assert_eq!(entity.position().y(), 64.0);
+    assert_eq!(entity.get_position().get_y(), 64.0);
     assert!(entity.is_on_ground());
 }
 
@@ -66,7 +66,7 @@ fn physics_result_preserves_minestom_collision_evidence_and_cache_reuse() {
     let first = simulate_movement(
         position,
         velocity,
-        entity_type.bounding_box(),
+        entity_type.get_bounding_box(),
         &snapshot,
         aerodynamics,
         false,
@@ -76,9 +76,9 @@ fn physics_result_preserves_minestom_collision_evidence_and_cache_reuse() {
         None,
     );
     let second = simulate_movement(
-        first.new_position(),
+        first.get_new_position(),
         velocity,
-        entity_type.bounding_box(),
+        entity_type.get_bounding_box(),
         &snapshot,
         aerodynamics,
         false,
@@ -89,13 +89,13 @@ fn physics_result_preserves_minestom_collision_evidence_and_cache_reuse() {
     );
 
     assert!(first.has_collision());
-    assert!(first.collision_points()[1].is_some());
+    assert!(first.get_collision_points()[1].is_some());
     assert_eq!(
-        first.collision_shape_positions()[1],
+        first.get_collision_shape_positions()[1],
         Some(BlockPosition::new(1, 63, 1))
     );
-    assert!(!first.cached());
-    assert!(second.cached());
+    assert!(!first.is_cached());
+    assert!(second.is_cached());
     assert_eq!(second, first.as_cached());
 }
 
@@ -132,11 +132,11 @@ fn physics_matches_minestom_high_speed_wall_and_slab_fixtures() {
     );
 
     assert_position_close(
-        wall_result.new_position(),
+        wall_result.get_new_position(),
         EntityPosition::new(0.0, 42.0, 0.7, 0.0, 0.0),
     );
     assert_position_close(
-        slab_result.new_position(),
+        slab_result.get_new_position(),
         EntityPosition::new(0.0, 42.5, 0.0, 0.0, 0.0),
     );
 }
@@ -177,11 +177,11 @@ fn physics_matches_minestom_tall_fence_and_diagonal_slide_fixtures() {
     );
 
     assert_position_close(
-        fence_result.new_position(),
+        fence_result.get_new_position(),
         EntityPosition::new(1.075, 43.25, 0.5, 0.0, 0.0),
     );
     assert_position_close(
-        diagonal_result.new_position(),
+        diagonal_result.get_new_position(),
         EntityPosition::new(0.7, 42.0, 11.69, 0.0, 0.0),
     );
 }
@@ -202,10 +202,10 @@ fn player_movement_tick_updates_velocity_without_overriding_client_position() {
     player.movement_tick(&snapshot);
 
     assert_eq!(
-        player.position(),
+        player.get_position(),
         EntityPosition::new(1.0, 64.0, 1.0, 0.0, 0.0)
     );
-    assert!((player.velocity().0.y - -1.568).abs() < 0.000001);
+    assert!((player.get_velocity().0.y - -1.568).abs() < 0.000001);
     assert_eq!(player.gravity_tick_count(), 1);
 }
 
@@ -219,7 +219,7 @@ fn simulate_zombie_movement(
     simulate_movement(
         position,
         Velocity(velocity),
-        entity_type.bounding_box(),
+        entity_type.get_bounding_box(),
         snapshot,
         EntityAerodynamics::new(
             entity_type.horizontal_air_resistance(),
@@ -235,7 +235,7 @@ fn simulate_zombie_movement(
 }
 
 fn assert_position_close(actual: EntityPosition, expected: EntityPosition) {
-    assert!((actual.x() - expected.x()).abs() < 0.01);
-    assert!((actual.y() - expected.y()).abs() < 0.01);
-    assert!((actual.z() - expected.z()).abs() < 0.01);
+    assert!((actual.get_x() - expected.get_x()).abs() < 0.01);
+    assert!((actual.get_y() - expected.get_y()).abs() < 0.01);
+    assert!((actual.get_z() - expected.get_z()).abs() < 0.01);
 }

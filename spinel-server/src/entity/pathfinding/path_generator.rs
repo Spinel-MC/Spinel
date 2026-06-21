@@ -26,11 +26,11 @@ impl PathGenerator {
                 .gravity_snap(world, original_start, bounding_box, 100)
                 .map(|y| {
                     EntityPosition::new(
-                        original_start.x(),
+                        original_start.get_x(),
                         y,
-                        original_start.z(),
-                        original_start.yaw(),
-                        original_start.pitch(),
+                       original_start.get_z(),
+                        original_start.get_yaw(),
+                        original_start.get_pitch(),
                     )
                 })
                 .unwrap_or(original_start)
@@ -42,11 +42,11 @@ impl PathGenerator {
                 .gravity_snap(world, original_goal, bounding_box, 100)
                 .map(|y| {
                     EntityPosition::new(
-                        original_goal.x(),
+                        original_goal.get_x(),
                         y,
-                        original_goal.z(),
-                        original_goal.yaw(),
-                        original_goal.pitch(),
+                       original_goal.get_z(),
+                        original_goal.get_yaw(),
+                        original_goal.get_pitch(),
                     )
                 })
                 .unwrap_or(original_goal)
@@ -62,7 +62,7 @@ impl PathGenerator {
             node_generator.heuristic(start, goal),
             PathNodeType::Walk,
         );
-        let mut open = BinaryHeap::from([OpenNode::new(0, start_node.score())]);
+        let mut open = BinaryHeap::from([OpenNode::new(0, start_node.get_score())]);
         let mut nodes = vec![start_node];
         let mut closed = HashSet::new();
         let mut closest_distance = f64::MAX;
@@ -74,30 +74,30 @@ impl PathGenerator {
             };
             let current_index = open_node.index;
             let current = &nodes[current_index];
-            if current.score() - straight_distance > variance
-                || start.distance_squared(current.position()) > maximum_distance * maximum_distance
+            if current.get_score() - straight_distance > variance
+                || start.get_distance_squared(current.get_position()) > maximum_distance * maximum_distance
             {
                 continue;
             }
-            if current.position().distance_squared(goal) < minimum_distance * minimum_distance {
+            if current.get_position().get_distance_squared(goal) < minimum_distance * minimum_distance {
                 open.push(open_node);
                 break;
             }
-            if current.heuristic() < closest_distance {
-                closest_distance = current.heuristic();
+            if current.get_heuristic() < closest_distance {
+                closest_distance = current.get_heuristic();
                 closest = Some(current_index);
             }
             node_generator
                 .walkable(world, &closed, current, goal, bounding_box)
                 .into_iter()
                 .for_each(|candidate| {
-                    if start.distance_squared(candidate.position())
+                    if start.get_distance_squared(candidate.get_position())
                         > maximum_distance * maximum_distance
                     {
                         return;
                     }
                     let candidate_index = nodes.len();
-                    open.push(OpenNode::new(candidate_index, candidate.score()));
+                    open.push(OpenNode::new(candidate_index, candidate.get_score()));
                     closed.insert(candidate.clone());
                     nodes.push(candidate);
                 });
@@ -105,7 +105,7 @@ impl PathGenerator {
 
         let frontier_destination = open.pop().map(|open_node| open_node.index);
         let reached_destination = frontier_destination.is_some_and(|destination| {
-            nodes[destination].position().distance_squared(goal)
+            nodes[destination].get_position().get_distance_squared(goal)
                 < minimum_distance * minimum_distance
         });
         let destination_index = if reached_destination {
@@ -126,19 +126,19 @@ impl PathGenerator {
             current = repath;
         }
         let mut path_nodes = Vec::new();
-        while let Some(parent) = current.parent().cloned() {
+        while let Some(parent) = current.get_parent().cloned() {
             path_nodes.push(current);
             current = parent;
         }
         path_nodes.reverse();
-        if path_nodes.first().map(PathNode::node_type) == Some(PathNodeType::Repath)
+        if path_nodes.first().map(PathNode::get_node_type) == Some(PathNodeType::Repath)
             || path_nodes.is_empty()
         {
             path.set_state(PathState::Invalid);
             return path;
         }
         let reached_goal = path_nodes.last().is_some_and(|node| {
-            node.position().distance_squared(goal) <= minimum_distance * minimum_distance
+            node.get_position().get_distance_squared(goal) <= minimum_distance * minimum_distance
         });
         if !reached_goal {
             path.set_nodes(path_nodes);

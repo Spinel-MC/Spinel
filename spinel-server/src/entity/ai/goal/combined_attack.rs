@@ -52,7 +52,7 @@ impl CombinedAttackGoal {
             desirable_range_squared: f64::from(desirable_range * desirable_range),
             should_come_close,
             projectile_generator: Box::new(|creature| {
-                ProjectileEntity::new(Some(creature.entity_id()), EntityType::ARROW)
+                ProjectileEntity::new(Some(creature.get_entity_id()), EntityType::ARROW)
             }),
             cooldown: AiCooldown::new(Duration::from_millis(250)),
             last_attack_tick: None,
@@ -61,11 +61,11 @@ impl CombinedAttackGoal {
         })
     }
 
-    pub const fn cooldown(&self) -> &AiCooldown {
+    pub const fn get_cooldown(&self) -> &AiCooldown {
         &self.cooldown
     }
 
-    pub fn cooldown_mut(&mut self) -> &mut AiCooldown {
+    pub fn get_cooldown_mut(&mut self) -> &mut AiCooldown {
         &mut self.cooldown
     }
 
@@ -97,8 +97,8 @@ impl GoalSelector for CombinedAttackGoal {
         self.should_stop = false;
         if let Some(target_position) = self
             .cached_target
-            .and_then(|target| world.entity(target))
-            .map(|target| target.position())
+            .and_then(|target| world.get_entity(target))
+            .map(|target| target.get_position())
         {
             if creature
                 .set_path_to_in_world(world, PathRequest::from(target_position))
@@ -120,27 +120,27 @@ impl GoalSelector for CombinedAttackGoal {
             .cached_target
             .take()
             .or_else(|| self.find_target(creature, world, target_selectors))
-            .and_then(|target| world.entity(target));
+            .and_then(|target| world.get_entity(target));
         let Some(target) = target else {
             self.should_stop = true;
             return;
         };
-        let distance_squared = creature.position().distance_squared(target.position());
+        let distance_squared = creature.get_position().get_distance_squared(target.get_position());
         let mut should_come_close = false;
         if distance_squared <= self.melee_range_squared
             && cooldown_is_ready(time, self.last_attack_tick, self.melee_delay_ticks)
         {
-            creature.attack_entity_with_swing(target.entity_id());
+            creature.attack_entity_with_swing(target.get_entity_id());
             self.last_attack_tick = Some(time);
         } else if distance_squared <= self.ranged_range_squared
             && cooldown_is_ready(time, self.last_attack_tick, self.ranged_delay_ticks)
         {
-            if world.has_line_of_sight(creature.entity_id(), target.entity_id()) {
+            if world.has_line_of_sight(creature.get_entity_id(), target.get_entity_id()) {
                 let projectile = (self.projectile_generator)(creature);
                 let target_position =
                     target
-                        .position()
-                        .offset(0.0, target.entity_type().eye_height(), 0.0);
+                        .get_position()
+                        .get_offset(0.0, target.get_entity_type().get_eye_height(), 0.0);
                 creature.queue_projectile(
                     projectile,
                     target_position,
@@ -153,18 +153,18 @@ impl GoalSelector for CombinedAttackGoal {
             }
         }
         if !should_come_close && distance_squared <= self.desirable_range_squared {
-            creature.navigator_mut().reset();
-            creature.look_at_position(target.position());
+            creature.get_navigator_mut().reset();
+            creature.look_at_position(target.get_position());
             return;
         }
-        if creature.navigator().path_position() == Some(target.position())
+        if creature.get_navigator().get_path_position() == Some(target.get_position())
             || !self.cooldown.is_ready(time)
         {
             return;
         }
         self.cooldown.refresh_last_update(time);
         if creature
-            .set_path_to_in_world(world, PathRequest::from(target.position()))
+            .set_path_to_in_world(world, PathRequest::from(target.get_position()))
             .is_err()
         {
             self.should_stop = true;
@@ -186,6 +186,6 @@ impl GoalSelector for CombinedAttackGoal {
         _world: &WorldSnapshot,
         _target_selectors: &mut [Box<dyn TargetSelector>],
     ) {
-        creature.navigator_mut().reset();
+        creature.get_navigator_mut().reset();
     }
 }

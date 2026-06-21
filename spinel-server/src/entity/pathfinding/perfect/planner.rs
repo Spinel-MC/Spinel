@@ -53,7 +53,7 @@ pub struct PerfectPathPlanner {
 }
 
 impl PerfectPathPlanner {
-    pub fn plan(&self, request: PerfectPathRequest<'_>) -> PerfectPathResult {
+    pub fn get_plan(&self, request: PerfectPathRequest<'_>) -> PerfectPathResult {
         if (request.is_cancelled)() {
             return PerfectPathResult {
                 termination: PerfectPathTermination::Cancelled,
@@ -285,18 +285,18 @@ fn destination_is_reached(
     destination: EntityPosition,
     radius: f64,
 ) -> bool {
-    position.distance_squared(destination) <= radius * radius
+    position.get_distance_squared(destination) <= radius * radius
 }
 
 fn heuristic(position: EntityPosition, destination: EntityPosition) -> f64 {
-    position.distance_squared(destination).sqrt()
+    position.get_distance_squared(destination).sqrt()
 }
 
 fn motion_key(state: PerfectMotionState) -> (i32, i32, i32, i32, i32, i32, bool) {
     (
-        (state.position.x() * 20.0).round() as i32,
-        (state.position.y() * 20.0).round() as i32,
-        (state.position.z() * 20.0).round() as i32,
+        (state.position.get_x() * 20.0).round() as i32,
+        (state.position.get_y() * 20.0).round() as i32,
+        (state.position.get_z() * 20.0).round() as i32,
         (state.velocity.x * 100.0).round() as i32,
         (state.velocity.y * 100.0).round() as i32,
         (state.velocity.z * 100.0).round() as i32,

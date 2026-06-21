@@ -20,15 +20,15 @@ impl ProjectileCollideWithEntityEvent {
         }
     }
 
-    pub const fn projectile_id(&self) -> EntityId {
+    pub const fn get_projectile_id(&self) -> EntityId {
         self.collision.projectile_id()
     }
 
-    pub const fn collision_position(&self) -> EntityPosition {
+    pub const fn get_collision_position(&self) -> EntityPosition {
         self.collision.collision_position()
     }
 
-    pub const fn target_id(&self) -> EntityId {
+    pub const fn get_target_id(&self) -> EntityId {
         self.target_id
     }
 
@@ -40,7 +40,7 @@ impl ProjectileCollideWithEntityEvent {
         self.collision.set_cancelled(cancelled);
     }
 
-    pub(crate) fn collision_mut(&mut self) -> &mut ProjectileCollideEvent {
+    pub(crate) fn get_collision_mut(&mut self) -> &mut ProjectileCollideEvent {
         &mut self.collision
     }
 }

@@ -56,12 +56,12 @@ fn interaction_input(
     server: &mut MinecraftServer,
 ) -> Option<InteractionInput> {
     let player = server.world_manager.player_pointer_for_client(client)?;
-    let player_id = unsafe { &*player }.entity_id();
+    let player_id = unsafe { &*player }.get_entity_id();
     let target_id = EntityId::from_raw(target_entity_id);
     let world_uuid = server.world_manager.world_uuid_for_client(client)?;
     let world = server.world_manager.world_mut(world_uuid)?;
     let target = world.entity_by_id_mut(target_id)?;
-    if target.entity_id() == player_id {
+    if target.get_entity_id() == player_id {
         return None;
     }
     if !target_is_viewable_by_player(target, player_id) {
@@ -82,19 +82,19 @@ fn interaction_input(
 }
 
 fn target_is_within_interaction_range(player: &crate::entity::Player, target: &Entity) -> bool {
-    let player_position = player.position();
-    let target_position = target.position();
-    let target_bounding_box = target.bounding_box();
-    let maximum_distance = player.attribute_value(Attribute::ENTITY_INTERACTION_RANGE) + 1.0;
-    let minimum_x = target_position.x() + target_bounding_box.minimum_x();
-    let maximum_x = target_position.x() + target_bounding_box.maximum_x();
-    let minimum_y = target_position.y() + target_bounding_box.minimum_y();
-    let maximum_y = target_position.y() + target_bounding_box.maximum_y();
-    let minimum_z = target_position.z() + target_bounding_box.minimum_z();
-    let maximum_z = target_position.z() + target_bounding_box.maximum_z();
-    let player_eye_x = player_position.x();
-    let player_eye_y = player_position.y() + player.eye_height();
-    let player_eye_z = player_position.z();
+    let player_position = player.get_position();
+    let target_position = target.get_position();
+    let target_bounding_box = target.get_bounding_box();
+    let maximum_distance = player.get_attribute_value(Attribute::ENTITY_INTERACTION_RANGE) + 1.0;
+    let minimum_x = target_position.get_x() + target_bounding_box.minimum_x();
+    let maximum_x = target_position.get_x() + target_bounding_box.maximum_x();
+    let minimum_y = target_position.get_y() + target_bounding_box.minimum_y();
+    let maximum_y = target_position.get_y() + target_bounding_box.maximum_y();
+    let minimum_z = target_position.get_z() + target_bounding_box.minimum_z();
+    let maximum_z = target_position.get_z() + target_bounding_box.maximum_z();
+    let player_eye_x = player_position.get_x();
+    let player_eye_y = player_position.get_y() + player.get_eye_height();
+    let player_eye_z = player_position.get_z();
     let distance_x = player_eye_x - player_eye_x.clamp(minimum_x, maximum_x);
     let distance_y = player_eye_y - player_eye_y.clamp(minimum_y, maximum_y);
     let distance_z = player_eye_z - player_eye_z.clamp(minimum_z, maximum_z);

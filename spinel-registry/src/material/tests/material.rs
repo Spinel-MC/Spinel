@@ -35,18 +35,18 @@ fn entity_type_registry_matches_minestom_generated_id_order() {
     assert_eq!(EntityType::PLAYER.packet_type(), EntityPacketType::Player);
     assert_eq!(EntityType::ZOMBIE.packet_type(), EntityPacketType::Living);
     assert_eq!(EntityType::ARROW.packet_type(), EntityPacketType::Entity);
-    assert_eq!(EntityType::PLAYER.width(), 0.6);
-    assert_eq!(EntityType::PLAYER.height(), 1.8);
-    assert_eq!(EntityType::PLAYER.eye_height(), 1.62);
+    assert_eq!(EntityType::PLAYER.get_width(), 0.6);
+    assert_eq!(EntityType::PLAYER.get_height(), 1.8);
+    assert_eq!(EntityType::PLAYER.get_eye_height(), 1.62);
     assert_eq!(EntityType::PLAYER.client_tracking_range(), 32);
     assert!(!EntityType::PLAYER.fire_immune());
     assert_eq!(
         EntityType::PLAYER.entity_attachment("name_tag"),
         Some([0.0, 1.7999999523162842, 0.0])
     );
-    assert_eq!(EntityType::PLAYER.bounding_box().width(), 0.6);
-    assert_eq!(EntityType::PLAYER.bounding_box().height(), 1.8);
-    assert_eq!(EntityType::PLAYER.bounding_box().depth(), 0.6);
+    assert_eq!(EntityType::PLAYER.get_bounding_box().get_width(), 0.6);
+    assert_eq!(EntityType::PLAYER.get_bounding_box().get_height(), 1.8);
+    assert_eq!(EntityType::PLAYER.get_bounding_box().depth(), 0.6);
     assert_eq!(
         EntityType::static_registry().get_id(&RegistryKey::new(EntityType::PLAYER.key())),
         Some(155)
@@ -61,9 +61,9 @@ fn entity_type_registry_entry_exposes_the_extracted_minestom_data() {
     assert_eq!(registry.key(), entity_type.key());
     assert_eq!(registry.id(), entity_type.id());
     assert_eq!(registry.translation_key(), entity_type.translation_key());
-    assert_eq!(registry.width(), entity_type.width());
-    assert_eq!(registry.height(), entity_type.height());
-    assert_eq!(registry.eye_height(), entity_type.eye_height());
+    assert_eq!(registry.get_width(), entity_type.get_width());
+    assert_eq!(registry.get_height(), entity_type.get_height());
+    assert_eq!(registry.get_eye_height(), entity_type.get_eye_height());
     assert_eq!(
         registry.client_tracking_range(),
         entity_type.client_tracking_range()
@@ -83,7 +83,7 @@ fn entity_type_registry_entry_exposes_the_extracted_minestom_data() {
         registry.should_send_attributes(),
         entity_type.should_send_attributes()
     );
-    assert_eq!(registry.bounding_box(), entity_type.bounding_box());
+    assert_eq!(registry.get_bounding_box(), entity_type.get_bounding_box());
 }
 
 #[test]
@@ -386,9 +386,9 @@ fn item_stack_has_attack_speed_modifier(item_stack: &ItemStack, amount: f64) -> 
     item_stack
         .get(ATTRIBUTE_MODIFIERS)
         .map(|attribute_list| {
-            attribute_list.modifiers().iter().any(|modifier| {
+            attribute_list.get_modifiers().iter().any(|modifier| {
                 modifier.attribute_type().to_string() == "minecraft:attack_speed"
-                    && (modifier.amount() - amount).abs() < f64::EPSILON
+                    && (modifier.get_amount() - amount).abs() < f64::EPSILON
             })
         })
         .unwrap_or(false)

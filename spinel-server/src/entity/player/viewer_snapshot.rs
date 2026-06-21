@@ -29,21 +29,21 @@ pub(crate) struct PlayerViewerSnapshot {
 impl PlayerViewerSnapshot {
     pub(crate) fn from_player(player: &Player) -> Self {
         Self {
-            player_info_packet: (player.entity_type() == EntityType::PLAYER)
-                .then(|| player.player_info_packet()),
+            player_info_packet: (player.get_entity_type() == EntityType::PLAYER)
+                .then(|| player.get_player_info_packet()),
             spawn_packet: player.spawn_packet(),
-            metadata_entries: player.metadata_packet().entries.0,
-            equipment_packet: player.visible_equipment_packet(),
-            head_look_packet: player.head_look_packet(),
-            velocity_packet: player.has_velocity().then(|| player.velocity_packet()),
-            attributes_packet: (!player.attributes().is_empty())
+            metadata_entries: player.get_metadata_packet().entries.0,
+            equipment_packet: player.get_visible_equipment_packet(),
+            head_look_packet: player.get_head_look_packet(),
+            velocity_packet: player.has_velocity().then(|| player.get_velocity_packet()),
+            attributes_packet: (!player.get_attributes().is_empty())
                 .then(|| player.update_attributes_packet()),
-            effect_packets: player.effect_packets(),
-            passenger_packet: player.has_passenger().then(|| player.passenger_packet()),
+            effect_packets: player.get_effect_packets(),
+            passenger_packet: player.has_passenger().then(|| player.get_passenger_packet()),
         }
     }
 
-    pub(crate) fn dispatch(&self, client: &mut Client) -> Result<()> {
+    pub(crate) fn get_dispatch(&self, client: &mut Client) -> Result<()> {
         self.dispatch_with_leashes(client, Vec::new())
     }
 

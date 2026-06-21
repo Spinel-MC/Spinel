@@ -43,7 +43,7 @@ fn inventory_stores_items_and_tags() {
 
     assert_eq!(inventory.get_tag(&tag), Some(7));
     assert_eq!(
-        inventory.item_stack(0).unwrap().material(),
+        inventory.get_item_stack(0).unwrap().material(),
         &Material::DIAMOND
     );
 }
@@ -147,15 +147,15 @@ fn click_processor_matches_minestom_left_and_right_click_rules() {
 fn inventory_transactions_match_minestom_add_take_options() {
     let mut inventory = Inventory::new(InventoryType::Chest(1), Component::text("Test").build());
     assert!(inventory.add_item_stack(ItemStack::of(Material::DIAMOND).with_amount(32)));
-    assert_eq!(inventory.item_stack(0).unwrap().amount(), 32);
+    assert_eq!(inventory.get_item_stack(0).unwrap().amount(), 32);
 
     let remaining = inventory.add_item_stack_with_option(
         ItemStack::of(Material::DIAMOND).with_amount(40),
         TransactionOption::All,
     );
 
-    assert_eq!(inventory.item_stack(0).unwrap().amount(), 64);
-    assert_eq!(inventory.item_stack(1).unwrap().amount(), 8);
+    assert_eq!(inventory.get_item_stack(0).unwrap().amount(), 64);
+    assert_eq!(inventory.get_item_stack(1).unwrap().amount(), 8);
     assert!(matches!(remaining, TransactionResult::Remaining(item) if item.is_air()));
 
     let dry_run = inventory.take_item_stack(
@@ -163,7 +163,7 @@ fn inventory_transactions_match_minestom_add_take_options() {
         TransactionOption::DryRun,
     );
 
-    assert_eq!(inventory.item_stack(0).unwrap().amount(), 64);
+    assert_eq!(inventory.get_item_stack(0).unwrap().amount(), 64);
     assert_eq!(dry_run, TransactionResult::Complete(true));
 }
 
@@ -177,11 +177,11 @@ fn player_inventory_equipment_and_packet_slots_match_minestom() {
     inventory.set_equipment(EquipmentSlot::OffHand, 0, ItemStack::of(Material::DIAMOND));
 
     assert_eq!(
-        inventory.equipment(EquipmentSlot::Helmet, 0).material(),
+        inventory.get_equipment(EquipmentSlot::Helmet, 0).material(),
         &Material::DIAMOND_HELMET
     );
     assert_eq!(
-        inventory.equipment(EquipmentSlot::OffHand, 0).material(),
+        inventory.get_equipment(EquipmentSlot::OffHand, 0).material(),
         &Material::DIAMOND
     );
     assert_eq!(

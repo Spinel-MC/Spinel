@@ -99,21 +99,62 @@ fn dynamic_entity_variants_resolve_through_active_registries() {
         )
         .unwrap();
 
-    assert_eq!(cat.cat_variant(&registries), Some(cat_variant.clone()));
     assert_eq!(
-        chicken.chicken_variant(&registries),
+        cat.get_entity_meta_mut()
+            .as_cat()
+            .expect("cat entity must expose CatMeta")
+            .get_variant(&registries),
+        Some(cat_variant.clone())
+    );
+    assert_eq!(
+        chicken
+            .get_entity_meta_mut()
+            .as_chicken()
+            .expect("chicken entity must expose ChickenMeta")
+            .get_variant(&registries),
         Some(chicken_variant.clone())
     );
-    assert_eq!(cow.cow_variant(&registries), Some(cow_variant.clone()));
-    assert_eq!(frog.frog_variant(&registries), Some(frog_variant.clone()));
-    assert_eq!(pig.pig_variant(&registries), Some(pig_variant.clone()));
-    assert_eq!(wolf.wolf_variant(&registries), Some(wolf_variant.clone()));
     assert_eq!(
-        wolf.wolf_sound_variant(&registries),
+        cow.get_entity_meta_mut()
+            .as_cow()
+            .expect("cow entity must expose CowMeta")
+            .get_variant(&registries),
+        Some(cow_variant.clone())
+    );
+    assert_eq!(
+        frog.get_entity_meta_mut()
+            .as_frog()
+            .expect("frog entity must expose FrogMeta")
+            .get_variant(&registries),
+        Some(frog_variant.clone())
+    );
+    assert_eq!(
+        pig.get_entity_meta_mut()
+            .as_pig()
+            .expect("pig entity must expose PigMeta")
+            .get_variant(&registries),
+        Some(pig_variant.clone())
+    );
+    assert_eq!(
+        wolf.get_entity_meta_mut()
+            .as_wolf()
+            .expect("wolf entity must expose WolfMeta")
+            .get_variant(&registries),
+        Some(wolf_variant.clone())
+    );
+    assert_eq!(
+        wolf.get_entity_meta_mut()
+            .as_wolf()
+            .expect("wolf entity must expose WolfMeta")
+            .get_sound_variant(&registries),
         Some(wolf_sound_variant.clone())
     );
     assert_eq!(
-        zombie_nautilus.zombie_nautilus_variant(&registries),
+        zombie_nautilus
+            .get_entity_meta_mut()
+            .as_zombie_nautilus()
+            .expect("zombie nautilus entity must expose ZombieNautilusMeta")
+            .get_variant(&registries),
         Some(zombie_nautilus_variant.clone())
     );
 
@@ -165,13 +206,25 @@ fn dynamic_entity_variant_setters_reject_unregistered_keys_without_mutation() {
         RegistryKey::<pig_variant::PigVariant>::new(Identifier::new("example", "missing"));
     let mut pig = GenericEntity::new(EntityType::PIG);
 
-    pig.set_pig_variant(&registries, registered_variant.clone())
+    pig.get_entity_meta_mut()
+        .as_pig()
+        .expect("pig entity must expose PigMeta")
+        .set_variant(&registries, registered_variant.clone())
         .unwrap();
     let error = pig
-        .set_pig_variant(&registries, unregistered_variant.clone())
+        .get_entity_meta_mut()
+        .as_pig()
+        .expect("pig entity must expose PigMeta")
+        .set_variant(&registries, unregistered_variant.clone())
         .unwrap_err();
 
-    assert_eq!(error.registry(), registries.pig_variant().key());
-    assert_eq!(error.variant(), unregistered_variant.key());
-    assert_eq!(pig.pig_variant(&registries), Some(registered_variant));
+    assert_eq!(error.get_registry(), registries.pig_variant().key());
+    assert_eq!(error.get_variant(), unregistered_variant.key());
+    assert_eq!(
+        pig.get_entity_meta_mut()
+            .as_pig()
+            .expect("pig entity must expose PigMeta")
+            .get_variant(&registries),
+        Some(registered_variant)
+    );
 }

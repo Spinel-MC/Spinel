@@ -18,15 +18,15 @@ impl EntityVelocityEvent {
         }
     }
 
-    pub fn entity(&mut self) -> &mut Entity {
+    pub fn get_entity(&mut self) -> &mut Entity {
         unsafe { &mut *self.entity }
     }
 
-    pub fn entity_id(&self) -> EntityId {
-        unsafe { (&*self.entity).entity_id() }
+    pub fn get_entity_id(&self) -> EntityId {
+        unsafe { (&*self.entity).get_entity_id() }
     }
 
-    pub fn velocity(&self) -> Velocity {
+    pub fn get_velocity(&self) -> Velocity {
         self.velocity
     }
 

@@ -19,15 +19,15 @@ impl PickupExperienceEvent {
         }
     }
 
-    pub fn player_id(&self) -> EntityId {
+    pub fn get_player_id(&self) -> EntityId {
         self.player_id
     }
 
-    pub fn experience_orb_id(&self) -> EntityId {
+    pub fn get_experience_orb_id(&self) -> EntityId {
         self.experience_orb_id
     }
 
-    pub fn experience_count(&self) -> i16 {
+    pub fn get_experience_count(&self) -> i16 {
         self.experience_count
     }
 

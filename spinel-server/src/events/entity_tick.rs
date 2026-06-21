@@ -11,7 +11,7 @@ impl EntityTickEvent {
         Self { entity }
     }
 
-    pub fn entity(&mut self) -> &mut Entity {
+    pub fn get_entity(&mut self) -> &mut Entity {
         unsafe { &mut *self.entity }
     }
 }

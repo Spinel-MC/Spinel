@@ -1,5 +1,8 @@
-use crate::entity::GenericEntity;
-use crate::entity::metadata::{ArmadilloMeta, BeeMeta, GhastMeta, GuardianMeta, VexMeta};
+use crate::entity::metadata::{
+    MetadataBitMaskDefinition, MetadataByteMaskDefinition, MetadataDefinition,
+};
+use crate::entity::{EntityPose, GenericEntity};
+use spinel_network::types::entity_metadata::MetadataValue;
 use spinel_utils::component::text::TextComponent;
 
 pub struct EntityMeta<'entity> {
@@ -11,32 +14,41 @@ impl<'entity> EntityMeta<'entity> {
         Self { entity }
     }
 
-    pub fn bee(self) -> Option<BeeMeta<'entity>> {
-        BeeMeta::from_entity_meta(self)
-    }
-
-    pub fn armadillo(self) -> Option<ArmadilloMeta<'entity>> {
-        ArmadilloMeta::from_entity_meta(self)
-    }
-
-    pub fn ghast(self) -> Option<GhastMeta<'entity>> {
-        GhastMeta::from_entity_meta(self)
-    }
-
-    pub fn guardian(self) -> Option<GuardianMeta<'entity>> {
-        GuardianMeta::from_entity_meta(self)
-    }
-
-    pub fn vex(self) -> Option<VexMeta<'entity>> {
-        VexMeta::from_entity_meta(self)
-    }
-
     pub fn set_notify_about_changes(&mut self, should_notify_about_changes: bool) {
         self.entity
-            .metadata_mut()
+            .get_metadata_mut()
             .set_change_notifications_enabled(should_notify_about_changes);
     }
 
+    pub fn get_metadata_value(&self, definition: &MetadataDefinition) -> MetadataValue {
+        self.entity.get_metadata().get_value(definition)
+    }
+
+    pub fn set_metadata_value(&mut self, definition: &MetadataDefinition, value: MetadataValue) {
+        self.entity.get_metadata_mut().set(definition, value);
+    }
+
+    pub fn get_metadata_flag(&self, definition: &MetadataBitMaskDefinition) -> bool {
+        self.entity.get_metadata().flag(definition)
+    }
+
+    pub fn set_metadata_flag(
+        &mut self,
+        definition: &MetadataBitMaskDefinition,
+        flag_is_enabled: bool,
+    ) {
+        self.entity
+            .get_metadata_mut()
+            .set_flag(definition, flag_is_enabled);
+    }
+
+    pub fn get_metadata_byte(&self, definition: &MetadataByteMaskDefinition) -> i8 {
+        self.entity.get_metadata().byte(definition)
+    }
+
+    pub fn set_metadata_byte(&mut self, definition: &MetadataByteMaskDefinition, byte_value: i8) {
+        self.entity.get_metadata_mut().set_byte(definition, byte_value);
+    }
     pub fn is_on_fire(&self) -> bool {
         self.entity.is_on_fire()
     }
@@ -85,16 +97,16 @@ impl<'entity> EntityMeta<'entity> {
         self.entity.set_glowing(has_glowing_effect);
     }
 
-    pub fn air_ticks(&self) -> i32 {
-        self.entity.air_ticks()
+    pub fn get_air_ticks(&self) -> i32 {
+        self.entity.get_air_ticks()
     }
 
     pub fn set_air_ticks(&mut self, air_ticks: i32) {
         self.entity.set_air_ticks(air_ticks);
     }
 
-    pub fn custom_name(&self) -> Option<TextComponent> {
-        self.entity.custom_name()
+    pub fn get_custom_name(&self) -> Option<TextComponent> {
+        self.entity.get_custom_name()
     }
 
     pub fn set_custom_name(&mut self, custom_name: Option<TextComponent>) {
@@ -125,27 +137,27 @@ impl<'entity> EntityMeta<'entity> {
         self.entity.set_no_gravity(has_no_gravity);
     }
 
-    pub fn pose(&self) -> i32 {
-        self.entity.pose()
+    pub fn get_pose(&self) -> EntityPose {
+        self.entity.get_pose()
     }
 
-    pub fn set_pose(&mut self, pose: i32) {
+    pub fn set_pose(&mut self, pose: EntityPose) {
         self.entity.set_pose(pose);
     }
 
-    pub fn ticks_frozen(&self) -> i32 {
-        self.entity.ticks_frozen()
+    pub fn get_ticks_frozen(&self) -> i32 {
+        self.entity.get_ticks_frozen()
     }
 
     pub fn set_ticks_frozen(&mut self, ticks_frozen: i32) {
         self.entity.set_ticks_frozen(ticks_frozen);
     }
 
-    pub(crate) fn entity(&self) -> &GenericEntity {
+    pub(crate) fn get_entity(&self) -> &GenericEntity {
         self.entity
     }
 
-    pub(crate) fn entity_mut(&mut self) -> &mut GenericEntity {
+    pub(crate) fn get_entity_mut(&mut self) -> &mut GenericEntity {
         self.entity
     }
 }

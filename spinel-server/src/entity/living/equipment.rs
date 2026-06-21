@@ -16,7 +16,7 @@ pub struct LivingEquipment {
 }
 
 impl LivingEquipment {
-    pub fn item_stack(&self, equipment_slot: EquipmentSlot) -> &ItemStack {
+    pub fn get_item_stack(&self, equipment_slot: EquipmentSlot) -> &ItemStack {
         match equipment_slot {
             EquipmentSlot::MainHand => &self.main_hand,
             EquipmentSlot::OffHand => &self.off_hand,
@@ -42,7 +42,7 @@ impl LivingEquipment {
         }
     }
 
-    pub fn visible_entries(&self) -> Vec<EntityEquipmentEntry> {
+    pub fn get_visible_entries(&self) -> Vec<EntityEquipmentEntry> {
         [
             EquipmentSlot::MainHand,
             EquipmentSlot::OffHand,
@@ -54,8 +54,8 @@ impl LivingEquipment {
         ]
         .into_iter()
         .map(|equipment_slot| EntityEquipmentEntry {
-            slot: equipment_slot.entity_equipment_slot(),
-            item: Slot::from_item_stack(self.item_stack(equipment_slot)),
+            slot: equipment_slot.get_entity_equipment_slot(),
+            item: Slot::from_item_stack(self.get_item_stack(equipment_slot)),
         })
         .collect()
     }

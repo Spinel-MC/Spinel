@@ -24,7 +24,7 @@ impl Player {
         Ok(true)
     }
 
-    pub(crate) fn item_cooldown_is_active(&self, cooldown_group: &str, current_tick: u64) -> bool {
+    pub(crate) fn get_item_cooldown_is_active(&self, cooldown_group: &str, current_tick: u64) -> bool {
         self.item_cooldowns
             .get(cooldown_group)
             .is_some_and(|cooldown_expires_at| *cooldown_expires_at > current_tick)

@@ -5,6 +5,9 @@ pub enum SetPathToError {
     #[error("entity is not assigned to a world")]
     EntityHasNoWorld,
 
+    #[error("entity world state is not available for pathfinding")]
+    WorldSnapshotUnavailable,
+
     #[error("target position {target:?} is outside the world border")]
     TargetOutsideWorldBorder { target: EntityPosition },
 

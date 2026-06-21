@@ -22,7 +22,7 @@ fn player_disconnect_test_listener(
     event: &mut PlayerDisconnectEvent,
     _server: &mut MinecraftServer,
 ) {
-    let player_uuid = event.player().uuid();
+    let player_uuid = event.player().get_uuid();
     if *PLAYER_DISCONNECT_EVENT_TARGET.lock().unwrap() != Some(player_uuid) {
         return;
     }

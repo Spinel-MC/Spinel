@@ -29,11 +29,11 @@ impl MetadataDefinition {
         }
     }
 
-    pub const fn index(&self) -> u8 {
+    pub const fn get_index(&self) -> u8 {
         self.index
     }
 
-    pub const fn default_value(&self) -> &MetadataValue {
+    pub const fn get_default_value(&self) -> &MetadataValue {
         &self.default_value
     }
 }
@@ -47,15 +47,15 @@ impl MetadataBitMaskDefinition {
         }
     }
 
-    pub const fn index(&self) -> u8 {
+    pub const fn get_index(&self) -> u8 {
         self.index
     }
 
-    pub const fn bit_mask(&self) -> i8 {
+    pub const fn get_bit_mask(&self) -> i8 {
         self.bit_mask
     }
 
-    pub const fn default_value(&self) -> bool {
+    pub const fn get_default_value(&self) -> bool {
         self.default_value
     }
 }
@@ -70,19 +70,19 @@ impl MetadataByteMaskDefinition {
         }
     }
 
-    pub const fn index(&self) -> u8 {
+    pub const fn get_index(&self) -> u8 {
         self.index
     }
 
-    pub const fn byte_mask(&self) -> i8 {
+    pub const fn get_byte_mask(&self) -> i8 {
         self.byte_mask
     }
 
-    pub const fn offset(&self) -> u8 {
+    pub const fn get_offset(&self) -> u8 {
         self.offset
     }
 
-    pub const fn default_value(&self) -> i8 {
+    pub const fn get_default_value(&self) -> i8 {
         self.default_value
     }
 }

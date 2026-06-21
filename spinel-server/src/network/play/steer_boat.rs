@@ -12,7 +12,7 @@ fn on_steer_boat(
     let Some(player) = server.world_manager.player_pointer_for_client(client) else {
         return false;
     };
-    let Some(vehicle_id) = (unsafe { &mut *player }).vehicle() else {
+    let Some(vehicle_id) = (unsafe { &mut *player }).get_vehicle() else {
         return true;
     };
     server.steer_client_boat_in_world(

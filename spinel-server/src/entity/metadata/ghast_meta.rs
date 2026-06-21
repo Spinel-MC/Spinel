@@ -9,16 +9,16 @@ pub struct GhastMeta<'entity> {
 
 impl<'entity> GhastMeta<'entity> {
     pub(crate) fn from_entity_meta(entity_meta: EntityMeta<'entity>) -> Option<Self> {
-        (entity_meta.entity().entity_type() == EntityType::GHAST).then(|| Self {
+        (entity_meta.get_entity().get_entity_type() == EntityType::GHAST).then(|| Self {
             flying_meta: FlyingMeta::from_entity_meta(entity_meta),
         })
     }
 
     pub fn is_attacking(&self) -> bool {
         match self
-            .entity()
-            .metadata()
-            .value(&definitions::ghast::is_attacking())
+            .get_entity()
+            .get_metadata()
+            .get_value(&definitions::ghast::is_attacking())
         {
             MetadataValue::Boolean(is_attacking) => is_attacking,
             _ => false,
@@ -26,7 +26,7 @@ impl<'entity> GhastMeta<'entity> {
     }
 
     pub fn set_attacking(&mut self, is_attacking: bool) {
-        self.entity_mut().metadata_mut().set(
+        self.get_entity_mut().get_metadata_mut().set(
             &definitions::ghast::is_attacking(),
             MetadataValue::Boolean(is_attacking),
         );

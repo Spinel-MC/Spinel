@@ -17,8 +17,8 @@ fn on_edit_book(client: &mut Client, packet: EditBookPacket, server: &mut Minecr
         return false;
     };
     let item_stack = unsafe { &*player }
-        .inventory_ref()
-        .item_stack(minestom_slot as usize)
+        .get_inventory_ref()
+        .get_item_stack(minestom_slot as usize)
         .cloned()
         .unwrap_or_else(ItemStack::air);
     let mut event = EditBookEvent::new(player, item_stack, packet.pages, packet.title);

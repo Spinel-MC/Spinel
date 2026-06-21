@@ -65,7 +65,7 @@ impl Path {
         }
     }
 
-    pub fn state(&self) -> PathState {
+    pub fn get_state(&self) -> PathState {
         PathState::from_id(self.state.load(Ordering::Acquire))
     }
 
@@ -73,11 +73,11 @@ impl Path {
         self.state.store(state.id(), Ordering::Release);
     }
 
-    pub fn nodes(&self) -> &[PathNode] {
+    pub fn get_nodes(&self) -> &[PathNode] {
         &self.nodes
     }
 
-    pub fn nodes_mut(&mut self) -> &mut Vec<PathNode> {
+    pub fn get_nodes_mut(&mut self) -> &mut Vec<PathNode> {
         &mut self.nodes
     }
 
@@ -91,16 +91,16 @@ impl Path {
         self.index = 0;
     }
 
-    pub fn current(&self) -> Option<EntityPosition> {
-        self.nodes.get(self.index).map(PathNode::position)
+    pub fn get_current(&self) -> Option<EntityPosition> {
+        self.nodes.get(self.index).map(PathNode::get_position)
     }
 
-    pub fn next_position(&self) -> Option<EntityPosition> {
-        self.nodes.get(self.index + 1).map(PathNode::position)
+    pub fn get_next_position(&self) -> Option<EntityPosition> {
+        self.nodes.get(self.index + 1).map(PathNode::get_position)
     }
 
-    pub fn current_type(&self) -> Option<PathNodeType> {
-        self.nodes.get(self.index).map(PathNode::node_type)
+    pub fn get_current_type(&self) -> Option<PathNodeType> {
+        self.nodes.get(self.index).map(PathNode::get_node_type)
     }
 
     pub fn advance(&mut self) {
@@ -109,11 +109,11 @@ impl Path {
         }
     }
 
-    pub const fn maximum_distance(&self) -> f64 {
+    pub const fn get_maximum_distance(&self) -> f64 {
         self.maximum_distance
     }
 
-    pub const fn variance(&self) -> f64 {
+    pub const fn get_variance(&self) -> f64 {
         self.variance
     }
 

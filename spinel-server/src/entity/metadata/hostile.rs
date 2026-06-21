@@ -17,7 +17,7 @@ pub enum SpellcasterIllagerSpell {
 }
 
 impl SpellcasterIllagerSpell {
-    pub const fn protocol_id(self) -> i8 {
+    pub const fn get_protocol_id(self) -> i8 {
         self as i8
     }
 
@@ -35,7 +35,7 @@ impl SpellcasterIllagerSpell {
 }
 
 impl CreeperState {
-    pub const fn protocol_id(self) -> i32 {
+    pub const fn get_protocol_id(self) -> i32 {
         match self {
             Self::Idle => -1,
             Self::Fuse => 1,

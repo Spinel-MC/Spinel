@@ -19,12 +19,12 @@ impl EntityDamage {
         }
     }
 
-    pub const fn source(&self) -> EntityId {
+    pub const fn get_source(&self) -> EntityId {
         self.source
     }
 
-    pub const fn attacker(&self) -> EntityId {
-        self.source()
+    pub const fn get_attacker(&self) -> EntityId {
+        self.get_source()
     }
 }
 

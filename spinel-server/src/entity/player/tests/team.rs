@@ -18,7 +18,7 @@ fn player_scoreboard_team_uses_username_membership_and_removes_previous_team() {
     let first_packets = player.set_scoreboard_team(None, Some(&mut first_team));
     let second_packets = player.set_scoreboard_team(Some(&mut first_team), Some(&mut second_team));
 
-    assert_eq!(player.team(), Some("blue"));
+    assert_eq!(player.get_team(), Some("blue"));
     assert!(first_team.members().next().is_none());
     assert!(second_team.members().eq(["ScoreName"].into_iter()));
     assert!(matches!(

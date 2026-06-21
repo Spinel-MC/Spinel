@@ -1,5 +1,5 @@
 use crate::entity::metadata::definitions;
-use crate::entity::{EntityId, EntityPosition, GenericEntity};
+use crate::entity::{EntityId, EntityPosition, GenericEntity, ProjectileEntityMeta};
 use rand::Rng;
 use spinel_core::network::clientbound::play::spawn_entity::SpawnEntityPacket;
 use spinel_network::types::{Slot, entity_metadata::MetadataValue};
@@ -31,19 +31,23 @@ impl ProjectileEntity {
         projectile.set_shooter(shooter);
         projectile
     }
+    pub fn get_entity_meta_mut(&mut self) -> ProjectileEntityMeta<'_> {
+        ProjectileEntityMeta::new(self)
+    }
 
-    pub const fn shooter(&self) -> Option<EntityId> {
+
+    pub const fn get_shooter(&self) -> Option<EntityId> {
         self.shooter
     }
 
     pub fn set_shooter(&mut self, shooter: Option<EntityId>) {
         self.shooter = shooter;
-        if self.entity_type() == EntityType::FIREWORK_ROCKET {
-            self.set_firework_shooter_entity_id(shooter.map(EntityId::value));
+        if self.get_entity_type() == EntityType::FIREWORK_ROCKET {
+            self.set_firework_shooter_entity_id(shooter.map(EntityId::get_value));
         }
     }
 
-    pub const fn was_stuck(&self) -> bool {
+    pub const fn get_was_stuck(&self) -> bool {
         self.was_stuck
     }
 
@@ -54,7 +58,7 @@ impl ProjectileEntity {
     pub fn spawn_packet(&self) -> SpawnEntityPacket {
         let mut packet = self.entity.spawn_packet();
         if matches!(
-            self.entity_type(),
+            self.get_entity_type(),
             EntityType::ARROW
                 | EntityType::BREEZE_WIND_CHARGE
                 | EntityType::DRAGON_FIREBALL
@@ -64,48 +68,48 @@ impl ProjectileEntity {
                 | EntityType::WIND_CHARGE
                 | EntityType::WITHER_SKULL
         ) {
-            packet.data = self.shooter.map_or(0, EntityId::value);
-            packet.velocity = self.entity.protocol_velocity();
+            packet.data = self.shooter.map_or(0, EntityId::get_value);
+            packet.velocity = self.entity.get_protocol_velocity();
         }
         packet
     }
 
-    pub fn projectile_item(&self) -> ItemStack {
+    pub fn get_projectile_item(&self) -> ItemStack {
         metadata_item_stack(self, &definitions::projectile_item())
     }
 
     pub fn set_projectile_item(&mut self, item_stack: ItemStack) {
-        self.metadata_mut().set(
+        self.get_metadata_mut().set(
             &definitions::projectile_item(),
             MetadataValue::Slot(Slot::from_item_stack(&item_stack)),
         );
     }
 
     pub fn is_critical(&self) -> bool {
-        self.metadata().flag(&definitions::is_critical_arrow())
+        self.get_metadata().flag(&definitions::is_critical_arrow())
     }
 
     pub fn set_critical(&mut self, is_critical: bool) {
-        self.metadata_mut()
+        self.get_metadata_mut()
             .set_flag(&definitions::is_critical_arrow(), is_critical);
     }
 
     pub fn has_no_clip(&self) -> bool {
-        self.metadata().flag(&definitions::has_no_clip_arrow())
+        self.get_metadata().flag(&definitions::has_no_clip_arrow())
     }
 
     pub fn set_no_clip(&mut self, has_no_clip: bool) {
-        self.metadata_mut()
+        self.get_metadata_mut()
             .set_flag(&definitions::has_no_clip_arrow(), has_no_clip);
     }
 
-    pub fn piercing_level(&self) -> i8 {
-        metadata_byte(self, &definitions::piercing_level())
+    pub fn get_piercing_level(&self) -> i8 {
+        metadata_byte(self, &definitions::get_piercing_level())
     }
 
     pub fn set_piercing_level(&mut self, piercing_level: i8) {
-        self.metadata_mut().set(
-            &definitions::piercing_level(),
+        self.get_metadata_mut().set(
+            &definitions::get_piercing_level(),
             MetadataValue::Byte(piercing_level),
         );
     }
@@ -115,27 +119,27 @@ impl ProjectileEntity {
     }
 
     pub fn set_in_ground(&mut self, is_in_ground: bool) {
-        self.metadata_mut().set(
+        self.get_metadata_mut().set(
             &definitions::is_arrow_in_ground(),
             MetadataValue::Boolean(is_in_ground),
         );
     }
 
-    pub fn color(&self) -> i32 {
+    pub fn get_color(&self) -> i32 {
         metadata_var_int(self, &definitions::arrow_color())
     }
 
     pub fn set_color(&mut self, color: i32) {
-        self.metadata_mut()
+        self.get_metadata_mut()
             .set(&definitions::arrow_color(), MetadataValue::VarInt(color));
     }
 
-    pub fn loyalty_level(&self) -> i8 {
+    pub fn get_loyalty_level(&self) -> i8 {
         metadata_byte(self, &definitions::trident_loyalty_level())
     }
 
     pub fn set_loyalty_level(&mut self, loyalty_level: i8) {
-        self.metadata_mut().set(
+        self.get_metadata_mut().set(
             &definitions::trident_loyalty_level(),
             MetadataValue::Byte(loyalty_level),
         );
@@ -146,7 +150,7 @@ impl ProjectileEntity {
     }
 
     pub fn set_enchantment_glint(&mut self, has_enchantment_glint: bool) {
-        self.metadata_mut().set(
+        self.get_metadata_mut().set(
             &definitions::trident_has_enchantment_glint(),
             MetadataValue::Boolean(has_enchantment_glint),
         );
@@ -157,27 +161,27 @@ impl ProjectileEntity {
     }
 
     pub fn set_invulnerable_wither_skull(&mut self, is_invulnerable: bool) {
-        self.metadata_mut().set(
+        self.get_metadata_mut().set(
             &definitions::wither_skull_is_invulnerable(),
             MetadataValue::Boolean(is_invulnerable),
         );
     }
 
-    pub fn firework_info(&self) -> ItemStack {
-        metadata_item_stack(self, &definitions::firework_info())
+    pub fn get_firework_info(&self) -> ItemStack {
+        metadata_item_stack(self, &definitions::get_firework_info())
     }
 
     pub fn set_firework_info(&mut self, item_stack: ItemStack) {
-        self.metadata_mut().set(
-            &definitions::firework_info(),
+        self.get_metadata_mut().set(
+            &definitions::get_firework_info(),
             MetadataValue::Slot(Slot::from_item_stack(&item_stack)),
         );
     }
 
-    pub fn firework_shooter_entity_id(&self) -> Option<i32> {
+    pub fn get_firework_shooter_entity_id(&self) -> Option<i32> {
         match self
-            .metadata()
-            .value(&definitions::firework_shooter_entity_id())
+            .get_metadata()
+            .get_value(&definitions::firework_shooter_entity_id())
         {
             MetadataValue::OptionalVarInt(shooter_entity_id) => shooter_entity_id,
             _ => None,
@@ -185,7 +189,7 @@ impl ProjectileEntity {
     }
 
     pub fn set_firework_shooter_entity_id(&mut self, shooter_entity_id: Option<i32>) {
-        self.metadata_mut().set(
+        self.get_metadata_mut().set(
             &definitions::firework_shooter_entity_id(),
             MetadataValue::OptionalVarInt(shooter_entity_id),
         );
@@ -196,7 +200,7 @@ impl ProjectileEntity {
     }
 
     pub fn set_shot_at_angle(&mut self, is_shot_at_angle: bool) {
-        self.metadata_mut().set(
+        self.get_metadata_mut().set(
             &definitions::firework_is_shot_at_angle(),
             MetadataValue::Boolean(is_shot_at_angle),
         );
@@ -221,9 +225,9 @@ impl ProjectileEntity {
         spread: f64,
         random: &mut impl Rng,
     ) {
-        let delta_x = to.x() - from.x();
-        let mut delta_y = to.y() - from.y();
-        let delta_z = to.z() - from.z();
+        let delta_x = to.get_x() - from.get_x();
+        let mut delta_y = to.get_y() - from.get_y();
+        let delta_z = to.get_z() - from.get_z();
         if !self.has_no_gravity() {
             delta_y += delta_x.hypot(delta_z) * PROJECTILE_GRAVITY_AIM_COMPENSATION;
         }
@@ -248,7 +252,7 @@ impl ProjectileEntity {
             y: direction_y * velocity_multiplier,
             z: direction_z * velocity_multiplier,
         }));
-        let head_yaw = self.position().head_yaw();
+        let head_yaw = self.get_position().get_head_yaw();
         self.set_view(
             direction_x.atan2(direction_z).to_degrees() as f32,
             direction_y
@@ -283,7 +287,7 @@ fn metadata_boolean(
     projectile: &ProjectileEntity,
     definition: &crate::entity::metadata::MetadataDefinition,
 ) -> bool {
-    match projectile.metadata().value(definition) {
+    match projectile.get_metadata().get_value(definition) {
         MetadataValue::Boolean(is_enabled) => is_enabled,
         _ => false,
     }
@@ -293,7 +297,7 @@ fn metadata_byte(
     projectile: &ProjectileEntity,
     definition: &crate::entity::metadata::MetadataDefinition,
 ) -> i8 {
-    match projectile.metadata().value(definition) {
+    match projectile.get_metadata().get_value(definition) {
         MetadataValue::Byte(byte) => byte,
         _ => 0,
     }
@@ -303,7 +307,7 @@ fn metadata_var_int(
     projectile: &ProjectileEntity,
     definition: &crate::entity::metadata::MetadataDefinition,
 ) -> i32 {
-    match projectile.metadata().value(definition) {
+    match projectile.get_metadata().get_value(definition) {
         MetadataValue::VarInt(var_int) => var_int,
         _ => 0,
     }
@@ -313,7 +317,7 @@ fn metadata_item_stack(
     projectile: &ProjectileEntity,
     definition: &crate::entity::metadata::MetadataDefinition,
 ) -> ItemStack {
-    match projectile.metadata().value(definition) {
+    match projectile.get_metadata().get_value(definition) {
         MetadataValue::Slot(slot) => slot.to_item_stack(),
         _ => ItemStack::air(),
     }

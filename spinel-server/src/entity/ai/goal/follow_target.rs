@@ -32,14 +32,14 @@ impl GoalSelector for FollowTargetGoal {
         target_selectors: &mut [Box<dyn TargetSelector>],
     ) -> bool {
         let target = creature
-            .target()
+            .get_target()
             .or_else(|| self.find_target(creature, world, target_selectors));
-        let Some(target) = target.and_then(|target| world.entity(target)) else {
+        let Some(target) = target.and_then(|target| world.get_entity(target)) else {
             return false;
         };
-        let should_follow = target.position().distance_squared(creature.position()) >= 4.0;
+        let should_follow = target.get_position().get_distance_squared(creature.get_position()) >= 4.0;
         if should_follow {
-            self.target = Some(target.entity_id());
+            self.target = Some(target.get_entity_id());
         }
         should_follow
     }
@@ -53,23 +53,23 @@ impl GoalSelector for FollowTargetGoal {
         self.last_update_tick = 0;
         self.should_force_end = false;
         self.last_target_position = None;
-        let Some(target) = self.target.and_then(|target| world.entity(target)) else {
+        let Some(target) = self.target.and_then(|target| world.get_entity(target)) else {
             self.should_force_end = true;
             return;
         };
-        creature.set_target(Some(target.entity_id()));
-        self.last_target_position = Some(target.position());
-        if target.position().distance_squared(creature.position()) < 4.0 {
+        creature.set_target(Some(target.get_entity_id()));
+        self.last_target_position = Some(target.get_position());
+        if target.get_position().get_distance_squared(creature.get_position()) < 4.0 {
             self.should_force_end = true;
-            creature.navigator_mut().reset();
+            creature.get_navigator_mut().reset();
             return;
         }
-        if creature.navigator().path_position() == Some(target.position()) {
+        if creature.get_navigator().get_path_position() == Some(target.get_position()) {
             self.should_force_end = true;
             return;
         }
         if creature
-            .set_path_to_in_world(world, PathRequest::from(target.position()))
+            .set_path_to_in_world(world, PathRequest::from(target.get_position()))
             .is_err()
         {
             self.should_force_end = true;
@@ -90,9 +90,9 @@ impl GoalSelector for FollowTargetGoal {
             return;
         }
         let Some(target_position) = creature
-            .target()
-            .and_then(|target| world.entity(target))
-            .map(|target| target.position())
+            .get_target()
+            .and_then(|target| world.get_entity(target))
+            .map(|target| target.get_position())
         else {
             return;
         };
@@ -119,10 +119,10 @@ impl GoalSelector for FollowTargetGoal {
         _target_selectors: &mut [Box<dyn TargetSelector>],
     ) -> bool {
         self.should_force_end
-            || creature.target().is_none_or(|target| {
-                world.entity(target).is_none_or(|target| {
+            || creature.get_target().is_none_or(|target| {
+                world.get_entity(target).is_none_or(|target| {
                     target.is_removed()
-                        || target.position().distance_squared(creature.position()) < 4.0
+                        || target.get_position().get_distance_squared(creature.get_position()) < 4.0
                 })
             })
     }
@@ -133,7 +133,7 @@ impl GoalSelector for FollowTargetGoal {
         _world: &WorldSnapshot,
         _target_selectors: &mut [Box<dyn TargetSelector>],
     ) {
-        creature.navigator_mut().reset();
+        creature.get_navigator_mut().reset();
     }
 }
 
@@ -142,7 +142,7 @@ fn duration_to_ticks(duration: Duration) -> u64 {
 }
 
 fn same_block(first: EntityPosition, second: EntityPosition) -> bool {
-    first.x().floor() == second.x().floor()
-        && first.y().floor() == second.y().floor()
-        && first.z().floor() == second.z().floor()
+    first.get_x().floor() == second.get_x().floor()
+        && first.get_y().floor() == second.get_y().floor()
+        && first.get_z().floor() == second.get_z().floor()
 }

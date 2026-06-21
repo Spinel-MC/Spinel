@@ -17,8 +17,8 @@ use uuid::Uuid;
 fn world_scoreboard_team_assignment_updates_registry_members_without_duplicates() {
     let mut world = World::new(Identifier::minecraft("overworld"));
     let entity = Entity::new(EntityType::ZOMBIE);
-    let entity_id = entity.entity_id();
-    let member = entity.uuid().to_string();
+    let entity_id = entity.get_entity_id();
+    let member = entity.get_uuid().to_string();
 
     world.add_entity(entity);
     assert!(world.register_scoreboard_team(Team::new("red")).unwrap());
@@ -60,8 +60,8 @@ fn world_scoreboard_team_assignment_refreshes_current_viewers_in_minestom_order(
     let (mut viewer_client, mut viewer_stream) = test_client_pair();
     let mut world = World::new(Identifier::minecraft("overworld"));
     let target = Entity::new(EntityType::ZOMBIE);
-    let target_id = target.entity_id();
-    let target_member = target.uuid().to_string();
+    let target_id = target.get_entity_id();
+    let target_member = target.get_uuid().to_string();
     let viewer = entered_viewer(&mut viewer_client);
 
     world.add_entity(target);
@@ -100,7 +100,7 @@ fn world_scoreboard_team_assignment_does_not_send_to_non_viewers() {
     let (mut far_client, mut far_stream) = test_client_pair();
     let mut world = World::new(Identifier::minecraft("overworld"));
     let target = Entity::new(EntityType::ZOMBIE);
-    let target_id = target.entity_id();
+    let target_id = target.get_entity_id();
     let mut far_viewer = entered_player(&mut far_client);
 
     far_viewer.set_position(crate::entity::EntityPosition::new(

@@ -14,12 +14,12 @@ fn world_tick_automatically_broadcasts_dirty_generic_entity_metadata() {
     let mut viewer_client = queued_client();
     let viewer = entered_player(&mut viewer_client);
     let target = GenericEntity::new(EntityType::ZOMBIE);
-    let target_id = target.entity_id();
+    let target_id = target.get_entity_id();
     world.add_entity(Entity::Player(viewer));
     world.add_entity(Entity::Generic(target));
     world.process_pending_entity_visibility_refreshes().unwrap();
     viewer_client.discard_queued_outbound_packets();
-    let Some(Entity::Generic(target)) = world.entity_by_id_mut(target_id) else {
+    let Some(Entity::Generic(target)) = world.get_entity_mut(target_id) else {
         panic!("generic entity missing");
     };
     target.set_glowing(true);

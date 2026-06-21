@@ -28,7 +28,7 @@ impl EntityId {
         )
     }
 
-    pub const fn value(self) -> i32 {
+    pub const fn get_value(self) -> i32 {
         self.0
     }
 }
@@ -38,7 +38,7 @@ impl EntityIdentity {
         Self { uuid }
     }
 
-    pub const fn uuid(self) -> uuid::Uuid {
+    pub const fn get_uuid(self) -> uuid::Uuid {
         self.uuid
     }
 }
@@ -48,15 +48,15 @@ impl EntityPointers {
         Self { uuid, entity_id }
     }
 
-    pub const fn uuid(self) -> uuid::Uuid {
+    pub const fn get_uuid(self) -> uuid::Uuid {
         self.uuid
     }
 
-    pub const fn entity_id(self) -> EntityId {
+    pub const fn get_entity_id(self) -> EntityId {
         self.entity_id
     }
 
-    pub const fn identity(self) -> EntityIdentity {
+    pub const fn get_identity(self) -> EntityIdentity {
         EntityIdentity::new(self.uuid)
     }
 }

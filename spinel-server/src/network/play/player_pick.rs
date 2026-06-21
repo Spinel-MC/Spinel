@@ -41,7 +41,7 @@ fn on_pick_item_from_entity(
     let target = server
         .world_manager
         .world_mut(world_uuid)
-        .and_then(|world| world.entity_by_id_mut(EntityId::from_raw(packet.entity_id)))
+        .and_then(|world| world.get_entity_mut(EntityId::from_raw(packet.entity_id)))
         .map(|entity| entity as *mut Entity);
     let mut event = PlayerPickEntityEvent::new(player, target, packet.include_data);
     event.dispatch(server, client);

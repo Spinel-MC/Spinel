@@ -4,10 +4,11 @@ use crate::entity::ExperienceOrb;
 use crate::entity::TimedPotionEffect;
 use crate::entity::entity_creature::EntityCreature;
 use crate::entity::generic_entity::GenericEntity;
-use crate::entity::identity::EntityId;
+use crate::entity::identity::{EntityId, EntityPointers};
 use crate::entity::item::ItemEntity;
 use crate::entity::player::Player;
 use crate::entity::projectile::ProjectileEntity;
+use crate::scheduler::{ContextScheduler, Task, TaskSchedule};
 use crate::world::World;
 use spinel_core::network::clientbound::play::attach_entity::AttachEntityPacket;
 use spinel_core::network::clientbound::play::entity_effect::EntityEffectPacket;
@@ -29,6 +30,87 @@ pub enum Entity {
     Player(Player),
     Projectile(ProjectileEntity),
 }
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct EntityAcquirable {
+    pointers: EntityPointers,
+    world: Option<Uuid>,
+}
+
+pub enum EntityScheduleContext<'entity> {
+    Generic(&'entity mut GenericEntity),
+    Player(&'entity mut Player),
+}
+
+pub enum EntityScheduler<'entity> {
+    Generic(&'entity mut ContextScheduler<GenericEntity>),
+    Player(&'entity mut ContextScheduler<Player>),
+}
+
+impl EntityAcquirable {
+    pub const fn new(pointers: EntityPointers, world: Option<Uuid>) -> Self {
+        Self { pointers, world }
+    }
+
+    pub const fn get_entity_id(self) -> EntityId {
+        self.pointers.get_entity_id()
+    }
+
+    pub const fn get_uuid(self) -> Uuid {
+        self.pointers.get_uuid()
+    }
+
+    pub const fn get_world(self) -> Option<Uuid> {
+        self.world
+    }
+
+    pub const fn is_assigned(self) -> bool {
+        self.world.is_some()
+    }
+
+    pub const fn is_owned(self) -> bool {
+        true
+    }
+}
+
+impl EntityScheduleContext<'_> {
+    pub fn get_entity_id(&self) -> EntityId {
+        match self {
+            Self::Generic(entity) => entity.get_entity_id(),
+            Self::Player(player) => player.get_entity_id(),
+        }
+    }
+}
+
+impl EntityScheduler<'_> {
+    pub fn get_task_count(&self) -> usize {
+        match self {
+            Self::Generic(scheduler) => scheduler.task_count(),
+            Self::Player(scheduler) => scheduler.task_count(),
+        }
+    }
+
+    pub fn schedule_next_tick(
+        &mut self,
+        callback: impl FnMut(EntityScheduleContext<'_>) -> TaskSchedule + Send + 'static,
+    ) -> Task {
+        match self {
+            Self::Generic(scheduler) => scheduler.schedule_next_tick(map_generic_schedule(callback)),
+            Self::Player(scheduler) => scheduler.schedule_next_tick(map_player_schedule(callback)),
+        }
+    }
+}
+
+fn map_generic_schedule(
+    mut callback: impl FnMut(EntityScheduleContext<'_>) -> TaskSchedule + Send + 'static,
+) -> impl FnMut(&mut GenericEntity) -> TaskSchedule + Send + 'static {
+    move |entity| callback(EntityScheduleContext::Generic(entity))
+}
+
+fn map_player_schedule(
+    mut callback: impl FnMut(EntityScheduleContext<'_>) -> TaskSchedule + Send + 'static,
+) -> impl FnMut(&mut Player) -> TaskSchedule + Send + 'static {
+    move |player| callback(EntityScheduleContext::Player(player))
+}
 
 impl From<EntityCreature> for Entity {
     fn from(entity_creature: EntityCreature) -> Self {
@@ -37,40 +119,74 @@ impl From<EntityCreature> for Entity {
 }
 
 impl Entity {
-    pub fn new(entity_type: EntityType) -> Self {
+
+    pub fn get_pointers(&self) -> EntityPointers {
+        match self {
+            Self::Creature(entity) => entity.get_pointers(),
+            Self::ExperienceOrb(entity) => entity.get_pointers(),
+            Self::Generic(entity) => entity.get_pointers(),
+            Self::Item(entity) => entity.get_pointers(),
+            Self::Player(player) => player.get_pointers(),
+            Self::Projectile(entity) => entity.get_pointers(),
+        }
+    }
+
+    pub fn get_acquirable(&self) -> EntityAcquirable {
+        EntityAcquirable::new(self.get_pointers(), self.get_world())
+    }
+
+    pub fn get_living_acquirable(&self) -> Option<EntityAcquirable> {
+        match self {
+            Self::Creature(_) => Some(self.get_acquirable()),
+            Self::Generic(entity) if entity.get_entity_type().is_living() => Some(self.get_acquirable()),
+            Self::Player(_) => Some(self.get_acquirable()),
+            _ => None,
+        }
+    }
+
+    pub fn get_scheduler(&mut self) -> EntityScheduler<'_> {
+        match self {
+            Self::Generic(entity) => EntityScheduler::Generic(entity.get_scheduler()),
+            Self::Player(player) => EntityScheduler::Player(player.get_scheduler()),
+            Self::Creature(entity) => EntityScheduler::Generic(entity.get_entity_mut().get_scheduler()),
+            Self::ExperienceOrb(entity) => EntityScheduler::Generic(entity.get_scheduler()),
+            Self::Item(entity) => EntityScheduler::Generic(entity.get_scheduler()),
+            Self::Projectile(entity) => EntityScheduler::Generic(entity.get_scheduler()),
+        }
+    }    pub fn new(entity_type: EntityType) -> Self {
         Self::Generic(GenericEntity::new(entity_type))
     }
 
-    pub fn entity_id(&self) -> EntityId {
+    pub fn get_entity_id(&self) -> EntityId {
         match self {
-            Self::Creature(entity) => entity.entity_id(),
-            Self::ExperienceOrb(entity) => entity.entity_id(),
-            Self::Generic(entity) => entity.entity_id(),
-            Self::Item(entity) => entity.entity_id(),
-            Self::Player(player) => player.entity_id(),
-            Self::Projectile(entity) => entity.entity_id(),
+            Self::Creature(entity) => entity.get_entity_id(),
+            Self::ExperienceOrb(entity) => entity.get_entity_id(),
+            Self::Generic(entity) => entity.get_entity_id(),
+            Self::Item(entity) => entity.get_entity_id(),
+            Self::Player(player) => player.get_entity_id(),
+            Self::Projectile(entity) => entity.get_entity_id(),
         }
     }
 
-    pub fn uuid(&self) -> Uuid {
+    pub fn get_uuid(&self) -> Uuid {
         match self {
-            Self::Creature(entity) => entity.uuid(),
-            Self::ExperienceOrb(entity) => entity.uuid(),
-            Self::Generic(entity) => entity.uuid(),
-            Self::Item(entity) => entity.uuid(),
+            Self::Creature(entity) => entity.get_uuid(),
+            Self::ExperienceOrb(entity) => entity.get_uuid(),
+            Self::Generic(entity) => entity.get_uuid(),
+            Self::Item(entity) => entity.get_uuid(),
             Self::Player(player) => player.uuid,
-            Self::Projectile(entity) => entity.uuid(),
+            Self::Projectile(entity) => entity.get_uuid(),
         }
     }
 
-    pub fn entity_type(&self) -> EntityType {
+    pub fn get_entity_type(&self) -> EntityType {
         match self {
-            Self::Creature(entity) => entity.entity_type(),
-            Self::ExperienceOrb(entity) => entity.entity_type(),
-            Self::Generic(entity) => entity.entity_type(),
-            Self::Item(entity) => entity.entity_type(),
-            Self::Player(player) => player.entity_type(),
-            Self::Projectile(entity) => entity.entity_type(),
+            Self::Creature(entity) => entity.get_entity_type(),
+            Self::ExperienceOrb(entity) => entity.get_entity_type(),
+            Self::Generic(entity) => entity.get_entity_type(),
+            Self::Item(entity) => entity.get_entity_type(),
+            Self::Player(player) => player.get_entity_type(),
+            Self::Projectile(entity) => entity.get_entity_type(),
         }
     }
 
@@ -86,40 +202,40 @@ impl Entity {
         true
     }
 
-    pub fn eye_height(&self) -> f64 {
-        self.entity_type().eye_height()
+    pub fn get_eye_height(&self) -> f64 {
+        self.get_entity_type().get_eye_height()
     }
 
-    pub fn bounding_box(&self) -> spinel_registry::EntityBoundingBox {
+    pub fn get_bounding_box(&self) -> spinel_registry::EntityBoundingBox {
         match self {
-            Self::Creature(entity) => entity.bounding_box(),
-            Self::ExperienceOrb(entity) => entity.bounding_box(),
-            Self::Generic(entity) => entity.bounding_box(),
-            Self::Item(entity) => entity.bounding_box(),
-            Self::Player(player) => player.bounding_box(),
-            Self::Projectile(entity) => entity.bounding_box(),
+            Self::Creature(entity) => entity.get_bounding_box(),
+            Self::ExperienceOrb(entity) => entity.get_bounding_box(),
+            Self::Generic(entity) => entity.get_bounding_box(),
+            Self::Item(entity) => entity.get_bounding_box(),
+            Self::Player(player) => player.get_bounding_box(),
+            Self::Projectile(entity) => entity.get_bounding_box(),
         }
     }
 
-    pub fn world(&self) -> Option<Uuid> {
+    pub fn get_world(&self) -> Option<Uuid> {
         match self {
-            Self::Creature(entity) => entity.world(),
-            Self::ExperienceOrb(entity) => entity.world(),
-            Self::Generic(entity) => entity.world(),
-            Self::Item(entity) => entity.world(),
-            Self::Player(player) => player.current_world(),
-            Self::Projectile(entity) => entity.world(),
+            Self::Creature(entity) => entity.get_world(),
+            Self::ExperienceOrb(entity) => entity.get_world(),
+            Self::Generic(entity) => entity.get_world(),
+            Self::Item(entity) => entity.get_world(),
+            Self::Player(player) => player.get_current_world(),
+            Self::Projectile(entity) => entity.get_world(),
         }
     }
 
-    pub fn position(&self) -> EntityPosition {
+    pub fn get_position(&self) -> EntityPosition {
         match self {
-            Self::Creature(entity) => entity.position(),
-            Self::ExperienceOrb(entity) => entity.position(),
-            Self::Generic(entity) => entity.position(),
-            Self::Item(entity) => entity.position(),
-            Self::Player(player) => player.position(),
-            Self::Projectile(entity) => entity.position(),
+            Self::Creature(entity) => entity.get_position(),
+            Self::ExperienceOrb(entity) => entity.get_position(),
+            Self::Generic(entity) => entity.get_position(),
+            Self::Item(entity) => entity.get_position(),
+            Self::Player(player) => player.get_position(),
+            Self::Projectile(entity) => entity.get_position(),
         }
     }
 
@@ -154,14 +270,25 @@ impl Entity {
         self.set_instance(world)
     }
 
-    pub fn velocity(&self) -> Velocity {
+    pub fn get_last_damage_source(&self) -> Option<&crate::entity::Damage> {
         match self {
-            Self::Creature(entity) => entity.velocity(),
-            Self::ExperienceOrb(entity) => entity.velocity(),
-            Self::Generic(entity) => entity.velocity(),
-            Self::Item(entity) => entity.velocity(),
-            Self::Player(player) => player.velocity(),
-            Self::Projectile(entity) => entity.velocity(),
+            Self::Creature(entity) => entity.get_last_damage(),
+            Self::ExperienceOrb(entity) => entity.get_last_damage(),
+            Self::Generic(entity) => entity.get_last_damage(),
+            Self::Item(entity) => entity.get_last_damage(),
+            Self::Player(player) => player.get_last_damage(),
+            Self::Projectile(entity) => entity.get_last_damage(),
+        }
+    }
+
+    pub fn get_velocity(&self) -> Velocity {
+        match self {
+            Self::Creature(entity) => entity.get_velocity(),
+            Self::ExperienceOrb(entity) => entity.get_velocity(),
+            Self::Generic(entity) => entity.get_velocity(),
+            Self::Item(entity) => entity.get_velocity(),
+            Self::Player(player) => player.get_velocity(),
+            Self::Projectile(entity) => entity.get_velocity(),
         }
     }
 
@@ -209,62 +336,62 @@ impl Entity {
         }
     }
 
-    pub fn effect(&self, effect_id: i32) -> Option<&TimedPotionEffect> {
+    pub fn get_effect(&self, effect_id: i32) -> Option<&TimedPotionEffect> {
         match self {
             Self::Creature(entity) => entity.effect(effect_id),
             Self::ExperienceOrb(entity) => entity.effect(effect_id),
             Self::Generic(entity) => entity.effect(effect_id),
             Self::Item(entity) => entity.effect(effect_id),
-            Self::Player(player) => player.effect(effect_id),
+            Self::Player(player) => player.get_effect(effect_id),
             Self::Projectile(entity) => entity.effect(effect_id),
         }
     }
 
-    pub fn active_effects(&self) -> Vec<&TimedPotionEffect> {
+    pub fn get_active_effects(&self) -> Vec<&TimedPotionEffect> {
         match self {
             Self::Creature(entity) => entity.active_effects(),
             Self::ExperienceOrb(entity) => entity.active_effects(),
             Self::Generic(entity) => entity.active_effects(),
             Self::Item(entity) => entity.active_effects(),
-            Self::Player(player) => player.active_effects(),
+            Self::Player(player) => player.get_active_effects(),
             Self::Projectile(entity) => entity.active_effects(),
         }
     }
 
-    pub fn view(&self) -> &EntityView {
+    pub fn get_view(&self) -> &EntityView {
         match self {
-            Self::Creature(entity) => entity.view(),
-            Self::ExperienceOrb(entity) => entity.view(),
-            Self::Generic(entity) => entity.view(),
-            Self::Item(entity) => entity.view(),
-            Self::Player(player) => player.view(),
-            Self::Projectile(entity) => entity.view(),
+            Self::Creature(entity) => entity.get_view(),
+            Self::ExperienceOrb(entity) => entity.get_view(),
+            Self::Generic(entity) => entity.get_view(),
+            Self::Item(entity) => entity.get_view(),
+            Self::Player(player) => player.get_view(),
+            Self::Projectile(entity) => entity.get_view(),
         }
     }
 
-    pub fn view_mut(&mut self) -> &mut EntityView {
+    pub fn get_view_mut(&mut self) -> &mut EntityView {
         match self {
-            Self::Creature(entity) => entity.view_mut(),
-            Self::ExperienceOrb(entity) => entity.view_mut(),
-            Self::Generic(entity) => entity.view_mut(),
-            Self::Item(entity) => entity.view_mut(),
-            Self::Player(player) => player.view_mut(),
-            Self::Projectile(entity) => entity.view_mut(),
+            Self::Creature(entity) => entity.get_view_mut(),
+            Self::ExperienceOrb(entity) => entity.get_view_mut(),
+            Self::Generic(entity) => entity.get_view_mut(),
+            Self::Item(entity) => entity.get_view_mut(),
+            Self::Player(player) => player.get_view_mut(),
+            Self::Projectile(entity) => entity.get_view_mut(),
         }
     }
 
-    pub fn viewers(&self) -> std::collections::BTreeSet<EntityId> {
-        self.view().viewers()
+    pub fn get_viewers(&self) -> std::collections::BTreeSet<EntityId> {
+        self.get_view().get_viewers()
     }
 
-    pub fn vehicle(&self) -> Option<EntityId> {
+    pub fn get_vehicle(&self) -> Option<EntityId> {
         match self {
-            Self::Creature(entity) => entity.vehicle(),
-            Self::ExperienceOrb(entity) => entity.vehicle(),
-            Self::Generic(entity) => entity.vehicle(),
-            Self::Item(entity) => entity.vehicle(),
-            Self::Player(player) => player.vehicle(),
-            Self::Projectile(entity) => entity.vehicle(),
+            Self::Creature(entity) => entity.get_vehicle(),
+            Self::ExperienceOrb(entity) => entity.get_vehicle(),
+            Self::Generic(entity) => entity.get_vehicle(),
+            Self::Item(entity) => entity.get_vehicle(),
+            Self::Player(player) => player.get_vehicle(),
+            Self::Projectile(entity) => entity.get_vehicle(),
         }
     }
 
@@ -279,14 +406,14 @@ impl Entity {
         }
     }
 
-    pub fn passengers(&self) -> &BTreeSet<EntityId> {
+    pub fn get_passengers(&self) -> &BTreeSet<EntityId> {
         match self {
-            Self::Creature(entity) => entity.passengers(),
-            Self::ExperienceOrb(entity) => entity.passengers(),
-            Self::Generic(entity) => entity.passengers(),
-            Self::Item(entity) => entity.passengers(),
-            Self::Player(player) => player.passengers(),
-            Self::Projectile(entity) => entity.passengers(),
+            Self::Creature(entity) => entity.get_passengers(),
+            Self::ExperienceOrb(entity) => entity.get_passengers(),
+            Self::Generic(entity) => entity.get_passengers(),
+            Self::Item(entity) => entity.get_passengers(),
+            Self::Player(player) => player.get_passengers(),
+            Self::Projectile(entity) => entity.get_passengers(),
         }
     }
 
@@ -334,26 +461,26 @@ impl Entity {
         }
     }
 
-    pub(crate) fn passenger_packet(&self) -> SetPassengersPacket {
+    pub(crate) fn get_passenger_packet(&self) -> SetPassengersPacket {
         match self {
-            Self::Creature(entity) => entity.passenger_packet(),
-            Self::ExperienceOrb(entity) => entity.passenger_packet(),
-            Self::Generic(entity) => entity.passenger_packet(),
-            Self::Item(entity) => entity.passenger_packet(),
-            Self::Player(player) => player.passenger_packet(),
-            Self::Projectile(entity) => entity.passenger_packet(),
+            Self::Creature(entity) => entity.get_passenger_packet(),
+            Self::ExperienceOrb(entity) => entity.get_passenger_packet(),
+            Self::Generic(entity) => entity.get_passenger_packet(),
+            Self::Item(entity) => entity.get_passenger_packet(),
+            Self::Player(player) => player.get_passenger_packet(),
+            Self::Projectile(entity) => entity.get_passenger_packet(),
         }
     }
 
-    pub(crate) fn passenger_position(&self, passenger: &Self) -> EntityPosition {
-        let vehicle_position = self.position();
-        let passenger_position = passenger.position();
-        let passenger_height_offset = if self.entity_type().path().contains("boat") {
+    pub(crate) fn get_passenger_position(&self, passenger: &Self) -> EntityPosition {
+        let vehicle_position = self.get_position();
+        let passenger_position = passenger.get_position();
+        let passenger_height_offset = if self.get_entity_type().path().contains("boat") {
             -0.1
-        } else if self.entity_type() == EntityType::MINECART {
+        } else if self.get_entity_type() == EntityType::MINECART {
             0.0
         } else if matches!(
-            passenger.entity_type(),
+            passenger.get_entity_type(),
             EntityType::ZOMBIE
                 | EntityType::HUSK
                 | EntityType::DROWNED
@@ -364,18 +491,18 @@ impl Entity {
                 | EntityType::PIGLIN_BRUTE
                 | EntityType::ZOMBIFIED_PIGLIN
         ) {
-            self.bounding_box().height() * 0.75
+            self.get_bounding_box().get_height() * 0.75
         } else {
-            self.bounding_box().height()
+            self.get_bounding_box().get_height()
         };
         EntityPosition::new(
-            vehicle_position.x(),
-            vehicle_position.y() + passenger_height_offset,
-            vehicle_position.z(),
-            passenger_position.yaw(),
-            passenger_position.pitch(),
+            vehicle_position.get_x(),
+            vehicle_position.get_y() + passenger_height_offset,
+            vehicle_position.get_z(),
+            passenger_position.get_yaw(),
+            passenger_position.get_pitch(),
         )
-        .with_head_yaw(passenger_position.head_yaw())
+        .with_head_yaw(passenger_position.get_head_yaw())
     }
 
     pub(crate) fn synchronize_position_packet(&mut self) -> EntityPositionSyncPacket {
@@ -389,58 +516,58 @@ impl Entity {
         }
     }
 
-    pub(crate) fn scheduled_position_sync_packet(&mut self) -> Option<EntityPositionSyncPacket> {
+    pub(crate) fn get_scheduled_position_sync_packet(&mut self) -> Option<EntityPositionSyncPacket> {
         match self {
-            Self::Creature(entity) => entity.scheduled_position_sync_packet(),
-            Self::ExperienceOrb(entity) => entity.scheduled_position_sync_packet(),
-            Self::Generic(entity) => entity.scheduled_position_sync_packet(),
-            Self::Item(entity) => entity.scheduled_position_sync_packet(),
+            Self::Creature(entity) => entity.get_scheduled_position_sync_packet(),
+            Self::ExperienceOrb(entity) => entity.get_scheduled_position_sync_packet(),
+            Self::Generic(entity) => entity.get_scheduled_position_sync_packet(),
+            Self::Item(entity) => entity.get_scheduled_position_sync_packet(),
             Self::Player(player) => player.scheduled_entity_position_sync_packet(),
-            Self::Projectile(entity) => entity.scheduled_position_sync_packet(),
+            Self::Projectile(entity) => entity.get_scheduled_position_sync_packet(),
         }
     }
 
-    pub(crate) fn velocity_packet(&self) -> EntityVelocityPacket {
+    pub(crate) fn get_velocity_packet(&self) -> EntityVelocityPacket {
         match self {
-            Self::Creature(entity) => entity.velocity_packet(),
-            Self::ExperienceOrb(entity) => entity.velocity_packet(),
-            Self::Generic(entity) => entity.velocity_packet(),
-            Self::Item(entity) => entity.velocity_packet(),
-            Self::Player(player) => player.velocity_packet(),
-            Self::Projectile(entity) => entity.velocity_packet(),
+            Self::Creature(entity) => entity.get_velocity_packet(),
+            Self::ExperienceOrb(entity) => entity.get_velocity_packet(),
+            Self::Generic(entity) => entity.get_velocity_packet(),
+            Self::Item(entity) => entity.get_velocity_packet(),
+            Self::Player(player) => player.get_velocity_packet(),
+            Self::Projectile(entity) => entity.get_velocity_packet(),
         }
     }
 
-    pub(crate) fn dirty_metadata_packet(&mut self) -> Option<SetEntityDataPacket> {
+    pub(crate) fn get_dirty_metadata_packet(&mut self) -> Option<SetEntityDataPacket> {
         match self {
-            Self::Creature(entity) => entity.dirty_metadata_packet(),
-            Self::ExperienceOrb(entity) => entity.dirty_metadata_packet(),
-            Self::Generic(entity) => entity.dirty_metadata_packet(),
-            Self::Item(entity) => entity.dirty_metadata_packet(),
-            Self::Player(player) => player.dirty_metadata_packet(),
-            Self::Projectile(entity) => entity.dirty_metadata_packet(),
+            Self::Creature(entity) => entity.get_dirty_metadata_packet(),
+            Self::ExperienceOrb(entity) => entity.get_dirty_metadata_packet(),
+            Self::Generic(entity) => entity.get_dirty_metadata_packet(),
+            Self::Item(entity) => entity.get_dirty_metadata_packet(),
+            Self::Player(player) => player.get_dirty_metadata_packet(),
+            Self::Projectile(entity) => entity.get_dirty_metadata_packet(),
         }
     }
 
-    pub fn leashed_entities(&self) -> &BTreeSet<EntityId> {
+    pub fn get_leashed_entities(&self) -> &BTreeSet<EntityId> {
         match self {
-            Self::Creature(entity) => entity.leashed_entities(),
-            Self::ExperienceOrb(entity) => entity.leashed_entities(),
-            Self::Generic(entity) => entity.leashed_entities(),
-            Self::Item(entity) => entity.leashed_entities(),
-            Self::Player(player) => player.leashed_entities(),
-            Self::Projectile(entity) => entity.leashed_entities(),
+            Self::Creature(entity) => entity.get_leashed_entities(),
+            Self::ExperienceOrb(entity) => entity.get_leashed_entities(),
+            Self::Generic(entity) => entity.get_leashed_entities(),
+            Self::Item(entity) => entity.get_leashed_entities(),
+            Self::Player(player) => player.get_leashed_entities(),
+            Self::Projectile(entity) => entity.get_leashed_entities(),
         }
     }
 
-    pub fn leash_holder(&self) -> Option<EntityId> {
+    pub fn get_leash_holder(&self) -> Option<EntityId> {
         match self {
-            Self::Creature(entity) => entity.leash_holder(),
-            Self::ExperienceOrb(entity) => entity.leash_holder(),
-            Self::Generic(entity) => entity.leash_holder(),
-            Self::Item(entity) => entity.leash_holder(),
-            Self::Player(player) => player.leash_holder(),
-            Self::Projectile(entity) => entity.leash_holder(),
+            Self::Creature(entity) => entity.get_leash_holder(),
+            Self::ExperienceOrb(entity) => entity.get_leash_holder(),
+            Self::Generic(entity) => entity.get_leash_holder(),
+            Self::Item(entity) => entity.get_leash_holder(),
+            Self::Player(player) => player.get_leash_holder(),
+            Self::Projectile(entity) => entity.get_leash_holder(),
         }
     }
 
@@ -477,14 +604,14 @@ impl Entity {
         }
     }
 
-    pub(crate) fn attach_entity_packet(&self) -> AttachEntityPacket {
+    pub(crate) fn get_attach_entity_packet(&self) -> AttachEntityPacket {
         match self {
-            Self::Creature(entity) => entity.attach_entity_packet(),
-            Self::ExperienceOrb(entity) => entity.attach_entity_packet(),
-            Self::Generic(entity) => entity.attach_entity_packet(),
-            Self::Item(entity) => entity.attach_entity_packet(),
-            Self::Player(player) => player.attach_entity_packet(),
-            Self::Projectile(entity) => entity.attach_entity_packet(),
+            Self::Creature(entity) => entity.get_attach_entity_packet(),
+            Self::ExperienceOrb(entity) => entity.get_attach_entity_packet(),
+            Self::Generic(entity) => entity.get_attach_entity_packet(),
+            Self::Item(entity) => entity.get_attach_entity_packet(),
+            Self::Player(player) => player.get_attach_entity_packet(),
+            Self::Projectile(entity) => entity.get_attach_entity_packet(),
         }
     }
 }

@@ -18,7 +18,7 @@ impl EntityCollisionRules {
         self.has_entity_collision
     }
 
-    pub(crate) const fn prevents_block_placement(self) -> bool {
+    pub(crate) const fn can_prevent_block_placement(self) -> bool {
         self.prevents_block_placement
     }
 }

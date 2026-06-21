@@ -20,15 +20,21 @@ fn world_spawn_entity_delegates_summon_nbt_to_the_entity_owner() {
             Some(&nbt),
         )
         .unwrap();
-    let Entity::Generic(entity) = world.entity_by_id(entity_id).unwrap() else {
+    let Entity::Generic(entity) = world.get_entity_mut(entity_id).unwrap() else {
         panic!("spawned entity must preserve the generic owner");
     };
 
     assert_eq!(
-        entity.position(),
+        entity.get_position(),
         EntityPosition::new(4.5, 72.0, 6.5, 45.0, 10.0)
     );
-    assert_eq!(entity.custom_name().unwrap().to_plain_string(), "Spawned");
+    assert_eq!(entity.get_custom_name().unwrap().to_plain_string(), "Spawned");
     assert!(entity.is_glowing());
-    assert!(entity.is_armor_stand_small());
+    assert!(
+        entity
+            .get_entity_meta_mut()
+            .as_armor_stand()
+            .expect("armor stand entity must expose ArmorStandMeta")
+            .is_small()
+    );
 }

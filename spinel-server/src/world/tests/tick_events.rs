@@ -71,10 +71,10 @@ fn entity_tick_test_listener(event: &mut EntityTickEvent, _server: &mut Minecraf
     if !INSTANCE_TICK_EVENT_TEST_ENABLED.load(Ordering::SeqCst) {
         return;
     }
-    let Entity::Generic(entity) = event.entity() else {
+    let Entity::Generic(entity) = event.get_entity() else {
         return;
     };
-    if entity.world() != *INSTANCE_TICK_EVENT_TEST_WORLD.lock().unwrap() {
+    if entity.get_world() != *INSTANCE_TICK_EVENT_TEST_WORLD.lock().unwrap() {
         return;
     }
     INSTANCE_TICK_EVENT_TEST_SEQUENCE

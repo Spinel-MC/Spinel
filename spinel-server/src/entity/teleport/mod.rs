@@ -1,3 +1,3 @@
 mod instance;
 
-pub use instance::EntityTeleport;
+pub use instance::{EntityTeleport, EntityTeleportRequest};

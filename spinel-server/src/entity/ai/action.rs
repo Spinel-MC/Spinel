@@ -6,6 +6,7 @@ pub(crate) enum CreatureAiAction {
         target: EntityId,
         should_swing_main_hand: bool,
     },
+
     Shoot {
         shooter: EntityId,
         projectile: ProjectileEntity,

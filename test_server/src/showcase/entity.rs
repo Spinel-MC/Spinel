@@ -3,10 +3,9 @@ use spinel::{
     registry::{EntityType, ItemStack, Material},
     server::{
         MinecraftServer,
-        entity::pathfinding::PathRequest,
         entity::{
-            Entity, EntityCreature, EntityId, EntityPosition, Player, PlayerHand,
-            pathfinding::VanillaGroundNodeFollower,
+            Entity, EntityCreature, EntityId, EntityPosition, Player,
+            pathfinding::{PathRequest, VanillaGroundNodeFollower},
         },
         world::{BlockPosition, World},
     },
@@ -24,17 +23,12 @@ pub struct EntityShowcaseControls {
 }
 
 impl EntityShowcaseControls {
-    pub fn give_to_player(self, player: &mut Player) {
-        let held_slot = player.held_slot() as usize;
-        let minestom_stick_slot = first_hotbar_slot_after(held_slot);
-        let vanilla_stick_slot = first_hotbar_slot_after(minestom_stick_slot);
-        player.set_item_in_hand(PlayerHand::Main, self.dual_pathfinding_stick);
-        player
-            .inventory()
-            .set_item_stack(minestom_stick_slot, self.minestom_pathfinding_stick);
-        player
-            .inventory()
-            .set_item_stack(vanilla_stick_slot, self.vanilla_pathfinding_stick);
+    pub fn give_to_player(self, player: &mut Player) -> Vec<bool> {
+        player.get_inventory().add_item_stacks(vec![
+            self.dual_pathfinding_stick,
+            self.minestom_pathfinding_stick,
+            self.vanilla_pathfinding_stick,
+        ])
     }
 
     pub fn dual_pathfinding_stick(&self) -> &ItemStack {
@@ -84,7 +78,7 @@ impl EntityShowcase {
             ));
         };
         let minestom_zombie = Self::zombie(minestom_zombie_position, "Minestom Physics");
-        let minestom_zombie_id = minestom_zombie.entity_id();
+        let minestom_zombie_id = minestom_zombie.get_entity_id();
         if !minestom_zombie.set_instance(world) {
             return Err(io::Error::new(
                 io::ErrorKind::Interrupted,
@@ -95,7 +89,7 @@ impl EntityShowcase {
         vanilla_zombie
             .navigator_mut()
             .set_node_follower(VanillaGroundNodeFollower::default());
-        let vanilla_zombie_id = vanilla_zombie.entity_id();
+        let vanilla_zombie_id = vanilla_zombie.get_entity_id();
         if !vanilla_zombie.set_instance(world) {
             return Err(io::Error::new(
                 io::ErrorKind::Interrupted,
@@ -150,6 +144,8 @@ impl EntityShowcase {
         zombie.set_position(position);
         zombie.set_custom_name(Some(Component::text(physics_name).build()));
         zombie.set_custom_name_visible(true);
+        zombie.entity_meta_mut().as_zombie().expect("msg");
+        
         zombie
     }
 
@@ -161,11 +157,11 @@ impl EntityShowcase {
             .with_custom_name(Component::text("Dual Zombie Pathfinder").build())
             .with_tag(
                 &Self::minestom_zombie_id_tag(),
-                Some(minestom_zombie_id.value()),
+                Some(minestom_zombie_id.get_value()),
             )
             .with_tag(
                 &Self::vanilla_zombie_id_tag(),
-                Some(vanilla_zombie_id.value()),
+                Some(vanilla_zombie_id.get_value()),
             )
     }
 
@@ -176,7 +172,7 @@ impl EntityShowcase {
     ) -> ItemStack {
         ItemStack::of(Material::STICK)
             .with_custom_name(Component::text(name).build())
-            .with_tag(&zombie_id_tag, Some(zombie_id.value()))
+            .with_tag(&zombie_id_tag, Some(zombie_id.get_value()))
     }
 
     fn pathfind_zombie(world: &mut World, zombie_id: i32, destination: EntityPosition) -> bool {
@@ -199,8 +195,4 @@ impl EntityShowcase {
     fn vanilla_zombie_id_tag() -> Tag<i32> {
         Tag::<i32>::integer("spinel_showcase_vanilla_zombie_id")
     }
-}
-
-fn first_hotbar_slot_after(slot: usize) -> usize {
-    (slot + 1) % 9
 }

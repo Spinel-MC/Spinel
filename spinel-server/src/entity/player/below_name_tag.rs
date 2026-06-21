@@ -18,11 +18,11 @@ impl BelowNameTag {
         }
     }
 
-    pub fn objective_name(&self) -> &str {
+    pub fn get_objective_name(&self) -> &str {
         &self.objective_name
     }
 
-    pub fn value(&self) -> &TextComponent {
+    pub fn get_value(&self) -> &TextComponent {
         &self.value
     }
 
@@ -34,7 +34,7 @@ impl BelowNameTag {
         )
     }
 
-    pub fn display_packet(&self) -> DisplayScoreboardPacket {
+    pub fn get_display_packet(&self) -> DisplayScoreboardPacket {
         DisplayScoreboardPacket::below_name(self.objective_name.clone())
     }
 

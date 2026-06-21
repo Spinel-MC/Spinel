@@ -89,7 +89,7 @@ fn player_world_and_position(
     let player = sender.player(server)?;
     Some((
         player.world()?.uuid(),
-        player.position(),
-        player.entity_id(),
+        player.get_position(),
+        player.get_entity_id(),
     ))
 }

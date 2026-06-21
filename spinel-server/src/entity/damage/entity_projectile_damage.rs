@@ -24,11 +24,11 @@ impl EntityProjectileDamage {
         }
     }
 
-    pub const fn projectile(&self) -> EntityId {
+    pub const fn get_projectile(&self) -> EntityId {
         self.projectile
     }
 
-    pub const fn shooter(&self) -> Option<EntityId> {
+    pub const fn get_shooter(&self) -> Option<EntityId> {
         self.shooter
     }
 }

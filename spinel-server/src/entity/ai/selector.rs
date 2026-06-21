@@ -25,7 +25,7 @@ impl GoalSelectorHandle {
         }
     }
 
-    pub fn selector_mut(&self) -> MutexGuard<'_, Box<dyn GoalSelector>> {
+    pub fn get_selector_mut(&self) -> MutexGuard<'_, Box<dyn GoalSelector>> {
         match self.state.selector.lock() {
             Ok(selector) => selector,
             Err(poisoned_selector) => poisoned_selector.into_inner(),

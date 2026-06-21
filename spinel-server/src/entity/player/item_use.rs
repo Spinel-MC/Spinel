@@ -54,11 +54,11 @@ impl Player {
             .is_some_and(|hand| player_hand_item_is_food(self.item_in_hand(hand)))
     }
 
-    pub fn item_use_hand(&self) -> Option<PlayerHand> {
+    pub fn get_item_use_hand(&self) -> Option<PlayerHand> {
         self.item_use_hand
     }
 
-    pub fn current_item_use_time(&self) -> u64 {
+    pub fn get_current_item_use_time(&self) -> u64 {
         if self.item_use_hand.is_none() {
             return 0;
         }
@@ -91,7 +91,7 @@ impl Player {
         self.metadata
             .set_flag(&definitions::is_hand_active(), is_hand_active);
         self.metadata
-            .set_flag(&definitions::active_hand(), is_off_hand);
+            .set_flag(&definitions::get_active_hand(), is_off_hand);
         self.metadata.set_flag(
             &definitions::is_riptide_spin_attack(),
             is_riptide_spin_attack,
@@ -164,7 +164,7 @@ impl Player {
         else {
             return Ok(true);
         };
-        let currently_equipped_item = self.equipment(equipment_slot);
+        let currently_equipped_item = self.get_equipment(equipment_slot);
         if !self.set_equipment(equipment_slot, item_stack) {
             return Ok(false);
         }
@@ -181,7 +181,7 @@ impl Player {
 
     fn inventory_slot_for_hand(&self, hand: PlayerHand) -> i32 {
         match hand {
-            PlayerHand::Main => self.held_slot(),
+            PlayerHand::Main => self.get_held_slot(),
             PlayerHand::Off => OFFHAND_SLOT,
         }
     }
@@ -199,7 +199,7 @@ impl Player {
             self as *mut Player,
             hand,
             item_stack,
-            self.current_item_use_time(),
+            self.get_current_item_use_time(),
         );
         cancel_item_use_event.dispatch(server, client);
         self.refresh_active_hand(
@@ -216,15 +216,15 @@ impl Player {
         let Some(hand) = self.item_use_hand else {
             return None;
         };
-        if self.current_item_use_time() < self.item_use_time {
+        if self.get_current_item_use_time() < self.item_use_time {
             return None;
         }
         let item_stack = self.item_in_hand(hand);
-        let duration = self.current_item_use_time();
+        let duration = self.get_current_item_use_time();
         self.refresh_active_hand(false, self.item_use_hand == Some(PlayerHand::Off), false);
         self.clear_item_use();
         Some(PlayerItemUseCompletion {
-            entity_id: self.entity_id().value(),
+            entity_id: self.get_entity_id().get_value(),
             status: MARK_ITEM_FINISHED,
             player: self as *mut Player,
             hand,
@@ -322,7 +322,7 @@ impl Player {
             else {
                 return Ok(());
             };
-            let settings = effect.settings();
+            let settings = effect.get_settings();
             let packet = self.add_effect(TimedPotionEffect::new(
                 effect_id,
                 settings.amplifier(),
@@ -341,11 +341,11 @@ impl Player {
         client: &mut Client,
     ) -> io::Result<()> {
         let removable_effect_ids = self
-            .active_effects()
+            .get_active_effects()
             .into_iter()
             .filter_map(|effect| {
-                effect_reference_contains(effects, effect.effect_id(), server)
-                    .then_some(effect.effect_id())
+                effect_reference_contains(effects, effect.get_effect_id(), server)
+                    .then_some(effect.get_effect_id())
             })
             .collect::<Vec<_>>();
         removable_effect_ids.into_iter().try_for_each(|effect_id| {
@@ -365,13 +365,13 @@ impl Player {
     fn teleport_randomly_after_consuming(&mut self, diameter: f32) -> io::Result<()> {
         let radius = f64::from(diameter.max(0.0)) / 2.0;
         let (offset_x, offset_z) = random_teleport_offsets(radius, self.alive_ticks);
-        let position = self.position();
+        let position = self.get_position();
         let target_position = EntityPosition::new(
-            position.x() + offset_x,
-            position.y(),
-            position.z() + offset_z,
-            position.yaw(),
-            position.pitch(),
+            position.get_x() + offset_x,
+            position.get_y(),
+            position.get_z() + offset_z,
+            position.get_yaw(),
+            position.get_pitch(),
         );
         self.set_position(target_position);
         self.synchronize_position_after_teleport(
@@ -394,7 +394,7 @@ impl Player {
                 fixed_range: None,
             }),
             source_id: 7,
-            entity_id: self.entity_id().value(),
+            entity_id: self.get_entity_id().get_value(),
             volume: 1.0,
             pitch: 1.0,
             seed: 0,

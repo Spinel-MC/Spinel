@@ -9,7 +9,7 @@ fn empty_item(index: u8) -> MetadataDefinition {
     )
 }
 
-pub fn item_stack() -> MetadataDefinition {
+pub fn get_item_stack() -> MetadataDefinition {
     empty_item(8)
 }
 
@@ -29,7 +29,7 @@ pub fn has_no_clip_arrow() -> MetadataBitMaskDefinition {
     MetadataBitMaskDefinition::new(8, 0x02, false)
 }
 
-pub fn piercing_level() -> MetadataDefinition {
+pub fn get_piercing_level() -> MetadataDefinition {
     MetadataDefinition::new(9, MetadataValue::Byte(0))
 }
 
@@ -53,7 +53,7 @@ pub fn wither_skull_is_invulnerable() -> MetadataDefinition {
     MetadataDefinition::new(8, MetadataValue::Boolean(false))
 }
 
-pub fn firework_info() -> MetadataDefinition {
+pub fn get_firework_info() -> MetadataDefinition {
     empty_item(8)
 }
 
@@ -68,7 +68,7 @@ pub fn firework_is_shot_at_angle() -> MetadataDefinition {
 pub mod thrown_item {
     use super::*;
 
-    pub fn item() -> MetadataDefinition {
+    pub fn get_item() -> MetadataDefinition {
         empty_item(8)
     }
 }
@@ -76,7 +76,7 @@ pub mod thrown_item {
 pub mod eye_of_ender {
     use super::*;
 
-    pub fn item() -> MetadataDefinition {
+    pub fn get_item() -> MetadataDefinition {
         empty_item(8)
     }
 }
@@ -96,8 +96,8 @@ pub mod abstract_arrow {
         has_no_clip_arrow()
     }
 
-    pub fn piercing_level() -> MetadataDefinition {
-        super::piercing_level()
+    pub fn get_piercing_level() -> MetadataDefinition {
+        super::get_piercing_level()
     }
 
     pub fn in_ground() -> MetadataDefinition {
@@ -108,7 +108,7 @@ pub mod abstract_arrow {
 pub mod arrow {
     use super::*;
 
-    pub fn color() -> MetadataDefinition {
+    pub fn get_color() -> MetadataDefinition {
         arrow_color()
     }
 }
@@ -116,7 +116,7 @@ pub mod arrow {
 pub mod thrown_trident {
     use super::*;
 
-    pub fn loyalty_level() -> MetadataDefinition {
+    pub fn get_loyalty_level() -> MetadataDefinition {
         trident_loyalty_level()
     }
 
@@ -136,11 +136,11 @@ pub mod wither_skull {
 pub mod firework_rocket {
     use super::*;
 
-    pub fn item() -> MetadataDefinition {
-        firework_info()
+    pub fn get_item() -> MetadataDefinition {
+        get_firework_info()
     }
 
-    pub fn shooter_entity_id() -> MetadataDefinition {
+    pub fn get_shooter_entity_id() -> MetadataDefinition {
         firework_shooter_entity_id()
     }
 

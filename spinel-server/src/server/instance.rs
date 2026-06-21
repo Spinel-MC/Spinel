@@ -521,7 +521,7 @@ impl MinecraftServer {
         let player = unsafe { &mut *player };
         let queued_packet = player.pop_next_packet_from_queue()?;
         player
-            .client_mut()
+            .get_client_mut()
             .map(|client| (client as *mut Client, queued_packet))
     }
 }

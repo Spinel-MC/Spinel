@@ -24,7 +24,7 @@ impl Player {
         }
         if self.shift_click_equips_item(slot, &clicked, player, server, client) {
             self.set_item_at_with_change_event(slot, ItemStack::air(), player, server, client);
-            let cursor_item = self.inventory_ref().cursor_item().clone();
+            let cursor_item = self.get_inventory_ref().cursor_item().clone();
             let click_was_dispatched = self.dispatch_inventory_click(
                 slot,
                 ClickType::ShiftClick,
@@ -38,7 +38,7 @@ impl Player {
         }
         let remaining_item = self.shift_click_remaining_item(slot, clicked, player, server, client);
         self.set_item_at_with_change_event(slot, remaining_item.clone(), player, server, client);
-        let cursor_item = self.inventory_ref().cursor_item().clone();
+        let cursor_item = self.get_inventory_ref().cursor_item().clone();
         let click_was_dispatched = self.dispatch_inventory_click(
             slot,
             ClickType::ShiftClick,
@@ -59,28 +59,28 @@ impl Player {
         server: &mut MinecraftServer,
         client: &mut Client,
     ) -> bool {
-        if self.opened_inventory().is_some() || self.is_crafting_slot(slot) {
+        if self.get_opened_inventory().is_some() || self.is_crafting_slot(slot) {
             return false;
         }
         let Some(equipment_slot) = equipment_slot_for_item(clicked) else {
             return false;
         };
         if !self
-            .inventory_ref()
-            .equipment(equipment_slot, self.held_slot())
+            .get_inventory_ref()
+            .get_equipment(equipment_slot, self.get_held_slot())
             .is_air()
         {
             return false;
         }
         let target_slot = match equipment_slot {
             EquipmentSlot::OffHand => OFFHAND_SLOT,
-            _ => equipment_slot.armor_slot(),
+            _ => equipment_slot.get_armor_slot(),
         };
         if !self.set_item_at_with_change_event(target_slot, clicked.clone(), player, server, client)
         {
             return false;
         }
-        let cursor_item = self.inventory_ref().cursor_item().clone();
+        let cursor_item = self.get_inventory_ref().cursor_item().clone();
         self.dispatch_inventory_click(
             target_slot,
             ClickType::ShiftClick,
@@ -100,7 +100,7 @@ impl Player {
         server: &mut MinecraftServer,
         client: &mut Client,
     ) -> ItemStack {
-        if self.opened_inventory().is_some() {
+        if self.get_opened_inventory().is_some() {
             return self.shift_click_with_open_inventory(slot, clicked, player, server, client);
         }
         self.shift_click_player_inventory(slot, clicked, player, server, client)

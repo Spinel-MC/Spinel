@@ -18,12 +18,12 @@ impl EntityDamageEvent {
         }
     }
 
-    pub fn entity(&mut self) -> &mut Entity {
+    pub fn get_entity(&mut self) -> &mut Entity {
         unsafe { &mut *self.entity }
     }
 
-    pub fn entity_id(&self) -> EntityId {
-        unsafe { (&*self.entity).entity_id() }
+    pub fn get_entity_id(&self) -> EntityId {
+        unsafe { (&*self.entity).get_entity_id() }
     }
 
     pub fn damage_source(&self) -> &str {
@@ -38,16 +38,16 @@ impl EntityDamageEvent {
         &mut self.damage
     }
 
-    pub fn amount(&self) -> f32 {
-        self.damage.amount()
+    pub fn get_amount(&self) -> f32 {
+        self.damage.get_amount()
     }
 
     pub fn set_damage(&mut self, damage: f32) {
         self.damage.set_amount(damage);
     }
 
-    pub fn sound(&self) -> Option<SoundEvent> {
-        self.damage.sound()
+    pub fn get_sound(&self) -> Option<SoundEvent> {
+        self.damage.get_sound()
     }
 
     pub fn set_sound(&mut self, sound: Option<SoundEvent>) {

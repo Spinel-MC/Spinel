@@ -43,28 +43,28 @@ impl PathNode {
         }
     }
 
-    pub const fn position(&self) -> EntityPosition {
+    pub const fn get_position(&self) -> EntityPosition {
         self.position
     }
 
-    pub const fn cost(&self) -> f64 {
+    pub const fn get_cost(&self) -> f64 {
         self.cost
     }
 
-    pub const fn heuristic(&self) -> f64 {
+    pub const fn get_heuristic(&self) -> f64 {
         self.heuristic
     }
 
-    pub const fn node_type(&self) -> PathNodeType {
+    pub const fn get_node_type(&self) -> PathNodeType {
         self.node_type
     }
 
-    pub fn parent(&self) -> Option<&PathNode> {
+    pub fn get_parent(&self) -> Option<&PathNode> {
         self.parent.as_deref()
     }
 
-    pub fn parent_coordinates(&self) -> Option<(i32, i32, i32)> {
-        self.parent().map(PathNode::block_coordinates)
+    pub fn get_parent_coordinates(&self) -> Option<(i32, i32, i32)> {
+        self.get_parent().map(PathNode::block_coordinates)
     }
 
     pub fn set_position(&mut self, position: EntityPosition) {
@@ -88,15 +88,15 @@ impl PathNode {
         self.parent = parent.map(Arc::new);
     }
 
-    pub fn score(&self) -> f64 {
+    pub fn get_score(&self) -> f64 {
         self.cost + self.heuristic
     }
 
-    pub fn block_coordinates(&self) -> (i32, i32, i32) {
+    pub fn get_block_coordinates(&self) -> (i32, i32, i32) {
         (
-            self.position.x().floor() as i32,
-            self.position.y().floor() as i32,
-            self.position.z().floor() as i32,
+            self.position.get_x().floor() as i32,
+            self.position.get_y().floor() as i32,
+            self.position.get_z().floor() as i32,
         )
     }
 }
@@ -130,10 +130,10 @@ impl Display for PathNode {
         write!(
             formatter,
             "PNode{{point={}, {}, {}, d={}, type={}}}",
-            self.position.x(),
-            self.position.y(),
-            self.position.z(),
-            self.score(),
+            self.position.get_x(),
+            self.position.get_y(),
+            self.position.get_z(),
+            self.get_score(),
             node_type
         )
     }
@@ -141,8 +141,8 @@ impl Display for PathNode {
 
 fn position_identity_hash(position: EntityPosition) -> i32 {
     cantor(
-        position.x().floor() as i32,
-        cantor(position.y().floor() as i32, position.z().floor() as i32),
+        position.get_x().floor() as i32,
+        cantor(position.get_y().floor() as i32, position.get_z().floor() as i32),
     )
 }
 

@@ -20,8 +20,8 @@ impl GenericEntity {
             x,
             y,
             z,
-            self.position().yaw(),
-            self.position().pitch(),
+            self.get_position().get_yaw(),
+            self.get_position().get_pitch(),
         ));
     }
 
@@ -29,7 +29,7 @@ impl GenericEntity {
         let Some([yaw, pitch]) = nbt_rotation(nbt.get("Rotation")) else {
             return;
         };
-        self.set_position(self.position().with_view(yaw, pitch));
+        self.set_position(self.get_position().with_view(yaw, pitch));
     }
 
     fn apply_summon_base_state(&mut self, nbt: &NbtCompound) {
@@ -52,7 +52,7 @@ impl GenericEntity {
     }
 
     fn apply_summon_living_state(&mut self, nbt: &NbtCompound) {
-        if !self.entity_type().is_living() {
+        if !self.get_entity_type().is_living() {
             return;
         }
         apply_boolean(nbt, "Invulnerable", |value| {
@@ -64,11 +64,14 @@ impl GenericEntity {
     }
 
     fn apply_summon_type_state(&mut self, nbt: &NbtCompound) {
-        match self.entity_type() {
+        match self.get_entity_type() {
             EntityType::ARMOR_STAND => self.apply_armor_stand_summon_state(nbt),
-            EntityType::SLIME | EntityType::MAGMA_CUBE => {
+            EntityType::SLIME => {
                 if let Some(size) = nbt.get("Size").and_then(nbt_i32) {
-                    self.set_slime_size(size);
+                    self.get_entity_meta_mut()
+                        .as_slime()
+                        .expect("slime metadata must match slime entity type")
+                        .set_size(size);
                 }
             }
             _ => {}
@@ -77,16 +80,28 @@ impl GenericEntity {
 
     fn apply_armor_stand_summon_state(&mut self, nbt: &NbtCompound) {
         apply_boolean(nbt, "Small", |value| {
-            self.set_armor_stand_small(value);
+            self.get_entity_meta_mut()
+                .as_armor_stand()
+                .expect("armor stand metadata must match armor stand entity type")
+                .set_small(value);
         });
         apply_boolean(nbt, "ShowArms", |value| {
-            self.set_armor_stand_arms(value);
+            self.get_entity_meta_mut()
+                .as_armor_stand()
+                .expect("armor stand metadata must match armor stand entity type")
+                .set_has_arms(value);
         });
         apply_boolean(nbt, "NoBasePlate", |value| {
-            self.set_armor_stand_no_base_plate(value);
+            self.get_entity_meta_mut()
+                .as_armor_stand()
+                .expect("armor stand metadata must match armor stand entity type")
+                .set_has_no_base_plate(value);
         });
         apply_boolean(nbt, "Marker", |value| {
-            self.set_armor_stand_marker(value);
+            self.get_entity_meta_mut()
+                .as_armor_stand()
+                .expect("armor stand metadata must match armor stand entity type")
+                .set_marker(value);
         });
     }
 }

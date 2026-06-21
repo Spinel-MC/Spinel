@@ -1,10 +1,11 @@
+use crate::entity::player::PlayerMeta;
 use crate::entity::generic_entity::EntityAerodynamics;
 use crate::entity::metadata::{MetadataHolder, definitions};
 use crate::entity::physics::{EntityPhysicsResult, knockback_velocity, simulate_movement};
 use crate::entity::player::BelowNameTag;
 use crate::entity::player::ChunkUpdateLimitChecker;
 use crate::entity::player::PendingResourcePacks;
-use crate::entity::player::PlayerPose;
+use crate::entity::EntityPose;
 use crate::entity::player::PlayerViewerSnapshot;
 use crate::entity::player::chunks::PlayerChunk;
 use crate::entity::player::input::PlayerInputs;
@@ -243,11 +244,11 @@ impl PlayerDeathLocation {
         }
     }
 
-    pub fn dimension(&self) -> &Identifier {
+    pub fn get_dimension(&self) -> &Identifier {
         &self.dimension
     }
 
-    pub const fn position(&self) -> EntityPosition {
+    pub const fn get_position(&self) -> EntityPosition {
         self.position
     }
 }
@@ -337,7 +338,7 @@ impl Player {
             allow_flying: false,
             instant_break: false,
             has_entity_collision: collision_rules.has_entity_collision(),
-            prevents_block_placement: collision_rules.prevents_block_placement(),
+            prevents_block_placement: collision_rules.can_prevent_block_placement(),
             flying_speed: 0.05,
             field_view_modifier: 0.1,
             metadata: MetadataHolder::default(),
@@ -385,11 +386,11 @@ impl Player {
         self.hardcore = hardcore;
     }
 
-    pub const fn pending_spawning_world(&self) -> Option<Uuid> {
+    pub const fn get_pending_spawning_world(&self) -> Option<Uuid> {
         self.pending_spawning_world
     }
 
-    pub fn scheduler(&mut self) -> &mut ContextScheduler<Player> {
+    pub fn get_scheduler(&mut self) -> &mut ContextScheduler<Player> {
         &mut self.scheduler
     }
 
@@ -400,7 +401,7 @@ impl Player {
         self.scheduler.schedule_next_tick(callback)
     }
 
-    pub const fn current_world(&self) -> Option<Uuid> {
+    pub const fn get_current_world(&self) -> Option<Uuid> {
         self.current_world
     }
 
@@ -412,7 +413,7 @@ impl Player {
         self.dimension_type = dimension_type;
     }
 
-    pub fn dimension_type(&self) -> &RegistryKey<DimensionType> {
+    pub fn get_dimension_type(&self) -> &RegistryKey<DimensionType> {
         &self.dimension_type
     }
 
@@ -481,7 +482,7 @@ impl Player {
     }
 
     pub fn start_configuration_phase(&mut self) -> io::Result<()> {
-        let Some(client) = self.client_mut() else {
+        let Some(client) = self.get_client_mut() else {
             return Ok(());
         };
         if client.state != ConnectionState::Play {
@@ -495,21 +496,29 @@ impl Player {
         self.has_entered_world = false;
         Ok(())
     }
+    pub const fn get_alive_ticks(&self) -> u64 {
+        self.alive_ticks
+    }
+
+    pub fn is_removed(&self) -> bool {
+        self.is_dead()
+    }
+
 
     pub const fn is_dead(&self) -> bool {
         self.living.is_dead()
     }
 
-    pub fn last_damage(&self) -> Option<&Damage> {
-        self.living.last_damage()
+    pub fn get_last_damage(&self) -> Option<&Damage> {
+        self.living.get_last_damage()
     }
 
-    pub const fn health(&self) -> f32 {
-        self.living.health()
+    pub const fn get_health(&self) -> f32 {
+        self.living.get_health()
     }
 
-    pub const fn fire_ticks(&self) -> i32 {
-        self.living.fire_ticks()
+    pub const fn get_fire_ticks(&self) -> i32 {
+        self.living.get_fire_ticks()
     }
 
     pub fn is_on_fire(&self) -> bool {
@@ -518,7 +527,7 @@ impl Player {
 
     pub fn set_fire_ticks(&mut self, fire_ticks: i32) {
         self.living.set_fire_ticks(fire_ticks);
-        self.set_on_fire(self.living.fire_ticks() > 0);
+        self.set_on_fire(self.living.get_fire_ticks() > 0);
     }
 
     pub(crate) fn set_fire_ticks_after_cancelled_extinguish(&mut self, fire_ticks: i32) {
@@ -527,25 +536,25 @@ impl Player {
 
     pub(crate) fn tick_fire_ticks(&mut self) {
         self.living.tick_fire_ticks();
-        self.set_on_fire(self.living.fire_ticks() > 0);
+        self.set_on_fire(self.living.get_fire_ticks() > 0);
     }
 
     pub fn set_health(&mut self, health: f32) -> io::Result<()> {
         self.living.set_health(health);
         self.metadata.set(
-            &definitions::living_entity::health(),
-            MetadataValue::Float(self.living.health()),
+            &definitions::living_entity::get_health(),
+            MetadataValue::Float(self.living.get_health()),
         );
         self.sync_health()?;
-        if self.living.health() <= 0.0 {
+        if self.living.get_health() <= 0.0 {
             self.kill()?;
         }
         Ok(())
     }
 
     pub(crate) fn apply_damage(&mut self, damage: Damage) -> io::Result<()> {
-        let mut remaining_damage = damage.amount();
-        let additional_hearts = self.additional_hearts();
+        let mut remaining_damage = damage.get_amount();
+        let additional_hearts = self.get_additional_hearts();
         if additional_hearts > 0.0 {
             if remaining_damage > additional_hearts {
                 remaining_damage -= additional_hearts;
@@ -557,20 +566,20 @@ impl Player {
         }
         self.living.store_last_damage(damage);
         self.living
-            .set_health(self.living.health() - remaining_damage);
+            .set_health(self.living.get_health() - remaining_damage);
         self.metadata.set(
-            &definitions::living_entity::health(),
-            MetadataValue::Float(self.living.health()),
+            &definitions::living_entity::get_health(),
+            MetadataValue::Float(self.living.get_health()),
         );
         self.sync_health()
     }
 
-    pub fn player_metadata(&self) -> &MetadataHolder {
+    pub fn get_player_metadata(&self) -> &MetadataHolder {
         &self.metadata
     }
 
-    pub fn additional_hearts(&self) -> f32 {
-        match self.metadata.value(&definitions::additional_hearts()) {
+    pub fn get_additional_hearts(&self) -> f32 {
+        match self.metadata.get_value(&definitions::get_additional_hearts()) {
             MetadataValue::Float(additional_hearts) => additional_hearts,
             _ => 0.0,
         }
@@ -578,12 +587,12 @@ impl Player {
 
     pub fn set_additional_hearts(&mut self, additional_hearts: f32) {
         self.metadata.set(
-            &definitions::additional_hearts(),
+            &definitions::get_additional_hearts(),
             MetadataValue::Float(additional_hearts.max(0.0)),
         );
     }
 
-    pub const fn food(&self) -> i32 {
+    pub const fn get_food(&self) -> i32 {
         self.food
     }
 
@@ -592,7 +601,7 @@ impl Player {
         self.sync_health()
     }
 
-    pub const fn food_saturation(&self) -> f32 {
+    pub const fn get_food_saturation(&self) -> f32 {
         self.food_saturation
     }
 
@@ -617,7 +626,7 @@ impl Player {
         self.death_location = Some(PlayerDeathLocation::new(dimension, position));
     }
 
-    pub fn death_location(&self) -> Option<&PlayerDeathLocation> {
+    pub fn get_death_location(&self) -> Option<&PlayerDeathLocation> {
         self.death_location.as_ref()
     }
 
@@ -635,7 +644,7 @@ impl Player {
         self.dispatch_game_event(GameEvent::SetRespawnScreen(state))
     }
 
-    pub const fn experience(&self) -> f32 {
+    pub const fn get_experience(&self) -> f32 {
         self.experience
     }
 
@@ -644,7 +653,7 @@ impl Player {
         self.sync_experience()
     }
 
-    pub const fn experience_level(&self) -> i32 {
+    pub const fn get_experience_level(&self) -> i32 {
         self.experience_level
     }
 
@@ -653,7 +662,7 @@ impl Player {
         self.sync_experience()
     }
 
-    pub const fn total_experience(&self) -> i32 {
+    pub const fn get_total_experience(&self) -> i32 {
         self.total_experience
     }
 
@@ -662,7 +671,7 @@ impl Player {
         self.sync_experience()
     }
 
-    pub const fn portal_cooldown(&self) -> i32 {
+    pub const fn get_portal_cooldown(&self) -> i32 {
         self.portal_cooldown
     }
 
@@ -685,12 +694,12 @@ impl Player {
             23
         };
         self.send_packet(EntityStatusPacket {
-            entity_id: self.entity_id().value(),
+            entity_id: self.get_entity_id().get_value(),
             status,
         })
     }
 
-    pub const fn settings(&self) -> &ClientInformation {
+    pub const fn get_settings(&self) -> &ClientInformation {
         &self.settings
     }
 
@@ -702,7 +711,7 @@ impl Player {
         previous_view_distance != self.client_chunk_view_distance
     }
 
-    pub fn locale(&self) -> &str {
+    pub fn get_locale(&self) -> &str {
         &self.settings.locale
     }
 
@@ -724,23 +733,23 @@ impl Player {
         });
         let default_death_text = self
             .living
-            .last_damage()
+            .get_last_damage()
             .and_then(Damage::build_death_screen_text)
             .unwrap_or_else(|| TextComponent::literal("Killed by poor programming."));
         let default_chat_message = self
             .living
-            .last_damage()
-            .and_then(|damage| damage.build_death_message(self.username()))
+            .get_last_damage()
+            .and_then(|damage| damage.build_death_message(self.get_username()))
             .unwrap_or_else(|| {
                 TextComponent::literal(format!(
                     "{} was killed by poor programming.",
-                    self.username()
+                    self.get_username()
                 ))
             });
         let (death_text, chat_message) =
             self.dispatch_player_death_event(default_death_text, default_chat_message);
-        let entity_id = self.entity_id.value();
-        if let Some(client) = self.client_mut() {
+        let entity_id = self.entity_id.get_value();
+        if let Some(client) = self.get_client_mut() {
             if client.state == ConnectionState::Play
                 && let Some(death_text) = death_text
             {
@@ -749,7 +758,7 @@ impl Player {
         }
         self.broadcast_death_message(chat_message)?;
         if self.current_world.is_some() {
-            self.set_death_location(self.position());
+            self.set_death_location(self.get_position());
         }
         Ok(())
     }
@@ -763,7 +772,7 @@ impl Player {
             .clone()
             .unwrap_or_else(|| Identifier::minecraft("overworld"));
         let game_mode = self.game_mode;
-        if let Some(client) = self.client_mut()
+        if let Some(client) = self.get_client_mut()
             && client.state == ConnectionState::Play
         {
             RespawnPacket::new(game_mode, respawn_dimension).dispatch(client)?;
@@ -781,7 +790,7 @@ impl Player {
     }
 
     pub fn is_online(&self) -> bool {
-        self.client().is_some_and(Client::is_online)
+        self.get_client().is_some_and(Client::is_online)
     }
 
     pub const fn can_pickup_item(&self) -> bool {
@@ -796,24 +805,24 @@ impl Player {
         self.has_entity_collision
     }
 
-    pub const fn prevents_block_placement(&self) -> bool {
+    pub const fn can_prevent_block_placement(&self) -> bool {
         self.prevents_block_placement
     }
 
-    pub const fn permission_level(&self) -> i32 {
+    pub const fn get_permission_level(&self) -> i32 {
         self.permission_level
     }
 
     pub fn set_permission_level(&mut self, permission_level: i32) -> io::Result<()> {
         self.permission_level = permission_level.clamp(0, 4);
         self.send_packet(EntityStatusPacket {
-            entity_id: self.entity_id().value(),
+            entity_id: self.get_entity_id().get_value(),
             status: (24 + self.permission_level) as i8,
         })
     }
 
     pub fn refresh_recipes(&mut self) -> io::Result<()> {
-        let Some(client) = self.client_mut() else {
+        let Some(client) = self.get_client_mut() else {
             return Ok(());
         };
         UpdateRecipesPacket.dispatch(client)?;
@@ -824,7 +833,7 @@ impl Player {
     where
         P: PacketStruct,
     {
-        let Some(client) = self.client_mut() else {
+        let Some(client) = self.get_client_mut() else {
             return Ok(());
         };
         if client.state != P::get_state() {
@@ -846,7 +855,7 @@ impl Player {
     }
 
     pub fn send_raw_packet(&mut self, packet_id: i32, payload: &[u8]) -> io::Result<()> {
-        let Some(client) = self.client_mut() else {
+        let Some(client) = self.get_client_mut() else {
             return Ok(());
         };
 
@@ -912,7 +921,7 @@ impl Player {
     }
 
     pub fn open_book(&mut self, hand: PlayerHand) -> io::Result<()> {
-        self.send_packet(OpenBookPacket::new(hand.protocol_id()))
+        self.send_packet(OpenBookPacket::new(hand.get_protocol_id()))
     }
 
     pub fn show_dialog(&mut self, dialog: &RegistryKey<Dialog>) -> io::Result<()> {
@@ -961,7 +970,7 @@ impl Player {
         self.send_packet(notification.remove_packet())
     }
 
-    pub fn below_name_tag(&self) -> Option<&BelowNameTag> {
+    pub fn get_below_name_tag(&self) -> Option<&BelowNameTag> {
         self.below_name_tag.as_ref()
     }
 
@@ -977,14 +986,14 @@ impl Player {
         self.below_name_tag = below_name_tag;
         if let Some(current_below_name_tag) = self.below_name_tag.clone() {
             self.send_packet(current_below_name_tag.create_packet())?;
-            self.send_packet(current_below_name_tag.display_packet())?;
+            self.send_packet(current_below_name_tag.get_display_packet())?;
         }
 
         Ok(())
     }
 
-    pub fn team(&self) -> Option<&str> {
-        self.living.team()
+    pub fn get_team(&self) -> Option<&str> {
+        self.living.get_team()
     }
 
     pub fn set_scoreboard_team(
@@ -994,7 +1003,7 @@ impl Player {
     ) -> Vec<spinel_core::network::clientbound::play::set_player_team::SetPlayerTeamPacket> {
         let member = self.username.clone();
         let mut packets = Vec::new();
-        if let Some(previous_team_name) = self.living.team().map(str::to_owned) {
+        if let Some(previous_team_name) = self.living.get_team().map(str::to_owned) {
             self.living.set_team(None);
             let should_remove_previous_member = new_team
                 .as_ref()
@@ -1028,7 +1037,7 @@ impl Player {
     }
 
     pub fn play_sound(&mut self, sound_event: SoundEvent) -> io::Result<()> {
-        self.play_sound_at_position(sound_event, self.position().as_vector())
+        self.play_sound_at_position(sound_event, self.get_position().as_vector())
     }
 
     pub fn play_sound_at_position(
@@ -1054,7 +1063,7 @@ impl Player {
         self.send_packet(EntitySoundEffectPacket {
             sound_event: NetworkSoundEvent(sound_event),
             source_id: 0,
-            entity_id: entity_id.value(),
+            entity_id: entity_id.get_value(),
             volume: 1.0,
             pitch: 1.0,
             seed: 0,
@@ -1089,11 +1098,11 @@ impl Player {
     }
 
     pub fn spectate(&mut self, entity_id: EntityId) -> io::Result<()> {
-        self.send_packet(SetCameraPacket::new(entity_id.value()))
+        self.send_packet(SetCameraPacket::new(entity_id.get_value()))
     }
 
     pub fn stop_spectating(&mut self) -> io::Result<()> {
-        self.send_packet(SetCameraPacket::new(self.entity_id().value()))
+        self.send_packet(SetCameraPacket::new(self.get_entity_id().get_value()))
     }
 
     pub fn add_packet_to_queue(&mut self, packet: QueuedPlayerPacket) -> bool {
@@ -1126,7 +1135,7 @@ impl Player {
         interpreted_packets
     }
 
-    pub fn queued_packet_count(&self) -> usize {
+    pub fn get_queued_packet_count(&self) -> usize {
         self.packet_queue.len()
     }
 
@@ -1150,23 +1159,23 @@ impl Player {
         }
     }
 
-    pub const fn chunk_batch_lead(&self) -> i32 {
+    pub const fn get_chunk_batch_lead(&self) -> i32 {
         self.chunk_batch_lead
     }
 
-    pub const fn max_chunk_batch_lead(&self) -> i32 {
+    pub const fn get_max_chunk_batch_lead(&self) -> i32 {
         self.max_chunk_batch_lead
     }
 
-    pub const fn target_chunks_per_tick(&self) -> f32 {
+    pub const fn get_target_chunks_per_tick(&self) -> f32 {
         self.target_chunks_per_tick
     }
 
-    pub const fn pending_chunk_count(&self) -> f32 {
+    pub const fn get_pending_chunk_count(&self) -> f32 {
         self.pending_chunk_count
     }
 
-    pub const fn client_chunk_view_distance(&self) -> i32 {
+    pub const fn get_client_chunk_view_distance(&self) -> i32 {
         self.client_chunk_view_distance
     }
 
@@ -1174,18 +1183,18 @@ impl Player {
         self.client_chunk_view_distance = client_chunk_view_distance.max(0);
     }
 
-    pub fn effective_chunk_view_distance(&self, world_view_distance: i32) -> i32 {
+    pub fn get_effective_chunk_view_distance(&self, world_view_distance: i32) -> i32 {
         self.client_chunk_view_distance
             .min(world_view_distance)
             .max(0)
             + 1
     }
 
-    pub const fn entity_id(&self) -> EntityId {
+    pub const fn get_entity_id(&self) -> EntityId {
         self.entity_id
     }
 
-    pub const fn entity_type(&self) -> EntityType {
+    pub const fn get_entity_type(&self) -> EntityType {
         self.entity_type
     }
 
@@ -1199,38 +1208,42 @@ impl Player {
     fn refresh_collision_rules(&mut self) {
         let collision_rules = EntityCollisionRules::from_entity_type(self.entity_type);
         self.has_entity_collision = collision_rules.has_entity_collision();
-        self.prevents_block_placement = collision_rules.prevents_block_placement();
+        self.prevents_block_placement = collision_rules.can_prevent_block_placement();
     }
 
-    pub const fn view(&self) -> &EntityView {
+    pub const fn get_view(&self) -> &EntityView {
         &self.view
     }
 
-    pub const fn view_mut(&mut self) -> &mut EntityView {
+    pub const fn get_view_mut(&mut self) -> &mut EntityView {
         &mut self.view
     }
 
-    pub fn viewers(&self) -> BTreeSet<EntityId> {
-        self.view.viewers()
+    pub fn get_viewers(&self) -> BTreeSet<EntityId> {
+        self.view.get_viewers()
     }
 
     pub fn is_viewer(&self, viewer_id: EntityId) -> bool {
         self.view.is_viewer(viewer_id)
     }
 
-    pub const fn uuid(&self) -> Uuid {
+    pub const fn get_uuid(&self) -> Uuid {
         self.uuid
     }
 
-    pub const fn identity(&self) -> EntityIdentity {
+    pub const fn get_identity(&self) -> EntityIdentity {
         EntityIdentity::new(self.uuid)
     }
+    pub fn get_entity_meta_mut(&mut self) -> PlayerMeta<'_> {
+        PlayerMeta::new(self)
+    }
 
-    pub const fn pointers(&self) -> EntityPointers {
+
+    pub const fn get_pointers(&self) -> EntityPointers {
         EntityPointers::new(self.uuid, self.entity_id)
     }
 
-    pub fn username(&self) -> &str {
+    pub fn get_username(&self) -> &str {
         &self.username
     }
 
@@ -1238,7 +1251,7 @@ impl Player {
         HoverEvent::ShowEntity(HoverEntity {
             entity_type: self.entity_type.key().to_string(),
             id: self.uuid.to_string(),
-            name: Some(Box::new(TextComponent::literal(self.username()))),
+            name: Some(Box::new(TextComponent::literal(self.get_username()))),
         })
     }
 
@@ -1247,7 +1260,7 @@ impl Player {
             self.entity_id,
             self.uuid,
             self.username.clone(),
-            self.position(),
+            self.get_position(),
             self.current_world,
             self.game_mode,
             self.skin.clone(),
@@ -1261,11 +1274,11 @@ impl Player {
         snapshot
     }
 
-    pub fn statistic_value_map(&self) -> &BTreeMap<String, i32> {
+    pub fn get_statistic_value_map(&self) -> &BTreeMap<String, i32> {
         &self.statistics
     }
 
-    pub fn statistic_value(&self, statistic: &str) -> i32 {
+    pub fn get_statistic_value(&self, statistic: &str) -> i32 {
         self.statistics.get(statistic).copied().unwrap_or_default()
     }
 
@@ -1276,14 +1289,14 @@ impl Player {
     pub fn increment_statistic_value(&mut self, statistic: impl Into<String>, amount: i32) -> i32 {
         let statistic = statistic.into();
         let value = self
-            .statistic_value(&statistic)
+            .get_statistic_value(&statistic)
             .saturating_add(amount)
             .max(0);
         self.statistics.insert(statistic, value);
         value
     }
 
-    pub fn skin(&self) -> Option<&PlayerSkin> {
+    pub fn get_skin(&self) -> Option<&PlayerSkin> {
         self.skin.as_ref()
     }
 
@@ -1292,9 +1305,9 @@ impl Player {
         if !self.has_entered_world() {
             return Ok(());
         }
-        let player_uuid = self.uuid();
-        let player_id = self.entity_id();
-        let add_player_packet = self.player_info_packet();
+        let player_uuid = self.get_uuid();
+        let player_id = self.get_entity_id();
+        let add_player_packet = self.get_player_info_packet();
         let viewer_snapshot = PlayerViewerSnapshot::from_player(self);
 
         self.refresh_skin_for_self(player_uuid, add_player_packet.clone(), &viewer_snapshot)?;
@@ -1302,7 +1315,7 @@ impl Player {
             PlayerInfoRemovePacket::new(player_uuid).dispatch(client)
         })?;
         self.dispatch_to_viewer_clients(|client| {
-            RemoveEntitiesPacket::new(vec![player_id.value()]).dispatch(client)
+            RemoveEntitiesPacket::new(vec![player_id.get_value()]).dispatch(client)
         })?;
         self.broadcast_to_play_clients(|client| add_player_packet.clone().dispatch(client))?;
         self.dispatch_to_viewer_clients(|client| {
@@ -1314,7 +1327,7 @@ impl Player {
         self.skin = skin;
     }
 
-    pub fn display_name(&self) -> Option<&TextComponent> {
+    pub fn get_display_name(&self) -> Option<&TextComponent> {
         self.display_name.as_ref()
     }
 
@@ -1325,8 +1338,8 @@ impl Player {
         self.broadcast_to_play_clients(|client| packet.clone().dispatch(client))
     }
 
-    pub fn custom_name(&self) -> Option<TextComponent> {
-        match self.metadata.value(&definitions::custom_name()) {
+    pub fn get_custom_name(&self) -> Option<TextComponent> {
+        match self.metadata.get_value(&definitions::get_custom_name()) {
             MetadataValue::OptionalText(custom_name) => custom_name,
             _ => None,
         }
@@ -1334,14 +1347,14 @@ impl Player {
 
     pub fn set_custom_name(&mut self, custom_name: Option<TextComponent>) {
         self.metadata.set(
-            &definitions::custom_name(),
+            &definitions::get_custom_name(),
             MetadataValue::OptionalText(custom_name),
         );
         self.refresh_dirty_metadata_to_viewers();
     }
 
     pub fn is_custom_name_visible(&self) -> bool {
-        match self.metadata.value(&definitions::custom_name_visible()) {
+        match self.metadata.get_value(&definitions::custom_name_visible()) {
             MetadataValue::Boolean(custom_name_visible) => custom_name_visible,
             _ => false,
         }
@@ -1356,7 +1369,7 @@ impl Player {
     }
 
     pub fn is_silent(&self) -> bool {
-        match self.metadata.value(&definitions::is_silent()) {
+        match self.metadata.get_value(&definitions::is_silent()) {
             MetadataValue::Boolean(silent) => silent,
             _ => false,
         }
@@ -1368,32 +1381,32 @@ impl Player {
         self.refresh_dirty_metadata_to_viewers();
     }
 
-    pub const fn protocol_version(&self) -> i32 {
+    pub const fn get_protocol_version(&self) -> i32 {
         self.protocol_version
     }
 
-    pub const fn address(&self) -> SocketAddr {
+    pub const fn get_address(&self) -> SocketAddr {
         self.addr
     }
 
     pub(crate) fn set_client(&mut self, client: &mut Client) {
-        client.set_player_entity_id(self.entity_id());
+        client.set_player_entity_id(self.get_entity_id());
         self.client = Some(client as *mut Client as usize);
     }
 
-    pub fn client(&self) -> Option<&Client> {
+    pub fn get_client(&self) -> Option<&Client> {
         self.client
             .map(|client| unsafe { &*(client as *const Client) })
     }
 
-    pub fn world(&self) -> Option<WorldHandle> {
-        let client = self.client()?;
+    pub fn get_world(&self) -> Option<WorldHandle> {
+        let client = self.get_client()?;
         let server = client.server_ptr?;
         let current_world = self.current_world?;
         Some(WorldHandle::new(server, current_world))
     }
 
-    pub(crate) fn client_mut(&mut self) -> Option<&mut Client> {
+    pub(crate) fn get_client_mut(&mut self) -> Option<&mut Client> {
         self.client
             .map(|client| unsafe { &mut *(client as *mut Client) })
     }
@@ -1425,7 +1438,7 @@ impl Player {
         self_sync_succeeded && viewer_sync_succeeded
     }
 
-    pub fn game_mode(&self) -> GameMode {
+    pub fn get_game_mode(&self) -> GameMode {
         self.game_mode
     }
 
@@ -1469,8 +1482,8 @@ impl Player {
         self.metadata.flag(&definitions::is_flying_with_elytra())
     }
 
-    pub fn air_ticks(&self) -> i32 {
-        match self.metadata.value(&definitions::air_ticks()) {
+    pub fn get_air_ticks(&self) -> i32 {
+        match self.metadata.get_value(&definitions::get_air_ticks()) {
             MetadataValue::VarInt(air_ticks) => air_ticks,
             _ => 300,
         }
@@ -1481,10 +1494,10 @@ impl Player {
             .flag(&definitions::living_entity::is_hand_active())
     }
 
-    pub fn active_hand(&self) -> PlayerHand {
+    pub fn get_active_hand(&self) -> PlayerHand {
         if self
             .metadata
-            .flag(&definitions::living_entity::active_hand())
+            .flag(&definitions::living_entity::get_active_hand())
         {
             return PlayerHand::Off;
         }
@@ -1496,10 +1509,10 @@ impl Player {
             .flag(&definitions::living_entity::is_riptide_spin_attack())
     }
 
-    pub fn effect_particles(&self) -> Vec<Particle> {
+    pub fn get_effect_particles(&self) -> Vec<Particle> {
         match self
             .metadata
-            .value(&definitions::living_entity::potion_effect_particles())
+            .get_value(&definitions::living_entity::potion_effect_particles())
         {
             MetadataValue::ParticleList(effect_particles) => effect_particles,
             _ => Vec::new(),
@@ -1509,37 +1522,37 @@ impl Player {
     pub fn is_potion_effect_ambient(&self) -> bool {
         match self
             .metadata
-            .value(&definitions::living_entity::is_potion_effect_ambient())
+            .get_value(&definitions::living_entity::is_potion_effect_ambient())
         {
             MetadataValue::Boolean(potion_effect_ambient) => potion_effect_ambient,
             _ => false,
         }
     }
 
-    pub fn arrow_count(&self) -> i32 {
+    pub fn get_arrow_count(&self) -> i32 {
         match self
             .metadata
-            .value(&definitions::living_entity::number_of_arrows())
+            .get_value(&definitions::living_entity::number_of_arrows())
         {
             MetadataValue::VarInt(arrow_count) => arrow_count,
             _ => 0,
         }
     }
 
-    pub fn bee_stinger_count(&self) -> i32 {
+    pub fn get_bee_stinger_count(&self) -> i32 {
         match self
             .metadata
-            .value(&definitions::living_entity::number_of_bee_stingers())
+            .get_value(&definitions::living_entity::number_of_bee_stingers())
         {
             MetadataValue::VarInt(bee_stinger_count) => bee_stinger_count,
             _ => 0,
         }
     }
 
-    pub fn bed_in_which_sleeping_position(&self) -> Option<Position> {
+    pub fn get_bed_in_which_sleeping_position(&self) -> Option<Position> {
         match self
             .metadata
-            .value(&definitions::living_entity::location_of_bed())
+            .get_value(&definitions::living_entity::location_of_bed())
         {
             MetadataValue::OptionalPosition(bed_position) => bed_position,
             _ => None,
@@ -1550,15 +1563,15 @@ impl Player {
         self.listed
     }
 
-    pub const fn latency(&self) -> i32 {
+    pub const fn get_latency(&self) -> i32 {
         self.latency
     }
 
-    pub const fn flying_speed(&self) -> f32 {
+    pub const fn get_flying_speed(&self) -> f32 {
         self.flying_speed
     }
 
-    pub const fn field_view_modifier(&self) -> f32 {
+    pub const fn get_field_view_modifier(&self) -> f32 {
         self.field_view_modifier
     }
 
@@ -1585,10 +1598,10 @@ impl Player {
 
     pub fn refresh_flying(&mut self, flying: bool) {
         if self.flying != flying {
-            if self.is_sneaking() && self.pose() == PlayerPose::Standing {
-                self.set_pose(PlayerPose::Sneaking);
-            } else if self.pose() == PlayerPose::Sneaking {
-                self.set_pose(PlayerPose::Standing);
+            if self.is_sneaking() && self.get_pose() == EntityPose::Standing {
+                self.set_pose(EntityPose::Sneaking);
+            } else if self.get_pose() == EntityPose::Sneaking {
+                self.set_pose(EntityPose::Standing);
             }
         }
         self.flying = flying;
@@ -1623,19 +1636,19 @@ impl Player {
         self.refresh_dirty_metadata_to_viewers();
     }
 
-    pub fn pose(&self) -> PlayerPose {
-        match self.metadata.value(&definitions::pose()) {
+    pub fn get_pose(&self) -> EntityPose {
+        match self.metadata.get_value(&definitions::get_pose()) {
             MetadataValue::Pose(pose) => {
-                PlayerPose::from_protocol_id(pose).unwrap_or(PlayerPose::Standing)
+                EntityPose::from_protocol_id(pose).unwrap_or(EntityPose::Standing)
             }
-            _ => PlayerPose::Standing,
+            _ => EntityPose::Standing,
         }
     }
 
-    pub fn set_pose(&mut self, pose: PlayerPose) {
+    pub fn set_pose(&mut self, pose: EntityPose) {
         self.metadata.set(
-            &definitions::pose(),
-            MetadataValue::Pose(pose.protocol_id()),
+            &definitions::get_pose(),
+            MetadataValue::Pose(pose.get_protocol_id()),
         );
         self.refresh_dirty_metadata_to_viewers();
     }
@@ -1678,7 +1691,7 @@ impl Player {
 
     pub fn set_air_ticks(&mut self, air_ticks: i32) {
         self.metadata
-            .set(&definitions::air_ticks(), MetadataValue::VarInt(air_ticks));
+            .set(&definitions::get_air_ticks(), MetadataValue::VarInt(air_ticks));
         self.refresh_dirty_metadata_to_viewers();
     }
 
@@ -1690,7 +1703,7 @@ impl Player {
 
     pub fn set_active_hand(&mut self, hand: PlayerHand) {
         self.metadata.set_flag(
-            &definitions::living_entity::active_hand(),
+            &definitions::living_entity::get_active_hand(),
             hand == PlayerHand::Off,
         );
         self.refresh_dirty_metadata_to_viewers();
@@ -1746,8 +1759,8 @@ impl Player {
         self.refresh_dirty_metadata_to_viewers();
     }
 
-    pub fn main_hand(&self) -> MainHand {
-        match self.metadata.value(&definitions::avatar::main_hand()) {
+    pub fn get_main_hand(&self) -> MainHand {
+        match self.metadata.get_value(&definitions::avatar::get_main_hand()) {
             MetadataValue::MainHand(main_hand) => main_hand,
             _ => MainHand::Right,
         }
@@ -1755,7 +1768,7 @@ impl Player {
 
     pub fn set_main_hand(&mut self, main_hand: MainHand) {
         self.metadata.set(
-            &definitions::avatar::main_hand(),
+            &definitions::avatar::get_main_hand(),
             MetadataValue::MainHand(main_hand),
         );
         self.refresh_dirty_metadata_to_viewers();
@@ -1844,10 +1857,10 @@ impl Player {
         self.refresh_dirty_metadata_to_viewers();
     }
 
-    pub fn displayed_skin_parts(&self) -> i8 {
+    pub fn get_displayed_skin_parts(&self) -> i8 {
         match self
             .metadata
-            .value(&definitions::avatar::displayed_model_parts_flags())
+            .get_value(&definitions::avatar::displayed_model_parts_flags())
         {
             MetadataValue::Byte(displayed_skin_parts) => displayed_skin_parts,
             _ => 0,
@@ -1862,8 +1875,8 @@ impl Player {
         self.refresh_dirty_metadata_to_viewers();
     }
 
-    pub fn score(&self) -> i32 {
-        match self.metadata.value(&definitions::player::score()) {
+    pub fn get_score(&self) -> i32 {
+        match self.metadata.get_value(&definitions::player::get_score()) {
             MetadataValue::VarInt(score) => score,
             _ => 0,
         }
@@ -1871,14 +1884,14 @@ impl Player {
 
     pub fn set_score(&mut self, score: i32) {
         self.metadata
-            .set(&definitions::player::score(), MetadataValue::VarInt(score));
+            .set(&definitions::player::get_score(), MetadataValue::VarInt(score));
         self.refresh_dirty_metadata_to_viewers();
     }
 
-    pub fn left_shoulder_entity_data(&self) -> Option<i32> {
+    pub fn get_left_shoulder_entity_data(&self) -> Option<i32> {
         match self
             .metadata
-            .value(&definitions::player::left_shoulder_entity_data())
+            .get_value(&definitions::player::get_left_shoulder_entity_data())
         {
             MetadataValue::OptionalVarInt(left_shoulder_entity_data) => left_shoulder_entity_data,
             _ => None,
@@ -1887,16 +1900,16 @@ impl Player {
 
     pub fn set_left_shoulder_entity_data(&mut self, left_shoulder_entity_data: Option<i32>) {
         self.metadata.set(
-            &definitions::player::left_shoulder_entity_data(),
+            &definitions::player::get_left_shoulder_entity_data(),
             MetadataValue::OptionalVarInt(left_shoulder_entity_data),
         );
         self.refresh_dirty_metadata_to_viewers();
     }
 
-    pub fn right_shoulder_entity_data(&self) -> Option<i32> {
+    pub fn get_right_shoulder_entity_data(&self) -> Option<i32> {
         match self
             .metadata
-            .value(&definitions::player::right_shoulder_entity_data())
+            .get_value(&definitions::player::get_right_shoulder_entity_data())
         {
             MetadataValue::OptionalVarInt(right_shoulder_entity_data) => right_shoulder_entity_data,
             _ => None,
@@ -1905,7 +1918,7 @@ impl Player {
 
     pub fn set_right_shoulder_entity_data(&mut self, right_shoulder_entity_data: Option<i32>) {
         self.metadata.set(
-            &definitions::player::right_shoulder_entity_data(),
+            &definitions::player::get_right_shoulder_entity_data(),
             MetadataValue::OptionalVarInt(right_shoulder_entity_data),
         );
         self.refresh_dirty_metadata_to_viewers();
@@ -1913,7 +1926,7 @@ impl Player {
 
     pub fn leave_bed(&mut self) {
         self.metadata
-            .set(&definitions::pose(), MetadataValue::Pose(0));
+            .set(&definitions::get_pose(), MetadataValue::Pose(0));
     }
 
     pub fn set_flying_speed(&mut self, flying_speed: f32) -> io::Result<()> {
@@ -1930,15 +1943,15 @@ impl Player {
         self.respawn_point = respawn_point;
     }
 
-    pub fn respawn_point(&self) -> PlayerSpawnPoint {
+    pub fn get_respawn_point(&self) -> PlayerSpawnPoint {
         self.respawn_point
     }
 
-    pub fn inventory(&mut self) -> &mut PlayerInventory {
+    pub fn get_inventory(&mut self) -> &mut PlayerInventory {
         &mut self.inventory
     }
 
-    pub fn inventory_ref(&self) -> &PlayerInventory {
+    pub fn get_inventory_ref(&self) -> &PlayerInventory {
         &self.inventory
     }
 
@@ -1963,11 +1976,11 @@ impl Player {
         server: &mut crate::server::MinecraftServer,
         client: &mut Client,
     ) -> bool {
-        if window_id == self.inventory_ref().window_id() {
+        if window_id == self.get_inventory_ref().window_id() {
             self.close_inventory();
             return self.sync_player_inventory_window_contents(client).is_ok();
         }
-        let Some(open_inventory) = self.opened_inventory().cloned() else {
+        let Some(open_inventory) = self.get_opened_inventory().cloned() else {
             return false;
         };
         if window_id != open_inventory.window_id() {
@@ -1978,17 +1991,17 @@ impl Player {
         if !from_client {
             self.did_close_inventory = true;
         }
-        let cursor_item = self.inventory_ref().cursor_item().clone();
+        let cursor_item = self.get_inventory_ref().cursor_item().clone();
         self.close_inventory();
-        self.inventory().set_cursor_item(ItemStack::air());
+        self.get_inventory().set_cursor_item(ItemStack::air());
         if !cursor_item.is_air() && !self.drop_item(cursor_item.clone(), server, client) {
-            let _ = self.inventory().add_item_stack(cursor_item);
+            let _ = self.get_inventory().add_item_stack(cursor_item);
         }
         let player_inventory_window_is_synced =
             self.sync_player_inventory_window_contents(client).is_ok();
         if !from_client {
             let packet_result = ContainerClosePacket {
-                container_id: event.inventory().id().into(),
+                container_id: event.get_inventory().id().into(),
             }
             .dispatch(client)
             .is_ok();
@@ -1999,11 +2012,11 @@ impl Player {
         player_inventory_window_is_synced
     }
 
-    pub fn opened_inventory(&self) -> Option<&Inventory> {
+    pub fn get_opened_inventory(&self) -> Option<&Inventory> {
         self.open_inventory.as_ref()
     }
 
-    pub fn anvil_rename_text(&self) -> Option<&str> {
+    pub fn get_anvil_rename_text(&self) -> Option<&str> {
         self.anvil_rename_text.as_deref()
     }
 
@@ -2011,7 +2024,7 @@ impl Player {
         self.anvil_rename_text = Some(anvil_rename_text.into());
     }
 
-    pub fn debug_subscriptions(&self) -> &BTreeSet<i32> {
+    pub fn get_debug_subscriptions(&self) -> &BTreeSet<i32> {
         &self.debug_subscriptions
     }
 
@@ -2019,7 +2032,7 @@ impl Player {
         self.debug_subscriptions = debug_subscriptions;
     }
 
-    pub const fn vehicle(&self) -> Option<EntityId> {
+    pub const fn get_vehicle(&self) -> Option<EntityId> {
         self.vehicle
     }
 
@@ -2031,7 +2044,7 @@ impl Player {
         self.vehicle = None;
     }
 
-    pub const fn velocity(&self) -> Velocity {
+    pub const fn get_velocity(&self) -> Velocity {
         self.velocity
     }
 
@@ -2041,7 +2054,7 @@ impl Player {
 
     pub fn take_knockback(&mut self, strength: f32, x: f64, z: f64) {
         let living_strength =
-            strength * (1.0 - self.living.attribute_value(Attribute::KNOCKBACK_RESISTANCE) as f32);
+            strength * (1.0 - self.living.get_attribute_value(Attribute::KNOCKBACK_RESISTANCE) as f32);
         self.velocity = knockback_velocity(self.velocity, self.on_ground, living_strength, x, z);
     }
 
@@ -2053,9 +2066,9 @@ impl Player {
         velocity.x != 0.0 || velocity.y != 0.0 || velocity.z != 0.0
     }
 
-    pub fn velocity_packet(&self) -> EntityVelocityPacket {
+    pub fn get_velocity_packet(&self) -> EntityVelocityPacket {
         EntityVelocityPacket {
-            entity_id: self.entity_id().value(),
+            entity_id: self.get_entity_id().get_value(),
             velocity: self.protocol_velocity(),
         }
     }
@@ -2080,28 +2093,28 @@ impl Player {
         !self.passengers.is_empty()
     }
 
-    pub fn passengers(&self) -> &BTreeSet<EntityId> {
+    pub fn get_passengers(&self) -> &BTreeSet<EntityId> {
         &self.passengers
     }
 
-    pub(crate) fn passenger_packet(&self) -> SetPassengersPacket {
+    pub(crate) fn get_passenger_packet(&self) -> SetPassengersPacket {
         SetPassengersPacket {
-            vehicle_entity_id: self.entity_id().value(),
+            vehicle_entity_id: self.get_entity_id().get_value(),
             passenger_entity_ids: IntList(
                 self.passengers
                     .iter()
-                    .map(|passenger_id| passenger_id.value())
+                    .map(|passenger_id| passenger_id.get_value())
                     .collect(),
             ),
         }
     }
 
-    pub fn leashed_entities(&self) -> &BTreeSet<EntityId> {
-        self.leash.leashed_entities()
+    pub fn get_leashed_entities(&self) -> &BTreeSet<EntityId> {
+        self.leash.get_leashed_entities()
     }
 
-    pub const fn leash_holder(&self) -> Option<EntityId> {
-        self.leash.holder()
+    pub const fn get_leash_holder(&self) -> Option<EntityId> {
+        self.leash.get_holder()
     }
 
     pub(crate) fn set_leash_holder(&mut self, leash_holder: Option<EntityId>) {
@@ -2116,14 +2129,14 @@ impl Player {
         self.leash.remove_leashed_entity(entity_id)
     }
 
-    pub(crate) fn attach_entity_packet(
+    pub(crate) fn get_attach_entity_packet(
         &self,
     ) -> spinel_core::network::clientbound::play::attach_entity::AttachEntityPacket {
         self.leash.packet(self.entity_id)
     }
 
-    pub const fn synchronization_ticks(&self) -> u64 {
-        self.synchronization.interval_ticks()
+    pub const fn get_synchronization_ticks(&self) -> u64 {
+        self.synchronization.get_interval_ticks()
     }
 
     pub fn set_synchronization_ticks(&mut self, synchronization_ticks: u64) {
@@ -2143,12 +2156,12 @@ impl Player {
         &mut self,
     ) -> spinel_core::network::clientbound::play::entity_position_sync::EntityPositionSyncPacket
     {
-        let position = self.position();
+        let position = self.get_position();
         self.synchronization
             .synchronize(self.entity_id, self.alive_ticks, position, self.on_ground)
     }
 
-    pub(crate) fn scheduled_entity_position_sync_packet(
+    pub(crate) fn get_scheduled_entity_position_sync_packet(
         &mut self,
     ) -> Option<
         spinel_core::network::clientbound::play::entity_position_sync::EntityPositionSyncPacket,
@@ -2171,15 +2184,15 @@ impl Player {
         self.client_sent_chunks.insert(chunk);
     }
 
-    pub(crate) fn opened_inventory_mut(&mut self) -> Option<&mut Inventory> {
+    pub(crate) fn get_opened_inventory_mut(&mut self) -> Option<&mut Inventory> {
         self.open_inventory.as_mut()
     }
 
-    pub fn click_preprocessor(&mut self) -> &mut ClickPreprocessor {
+    pub fn get_click_preprocessor(&mut self) -> &mut ClickPreprocessor {
         &mut self.click_preprocessor
     }
 
-    pub fn did_close_inventory(&self) -> bool {
+    pub fn get_did_close_inventory(&self) -> bool {
         self.did_close_inventory
     }
 
@@ -2187,7 +2200,7 @@ impl Player {
         self.did_close_inventory = did_close_inventory;
     }
 
-    pub fn held_slot(&self) -> i32 {
+    pub fn get_held_slot(&self) -> i32 {
         self.held_slot
     }
 
@@ -2208,7 +2221,7 @@ impl Player {
         if !(0..=8).contains(&held_slot) {
             return false;
         }
-        let old_slot = self.held_slot();
+        let old_slot = self.get_held_slot();
         let mut event = PlayerChangeHeldSlotEvent::new(self as *mut Player, old_slot, held_slot);
         event.dispatch(server, client);
         if event.is_cancelled() {
@@ -2228,7 +2241,7 @@ impl Player {
         if !self.set_held_slot_with_client(new_slot, client) {
             return false;
         }
-        if self.item_use_hand() != Some(PlayerHand::Off) {
+        if self.get_item_use_hand() != Some(PlayerHand::Off) {
             self.refresh_active_hand(false, false, false);
             self.clear_item_use();
         }
@@ -2261,7 +2274,7 @@ impl Player {
         self.set_flying_with_elytra(false)
     }
 
-    pub const fn aerodynamics(&self) -> EntityAerodynamics {
+    pub const fn get_aerodynamics(&self) -> EntityAerodynamics {
         self.aerodynamics
     }
 
@@ -2269,7 +2282,7 @@ impl Player {
         self.aerodynamics = aerodynamics;
     }
 
-    pub const fn gravity_tick_count(&self) -> u64 {
+    pub const fn get_gravity_tick_count(&self) -> u64 {
         self.gravity_tick_count
     }
 
@@ -2286,7 +2299,7 @@ impl Player {
         if self.vehicle.is_some() {
             return;
         }
-        let position = self.position();
+        let position = self.get_position();
         let velocity_per_tick = Velocity(Vector3d {
             x: self.velocity.0.x / SERVER_TICKS_PER_SECOND,
             y: self.velocity.0.y / SERVER_TICKS_PER_SECOND,
@@ -2295,7 +2308,7 @@ impl Player {
         let physics = simulate_movement(
             position,
             velocity_per_tick,
-            self.bounding_box(),
+            self.get_bounding_box(),
             world,
             self.aerodynamics,
             self.has_no_gravity(),
@@ -2305,13 +2318,13 @@ impl Player {
             self.previous_physics_result,
         );
         self.previous_physics_result = Some(physics);
-        if !world.is_chunk_loaded(ChunkPosition::from(physics.new_position())) {
+        if !world.is_chunk_loaded(ChunkPosition::from(physics.get_new_position())) {
             return;
         }
         self.velocity = Velocity(Vector3d {
-            x: physics.new_velocity_per_tick().0.x * SERVER_TICKS_PER_SECOND,
-            y: physics.new_velocity_per_tick().0.y * SERVER_TICKS_PER_SECOND,
-            z: physics.new_velocity_per_tick().0.z * SERVER_TICKS_PER_SECOND,
+            x: physics.get_new_velocity_per_tick().0.x * SERVER_TICKS_PER_SECOND,
+            y: physics.get_new_velocity_per_tick().0.y * SERVER_TICKS_PER_SECOND,
+            z: physics.get_new_velocity_per_tick().0.z * SERVER_TICKS_PER_SECOND,
         });
     }
 
@@ -2324,7 +2337,7 @@ impl Player {
     }
 
     pub fn has_no_gravity(&self) -> bool {
-        match self.metadata.value(&definitions::has_no_gravity()) {
+        match self.metadata.get_value(&definitions::has_no_gravity()) {
             MetadataValue::Boolean(has_no_gravity) => has_no_gravity,
             _ => false,
         }
@@ -2339,7 +2352,7 @@ impl Player {
     }
 
     pub fn ticks_frozen(&self) -> i32 {
-        match self.metadata.value(&definitions::ticks_frozen()) {
+        match self.metadata.get_value(&definitions::ticks_frozen()) {
             MetadataValue::VarInt(ticks_frozen) => ticks_frozen,
             _ => 0,
         }
@@ -2353,22 +2366,22 @@ impl Player {
         self.refresh_dirty_metadata_to_viewers();
     }
 
-    pub fn bounding_box(&self) -> EntityBoundingBox {
-        self.pose()
-            .bounding_box(EntityType::PLAYER.bounding_box())
-            .unwrap_or_else(|| EntityType::PLAYER.bounding_box())
+    pub fn get_bounding_box(&self) -> EntityBoundingBox {
+        self.get_pose()
+            .get_bounding_box(EntityType::PLAYER.get_bounding_box())
+            .unwrap_or_else(|| EntityType::PLAYER.get_bounding_box())
     }
 
-    pub fn next_teleport_id(&mut self) -> i32 {
+    pub fn get_next_teleport_id(&mut self) -> i32 {
         self.last_sent_teleport_id += 1;
         self.last_sent_teleport_id
     }
 
-    pub const fn last_sent_teleport_id(&self) -> i32 {
+    pub const fn get_last_sent_teleport_id(&self) -> i32 {
         self.last_sent_teleport_id
     }
 
-    pub const fn last_received_teleport_id(&self) -> i32 {
+    pub const fn get_last_received_teleport_id(&self) -> i32 {
         self.last_received_teleport_id
     }
 
@@ -2391,23 +2404,23 @@ impl Player {
         should_confirm: bool,
     ) -> io::Result<()> {
         let teleport_id = if should_confirm {
-            self.next_teleport_id()
+            self.get_next_teleport_id()
         } else {
             -1
         };
         let packet = SyncPlayerPositionPacket {
             teleport_id,
-            x: position.x(),
-            y: position.y(),
-            z: position.z(),
+            x: position.get_x(),
+            y: position.get_y(),
+            z: position.get_z(),
             velocity_x: velocity.x,
             velocity_y: velocity.y,
             velocity_z: velocity.z,
-            yaw: position.yaw(),
-            pitch: position.pitch(),
+            yaw: position.get_yaw(),
+            pitch: position.get_pitch(),
             flags,
         };
-        let Some(client) = self.client_mut() else {
+        let Some(client) = self.get_client_mut() else {
             return Ok(());
         };
         if client.state != ConnectionState::Play {
@@ -2454,15 +2467,15 @@ impl Player {
         should_confirm: bool,
     ) -> io::Result<EntityTeleport> {
         let teleport = EntityTeleport::resolve(
-            self.position(),
+            self.get_position(),
             self.velocity,
             position,
             velocity,
             chunks,
             flags,
         );
-        self.set_position(teleport.position());
-        self.set_velocity(teleport.velocity());
+        self.set_position(teleport.get_position());
+        self.set_velocity(teleport.get_velocity());
         self.synchronize_position_after_teleport(position, velocity.0, flags, should_confirm)?;
         Ok(teleport)
     }
@@ -2472,12 +2485,12 @@ impl Player {
         teleport: &EntityTeleport,
         should_confirm: bool,
     ) -> io::Result<()> {
-        self.set_position(teleport.position());
-        self.set_velocity(teleport.velocity());
+        self.set_position(teleport.get_position());
+        self.set_velocity(teleport.get_velocity());
         self.synchronize_position_after_teleport(
-            teleport.teleport_position(),
-            teleport.teleport_velocity().0,
-            teleport.flags(),
+            teleport.get_teleport_position(),
+            teleport.get_teleport_velocity().0,
+            teleport.get_flags(),
             should_confirm,
         )
     }
@@ -2487,15 +2500,15 @@ impl Player {
         position: EntityPosition,
         flags: TeleportFlags,
     ) -> EntityPosition {
-        EntityTeleport::resolve_position(self.position(), position, flags)
+        EntityTeleport::resolve_position(self.get_position(), position, flags)
     }
 
-    pub fn item_in_hand(&self, hand: PlayerHand) -> ItemStack {
+    pub fn get_item_in_hand(&self, hand: PlayerHand) -> ItemStack {
         let equipment_slot = match hand {
             PlayerHand::Main => EquipmentSlot::MainHand,
             PlayerHand::Off => EquipmentSlot::OffHand,
         };
-        self.equipment(equipment_slot)
+        self.get_equipment(equipment_slot)
     }
 
     pub fn set_item_in_hand(&mut self, hand: PlayerHand, item_stack: ItemStack) -> bool {
@@ -2506,21 +2519,21 @@ impl Player {
         self.set_equipment(equipment_slot, item_stack)
     }
 
-    pub fn equipment(&self, equipment_slot: EquipmentSlot) -> ItemStack {
-        self.inventory_ref()
-            .equipment(equipment_slot, self.held_slot)
+    pub fn get_equipment(&self, equipment_slot: EquipmentSlot) -> ItemStack {
+        self.get_inventory_ref()
+            .get_equipment(equipment_slot, self.held_slot)
     }
 
     pub fn set_equipment(&mut self, equipment_slot: EquipmentSlot, item_stack: ItemStack) -> bool {
-        let previous_item_stack = self.equipment(equipment_slot);
+        let previous_item_stack = self.get_equipment(equipment_slot);
         if !self
             .inventory
             .set_equipment(equipment_slot, self.held_slot, item_stack)
         {
             return false;
         }
-        let current_item_stack = self.equipment(equipment_slot);
-        self.living.attributes_mut().update_equipment_attributes(
+        let current_item_stack = self.get_equipment(equipment_slot);
+        self.living.get_attributes_mut().update_equipment_attributes(
             &previous_item_stack,
             &current_item_stack,
             equipment_slot,
@@ -2620,7 +2633,7 @@ impl Player {
         item_use_completion
     }
 
-    pub(crate) fn experience_pickup_is_ready(&self, current_tick: i64) -> bool {
+    pub(crate) fn get_experience_pickup_is_ready(&self, current_tick: i64) -> bool {
         self.last_experience_pickup_tick
             .is_none_or(|last_pickup_tick| current_tick - last_pickup_tick >= 10)
     }
@@ -2754,7 +2767,7 @@ impl Player {
         self.send_packet(PlayerLookAtPacket::at_entity(
             face_point,
             target,
-            entity_id.value(),
+            entity_id.get_value(),
             target_point,
         ))
     }
@@ -2777,15 +2790,15 @@ impl Player {
         old_shift != shift
     }
 
-    pub const fn inputs(&self) -> PlayerInputs {
+    pub const fn get_inputs(&self) -> PlayerInputs {
         self.inputs
     }
 
-    pub fn eye_height(&self) -> f64 {
-        self.entity_type.eye_height()
+    pub fn get_eye_height(&self) -> f64 {
+        self.entity_type.get_eye_height()
     }
 
-    pub const fn last_keep_alive(&self) -> i64 {
+    pub const fn get_last_keep_alive(&self) -> i64 {
         self.last_keep_alive
     }
 
@@ -2793,7 +2806,7 @@ impl Player {
         self.last_keep_alive = last_keep_alive;
     }
 
-    pub const fn did_answer_keep_alive(&self) -> bool {
+    pub const fn get_did_answer_keep_alive(&self) -> bool {
         self.answer_keep_alive
     }
 
@@ -2801,22 +2814,22 @@ impl Player {
         self.answer_keep_alive = answer_keep_alive;
     }
 
-    pub(crate) fn metadata_packet(&self) -> SetEntityDataPacket {
-        SetEntityDataPacket::new(self.entity_id().value(), self.metadata.entries())
+    pub(crate) fn get_metadata_packet(&self) -> SetEntityDataPacket {
+        SetEntityDataPacket::new(self.get_entity_id().get_value(), self.metadata.get_entries())
     }
 
-    pub(crate) fn dirty_metadata_packet(&mut self) -> Option<SetEntityDataPacket> {
+    pub(crate) fn get_dirty_metadata_packet(&mut self) -> Option<SetEntityDataPacket> {
         let dirty_entries = self.metadata.drain_dirty_entries();
         if dirty_entries.is_empty() {
             return None;
         }
         Some(SetEntityDataPacket::new(
-            self.entity_id().value(),
+            self.get_entity_id().get_value(),
             dirty_entries,
         ))
     }
 
-    pub fn position(&self) -> crate::entity::EntityPosition {
+    pub fn get_position(&self) -> crate::entity::EntityPosition {
         crate::entity::EntityPosition::new(
             self.position.x,
             self.position.y,
@@ -2826,11 +2839,11 @@ impl Player {
         )
     }
 
-    pub(crate) fn player_info_packet(&self) -> PlayerInfoUpdatePacket {
+    pub(crate) fn get_player_info_packet(&self) -> PlayerInfoUpdatePacket {
         let properties = self
             .skin
             .as_ref()
-            .map(|skin| vec![skin.property()])
+            .map(|skin| vec![skin.get_property()])
             .unwrap_or_default();
         PlayerInfoUpdatePacket::add_player_with_properties(
             self.uuid,
@@ -2840,11 +2853,11 @@ impl Player {
         )
     }
 
-    pub(crate) fn game_mode_packet(&self) -> GameEventPacket {
+    pub(crate) fn get_game_mode_packet(&self) -> GameEventPacket {
         GameEventPacket::from(GameEvent::ChangeGameMode(self.game_mode))
     }
 
-    pub(crate) fn abilities_packet(&self) -> PlayerAbilitiesPacket {
+    pub(crate) fn get_abilities_packet(&self) -> PlayerAbilitiesPacket {
         let mut flags = 0;
         if self.living.is_invulnerable() {
             flags |= PlayerAbilitiesPacket::INVULNERABLE;
@@ -2863,7 +2876,7 @@ impl Player {
 
     pub(crate) fn spawn_packet(&self) -> SpawnEntityPacket {
         SpawnEntityPacket {
-            entity_id: self.entity_id().value(),
+            entity_id: self.get_entity_id().get_value(),
             uuid: self.uuid,
             entity_type: self.entity_type.id(),
             x: self.position.x,
@@ -2881,9 +2894,9 @@ impl Player {
         }
     }
 
-    pub(crate) fn visible_equipment_packet(&self) -> SetEquipmentPacket {
+    pub(crate) fn get_visible_equipment_packet(&self) -> SetEquipmentPacket {
         SetEquipmentPacket::new(
-            self.entity_id().value(),
+            self.get_entity_id().get_value(),
             vec![
                 self.equipment_entry(EquipmentSlot::MainHand),
                 self.equipment_entry(EquipmentSlot::OffHand),
@@ -2898,42 +2911,42 @@ impl Player {
 
     fn equipment_entry(&self, equipment_slot: EquipmentSlot) -> EntityEquipmentEntry {
         EntityEquipmentEntry {
-            slot: equipment_slot.entity_equipment_slot(),
-            item: Slot::from_item_stack(&self.equipment(equipment_slot)),
+            slot: equipment_slot.get_entity_equipment_slot(),
+            item: Slot::from_item_stack(&self.get_equipment(equipment_slot)),
         }
     }
 
-    pub(crate) fn head_look_packet(&self) -> EntityHeadLookPacket {
+    pub(crate) fn get_head_look_packet(&self) -> EntityHeadLookPacket {
         EntityHeadLookPacket {
-            entity_id: self.entity_id().value(),
+            entity_id: self.get_entity_id().get_value(),
             head_yaw: EntityAngle(self.position.yaw),
         }
     }
 
-    pub(crate) fn animation_packet(&self, hand: PlayerHand) -> EntityAnimationPacket {
+    pub(crate) fn get_animation_packet(&self, hand: PlayerHand) -> EntityAnimationPacket {
         let animation = match hand {
             PlayerHand::Main => EntityAnimation::SwingMainArm,
             PlayerHand::Off => EntityAnimation::SwingOffHand,
         };
         EntityAnimationPacket {
-            entity_id: self.entity_id().value(),
+            entity_id: self.get_entity_id().get_value(),
             animation,
         }
     }
 
     pub(super) fn refresh_pose(&mut self) {
         let pose = if self.metadata.flag(&definitions::is_flying_with_elytra()) {
-            PlayerPose::FallFlying
+            EntityPose::FallFlying
         } else if self.metadata.flag(&definitions::is_swimming()) {
-            PlayerPose::Swimming
+            EntityPose::Swimming
         } else if self.metadata.flag(&definitions::is_crouching()) {
-            PlayerPose::Sneaking
+            EntityPose::Sneaking
         } else {
-            PlayerPose::Standing
+            EntityPose::Standing
         };
         self.metadata.set(
-            &definitions::pose(),
-            MetadataValue::Pose(pose.protocol_id()),
+            &definitions::get_pose(),
+            MetadataValue::Pose(pose.get_protocol_id()),
         );
     }
 
@@ -2950,14 +2963,14 @@ impl Player {
     }
 
     fn sync_game_mode_state(&self, client: &mut Client) -> io::Result<()> {
-        self.game_mode_packet().dispatch(client)?;
+        self.get_game_mode_packet().dispatch(client)?;
         PlayerInfoUpdatePacket::update_game_mode(self.uuid, self.game_mode).dispatch(client)?;
-        self.abilities_packet().dispatch(client)
+        self.get_abilities_packet().dispatch(client)
     }
 
     pub(super) fn sync_health(&mut self) -> io::Result<()> {
-        let packet = SetHealthPacket::new(self.living.health(), self.food, self.food_saturation);
-        let Some(client) = self.client_mut() else {
+        let packet = SetHealthPacket::new(self.living.get_health(), self.food, self.food_saturation);
+        let Some(client) = self.get_client_mut() else {
             return Ok(());
         };
         if client.state != ConnectionState::Play {
@@ -2972,7 +2985,7 @@ impl Player {
             self.experience_level,
             self.total_experience,
         );
-        let Some(client) = self.client_mut() else {
+        let Some(client) = self.get_client_mut() else {
             return Ok(());
         };
         if client.state != ConnectionState::Play {
@@ -2983,7 +2996,7 @@ impl Player {
 
     fn dispatch_game_event(&mut self, game_event: GameEvent) -> io::Result<()> {
         let packet = GameEventPacket::from(game_event);
-        let Some(client) = self.client_mut() else {
+        let Some(client) = self.get_client_mut() else {
             return Ok(());
         };
         if client.state != ConnectionState::Play {
@@ -2996,8 +3009,8 @@ impl Player {
         if !self.has_entered_world() {
             return Ok(());
         }
-        let packet = self.abilities_packet();
-        let Some(client) = self.client_mut() else {
+        let packet = self.get_abilities_packet();
+        let Some(client) = self.get_client_mut() else {
             return Ok(());
         };
         if client.state != ConnectionState::Play {
@@ -3010,7 +3023,7 @@ impl Player {
         if !self.has_entered_world() {
             return Ok(());
         }
-        let Some(client) = self.client_mut() else {
+        let Some(client) = self.get_client_mut() else {
             return Ok(());
         };
         if client.state != ConnectionState::Play {
@@ -3023,7 +3036,7 @@ impl Player {
         if !self.has_entered_world() {
             return;
         }
-        let Some(metadata_packet) = self.dirty_metadata_packet() else {
+        let Some(metadata_packet) = self.get_dirty_metadata_packet() else {
             return;
         };
         let metadata_entity_id = metadata_packet.entity_id;
@@ -3044,7 +3057,7 @@ impl Player {
         &mut self,
         mut dispatch_packet: impl FnMut(&mut Client) -> io::Result<()>,
     ) -> io::Result<()> {
-        let viewer_ids = self.viewers();
+        let viewer_ids = self.get_viewers();
         let Some(client_ptr) = self.client else {
             return Ok(());
         };
@@ -3115,45 +3128,45 @@ impl Player {
             return Ok(());
         }
         let mut respawn_packet = RespawnPacket::new(
-            self.game_mode(),
+            self.get_game_mode(),
             self.world_name
                 .clone()
                 .unwrap_or_else(|| Identifier::minecraft("overworld")),
         );
         respawn_packet.common_player_spawn_info.last_death_location =
-            self.death_location().map(|death_location| GlobalPos {
-                dimension: death_location.dimension().clone(),
+            self.get_death_location().map(|death_location| GlobalPos {
+                dimension: death_location.get_dimension().clone(),
                 position: Position {
-                    x: death_location.position().x().floor() as i32,
-                    y: death_location.position().y().floor() as i32,
-                    z: death_location.position().z().floor() as i32,
+                    x: death_location.get_position().get_x().floor() as i32,
+                    y: death_location.get_position().get_y().floor() as i32,
+                    z: death_location.get_position().get_z().floor() as i32,
                 },
             });
-        respawn_packet.common_player_spawn_info.portal_cooldown = self.portal_cooldown();
+        respawn_packet.common_player_spawn_info.portal_cooldown = self.get_portal_cooldown();
 
         PlayerInfoRemovePacket::new(player_uuid).dispatch(client)?;
-        RemoveEntitiesPacket::new(vec![self.entity_id().value()]).dispatch(client)?;
+        RemoveEntitiesPacket::new(vec![self.get_entity_id().get_value()]).dispatch(client)?;
         add_player_packet.dispatch(client)?;
         respawn_packet.dispatch(client)?;
         GameEventPacket::from(GameEvent::StartWaitingForLevelChunks).dispatch(client)?;
         ServerDifficultyPacket::normal(false).dispatch(client)?;
-        SetHealthPacket::new(self.health(), self.food(), self.food_saturation())
+        SetHealthPacket::new(self.get_health(), self.get_food(), self.get_food_saturation())
             .dispatch(client)?;
         SetExperiencePacket::new(
-            self.experience(),
-            self.experience_level(),
-            self.total_experience(),
+            self.get_experience(),
+            self.get_experience_level(),
+            self.get_total_experience(),
         )
         .dispatch(client)?;
         EntityStatusPacket {
-            entity_id: self.entity_id().value(),
-            status: (24 + self.permission_level()) as i8,
+            entity_id: self.get_entity_id().get_value(),
+            status: (24 + self.get_permission_level()) as i8,
         }
         .dispatch(client)?;
-        self.abilities_packet().dispatch(client)?;
+        self.get_abilities_packet().dispatch(client)?;
         self.sync_inventory(client)?;
         self.synchronize_position_after_teleport(
-            self.position(),
+            self.get_position(),
             Vector3d {
                 x: 0.0,
                 y: 0.0,
@@ -3190,6 +3203,14 @@ impl Player {
                 }
                 dispatch_packet(&mut viewer_client)
             })
+    }
+
+    pub fn schedule_remove_after_ticks(&mut self, delay_ticks: u64) {
+        let _ = delay_ticks;
+    }
+
+    pub fn schedule_remove_after_duration(&mut self, duration: std::time::Duration) {
+        let _ = duration;
     }
 }
 
@@ -3228,7 +3249,7 @@ impl PlayerMessageType {
 }
 
 impl PlayerHand {
-    pub const fn protocol_id(self) -> i32 {
+    pub const fn get_protocol_id(self) -> i32 {
         match self {
             Self::Main => 0,
             Self::Off => 1,

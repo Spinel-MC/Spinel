@@ -5,8 +5,8 @@ use spinel_registry::{Attribute, EntityBoundingBox};
 use std::io;
 
 impl Player {
-    pub const fn max_health(&self) -> f32 {
-        self.living.max_health()
+    pub const fn get_max_health(&self) -> f32 {
+        self.living.get_max_health()
     }
 
     pub fn set_max_health(&mut self, max_health: f32) -> io::Result<()> {
@@ -19,44 +19,44 @@ impl Player {
         self.sync_health()
     }
 
-    pub fn attribute(&mut self, attribute: Attribute) -> &mut EntityAttributeState {
-        self.living.attribute(attribute)
+    pub fn get_attribute(&mut self, attribute: Attribute) -> &mut EntityAttributeState {
+        self.living.get_attribute(attribute)
     }
 
-    pub fn attributes(&self) -> Vec<&EntityAttributeState> {
-        self.living.attributes()
+    pub fn get_attributes(&self) -> Vec<&EntityAttributeState> {
+        self.living.get_attributes()
     }
 
     pub fn add_effect(&mut self, effect: TimedPotionEffect) -> EntityEffectPacket {
-        self.living.add_effect(self.entity_id(), effect)
+        self.living.add_effect(self.get_entity_id(), effect)
     }
 
     pub fn remove_effect(&mut self, effect_id: i32) -> Option<RemoveEntityEffectPacket> {
-        self.living.remove_effect(self.entity_id(), effect_id)
+        self.living.remove_effect(self.get_entity_id(), effect_id)
     }
 
     pub fn has_effect(&self, effect_id: i32) -> bool {
         self.living.has_effect(effect_id)
     }
 
-    pub fn effect(&self, effect_id: i32) -> Option<&TimedPotionEffect> {
-        self.living.effect(effect_id)
+    pub fn get_effect(&self, effect_id: i32) -> Option<&TimedPotionEffect> {
+        self.living.get_effect(effect_id)
     }
 
-    pub fn effect_level(&self, effect_id: i32) -> Option<i32> {
-        self.effect(effect_id).map(TimedPotionEffect::amplifier)
+    pub fn get_effect_level(&self, effect_id: i32) -> Option<i32> {
+        self.get_effect(effect_id).map(TimedPotionEffect::get_amplifier)
     }
 
-    pub fn active_effects(&self) -> Vec<&TimedPotionEffect> {
-        self.living.active_effects()
+    pub fn get_active_effects(&self) -> Vec<&TimedPotionEffect> {
+        self.living.get_active_effects()
     }
 
     pub fn clear_effects(&mut self) -> Vec<RemoveEntityEffectPacket> {
-        self.living.clear_effects(self.entity_id())
+        self.living.clear_effects(self.get_entity_id())
     }
 
-    pub fn effect_packets(&self) -> Vec<EntityEffectPacket> {
-        self.living.effect_packets(self.entity_id())
+    pub fn get_effect_packets(&self) -> Vec<EntityEffectPacket> {
+        self.living.get_effect_packets(self.get_entity_id())
     }
 
     pub(crate) fn expire_effects_at(&mut self, tick: u64) -> Vec<TimedPotionEffect> {
@@ -68,15 +68,15 @@ impl Player {
         self.expire_effects_at(self.alive_ticks)
     }
 
-    pub const fn item_pickup_cooldown(&self) -> u32 {
-        self.living.item_pickup_cooldown()
+    pub const fn get_item_pickup_cooldown(&self) -> u32 {
+        self.living.get_item_pickup_cooldown()
     }
 
     pub fn set_item_pickup_cooldown(&mut self, item_pickup_cooldown: u32) {
         self.living.set_item_pickup_cooldown(item_pickup_cooldown);
     }
 
-    pub const fn expanded_bounding_box(&self) -> EntityBoundingBox {
-        self.living.expanded_bounding_box()
+    pub const fn get_expanded_bounding_box(&self) -> EntityBoundingBox {
+        self.living.get_expanded_bounding_box()
     }
 }

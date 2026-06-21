@@ -7,19 +7,19 @@ use crate::server::MinecraftServer;
 use spinel_registry::ItemStack;
 
 impl Player {
-    pub(super) fn item_at(&self, slot: i32) -> Option<ItemStack> {
+    pub(super) fn get_item_at(&self, slot: i32) -> Option<ItemStack> {
         if slot < 0 {
             return None;
         }
         let open_inventory_size = self.open_inventory_size();
-        if self.opened_inventory().is_some() && slot < open_inventory_size {
+        if self.get_opened_inventory().is_some() && slot < open_inventory_size {
             return self
-                .opened_inventory()
-                .and_then(|inventory| inventory.item_stack(slot as usize))
+                .get_opened_inventory()
+                .and_then(|inventory| inventory.get_item_stack(slot as usize))
                 .cloned();
         }
-        self.inventory_ref()
-            .item_stack((slot - open_inventory_size) as usize)
+        self.get_inventory_ref()
+            .get_item_stack((slot - open_inventory_size) as usize)
             .cloned()
     }
 
@@ -28,12 +28,12 @@ impl Player {
             return false;
         }
         let open_inventory_size = self.open_inventory_size();
-        if self.opened_inventory().is_some() && slot < open_inventory_size {
+        if self.get_opened_inventory().is_some() && slot < open_inventory_size {
             return self
-                .opened_inventory_mut()
+                .get_opened_inventory_mut()
                 .is_some_and(|inventory| inventory.set_item_stack(slot as usize, item_stack));
         }
-        self.inventory()
+        self.get_inventory()
             .set_item_stack((slot - open_inventory_size) as usize, item_stack)
     }
 
@@ -134,30 +134,30 @@ impl Player {
     }
 
     pub(super) fn open_inventory_size(&self) -> i32 {
-        self.opened_inventory()
+        self.get_opened_inventory()
             .map(|inventory| inventory.inventory_type().size() as i32)
             .unwrap_or(0)
     }
 
-    pub(super) fn slot_is_in_open_inventory(&self, slot: i32) -> bool {
-        self.opened_inventory().is_some() && slot >= 0 && slot < self.open_inventory_size()
+    pub(super) fn get_slot_is_in_open_inventory(&self, slot: i32) -> bool {
+        self.get_opened_inventory().is_some() && slot >= 0 && slot < self.open_inventory_size()
     }
 
-    pub(super) fn window_slot(&self, slot: i32) -> i32 {
+    pub(super) fn get_window_slot(&self, slot: i32) -> i32 {
         if !self.slot_is_in_open_inventory(slot) {
             return slot - self.open_inventory_size();
         }
         slot
     }
 
-    pub(super) fn player_inventory_slot_in_click_window(&self, player_inventory_slot: i32) -> i32 {
-        if self.opened_inventory().is_none() {
+    pub(super) fn get_player_inventory_slot_in_click_window(&self, player_inventory_slot: i32) -> i32 {
+        if self.get_opened_inventory().is_none() {
             return player_inventory_slot;
         }
         self.open_inventory_size() + player_inventory_slot
     }
 
-    pub(super) fn resync_inventory_after_bulk_click(&self, client: &mut Client) -> bool {
+    pub(super) fn get_resync_inventory_after_bulk_click(&self, client: &mut Client) -> bool {
         let _ = self.sync_inventory(client);
         let _ = self.sync_open_inventory_contents(client);
         true
@@ -203,9 +203,9 @@ impl Player {
     fn double_click_slots(&self, clicked_slot: i32) -> Vec<i32> {
         let open_inventory_size = self.open_inventory_size();
         let player_inventory_start = open_inventory_size;
-        let player_inventory_end = open_inventory_size + self.inventory_ref().inner_size() as i32;
-        if self.opened_inventory().is_none() {
-            return (0..self.inventory_ref().inner_size() as i32)
+        let player_inventory_end = open_inventory_size + self.get_inventory_ref().inner_size() as i32;
+        if self.get_opened_inventory().is_none() {
+            return (0..self.get_inventory_ref().inner_size() as i32)
                 .filter(|slot| *slot != clicked_slot)
                 .collect();
         }
@@ -252,7 +252,7 @@ impl Player {
             self.window_slot(slot),
             ClickType::DoubleClick,
             self.item_at(slot).unwrap_or_else(ItemStack::air),
-            self.inventory_ref().cursor_item().clone(),
+            self.get_inventory_ref().cursor_item().clone(),
         )
         .dispatch(server, client);
         remaining_item.consume(removed_amount)
@@ -292,7 +292,7 @@ impl Player {
             self.window_slot(slot),
             ClickType::ShiftClick,
             updated_target,
-            self.inventory_ref().cursor_item().clone(),
+            self.get_inventory_ref().cursor_item().clone(),
         )
         .dispatch(server, client);
         item_stack.consume(moved_amount)

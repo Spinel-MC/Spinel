@@ -48,11 +48,11 @@ impl EntityDefaultAttribute {
         }
     }
 
-    pub const fn attribute(self) -> Attribute {
+    pub const fn get_attribute(self) -> Attribute {
         self.attribute
     }
 
-    pub const fn base_value(self) -> f64 {
+    pub const fn get_base_value(self) -> f64 {
         self.base_value
     }
 }
@@ -147,22 +147,22 @@ impl EntityType {
     }
 
     #[must_use]
-    pub const fn width(self) -> f64 {
+    pub const fn get_width(self) -> f64 {
         self.width
     }
 
     #[must_use]
-    pub const fn height(self) -> f64 {
+    pub const fn get_height(self) -> f64 {
         self.height
     }
 
     #[must_use]
-    pub const fn bounding_box(self) -> EntityBoundingBox {
+    pub const fn get_bounding_box(self) -> EntityBoundingBox {
         EntityBoundingBox::new(self.width, self.height, self.width)
     }
 
     #[must_use]
-    pub const fn eye_height(self) -> f64 {
+    pub const fn get_eye_height(self) -> f64 {
         self.eye_height
     }
 
@@ -264,18 +264,18 @@ impl EntityTypeRegistryEntry {
     }
 
     #[must_use]
-    pub const fn width(self) -> f64 {
-        self.entity_type.width()
+    pub const fn get_width(self) -> f64 {
+        self.entity_type.get_width()
     }
 
     #[must_use]
-    pub const fn height(self) -> f64 {
-        self.entity_type.height()
+    pub const fn get_height(self) -> f64 {
+        self.entity_type.get_height()
     }
 
     #[must_use]
-    pub const fn eye_height(self) -> f64 {
-        self.entity_type.eye_height()
+    pub const fn get_eye_height(self) -> f64 {
+        self.entity_type.get_eye_height()
     }
 
     #[must_use]
@@ -324,8 +324,8 @@ impl EntityTypeRegistryEntry {
     }
 
     #[must_use]
-    pub const fn bounding_box(self) -> EntityBoundingBox {
-        self.entity_type.bounding_box()
+    pub const fn get_bounding_box(self) -> EntityBoundingBox {
+        self.entity_type.get_bounding_box()
     }
 }
 

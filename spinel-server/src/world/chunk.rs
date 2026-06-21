@@ -859,11 +859,11 @@ impl Chunk {
     }
 
     pub fn add_viewer(&mut self, entity_id: crate::entity::EntityId) -> bool {
-        self.viewers.insert(entity_id.value())
+        self.viewers.insert(entity_id.get_value())
     }
 
     pub fn remove_viewer(&mut self, entity_id: crate::entity::EntityId) -> bool {
-        self.viewers.remove(&entity_id.value())
+        self.viewers.remove(&entity_id.get_value())
     }
 
     pub fn viewers(&self) -> impl Iterator<Item = i32> + '_ {

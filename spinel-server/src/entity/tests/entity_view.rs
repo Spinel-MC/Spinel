@@ -28,13 +28,13 @@ fn entity_view_keeps_manual_and_automatic_viewers_separate() {
     assert!(entity_view.automatic_add(automatic_viewer_id));
     assert!(!entity_view.automatic_add(manual_viewer_id));
 
-    assert!(entity_view.manual_viewers().contains(&manual_viewer_id));
+    assert!(entity_view.get_manual_viewers().contains(&manual_viewer_id));
     assert!(
         entity_view
-            .automatic_viewers()
+            .get_automatic_viewers()
             .contains(&automatic_viewer_id)
     );
-    assert_eq!(entity_view.viewers().len(), 2);
+    assert_eq!(entity_view.get_viewers().len(), 2);
 }
 
 #[test]
@@ -48,8 +48,8 @@ fn entity_view_auto_viewable_disable_clears_automatic_viewers_only() {
     entity_view.automatic_add(automatic_viewer_id);
 
     assert!(entity_view.set_auto_viewable(false));
-    assert!(entity_view.manual_viewers().contains(&manual_viewer_id));
-    assert!(entity_view.automatic_viewers().is_empty());
+    assert!(entity_view.get_manual_viewers().contains(&manual_viewer_id));
+    assert!(entity_view.get_automatic_viewers().is_empty());
     assert!(!entity_view.is_auto_viewable());
 }
 
@@ -74,7 +74,7 @@ fn entity_view_rule_updates_refresh_automatic_viewers_like_minestom_predicates()
     let denied_viewer = EntityId::from_raw(3);
     let mut entity_view = EntityView::new(entity_id);
 
-    entity_view.update_viewable_rule(|viewer_id| viewer_id.value() % 2 == 0);
+    entity_view.update_viewable_rule(|viewer_id| viewer_id.get_value() % 2 == 0);
     entity_view.refresh_viewable_rule([entity_id, allowed_viewer, denied_viewer]);
 
     assert!(entity_view.is_viewer(allowed_viewer));
@@ -85,7 +85,7 @@ fn entity_view_rule_updates_refresh_automatic_viewers_like_minestom_predicates()
     assert!(entity_view.has_predictable_viewers());
 
     entity_view.manual_add(denied_viewer);
-    entity_view.update_viewer_rule(|target_id| target_id.value() == 2);
+    entity_view.update_viewer_rule(|target_id| target_id.get_value() == 2);
     entity_view.refresh_viewer_rule();
 
     assert!(entity_view.is_viewer(allowed_viewer));

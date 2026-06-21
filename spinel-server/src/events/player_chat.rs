@@ -63,7 +63,7 @@ impl PlayerChatEvent {
 }
 
 fn default_formatted_chat_message(player: *mut Player, raw_message: &str) -> TextComponent {
-    let username = unsafe { &*player }.username().to_owned();
+    let username = unsafe { &*player }.get_username().to_owned();
     TextComponent::translatable("chat.type.text")
         .argument(
             TextComponent::text(username.clone())

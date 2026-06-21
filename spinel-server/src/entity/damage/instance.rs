@@ -88,19 +88,19 @@ impl Damage {
         &self.damage_type
     }
 
-    pub const fn attacker(&self) -> Option<EntityId> {
+    pub const fn get_attacker(&self) -> Option<EntityId> {
         self.attacker
     }
 
-    pub const fn source(&self) -> Option<EntityId> {
+    pub const fn get_source(&self) -> Option<EntityId> {
         self.source
     }
 
-    pub const fn source_position(&self) -> Option<Vector3d> {
+    pub const fn get_source_position(&self) -> Option<Vector3d> {
         self.source_position
     }
 
-    pub const fn amount(&self) -> f32 {
+    pub const fn get_amount(&self) -> f32 {
         self.amount
     }
 
@@ -108,7 +108,7 @@ impl Damage {
         self.amount = amount;
     }
 
-    pub fn sound(&self) -> Option<SoundEvent> {
+    pub fn get_sound(&self) -> Option<SoundEvent> {
         self.sound.clone()
     }
 
@@ -136,7 +136,7 @@ impl Damage {
         true
     }
 
-    pub fn default_sound(&self, is_player: bool) -> SoundEvent {
+    pub fn get_default_sound(&self, is_player: bool) -> SoundEvent {
         if !is_player {
             return SoundEvent::Id(BuiltinSoundEvent::ENTITY_GENERIC_HURT.id());
         }

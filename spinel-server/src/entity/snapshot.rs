@@ -1,10 +1,13 @@
 use crate::entity::metadata::MetadataHolder;
 use crate::entity::player::PlayerSkin;
 use crate::entity::{EntityId, EntityPosition};
+use crate::world::ChunkPosition;
 use spinel_core::entity::game_mode::GameMode;
+use spinel_nbt::{Tag, TagHandler, TagReadable};
 use spinel_network::types::Velocity;
 use spinel_registry::EntityType;
 use spinel_utils::component::text::TextComponent;
+use std::collections::BTreeSet;
 use uuid::Uuid;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -18,6 +21,11 @@ pub struct EntitySnapshot {
     removed: bool,
     metadata: MetadataHolder,
     custom_name: Option<TextComponent>,
+    chunk: Option<ChunkPosition>,
+    viewers: BTreeSet<EntityId>,
+    passengers: BTreeSet<EntityId>,
+    vehicle: Option<EntityId>,
+    tag_handler: TagHandler,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -43,15 +51,15 @@ impl EntityObservation {
         }
     }
 
-    pub const fn entity_id(self) -> EntityId {
+    pub const fn get_entity_id(self) -> EntityId {
         self.entity_id
     }
 
-    pub const fn entity_type(self) -> EntityType {
+    pub const fn get_entity_type(self) -> EntityType {
         self.entity_type
     }
 
-    pub const fn position(self) -> EntityPosition {
+    pub const fn get_position(self) -> EntityPosition {
         self.position
     }
 
@@ -71,6 +79,11 @@ impl EntitySnapshot {
         removed: bool,
         metadata: MetadataHolder,
         custom_name: Option<TextComponent>,
+        chunk: Option<ChunkPosition>,
+        viewers: BTreeSet<EntityId>,
+        passengers: BTreeSet<EntityId>,
+        vehicle: Option<EntityId>,
+        tag_handler: TagHandler,
     ) -> Self {
         Self {
             entity_id,
@@ -82,30 +95,35 @@ impl EntitySnapshot {
             removed,
             metadata,
             custom_name,
+            chunk,
+            viewers,
+            passengers,
+            vehicle,
+            tag_handler,
         }
     }
 
-    pub const fn entity_id(&self) -> EntityId {
+    pub const fn get_entity_id(&self) -> EntityId {
         self.entity_id
     }
 
-    pub const fn uuid(&self) -> Uuid {
+    pub const fn get_uuid(&self) -> Uuid {
         self.uuid
     }
 
-    pub const fn entity_type(&self) -> EntityType {
+    pub const fn get_entity_type(&self) -> EntityType {
         self.entity_type
     }
 
-    pub const fn position(&self) -> EntityPosition {
+    pub const fn get_position(&self) -> EntityPosition {
         self.position
     }
 
-    pub const fn velocity(&self) -> Velocity {
+    pub const fn get_velocity(&self) -> Velocity {
         self.velocity
     }
 
-    pub const fn world(&self) -> Option<Uuid> {
+    pub const fn get_world(&self) -> Option<Uuid> {
         self.world
     }
 
@@ -113,12 +131,38 @@ impl EntitySnapshot {
         self.removed
     }
 
-    pub const fn metadata(&self) -> &MetadataHolder {
+    pub const fn get_metadata(&self) -> &MetadataHolder {
         &self.metadata
     }
 
-    pub fn custom_name(&self) -> Option<TextComponent> {
+    pub fn get_custom_name(&self) -> Option<TextComponent> {
         self.custom_name.clone()
+    }
+
+    pub const fn get_chunk(&self) -> Option<ChunkPosition> {
+        self.chunk
+    }
+
+    pub fn get_viewers(&self) -> &BTreeSet<EntityId> {
+        &self.viewers
+    }
+
+    pub fn get_passengers(&self) -> &BTreeSet<EntityId> {
+        &self.passengers
+    }
+
+    pub const fn get_vehicle(&self) -> Option<EntityId> {
+        self.vehicle
+    }
+
+    pub const fn get_tag_handler(&self) -> &TagHandler {
+        &self.tag_handler
+    }
+}
+
+impl TagReadable for EntitySnapshot {
+    fn get_tag<T>(&self, tag: &Tag<T>) -> Option<T> {
+        self.tag_handler.get_tag(tag)
     }
 }
 
@@ -160,39 +204,39 @@ impl PlayerSnapshot {
         }
     }
 
-    pub const fn entity_id(&self) -> EntityId {
+    pub const fn get_entity_id(&self) -> EntityId {
         self.entity_id
     }
 
-    pub const fn uuid(&self) -> Uuid {
+    pub const fn get_uuid(&self) -> Uuid {
         self.uuid
     }
 
-    pub fn username(&self) -> &str {
+    pub fn get_username(&self) -> &str {
         &self.username
     }
 
-    pub const fn position(&self) -> EntityPosition {
+    pub const fn get_position(&self) -> EntityPosition {
         self.position
     }
 
-    pub const fn world(&self) -> Option<Uuid> {
+    pub const fn get_world(&self) -> Option<Uuid> {
         self.world
     }
 
-    pub const fn game_mode(&self) -> GameMode {
+    pub const fn get_game_mode(&self) -> GameMode {
         self.game_mode
     }
 
-    pub const fn skin(&self) -> Option<&PlayerSkin> {
+    pub const fn get_skin(&self) -> Option<&PlayerSkin> {
         self.skin.as_ref()
     }
 
-    pub const fn display_name(&self) -> Option<&TextComponent> {
+    pub const fn get_display_name(&self) -> Option<&TextComponent> {
         self.display_name.as_ref()
     }
 
-    pub fn statistics(&self) -> &[(String, i32)] {
+    pub fn get_statistics(&self) -> &[(String, i32)] {
         &self.statistics
     }
 }

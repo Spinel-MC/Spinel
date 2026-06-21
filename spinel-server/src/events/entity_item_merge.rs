@@ -20,23 +20,23 @@ impl EntityItemMergeEvent {
         }
     }
 
-    pub fn entity(&mut self) -> &mut Entity {
+    pub fn get_entity(&mut self) -> &mut Entity {
         unsafe { &mut *self.entity }
     }
 
-    pub fn entity_id(&self) -> EntityId {
-        unsafe { (&*self.entity).entity_id() }
+    pub fn get_entity_id(&self) -> EntityId {
+        unsafe { (&*self.entity).get_entity_id() }
     }
 
-    pub fn merged_entity(&mut self) -> &mut Entity {
+    pub fn get_merged_entity(&mut self) -> &mut Entity {
         unsafe { &mut *self.merged_entity }
     }
 
-    pub fn merged_entity_id(&self) -> EntityId {
-        unsafe { (&*self.merged_entity).entity_id() }
+    pub fn get_merged_entity_id(&self) -> EntityId {
+        unsafe { (&*self.merged_entity).get_entity_id() }
     }
 
-    pub fn result(&self) -> &ItemStack {
+    pub fn get_result(&self) -> &ItemStack {
         &self.result
     }
 

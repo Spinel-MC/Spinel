@@ -38,15 +38,15 @@ impl InventoryPreClickEvent {
     pub fn clicked_item(&mut self) -> Option<&ItemStack> {
         let slot = self.slot();
         if slot == -999 {
-            return Some(self.player().inventory_ref().cursor_item());
+            return Some(self.player().get_inventory_ref().cursor_item());
         }
         if self.in_open_inventory {
             return self
                 .player()
-                .opened_inventory()
-                .and_then(|inventory| inventory.item_stack(slot as usize));
+                .get_opened_inventory()
+                .and_then(|inventory| inventory.get_item_stack(slot as usize));
         }
-        self.player().inventory_ref().item_stack(slot as usize)
+        self.player().get_inventory_ref().get_item_stack(slot as usize)
     }
 
     pub fn set_click(&mut self, click: Click) {
@@ -61,14 +61,14 @@ impl InventoryPreClickEvent {
         if !self.in_open_inventory {
             return None;
         }
-        self.player().opened_inventory()
+        self.player().get_opened_inventory()
     }
 
     pub fn player_inventory(&mut self) -> Option<&PlayerInventory> {
         if self.in_open_inventory {
             return None;
         }
-        Some(self.player().inventory_ref())
+        Some(self.player().get_inventory_ref())
     }
 
     pub fn is_cancelled(&self) -> bool {

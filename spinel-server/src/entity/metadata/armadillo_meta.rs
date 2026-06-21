@@ -9,16 +9,16 @@ pub struct ArmadilloMeta<'entity> {
 
 impl<'entity> ArmadilloMeta<'entity> {
     pub(crate) fn from_entity_meta(entity_meta: EntityMeta<'entity>) -> Option<Self> {
-        (entity_meta.entity().entity_type() == EntityType::ARMADILLO).then(|| Self {
+        (entity_meta.get_entity().get_entity_type() == EntityType::ARMADILLO).then(|| Self {
             animal_meta: AnimalMeta::from_entity_meta(entity_meta),
         })
     }
 
-    pub fn state(&self) -> ArmadilloState {
+    pub fn get_state(&self) -> ArmadilloState {
         match self
-            .entity()
-            .metadata()
-            .value(&definitions::armadillo::state())
+            .get_entity()
+            .get_metadata()
+            .get_value(&definitions::armadillo::get_state())
         {
             MetadataValue::ArmadilloState(state) => {
                 ArmadilloState::from_protocol_id(state).unwrap_or_default()
@@ -28,9 +28,9 @@ impl<'entity> ArmadilloMeta<'entity> {
     }
 
     pub fn set_state(&mut self, state: ArmadilloState) {
-        self.entity_mut().metadata_mut().set(
-            &definitions::armadillo::state(),
-            MetadataValue::ArmadilloState(state.protocol_id()),
+        self.get_entity_mut().get_metadata_mut().set(
+            &definitions::armadillo::get_state(),
+            MetadataValue::ArmadilloState(state.get_protocol_id()),
         );
     }
 }

@@ -27,7 +27,7 @@ impl RandomStrollGoal {
         }
     }
 
-    pub const fn radius(&self) -> i32 {
+    pub const fn get_radius(&self) -> i32 {
         self.radius
     }
 }
@@ -57,13 +57,13 @@ impl GoalSelector for RandomStrollGoal {
                 .position(|candidate| *candidate == offset)
                 .unwrap_or_default();
             remaining_offsets.swap_remove(offset_index);
-            let position = creature.position();
+            let position = creature.get_position();
             let target = EntityPosition::new(
-                position.x() + f64::from(offset.0),
-                position.y() + f64::from(offset.1),
-                position.z() + f64::from(offset.2),
-                position.yaw(),
-                position.pitch(),
+                position.get_x() + f64::from(offset.0),
+                position.get_y() + f64::from(offset.1),
+                position.get_z() + f64::from(offset.2),
+                position.get_yaw(),
+                position.get_pitch(),
             );
             if creature
                 .set_path_to_in_world(world, PathRequest::from(target))

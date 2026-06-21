@@ -11,7 +11,7 @@ pub fn is_hand_active() -> MetadataBitMaskDefinition {
     MetadataBitMaskDefinition::new(8, 0x01, false)
 }
 
-pub fn active_hand() -> MetadataBitMaskDefinition {
+pub fn get_active_hand() -> MetadataBitMaskDefinition {
     MetadataBitMaskDefinition::new(8, 0x02, false)
 }
 
@@ -19,14 +19,14 @@ pub fn is_riptide_spin_attack() -> MetadataBitMaskDefinition {
     MetadataBitMaskDefinition::new(8, 0x04, false)
 }
 
-pub fn additional_hearts() -> MetadataDefinition {
-    player::additional_hearts()
+pub fn get_additional_hearts() -> MetadataDefinition {
+    player::get_additional_hearts()
 }
 
 pub mod living_entity {
     use super::*;
 
-    pub fn flags() -> MetadataDefinition {
+    pub fn get_flags() -> MetadataDefinition {
         living_entity_flags()
     }
 
@@ -34,15 +34,15 @@ pub mod living_entity {
         super::is_hand_active()
     }
 
-    pub fn active_hand() -> MetadataBitMaskDefinition {
-        super::active_hand()
+    pub fn get_active_hand() -> MetadataBitMaskDefinition {
+        super::get_active_hand()
     }
 
     pub fn is_riptide_spin_attack() -> MetadataBitMaskDefinition {
         super::is_riptide_spin_attack()
     }
 
-    pub fn health() -> MetadataDefinition {
+    pub fn get_health() -> MetadataDefinition {
         MetadataDefinition::new(9, MetadataValue::Float(1.0))
     }
 
@@ -70,7 +70,7 @@ pub mod living_entity {
 pub mod avatar {
     use super::*;
 
-    pub fn main_hand() -> MetadataDefinition {
+    pub fn get_main_hand() -> MetadataDefinition {
         MetadataDefinition::new(15, MetadataValue::MainHand(MainHand::Right))
     }
 
@@ -110,19 +110,19 @@ pub mod avatar {
 pub mod player {
     use super::*;
 
-    pub fn additional_hearts() -> MetadataDefinition {
+    pub fn get_additional_hearts() -> MetadataDefinition {
         MetadataDefinition::new(17, MetadataValue::Float(0.0))
     }
 
-    pub fn score() -> MetadataDefinition {
+    pub fn get_score() -> MetadataDefinition {
         MetadataDefinition::new(18, MetadataValue::VarInt(0))
     }
 
-    pub fn left_shoulder_entity_data() -> MetadataDefinition {
+    pub fn get_left_shoulder_entity_data() -> MetadataDefinition {
         MetadataDefinition::new(19, MetadataValue::OptionalVarInt(None))
     }
 
-    pub fn right_shoulder_entity_data() -> MetadataDefinition {
+    pub fn get_right_shoulder_entity_data() -> MetadataDefinition {
         MetadataDefinition::new(20, MetadataValue::OptionalVarInt(None))
     }
 }
@@ -130,7 +130,7 @@ pub mod player {
 pub mod mannequin {
     use super::*;
 
-    pub fn profile() -> MetadataDefinition {
+    pub fn get_profile() -> MetadataDefinition {
         MetadataDefinition::new(
             17,
             MetadataValue::ResolvableProfile(ResolvableProfile::default()),
@@ -141,7 +141,7 @@ pub mod mannequin {
         MetadataDefinition::new(18, MetadataValue::Boolean(false))
     }
 
-    pub fn description() -> MetadataDefinition {
+    pub fn get_description() -> MetadataDefinition {
         MetadataDefinition::new(
             19,
             MetadataValue::OptionalText(Some(
@@ -154,7 +154,7 @@ pub mod mannequin {
 pub mod armor_stand {
     use super::*;
 
-    pub fn flags() -> MetadataDefinition {
+    pub fn get_flags() -> MetadataDefinition {
         MetadataDefinition::new(15, MetadataValue::Byte(0))
     }
 
@@ -174,27 +174,27 @@ pub mod armor_stand {
         MetadataBitMaskDefinition::new(15, 0x10, false)
     }
 
-    pub fn head_rotation() -> MetadataDefinition {
+    pub fn get_head_rotation() -> MetadataDefinition {
         rotation(16, 0.0, 0.0, 0.0)
     }
 
-    pub fn body_rotation() -> MetadataDefinition {
+    pub fn get_body_rotation() -> MetadataDefinition {
         rotation(17, 0.0, 0.0, 0.0)
     }
 
-    pub fn left_arm_rotation() -> MetadataDefinition {
+    pub fn get_left_arm_rotation() -> MetadataDefinition {
         rotation(18, -10.0, 0.0, -10.0)
     }
 
-    pub fn right_arm_rotation() -> MetadataDefinition {
+    pub fn get_right_arm_rotation() -> MetadataDefinition {
         rotation(19, -15.0, 0.0, 10.0)
     }
 
-    pub fn left_leg_rotation() -> MetadataDefinition {
+    pub fn get_left_leg_rotation() -> MetadataDefinition {
         rotation(20, -1.0, 0.0, -1.0)
     }
 
-    pub fn right_leg_rotation() -> MetadataDefinition {
+    pub fn get_right_leg_rotation() -> MetadataDefinition {
         rotation(21, 1.0, 0.0, 1.0)
     }
 
@@ -206,7 +206,7 @@ pub mod armor_stand {
 pub mod mob {
     use super::*;
 
-    pub fn flags() -> MetadataDefinition {
+    pub fn get_flags() -> MetadataDefinition {
         MetadataDefinition::new(15, MetadataValue::Byte(0))
     }
 

@@ -30,7 +30,7 @@ impl EditBookEvent {
         unsafe { &mut *self.player }
     }
 
-    pub const fn item_stack(&self) -> &ItemStack {
+    pub const fn get_item_stack(&self) -> &ItemStack {
         &self.item_stack
     }
 

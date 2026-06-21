@@ -22,63 +22,63 @@ impl Default for MetadataHolder {
 }
 
 impl MetadataHolder {
-    pub fn value(&self, definition: &MetadataDefinition) -> MetadataValue {
+    pub fn get_value(&self, definition: &MetadataDefinition) -> MetadataValue {
         self.entries
-            .get(&definition.index())
+            .get(&definition.get_index())
             .cloned()
-            .unwrap_or_else(|| definition.default_value().clone())
+            .unwrap_or_else(|| definition.get_default_value().clone())
     }
 
     pub fn set(&mut self, definition: &MetadataDefinition, value: MetadataValue) {
-        self.entries.insert(definition.index(), value.clone());
-        self.dirty_entries.insert(definition.index(), value);
+        self.entries.insert(definition.get_index(), value.clone());
+        self.dirty_entries.insert(definition.get_index(), value);
     }
 
-    pub fn flag(&self, definition: &MetadataBitMaskDefinition) -> bool {
-        let Some(MetadataValue::Byte(flags)) = self.entries.get(&definition.index()) else {
-            return definition.default_value();
+    pub fn get_flag(&self, definition: &MetadataBitMaskDefinition) -> bool {
+        let Some(MetadataValue::Byte(flags)) = self.entries.get(&definition.get_index()) else {
+            return definition.get_default_value();
         };
-        flags & definition.bit_mask() == definition.bit_mask()
+        flags & definition.get_bit_mask() == definition.get_bit_mask()
     }
 
     pub fn set_flag(&mut self, definition: &MetadataBitMaskDefinition, flag_is_enabled: bool) {
-        let current_flags = match self.entries.get(&definition.index()) {
+        let current_flags = match self.entries.get(&definition.get_index()) {
             Some(MetadataValue::Byte(flags)) => *flags,
             _ => 0,
         };
         let updated_flags = if flag_is_enabled {
-            current_flags | definition.bit_mask()
+            current_flags | definition.get_bit_mask()
         } else {
-            current_flags & !definition.bit_mask()
+            current_flags & !definition.get_bit_mask()
         };
         let updated_value = MetadataValue::Byte(updated_flags);
         self.entries
-            .insert(definition.index(), updated_value.clone());
-        self.dirty_entries.insert(definition.index(), updated_value);
+            .insert(definition.get_index(), updated_value.clone());
+        self.dirty_entries.insert(definition.get_index(), updated_value);
     }
 
-    pub fn byte(&self, definition: &MetadataByteMaskDefinition) -> i8 {
-        let Some(MetadataValue::Byte(current_value)) = self.entries.get(&definition.index()) else {
-            return definition.default_value();
+    pub fn get_byte(&self, definition: &MetadataByteMaskDefinition) -> i8 {
+        let Some(MetadataValue::Byte(current_value)) = self.entries.get(&definition.get_index()) else {
+            return definition.get_default_value();
         };
-        (((*current_value as u8) & (definition.byte_mask() as u8)) >> definition.offset()) as i8
+        (((*current_value as u8) & (definition.get_byte_mask() as u8)) >> definition.get_offset()) as i8
     }
 
     pub fn set_byte(&mut self, definition: &MetadataByteMaskDefinition, byte_value: i8) {
-        let current_value = match self.entries.get(&definition.index()) {
+        let current_value = match self.entries.get(&definition.get_index()) {
             Some(MetadataValue::Byte(current_value)) => *current_value as u8,
             _ => 0,
         };
-        let byte_mask = definition.byte_mask() as u8;
+        let byte_mask = definition.get_byte_mask() as u8;
         let updated_value = (current_value & !byte_mask)
-            | (((byte_value as u8) << definition.offset()) & byte_mask);
+            | (((byte_value as u8) << definition.get_offset()) & byte_mask);
         let updated_value = MetadataValue::Byte(updated_value as i8);
         self.entries
-            .insert(definition.index(), updated_value.clone());
-        self.dirty_entries.insert(definition.index(), updated_value);
+            .insert(definition.get_index(), updated_value.clone());
+        self.dirty_entries.insert(definition.get_index(), updated_value);
     }
 
-    pub fn entries(&self) -> Vec<MetadataEntry> {
+    pub fn get_entries(&self) -> Vec<MetadataEntry> {
         self.entries
             .iter()
             .map(|(index, value)| MetadataEntry {
@@ -88,7 +88,7 @@ impl MetadataHolder {
             .collect()
     }
 
-    pub const fn change_notifications_are_enabled(&self) -> bool {
+    pub const fn has_change_notifications_enabled(&self) -> bool {
         self.change_notifications_are_enabled
     }
 

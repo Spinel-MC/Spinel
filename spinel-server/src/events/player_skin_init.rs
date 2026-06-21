@@ -17,11 +17,11 @@ impl PlayerSkinInitEvent {
         }
     }
 
-    pub fn player(&mut self) -> &mut Player {
+    pub fn get_player(&mut self) -> &mut Player {
         unsafe { &mut *self.player }
     }
 
-    pub fn skin(&self) -> Option<&PlayerSkin> {
+    pub fn get_skin(&self) -> Option<&PlayerSkin> {
         self.skin.as_ref()
     }
 

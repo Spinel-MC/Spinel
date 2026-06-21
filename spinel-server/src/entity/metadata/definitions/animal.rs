@@ -28,7 +28,7 @@ pub mod allay {
 
 pub mod armadillo {
     use super::*;
-    value_definition!(state, 17, MetadataValue::ArmadilloState(0));
+    value_definition!(get_state, 17, MetadataValue::ArmadilloState(0));
 }
 
 pub mod bat {
@@ -40,12 +40,12 @@ pub mod bat {
 pub mod dolphin {
     use super::*;
     value_definition!(
-        treasure_position,
+        get_treasure_position,
         16,
         MetadataValue::Position(Position { x: 0, y: 0, z: 0 })
     );
     value_definition!(has_fish, 17, MetadataValue::Boolean(false));
-    value_definition!(moisture_level, 18, MetadataValue::VarInt(2400));
+    value_definition!(get_moisture_level, 18, MetadataValue::VarInt(2400));
 }
 
 pub mod abstract_fish {
@@ -60,12 +60,12 @@ pub mod puffer_fish {
 
 pub mod salmon {
     use super::*;
-    value_definition!(size, 17, MetadataValue::VarInt(0));
+    value_definition!(get_size, 17, MetadataValue::VarInt(0));
 }
 
 pub mod tropical_fish {
     use super::*;
-    value_definition!(variant, 17, MetadataValue::VarInt(0));
+    value_definition!(get_variant, 17, MetadataValue::VarInt(0));
 }
 
 pub mod ageable_mob {
@@ -75,8 +75,8 @@ pub mod ageable_mob {
 
 pub mod sniffer {
     use super::*;
-    value_definition!(state, 17, MetadataValue::SnifferState(0));
-    value_definition!(drop_seed_at_tick, 18, MetadataValue::VarInt(0));
+    value_definition!(get_state, 17, MetadataValue::SnifferState(0));
+    value_definition!(get_drop_seed_at_tick, 18, MetadataValue::VarInt(0));
 }
 
 pub mod abstract_horse {
@@ -91,13 +91,13 @@ pub mod abstract_horse {
 
 pub mod horse {
     use super::*;
-    value_definition!(variant, 18, MetadataValue::VarInt(0));
+    value_definition!(get_variant, 18, MetadataValue::VarInt(0));
 }
 
 pub mod camel {
     use super::*;
     value_definition!(is_dashing, 18, MetadataValue::Boolean(false));
-    value_definition!(last_pose_change_tick, 19, MetadataValue::Long(0));
+    value_definition!(get_last_pose_change_tick, 19, MetadataValue::Long(0));
 }
 
 pub mod chested_horse {
@@ -107,14 +107,14 @@ pub mod chested_horse {
 
 pub mod llama {
     use super::*;
-    value_definition!(strength, 19, MetadataValue::VarInt(0));
-    value_definition!(carpet_color, 20, MetadataValue::VarInt(-1));
-    value_definition!(variant, 21, MetadataValue::VarInt(0));
+    value_definition!(get_strength, 19, MetadataValue::VarInt(0));
+    value_definition!(get_carpet_color, 20, MetadataValue::VarInt(-1));
+    value_definition!(get_variant, 21, MetadataValue::VarInt(0));
 }
 
 pub mod axolotl {
     use super::*;
-    value_definition!(variant, 17, MetadataValue::VarInt(0));
+    value_definition!(get_variant, 17, MetadataValue::VarInt(0));
     value_definition!(is_playing_dead, 18, MetadataValue::Boolean(false));
     value_definition!(is_from_bucket, 19, MetadataValue::Boolean(false));
 }
@@ -135,7 +135,7 @@ pub mod glow_squid {
 
 pub mod fox {
     use super::*;
-    value_definition!(variant, 17, MetadataValue::VarInt(0));
+    value_definition!(get_variant, 17, MetadataValue::VarInt(0));
     value_definition!(flags, 18, MetadataValue::Byte(0));
     flag_definition!(is_sitting, 18, 0x01, false);
     flag_definition!(is_crouching, 18, 0x04, false);
@@ -145,12 +145,12 @@ pub mod fox {
     flag_definition!(is_faceplanted, 18, 0x40, false);
     flag_definition!(is_defending, 18, -0x80i8, false);
     value_definition!(
-        first_uuid,
+        get_first_uuid,
         19,
         MetadataValue::OptionalLivingEntityReference(None)
     );
     value_definition!(
-        second_uuid,
+        get_second_uuid,
         20,
         MetadataValue::OptionalLivingEntityReference(None)
     );
@@ -158,8 +158,8 @@ pub mod fox {
 
 pub mod frog {
     use super::*;
-    value_definition!(variant, 17, MetadataValue::FrogVariant(1));
-    value_definition!(tongue_target, 18, MetadataValue::OptionalVarInt(Some(0)));
+    value_definition!(get_variant, 17, MetadataValue::FrogVariant(1));
+    value_definition!(get_tongue_target, 18, MetadataValue::OptionalVarInt(Some(0)));
 }
 
 pub mod ocelot {
@@ -169,11 +169,11 @@ pub mod ocelot {
 
 pub mod panda {
     use super::*;
-    value_definition!(breed_timer, 17, MetadataValue::VarInt(0));
-    value_definition!(sneeze_timer, 18, MetadataValue::VarInt(0));
-    value_definition!(eat_timer, 19, MetadataValue::VarInt(0));
-    value_definition!(main_gene, 20, MetadataValue::Byte(0));
-    value_definition!(hidden_gene, 21, MetadataValue::Byte(0));
+    value_definition!(get_breed_timer, 17, MetadataValue::VarInt(0));
+    value_definition!(get_sneeze_timer, 18, MetadataValue::VarInt(0));
+    value_definition!(get_eat_timer, 19, MetadataValue::VarInt(0));
+    value_definition!(get_main_gene, 20, MetadataValue::Byte(0));
+    value_definition!(get_hidden_gene, 21, MetadataValue::Byte(0));
     value_definition!(flags, 22, MetadataValue::Byte(0));
     flag_definition!(is_sneezing, 22, 0x02, false);
     flag_definition!(is_rolling, 22, 0x04, false);
@@ -183,18 +183,18 @@ pub mod panda {
 
 pub mod chicken {
     use super::*;
-    value_definition!(variant, 17, MetadataValue::ChickenVariant(1));
+    value_definition!(get_variant, 17, MetadataValue::ChickenVariant(1));
 }
 
 pub mod cow {
     use super::*;
-    value_definition!(variant, 17, MetadataValue::CowVariant(1));
+    value_definition!(get_variant, 17, MetadataValue::CowVariant(1));
 }
 
 pub mod pig {
     use super::*;
     value_definition!(boost_time, 17, MetadataValue::VarInt(0));
-    value_definition!(variant, 18, MetadataValue::PigVariant(1));
+    value_definition!(get_variant, 18, MetadataValue::PigVariant(1));
 }
 
 pub mod rabbit {
@@ -215,7 +215,7 @@ pub mod polar_bear {
 
 pub mod mooshroom {
     use super::*;
-    value_definition!(variant, 17, MetadataValue::VarInt(0));
+    value_definition!(get_variant, 17, MetadataValue::VarInt(0));
 }
 
 pub mod hoglin {
@@ -258,7 +258,7 @@ pub mod tameable_animal {
     flag_definition!(is_sitting, 17, 0x01, false);
     flag_definition!(is_tamed, 17, 0x04, false);
     value_definition!(
-        owner,
+        get_owner,
         18,
         MetadataValue::OptionalLivingEntityReference(None)
     );
@@ -266,24 +266,24 @@ pub mod tameable_animal {
 
 pub mod cat {
     use super::*;
-    value_definition!(variant, 19, MetadataValue::CatVariant(1));
+    value_definition!(get_variant, 19, MetadataValue::CatVariant(1));
     value_definition!(is_lying, 20, MetadataValue::Boolean(false));
     value_definition!(is_relaxed, 21, MetadataValue::Boolean(false));
-    value_definition!(collar_color, 22, MetadataValue::VarInt(14));
+    value_definition!(get_collar_color, 22, MetadataValue::VarInt(14));
 }
 
 pub mod wolf {
     use super::*;
     value_definition!(is_begging, 19, MetadataValue::Boolean(false));
-    value_definition!(collar_color, 20, MetadataValue::VarInt(14));
-    value_definition!(anger_time, 21, MetadataValue::Long(-1));
-    value_definition!(variant, 22, MetadataValue::WolfVariant(3));
-    value_definition!(sound_variant, 23, MetadataValue::WolfSoundVariant(2));
+    value_definition!(get_collar_color, 20, MetadataValue::VarInt(14));
+    value_definition!(get_anger_time, 21, MetadataValue::Long(-1));
+    value_definition!(get_variant, 22, MetadataValue::WolfVariant(3));
+    value_definition!(get_sound_variant, 23, MetadataValue::WolfSoundVariant(2));
 }
 
 pub mod parrot {
     use super::*;
-    value_definition!(variant, 19, MetadataValue::VarInt(0));
+    value_definition!(get_variant, 19, MetadataValue::VarInt(0));
 }
 
 pub mod abstract_nautilus {
@@ -293,12 +293,12 @@ pub mod abstract_nautilus {
 
 pub mod zombie_nautilus {
     use super::*;
-    value_definition!(variant, 20, MetadataValue::ZombieNautilusVariant(0));
+    value_definition!(get_variant, 20, MetadataValue::ZombieNautilusVariant(0));
 }
 
 pub mod abstract_villager {
     use super::*;
-    value_definition!(head_shake_timer, 17, MetadataValue::VarInt(0));
+    value_definition!(get_head_shake_timer, 17, MetadataValue::VarInt(0));
 }
 
 pub mod villager {

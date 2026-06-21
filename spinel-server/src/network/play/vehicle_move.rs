@@ -13,7 +13,7 @@ fn on_move_vehicle(
     let Some(player) = server.world_manager.player_pointer_for_client(client) else {
         return false;
     };
-    let Some(vehicle) = (unsafe { &mut *player }).vehicle() else {
+    let Some(vehicle) = (unsafe { &mut *player }).get_vehicle() else {
         return true;
     };
     let position = EntityPosition::new(packet.x, packet.y, packet.z, packet.yaw, packet.pitch);

@@ -8,7 +8,7 @@ pub enum ArmadilloState {
 }
 
 impl ArmadilloState {
-    pub const fn protocol_id(self) -> i32 {
+    pub const fn get_protocol_id(self) -> i32 {
         match self {
             Self::Idle => 0,
             Self::Rolling => 1,
@@ -41,7 +41,7 @@ pub enum SnifferState {
 }
 
 impl SnifferState {
-    pub const fn protocol_id(self) -> i32 {
+    pub const fn get_protocol_id(self) -> i32 {
         match self {
             Self::Idling => 0,
             Self::FeelingHappy => 1,
@@ -77,7 +77,7 @@ macro_rules! ordinal_enum {
         }
 
         impl $name {
-            pub const fn protocol_id(self) -> i32 {
+            pub const fn get_protocol_id(self) -> i32 {
                 self as i32
             }
 
@@ -115,15 +115,15 @@ impl HorseVariant {
         ))
     }
 
-    pub const fn protocol_id(self) -> i32 {
-        (self.marking.protocol_id() << 8) + self.color.protocol_id()
+    pub const fn get_protocol_id(self) -> i32 {
+        (self.marking.get_protocol_id() << 8) + self.color.protocol_id()
     }
 
-    pub const fn marking(self) -> HorseMarking {
+    pub const fn get_marking(self) -> HorseMarking {
         self.marking
     }
 
-    pub const fn color(self) -> HorseColor {
+    pub const fn get_color(self) -> HorseColor {
         self.color
     }
 

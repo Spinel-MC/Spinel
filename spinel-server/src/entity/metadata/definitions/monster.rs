@@ -54,7 +54,7 @@ pub mod creaking {
 
 pub mod creeper {
     use super::*;
-    value_definition!(state, 16, MetadataValue::VarInt(-1));
+    value_definition!(get_state, 16, MetadataValue::VarInt(-1));
     value_definition!(is_charged, 17, MetadataValue::Boolean(false));
     value_definition!(is_ignited, 18, MetadataValue::Boolean(false));
 }
@@ -62,7 +62,7 @@ pub mod creeper {
 pub mod guardian {
     use super::*;
     value_definition!(is_retracting_spikes, 16, MetadataValue::Boolean(false));
-    value_definition!(target_entity_id, 17, MetadataValue::VarInt(0));
+    value_definition!(get_target_entity_id, 17, MetadataValue::VarInt(0));
 }
 
 pub mod raider {
@@ -77,7 +77,7 @@ pub mod pillager {
 
 pub mod spellcaster_illager {
     use super::*;
-    value_definition!(spell, 17, MetadataValue::Byte(0));
+    value_definition!(get_spell, 17, MetadataValue::Byte(0));
 }
 
 pub mod witch {
@@ -99,7 +99,7 @@ pub mod vex {
 
 pub mod warden {
     use super::*;
-    value_definition!(anger_level, 16, MetadataValue::VarInt(0));
+    value_definition!(get_anger_level, 16, MetadataValue::VarInt(0));
 }
 
 pub mod wither {
@@ -107,7 +107,7 @@ pub mod wither {
     value_definition!(center_head_target, 16, MetadataValue::VarInt(0));
     value_definition!(left_head_target, 17, MetadataValue::VarInt(0));
     value_definition!(right_head_target, 18, MetadataValue::VarInt(0));
-    value_definition!(invulnerable_time, 19, MetadataValue::VarInt(0));
+    value_definition!(get_invulnerable_time, 19, MetadataValue::VarInt(0));
 }
 
 pub mod zoglin {
@@ -124,19 +124,19 @@ pub mod zombie {
 pub mod zombie_villager {
     use super::*;
     value_definition!(is_converting, 16, MetadataValue::Boolean(false));
-    value_definition!(villager_data, 17, MetadataValue::VillagerData(0, 0, 1));
+    value_definition!(get_villager_data, 17, MetadataValue::VillagerData(0, 0, 1));
 }
 
 pub mod enderman {
     use super::*;
-    value_definition!(carried_block, 16, MetadataValue::OptionalBlockState(0));
+    value_definition!(get_carried_block, 16, MetadataValue::OptionalBlockState(0));
     value_definition!(is_screaming, 17, MetadataValue::Boolean(false));
     value_definition!(is_staring, 18, MetadataValue::Boolean(false));
 }
 
 pub mod ender_dragon {
     use super::*;
-    value_definition!(phase, 16, MetadataValue::VarInt(10));
+    value_definition!(get_phase, 16, MetadataValue::VarInt(10));
 }
 
 pub mod ghast {
@@ -146,10 +146,10 @@ pub mod ghast {
 
 pub mod phantom {
     use super::*;
-    value_definition!(size, 16, MetadataValue::VarInt(0));
+    value_definition!(get_size, 16, MetadataValue::VarInt(0));
 }
 
 pub mod slime {
     use super::*;
-    value_definition!(size, 16, MetadataValue::VarInt(1));
+    value_definition!(get_size, 16, MetadataValue::VarInt(1));
 }

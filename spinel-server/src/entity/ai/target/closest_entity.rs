@@ -30,13 +30,13 @@ impl TargetSelector for ClosestEntityTarget {
             .entities()
             .iter()
             .copied()
-            .filter(|entity| entity.entity_id() != creature.entity_id())
+            .filter(|entity| entity.get_entity_id() != creature.get_entity_id())
             .filter(|entity| !entity.is_removed())
             .filter(|entity| (self.target_predicate)(*entity))
             .filter_map(|entity| {
-                let distance_squared = entity.position().distance_squared(creature.position());
+                let distance_squared = entity.get_position().get_distance_squared(creature.get_position());
                 (distance_squared <= maximum_distance_squared)
-                    .then_some((entity.entity_id(), distance_squared))
+                    .then_some((entity.get_entity_id(), distance_squared))
             })
             .min_by(|first, second| first.1.total_cmp(&second.1))
             .map(|(entity_id, _)| entity_id)

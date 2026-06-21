@@ -15,11 +15,11 @@ impl<'entity> AgeableMobMeta<'entity> {
     }
 
     pub fn is_baby(&self) -> bool {
-        self.entity().is_baby()
+        self.get_entity().is_baby()
     }
 
     pub fn set_baby(&mut self, is_baby: bool) {
-        self.entity_mut().set_baby(is_baby);
+        self.get_entity_mut().set_baby(is_baby);
     }
 }
 

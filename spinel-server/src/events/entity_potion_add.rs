@@ -17,15 +17,15 @@ impl EntityPotionAddEvent {
         }
     }
 
-    pub fn entity(&mut self) -> &mut Entity {
+    pub fn get_entity(&mut self) -> &mut Entity {
         unsafe { &mut *self.entity }
     }
 
-    pub fn entity_id(&self) -> EntityId {
-        unsafe { (&*self.entity).entity_id() }
+    pub fn get_entity_id(&self) -> EntityId {
+        unsafe { (&*self.entity).get_entity_id() }
     }
 
-    pub fn effect(&self) -> &TimedPotionEffect {
+    pub fn get_effect(&self) -> &TimedPotionEffect {
         &self.effect
     }
 

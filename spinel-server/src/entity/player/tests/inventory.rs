@@ -10,15 +10,15 @@ use uuid::Uuid;
 fn client_close_for_window_zero_refreshes_player_inventory_window() {
     let mut player = test_player();
     player
-        .inventory()
+        .get_inventory()
         .set_item_stack(36, ItemStack::of(Material::DIAMOND));
     let mut server = MinecraftServer::new();
     let mut client = test_client();
 
     assert!(player.close_inventory_window_with_client(true, 0, &mut server, &mut client));
-    assert!(player.opened_inventory().is_none());
+    assert!(player.get_opened_inventory().is_none());
     assert_eq!(
-        player.inventory_ref().item_stack(36).unwrap().material(),
+        player.get_inventory_ref().get_item_stack(36).unwrap().material(),
         &Material::DIAMOND
     );
 }

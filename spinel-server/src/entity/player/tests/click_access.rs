@@ -16,10 +16,10 @@ fn double_click_with_open_inventory_collects_player_inventory_before_open_invent
     inventory.set_item_stack(0, ItemStack::of(Material::DIAMOND).with_amount(32));
     player.open_inventory(inventory);
     player
-        .inventory()
+        .get_inventory()
         .set_item_stack(1, ItemStack::of(Material::DIAMOND).with_amount(20));
     player
-        .inventory()
+        .get_inventory()
         .set_item_stack(2, ItemStack::of(Material::DIAMOND).with_amount(20));
 
     let cursor = ItemStack::of(Material::DIAMOND).with_amount(40);
@@ -30,13 +30,13 @@ fn double_click_with_open_inventory_collects_player_inventory_before_open_invent
         player.collect_double_click_items(9, cursor, player_ptr, &mut server, &mut client);
 
     assert_eq!(updated_cursor.amount(), 64);
-    assert!(player.inventory_ref().item_stack(1).unwrap().is_air());
-    assert_eq!(player.inventory_ref().item_stack(2).unwrap().amount(), 16);
+    assert!(player.get_inventory_ref().get_item_stack(1).unwrap().is_air());
+    assert_eq!(player.get_inventory_ref().get_item_stack(2).unwrap().amount(), 16);
     assert_eq!(
         player
-            .opened_inventory()
+            .get_opened_inventory()
             .unwrap()
-            .item_stack(0)
+            .get_item_stack(0)
             .unwrap()
             .amount(),
         32
@@ -52,7 +52,7 @@ fn double_click_with_open_inventory_collects_open_inventory_before_player_invent
     inventory.set_item_stack(2, ItemStack::of(Material::DIAMOND).with_amount(20));
     player.open_inventory(inventory);
     player
-        .inventory()
+        .get_inventory()
         .set_item_stack(1, ItemStack::of(Material::DIAMOND).with_amount(32));
 
     let cursor = ItemStack::of(Material::DIAMOND).with_amount(40);
@@ -65,22 +65,22 @@ fn double_click_with_open_inventory_collects_open_inventory_before_player_invent
     assert_eq!(updated_cursor.amount(), 64);
     assert!(
         player
-            .opened_inventory()
+            .get_opened_inventory()
             .unwrap()
-            .item_stack(1)
+            .get_item_stack(1)
             .unwrap()
             .is_air()
     );
     assert_eq!(
         player
-            .opened_inventory()
+            .get_opened_inventory()
             .unwrap()
-            .item_stack(2)
+            .get_item_stack(2)
             .unwrap()
             .amount(),
         16
     );
-    assert_eq!(player.inventory_ref().item_stack(1).unwrap().amount(), 32);
+    assert_eq!(player.get_inventory_ref().get_item_stack(1).unwrap().amount(), 32);
 }
 
 fn test_player() -> Player {

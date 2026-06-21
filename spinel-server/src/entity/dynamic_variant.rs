@@ -22,11 +22,11 @@ impl UnregisteredEntityVariantError {
         }
     }
 
-    pub const fn registry(&self) -> &Identifier {
+    pub const fn get_registry(&self) -> &Identifier {
         &self.registry
     }
 
-    pub const fn variant(&self) -> &Identifier {
+    pub const fn get_variant(&self) -> &Identifier {
         &self.variant
     }
 }
@@ -44,162 +44,162 @@ impl Display for UnregisteredEntityVariantError {
 impl std::error::Error for UnregisteredEntityVariantError {}
 
 impl GenericEntity {
-    pub fn cat_variant(
+    pub(crate) fn get_cat_variant_metadata(
         &self,
         registries: &Registries,
     ) -> Option<RegistryKey<cat_variant::CatVariant>> {
         let MetadataValue::CatVariant(variant_id) =
-            self.metadata().value(&definitions::cat::variant())
+            self.get_metadata().get_value(&definitions::cat::get_variant())
         else {
             return None;
         };
         registries.cat_variant().key_by_id(variant_id).cloned()
     }
 
-    pub fn set_cat_variant(
+    pub(crate) fn set_cat_variant_metadata(
         &mut self,
         registries: &Registries,
         variant: RegistryKey<cat_variant::CatVariant>,
     ) -> Result<(), UnregisteredEntityVariantError> {
         let variant_id = registered_variant_id(registries.cat_variant(), &variant)?;
-        self.metadata_mut().set(
-            &definitions::cat::variant(),
+        self.get_metadata_mut().set(
+            &definitions::cat::get_variant(),
             MetadataValue::CatVariant(variant_id),
         );
         Ok(())
     }
 
-    pub fn chicken_variant(
+    pub(crate) fn get_chicken_variant_metadata(
         &self,
         registries: &Registries,
     ) -> Option<RegistryKey<chicken_variant::ChickenVariant>> {
         let MetadataValue::ChickenVariant(variant_id) =
-            self.metadata().value(&definitions::chicken::variant())
+            self.get_metadata().get_value(&definitions::chicken::get_variant())
         else {
             return None;
         };
         registries.chicken_variant().key_by_id(variant_id).cloned()
     }
 
-    pub fn set_chicken_variant(
+    pub(crate) fn set_chicken_variant_metadata(
         &mut self,
         registries: &Registries,
         variant: RegistryKey<chicken_variant::ChickenVariant>,
     ) -> Result<(), UnregisteredEntityVariantError> {
         let variant_id = registered_variant_id(registries.chicken_variant(), &variant)?;
-        self.metadata_mut().set(
-            &definitions::chicken::variant(),
+        self.get_metadata_mut().set(
+            &definitions::chicken::get_variant(),
             MetadataValue::ChickenVariant(variant_id),
         );
         Ok(())
     }
 
-    pub fn cow_variant(
+    pub(crate) fn get_cow_variant_metadata(
         &self,
         registries: &Registries,
     ) -> Option<RegistryKey<cow_variant::CowVariant>> {
         let MetadataValue::CowVariant(variant_id) =
-            self.metadata().value(&definitions::cow::variant())
+            self.get_metadata().get_value(&definitions::cow::get_variant())
         else {
             return None;
         };
         registries.cow_variant().key_by_id(variant_id).cloned()
     }
 
-    pub fn set_cow_variant(
+    pub(crate) fn set_cow_variant_metadata(
         &mut self,
         registries: &Registries,
         variant: RegistryKey<cow_variant::CowVariant>,
     ) -> Result<(), UnregisteredEntityVariantError> {
         let variant_id = registered_variant_id(registries.cow_variant(), &variant)?;
-        self.metadata_mut().set(
-            &definitions::cow::variant(),
+        self.get_metadata_mut().set(
+            &definitions::cow::get_variant(),
             MetadataValue::CowVariant(variant_id),
         );
         Ok(())
     }
 
-    pub fn frog_variant(
+    pub(crate) fn get_frog_variant_metadata(
         &self,
         registries: &Registries,
     ) -> Option<RegistryKey<frog_variant::FrogVariant>> {
         let MetadataValue::FrogVariant(variant_id) =
-            self.metadata().value(&definitions::frog::variant())
+            self.get_metadata().get_value(&definitions::frog::get_variant())
         else {
             return None;
         };
         registries.frog_variant().key_by_id(variant_id).cloned()
     }
 
-    pub fn set_frog_variant(
+    pub(crate) fn set_frog_variant_metadata(
         &mut self,
         registries: &Registries,
         variant: RegistryKey<frog_variant::FrogVariant>,
     ) -> Result<(), UnregisteredEntityVariantError> {
         let variant_id = registered_variant_id(registries.frog_variant(), &variant)?;
-        self.metadata_mut().set(
-            &definitions::frog::variant(),
+        self.get_metadata_mut().set(
+            &definitions::frog::get_variant(),
             MetadataValue::FrogVariant(variant_id),
         );
         Ok(())
     }
 
-    pub fn pig_variant(
+    pub(crate) fn get_pig_variant_metadata(
         &self,
         registries: &Registries,
     ) -> Option<RegistryKey<pig_variant::PigVariant>> {
         let MetadataValue::PigVariant(variant_id) =
-            self.metadata().value(&definitions::pig::variant())
+            self.get_metadata().get_value(&definitions::pig::get_variant())
         else {
             return None;
         };
         registries.pig_variant().key_by_id(variant_id).cloned()
     }
 
-    pub fn set_pig_variant(
+    pub(crate) fn set_pig_variant_metadata(
         &mut self,
         registries: &Registries,
         variant: RegistryKey<pig_variant::PigVariant>,
     ) -> Result<(), UnregisteredEntityVariantError> {
         let variant_id = registered_variant_id(registries.pig_variant(), &variant)?;
-        self.metadata_mut().set(
-            &definitions::pig::variant(),
+        self.get_metadata_mut().set(
+            &definitions::pig::get_variant(),
             MetadataValue::PigVariant(variant_id),
         );
         Ok(())
     }
 
-    pub fn wolf_variant(
+    pub(crate) fn get_wolf_variant_metadata(
         &self,
         registries: &Registries,
     ) -> Option<RegistryKey<wolf_variant::WolfVariant>> {
         let MetadataValue::WolfVariant(variant_id) =
-            self.metadata().value(&definitions::wolf::variant())
+            self.get_metadata().get_value(&definitions::wolf::get_variant())
         else {
             return None;
         };
         registries.wolf_variant().key_by_id(variant_id).cloned()
     }
 
-    pub fn set_wolf_variant(
+    pub(crate) fn set_wolf_variant_metadata(
         &mut self,
         registries: &Registries,
         variant: RegistryKey<wolf_variant::WolfVariant>,
     ) -> Result<(), UnregisteredEntityVariantError> {
         let variant_id = registered_variant_id(registries.wolf_variant(), &variant)?;
-        self.metadata_mut().set(
-            &definitions::wolf::variant(),
+        self.get_metadata_mut().set(
+            &definitions::wolf::get_variant(),
             MetadataValue::WolfVariant(variant_id),
         );
         Ok(())
     }
 
-    pub fn wolf_sound_variant(
+    pub(crate) fn get_wolf_sound_variant_metadata(
         &self,
         registries: &Registries,
     ) -> Option<RegistryKey<wolf_sound_variant::WolfSoundVariant>> {
         let MetadataValue::WolfSoundVariant(variant_id) =
-            self.metadata().value(&definitions::wolf::sound_variant())
+            self.get_metadata().get_value(&definitions::wolf::get_sound_variant())
         else {
             return None;
         };
@@ -209,26 +209,26 @@ impl GenericEntity {
             .cloned()
     }
 
-    pub fn set_wolf_sound_variant(
+    pub(crate) fn set_wolf_sound_variant_metadata(
         &mut self,
         registries: &Registries,
         variant: RegistryKey<wolf_sound_variant::WolfSoundVariant>,
     ) -> Result<(), UnregisteredEntityVariantError> {
         let variant_id = registered_variant_id(registries.wolf_sound_variant(), &variant)?;
-        self.metadata_mut().set(
-            &definitions::wolf::sound_variant(),
+        self.get_metadata_mut().set(
+            &definitions::wolf::get_sound_variant(),
             MetadataValue::WolfSoundVariant(variant_id),
         );
         Ok(())
     }
 
-    pub fn zombie_nautilus_variant(
+    pub(crate) fn get_zombie_nautilus_variant_metadata(
         &self,
         registries: &Registries,
     ) -> Option<RegistryKey<zombie_nautilus_variant::ZombieNautilusVariant>> {
         let MetadataValue::ZombieNautilusVariant(variant_id) = self
-            .metadata()
-            .value(&definitions::zombie_nautilus::variant())
+            .get_metadata()
+            .get_value(&definitions::zombie_nautilus::get_variant())
         else {
             return None;
         };
@@ -238,14 +238,14 @@ impl GenericEntity {
             .cloned()
     }
 
-    pub fn set_zombie_nautilus_variant(
+    pub(crate) fn set_zombie_nautilus_variant_metadata(
         &mut self,
         registries: &Registries,
         variant: RegistryKey<zombie_nautilus_variant::ZombieNautilusVariant>,
     ) -> Result<(), UnregisteredEntityVariantError> {
         let variant_id = registered_variant_id(registries.zombie_nautilus_variant(), &variant)?;
-        self.metadata_mut().set(
-            &definitions::zombie_nautilus::variant(),
+        self.get_metadata_mut().set(
+            &definitions::zombie_nautilus::get_variant(),
             MetadataValue::ZombieNautilusVariant(variant_id),
         );
         Ok(())
@@ -265,29 +265,29 @@ impl GenericEntity {
         };
 
         let component_id = component.id();
-        if component_id == CAT_VARIANT.id() && self.entity_type() == EntityType::CAT {
+        if component_id == CAT_VARIANT.id() && self.get_entity_type() == EntityType::CAT {
             return component_from_variant(self.cat_variant(registries)?);
         }
-        if component_id == CHICKEN_VARIANT.id() && self.entity_type() == EntityType::CHICKEN {
+        if component_id == CHICKEN_VARIANT.id() && self.get_entity_type() == EntityType::CHICKEN {
             return component_from_variant(self.chicken_variant(registries)?);
         }
-        if component_id == COW_VARIANT.id() && self.entity_type() == EntityType::COW {
+        if component_id == COW_VARIANT.id() && self.get_entity_type() == EntityType::COW {
             return component_from_variant(self.cow_variant(registries)?);
         }
-        if component_id == FROG_VARIANT.id() && self.entity_type() == EntityType::FROG {
+        if component_id == FROG_VARIANT.id() && self.get_entity_type() == EntityType::FROG {
             return component_from_variant(self.frog_variant(registries)?);
         }
-        if component_id == PIG_VARIANT.id() && self.entity_type() == EntityType::PIG {
+        if component_id == PIG_VARIANT.id() && self.get_entity_type() == EntityType::PIG {
             return component_from_variant(self.pig_variant(registries)?);
         }
-        if component_id == WOLF_VARIANT.id() && self.entity_type() == EntityType::WOLF {
+        if component_id == WOLF_VARIANT.id() && self.get_entity_type() == EntityType::WOLF {
             return component_from_variant(self.wolf_variant(registries)?);
         }
-        if component_id == WOLF_SOUND_VARIANT.id() && self.entity_type() == EntityType::WOLF {
+        if component_id == WOLF_SOUND_VARIANT.id() && self.get_entity_type() == EntityType::WOLF {
             return component_from_variant(self.wolf_sound_variant(registries)?);
         }
         if component_id == ZOMBIE_NAUTILUS_VARIANT.id()
-            && self.entity_type() == EntityType::ZOMBIE_NAUTILUS
+            && self.get_entity_type() == EntityType::ZOMBIE_NAUTILUS
         {
             return component_from_variant(self.zombie_nautilus_variant(registries)?);
         }
@@ -310,55 +310,55 @@ impl GenericEntity {
 
         let component_id = component.id();
         let component_nbt = value.to_component_nbt();
-        if component_id == CAT_VARIANT.id() && self.entity_type() == EntityType::CAT {
+        if component_id == CAT_VARIANT.id() && self.get_entity_type() == EntityType::CAT {
             let Some(variant) =
                 RegistryKey::<cat_variant::CatVariant>::from_component_nbt(&component_nbt)
             else {
                 return Ok(());
             };
-            return self.set_cat_variant(registries, variant);
+            return self.set_cat_variant_metadata(registries, variant);
         }
-        if component_id == CHICKEN_VARIANT.id() && self.entity_type() == EntityType::CHICKEN {
+        if component_id == CHICKEN_VARIANT.id() && self.get_entity_type() == EntityType::CHICKEN {
             let Some(variant) =
                 RegistryKey::<chicken_variant::ChickenVariant>::from_component_nbt(&component_nbt)
             else {
                 return Ok(());
             };
-            return self.set_chicken_variant(registries, variant);
+            return self.set_chicken_variant_metadata(registries, variant);
         }
-        if component_id == COW_VARIANT.id() && self.entity_type() == EntityType::COW {
+        if component_id == COW_VARIANT.id() && self.get_entity_type() == EntityType::COW {
             let Some(variant) =
                 RegistryKey::<cow_variant::CowVariant>::from_component_nbt(&component_nbt)
             else {
                 return Ok(());
             };
-            return self.set_cow_variant(registries, variant);
+            return self.set_cow_variant_metadata(registries, variant);
         }
-        if component_id == FROG_VARIANT.id() && self.entity_type() == EntityType::FROG {
+        if component_id == FROG_VARIANT.id() && self.get_entity_type() == EntityType::FROG {
             let Some(variant) =
                 RegistryKey::<frog_variant::FrogVariant>::from_component_nbt(&component_nbt)
             else {
                 return Ok(());
             };
-            return self.set_frog_variant(registries, variant);
+            return self.set_frog_variant_metadata(registries, variant);
         }
-        if component_id == PIG_VARIANT.id() && self.entity_type() == EntityType::PIG {
+        if component_id == PIG_VARIANT.id() && self.get_entity_type() == EntityType::PIG {
             let Some(variant) =
                 RegistryKey::<pig_variant::PigVariant>::from_component_nbt(&component_nbt)
             else {
                 return Ok(());
             };
-            return self.set_pig_variant(registries, variant);
+            return self.set_pig_variant_metadata(registries, variant);
         }
-        if component_id == WOLF_VARIANT.id() && self.entity_type() == EntityType::WOLF {
+        if component_id == WOLF_VARIANT.id() && self.get_entity_type() == EntityType::WOLF {
             let Some(variant) =
                 RegistryKey::<wolf_variant::WolfVariant>::from_component_nbt(&component_nbt)
             else {
                 return Ok(());
             };
-            return self.set_wolf_variant(registries, variant);
+            return self.set_wolf_variant_metadata(registries, variant);
         }
-        if component_id == WOLF_SOUND_VARIANT.id() && self.entity_type() == EntityType::WOLF {
+        if component_id == WOLF_SOUND_VARIANT.id() && self.get_entity_type() == EntityType::WOLF {
             let Some(variant) =
                 RegistryKey::<wolf_sound_variant::WolfSoundVariant>::from_component_nbt(
                     &component_nbt,
@@ -366,10 +366,10 @@ impl GenericEntity {
             else {
                 return Ok(());
             };
-            return self.set_wolf_sound_variant(registries, variant);
+            return self.set_wolf_sound_variant_metadata(registries, variant);
         }
         if component_id == ZOMBIE_NAUTILUS_VARIANT.id()
-            && self.entity_type() == EntityType::ZOMBIE_NAUTILUS
+            && self.get_entity_type() == EntityType::ZOMBIE_NAUTILUS
         {
             let Some(variant) =
                 RegistryKey::<zombie_nautilus_variant::ZombieNautilusVariant>::from_component_nbt(
@@ -378,7 +378,7 @@ impl GenericEntity {
             else {
                 return Ok(());
             };
-            return self.set_zombie_nautilus_variant(registries, variant);
+            return self.set_zombie_nautilus_variant_metadata(registries, variant);
         }
         self.set_component(component, value);
         Ok(())

@@ -16,9 +16,9 @@ fn set_leash_holder_updates_both_sides_and_sends_attach_packet() {
     let mut viewer_client = queued_client();
     let viewer = entered_player(&mut viewer_client);
     let holder = GenericEntity::new(EntityType::PIG);
-    let holder_id = holder.entity_id();
+    let holder_id = holder.get_entity_id();
     let leashed = GenericEntity::new(EntityType::COW);
-    let leashed_id = leashed.entity_id();
+    let leashed_id = leashed.get_entity_id();
     world.add_entity(Entity::Player(viewer));
     world.add_entity(Entity::Generic(holder));
     world.add_entity(Entity::Generic(leashed));
@@ -28,14 +28,14 @@ fn set_leash_holder_updates_both_sides_and_sends_attach_packet() {
     assert!(world.set_leash_holder(leashed_id, Some(holder_id)).unwrap());
 
     assert_eq!(
-        world.entity_by_id(leashed_id).unwrap().leash_holder(),
+        world.get_entity(leashed_id).unwrap().get_leash_holder(),
         Some(holder_id)
     );
     assert!(
         world
-            .entity_by_id(holder_id)
+            .get_entity(holder_id)
             .unwrap()
-            .leashed_entities()
+            .get_leashed_entities()
             .contains(&leashed_id)
     );
     assert_eq!(
@@ -45,12 +45,12 @@ fn set_leash_holder_updates_both_sides_and_sends_attach_packet() {
     viewer_client.discard_queued_outbound_packets();
 
     assert!(world.set_leash_holder(leashed_id, None).unwrap());
-    assert_eq!(world.entity_by_id(leashed_id).unwrap().leash_holder(), None);
+    assert_eq!(world.get_entity(leashed_id).unwrap().get_leash_holder(), None);
     assert!(
         world
-            .entity_by_id(holder_id)
+            .get_entity(holder_id)
             .unwrap()
-            .leashed_entities()
+            .get_leashed_entities()
             .is_empty()
     );
     assert_eq!(
@@ -63,16 +63,16 @@ fn set_leash_holder_updates_both_sides_and_sends_attach_packet() {
 fn removing_a_leash_holder_detaches_every_leashed_entity() {
     let mut world = World::new(Identifier::minecraft("overworld"));
     let holder = GenericEntity::new(EntityType::PIG);
-    let holder_id = holder.entity_id();
+    let holder_id = holder.get_entity_id();
     let leashed = GenericEntity::new(EntityType::COW);
-    let leashed_id = leashed.entity_id();
+    let leashed_id = leashed.get_entity_id();
     world.add_entity(Entity::Generic(holder));
     world.add_entity(Entity::Generic(leashed));
     world.set_leash_holder(leashed_id, Some(holder_id)).unwrap();
 
     world.take_entity(holder_id).unwrap();
 
-    assert_eq!(world.entity_by_id(leashed_id).unwrap().leash_holder(), None);
+    assert_eq!(world.get_entity(leashed_id).unwrap().get_leash_holder(), None);
 }
 
 #[test]
@@ -81,9 +81,9 @@ fn viewer_spawn_and_removal_emit_leash_attach_and_detach_side_effects() {
     let mut viewer_client = queued_client();
     let viewer = entered_player(&mut viewer_client);
     let holder = GenericEntity::new(EntityType::PIG);
-    let holder_id = holder.entity_id();
+    let holder_id = holder.get_entity_id();
     let leashed = GenericEntity::new(EntityType::COW);
-    let leashed_id = leashed.entity_id();
+    let leashed_id = leashed.get_entity_id();
     world.add_entity(Entity::Player(viewer));
     world.add_entity(Entity::Generic(holder));
     world.add_entity(Entity::Generic(leashed));

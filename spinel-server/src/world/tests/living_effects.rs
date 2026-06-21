@@ -24,11 +24,11 @@ static LIVING_EFFECT_REMOVE_EVENT_ENTITY_ACCESSOR_MATCHED: AtomicBool = AtomicBo
 
 #[event_listener]
 fn living_effect_add_listener(event: &mut EntityPotionAddEvent, _server: &mut MinecraftServer) {
-    if *LIVING_EFFECT_TEST_ENTITY.lock().unwrap() != Some(event.entity_id()) {
+    if *LIVING_EFFECT_TEST_ENTITY.lock().unwrap() != Some(event.get_entity_id()) {
         return;
     }
-    let event_entity_id = event.entity_id();
-    if event.entity().entity_id() == event_entity_id {
+    let event_entity_id = event.get_entity_id();
+    if event.get_entity().get_entity_id() == event_entity_id {
         LIVING_EFFECT_ADD_EVENT_ENTITY_ACCESSOR_MATCHED.store(true, Ordering::SeqCst);
     }
     event.set_cancelled(LIVING_EFFECT_ADD_CANCELLED.load(Ordering::SeqCst));
@@ -39,11 +39,11 @@ fn living_effect_remove_listener(
     event: &mut EntityPotionRemoveEvent,
     _server: &mut MinecraftServer,
 ) {
-    if *LIVING_EFFECT_TEST_ENTITY.lock().unwrap() != Some(event.entity_id()) {
+    if *LIVING_EFFECT_TEST_ENTITY.lock().unwrap() != Some(event.get_entity_id()) {
         return;
     }
-    let event_entity_id = event.entity_id();
-    if event.entity().entity_id() == event_entity_id {
+    let event_entity_id = event.get_entity_id();
+    if event.get_entity().get_entity_id() == event_entity_id {
         LIVING_EFFECT_REMOVE_EVENT_ENTITY_ACCESSOR_MATCHED.store(true, Ordering::SeqCst);
     }
     LIVING_EFFECT_REMOVE_COUNT.fetch_add(1, Ordering::SeqCst);
@@ -66,7 +66,7 @@ fn world_add_entity_effect_cancellation_preserves_effect_state_and_sends_no_pack
             .add_entity_effect(entity_id, TimedPotionEffect::new(1, 2, 40, 6, 0))
             .unwrap()
     );
-    assert!(!world.entity_by_id(entity_id).unwrap().effect(1).is_some());
+    assert!(!world.get_entity(entity_id).unwrap().get_effect(1).is_some());
     assert!(viewer_client.queued_outbound_packet_ids().is_empty());
     assert!(LIVING_EFFECT_ADD_EVENT_ENTITY_ACCESSOR_MATCHED.load(Ordering::SeqCst));
     reset_living_effect_test_state();
@@ -107,11 +107,11 @@ fn world_add_entity_effect_replacement_removes_previous_effect_before_add_packet
     assert!(LIVING_EFFECT_REMOVE_EVENT_ENTITY_ACCESSOR_MATCHED.load(Ordering::SeqCst));
     assert_eq!(
         world
-            .entity_by_id(entity_id)
+            .get_entity(entity_id)
             .unwrap()
-            .effect(1)
+            .get_effect(1)
             .unwrap()
-            .amplifier(),
+            .get_amplifier(),
         3
     );
     reset_living_effect_test_state();
@@ -145,7 +145,7 @@ fn world_living_tick_expires_effect_and_dispatches_remove_packet_and_event() {
     assert_eq!(LIVING_EFFECT_REMOVE_COUNT.load(Ordering::SeqCst), 1);
     assert!(LIVING_EFFECT_ADD_EVENT_ENTITY_ACCESSOR_MATCHED.load(Ordering::SeqCst));
     assert!(LIVING_EFFECT_REMOVE_EVENT_ENTITY_ACCESSOR_MATCHED.load(Ordering::SeqCst));
-    assert!(world.entity_by_id(entity_id).unwrap().effect(1).is_none());
+    assert!(world.get_entity(entity_id).unwrap().get_effect(1).is_none());
     reset_living_effect_test_state();
 }
 
@@ -166,7 +166,7 @@ fn server_with_living_entity_and_viewer() -> (MinecraftServer, EntityId, Box<Cli
     viewer.mark_chunk_sent_to_client(PlayerChunk::new(0, 0));
     let mut entity = GenericEntity::new(EntityType::ZOMBIE);
     entity.set_position(EntityPosition::new(1.0, 64.0, 1.0, 0.0, 0.0));
-    let entity_id = entity.entity_id();
+    let entity_id = entity.get_entity_id();
     let world = server.world_manager.world_mut(world_uuid).unwrap();
     world.add_entity(Entity::Generic(entity));
     world.add_entity(Entity::Player(viewer));

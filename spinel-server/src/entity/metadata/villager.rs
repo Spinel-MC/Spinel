@@ -11,7 +11,7 @@ pub enum VillagerLevel {
 }
 
 impl VillagerLevel {
-    pub const fn protocol_id(self) -> i32 {
+    pub const fn get_protocol_id(self) -> i32 {
         match self {
             Self::Novice => 1,
             Self::Apprentice => 2,
@@ -71,15 +71,15 @@ impl VillagerData {
         ))
     }
 
-    pub const fn villager_type(&self) -> &VillagerType {
+    pub const fn get_villager_type(&self) -> &VillagerType {
         &self.villager_type
     }
 
-    pub const fn profession(&self) -> &VillagerProfession {
+    pub const fn get_profession(&self) -> &VillagerProfession {
         &self.profession
     }
 
-    pub const fn level(&self) -> VillagerLevel {
+    pub const fn get_level(&self) -> VillagerLevel {
         self.level
     }
 

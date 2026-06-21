@@ -52,26 +52,26 @@ impl Drop for GoalSelectorCollectionMut<'_> {
 }
 
 impl EntityAiGroup {
-    pub fn goal_selectors(&self) -> &[GoalSelectorHandle] {
+    pub fn get_goal_selectors(&self) -> &[GoalSelectorHandle] {
         &self.goal_selectors
     }
 
-    pub fn goal_selectors_mut(&mut self) -> GoalSelectorCollectionMut<'_> {
+    pub fn get_goal_selectors_mut(&mut self) -> GoalSelectorCollectionMut<'_> {
         GoalSelectorCollectionMut {
             group_id: self.id,
             goal_selectors: &mut self.goal_selectors,
         }
     }
 
-    pub fn target_selectors(&self) -> &[Box<dyn TargetSelector>] {
+    pub fn get_target_selectors(&self) -> &[Box<dyn TargetSelector>] {
         &self.target_selectors
     }
 
-    pub fn target_selectors_mut(&mut self) -> &mut Vec<Box<dyn TargetSelector>> {
+    pub fn get_target_selectors_mut(&mut self) -> &mut Vec<Box<dyn TargetSelector>> {
         &mut self.target_selectors
     }
 
-    pub fn current_goal_selector(&self) -> Option<&GoalSelectorHandle> {
+    pub fn get_current_goal_selector(&self) -> Option<&GoalSelectorHandle> {
         self.current_goal_selector.as_ref()
     }
 
@@ -89,12 +89,12 @@ impl EntityAiGroup {
     pub fn tick(&mut self, creature: &mut EntityCreature, world: &WorldSnapshot, time: u64) {
         let current_should_end = self.current_goal_selector.as_ref().is_some_and(|selector| {
             selector
-                .selector_mut()
+                .get_selector_mut()
                 .should_end(creature, world, &mut self.target_selectors)
         });
         if current_should_end {
             if let Some(current_goal_selector) = self.current_goal_selector.take() {
-                current_goal_selector.selector_mut().end(
+                current_goal_selector.get_selector_mut().end(
                     creature,
                     world,
                     &mut self.target_selectors,
@@ -110,7 +110,7 @@ impl EntityAiGroup {
             if is_current_goal_selector {
                 break;
             }
-            if !goal_selector.selector_mut().should_start(
+            if !goal_selector.get_selector_mut().should_start(
                 creature,
                 world,
                 &mut self.target_selectors,
@@ -118,7 +118,7 @@ impl EntityAiGroup {
                 continue;
             }
             if let Some(current_goal_selector) = self.current_goal_selector.take() {
-                current_goal_selector.selector_mut().end(
+                current_goal_selector.get_selector_mut().end(
                     creature,
                     world,
                     &mut self.target_selectors,
@@ -126,20 +126,18 @@ impl EntityAiGroup {
             }
             self.current_goal_selector = Some(goal_selector.clone());
             goal_selector
-                .selector_mut()
+                .get_selector_mut()
                 .start(creature, world, &mut self.target_selectors);
-            creature.resolve_pending_path_request(world);
             break;
         }
 
         if let Some(current_goal_selector) = &self.current_goal_selector {
-            current_goal_selector.selector_mut().tick(
+            current_goal_selector.get_selector_mut().tick(
                 creature,
                 world,
                 &mut self.target_selectors,
                 time,
             );
-            creature.resolve_pending_path_request(world);
         }
     }
 }

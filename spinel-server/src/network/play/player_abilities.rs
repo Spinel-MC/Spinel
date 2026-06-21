@@ -16,7 +16,7 @@ fn on_player_abilities(
         return false;
     };
     let player_ref = unsafe { &mut *player };
-    let can_fly = player_ref.can_fly() || player_ref.game_mode() == GameMode::Creative;
+    let can_fly = player_ref.can_fly() || player_ref.get_game_mode() == GameMode::Creative;
     if !can_fly {
         return true;
     }

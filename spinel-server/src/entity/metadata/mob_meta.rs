@@ -11,27 +11,27 @@ impl<'entity> MobMeta<'entity> {
     }
 
     pub fn is_no_ai(&self) -> bool {
-        self.entity().is_no_ai()
+        self.get_entity().is_no_ai()
     }
 
     pub fn set_no_ai(&mut self, is_no_ai: bool) {
-        self.entity_mut().set_no_ai(is_no_ai);
+        self.get_entity_mut().set_no_ai(is_no_ai);
     }
 
     pub fn is_left_handed(&self) -> bool {
-        self.entity().is_left_handed()
+        self.get_entity().is_left_handed()
     }
 
     pub fn set_left_handed(&mut self, is_left_handed: bool) {
-        self.entity_mut().set_left_handed(is_left_handed);
+        self.get_entity_mut().set_left_handed(is_left_handed);
     }
 
     pub fn is_aggressive(&self) -> bool {
-        self.entity().is_aggressive()
+        self.get_entity().is_aggressive()
     }
 
     pub fn set_aggressive(&mut self, is_aggressive: bool) {
-        self.entity_mut().set_aggressive(is_aggressive);
+        self.get_entity_mut().set_aggressive(is_aggressive);
     }
 }
 

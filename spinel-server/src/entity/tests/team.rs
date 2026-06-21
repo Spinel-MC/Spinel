@@ -6,14 +6,14 @@ use spinel_registry::EntityType;
 #[test]
 fn generic_entity_scoreboard_team_uses_uuid_membership_and_removes_previous_team() {
     let mut entity = GenericEntity::new(EntityType::ZOMBIE);
-    let member = entity.uuid().to_string();
+    let member = entity.get_uuid().to_string();
     let mut first_team = Team::new("red");
     let mut second_team = Team::new("blue");
 
     let first_packets = entity.set_scoreboard_team(None, Some(&mut first_team));
     let second_packets = entity.set_scoreboard_team(Some(&mut first_team), Some(&mut second_team));
 
-    assert_eq!(entity.team(), Some("blue"));
+    assert_eq!(entity.get_team(), Some("blue"));
     assert!(first_team.members().next().is_none());
     assert!(second_team.members().eq([member.as_str()].into_iter()));
     assert!(matches!(

@@ -5,7 +5,6 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 #[test]
-#[ignore = "requires SpinelExtractor and a Vanilla runtime"]
 fn vanilla_decodes_every_generated_spinel_packet_fixture() {
     let extractor_directory = extractor_directory();
     let fixture_path = env::temp_dir().join("spinel-packet-fixtures.json");

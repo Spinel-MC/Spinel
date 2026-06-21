@@ -27,7 +27,7 @@ impl PlayerChunk {
         }
     }
 
-    pub(crate) fn packet_position(self) -> ChunkPos {
+    pub(crate) fn get_packet_position(self) -> ChunkPos {
         ChunkPos {
             x: self.x,
             z: self.z,

@@ -27,16 +27,16 @@ fn on_player_configuration(
 
     event
         .player()
-        .inventory()
+        .get_inventory()
         .add_item_stack(ItemStack::of(Material::DIAMOND_PICKAXE));
 
     event
         .player()
-        .inventory()
+        .get_inventory()
         .add_item_stack(ItemStack::of(Material::DIAMOND_HELMET));
 
     event
         .player()
-        .inventory()
+        .get_inventory()
         .add_item_stack(ItemStack::of(Material::DIRT));
 }

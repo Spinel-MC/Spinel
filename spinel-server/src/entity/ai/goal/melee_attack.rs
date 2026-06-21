@@ -25,11 +25,11 @@ impl MeleeAttackGoal {
         }
     }
 
-    pub const fn cooldown(&self) -> &AiCooldown {
+    pub const fn get_cooldown(&self) -> &AiCooldown {
         &self.cooldown
     }
 
-    pub fn cooldown_mut(&mut self) -> &mut AiCooldown {
+    pub fn get_cooldown_mut(&mut self) -> &mut AiCooldown {
         &mut self.cooldown
     }
 }
@@ -54,8 +54,8 @@ impl GoalSelector for MeleeAttackGoal {
         self.should_stop = false;
         if let Some(target_position) = self
             .cached_target
-            .and_then(|target| world.entity(target))
-            .map(|target| target.position())
+            .and_then(|target| world.get_entity(target))
+            .map(|target| target.get_position())
         {
             if creature
                 .set_path_to_in_world(world, PathRequest::from(target_position))
@@ -77,28 +77,28 @@ impl GoalSelector for MeleeAttackGoal {
             .cached_target
             .take()
             .or_else(|| self.find_target(creature, world, target_selectors))
-            .and_then(|target| world.entity(target));
+            .and_then(|target| world.get_entity(target));
         let Some(target) = target else {
             self.should_stop = true;
             return;
         };
-        let distance_squared = creature.position().distance_squared(target.position());
+        let distance_squared = creature.get_position().get_distance_squared(target.get_position());
         if distance_squared <= self.range_squared {
-            creature.look_at_position(target.position());
+            creature.look_at_position(target.get_position());
             if cooldown_is_ready(time, self.last_hit_tick, self.delay_ticks) {
-                creature.attack_entity_with_swing(target.entity_id());
+                creature.attack_entity_with_swing(target.get_entity_id());
                 self.last_hit_tick = Some(time);
             }
             return;
         }
-        if creature.navigator().path_position() == Some(target.position())
+        if creature.get_navigator().get_path_position() == Some(target.get_position())
             || !self.cooldown.is_ready(time)
         {
             return;
         }
         self.cooldown.refresh_last_update(time);
         if creature
-            .set_path_to_in_world(world, PathRequest::from(target.position()))
+            .set_path_to_in_world(world, PathRequest::from(target.get_position()))
             .is_err()
         {
             self.should_stop = true;
@@ -120,7 +120,7 @@ impl GoalSelector for MeleeAttackGoal {
         _world: &WorldSnapshot,
         _target_selectors: &mut [Box<dyn TargetSelector>],
     ) {
-        creature.navigator_mut().reset();
+        creature.get_navigator_mut().reset();
     }
 }
 

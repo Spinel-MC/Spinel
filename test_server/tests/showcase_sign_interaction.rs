@@ -116,11 +116,11 @@ fn assert_player_has_pathfinding_stick(
         &Material::STICK
     );
     assert_eq!(
-        player.inventory_ref().item_stack(1).unwrap().material(),
+        player.inventory_ref().get_item_stack(1).unwrap().material(),
         &Material::STICK
     );
     assert_eq!(
-        player.inventory_ref().item_stack(2).unwrap().material(),
+        player.inventory_ref().get_item_stack(2).unwrap().material(),
         &Material::STICK
     );
 }

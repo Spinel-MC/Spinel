@@ -33,11 +33,11 @@ pub fn is_flying_with_elytra() -> MetadataBitMaskDefinition {
     MetadataBitMaskDefinition::new(0, -0x80i8, false)
 }
 
-pub fn air_ticks() -> MetadataDefinition {
+pub fn get_air_ticks() -> MetadataDefinition {
     MetadataDefinition::new(1, MetadataValue::VarInt(300))
 }
 
-pub fn custom_name() -> MetadataDefinition {
+pub fn get_custom_name() -> MetadataDefinition {
     MetadataDefinition::new(2, MetadataValue::OptionalText(None))
 }
 
@@ -53,7 +53,7 @@ pub fn has_no_gravity() -> MetadataDefinition {
     MetadataDefinition::new(5, MetadataValue::Boolean(false))
 }
 
-pub fn pose() -> MetadataDefinition {
+pub fn get_pose() -> MetadataDefinition {
     MetadataDefinition::new(6, MetadataValue::Pose(0))
 }
 

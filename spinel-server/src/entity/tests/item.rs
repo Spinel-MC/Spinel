@@ -9,11 +9,14 @@ use std::time::Duration;
 fn item_entity_owns_stack_metadata_and_pickup_delay() {
     let mut item_entity = ItemEntity::new(spinel_registry::ItemStack::of(Material::DIAMOND));
 
-    assert_eq!(item_entity.item_stack().material(), &Material::DIAMOND);
+    assert_eq!(
+        item_entity.get_entity_meta_mut().get_item().material(),
+        &Material::DIAMOND
+    );
     assert!(matches!(
         item_entity
-            .metadata()
-            .value(&crate::entity::metadata::definitions::item_stack()),
+            .get_metadata()
+            .get_value(&crate::entity::metadata::definitions::get_item_stack()),
         MetadataValue::Slot(_)
     ));
     assert_eq!(item_entity.spawn_packet().data, 1);
@@ -57,5 +60,5 @@ fn item_entity_landing_synchronizes_position_and_velocity_immediately() {
     item_entity.tick();
 
     assert!(item_entity.is_on_ground());
-    assert!(item_entity.scheduled_position_sync_packet().is_some());
+    assert!(item_entity.get_scheduled_position_sync_packet().is_some());
 }

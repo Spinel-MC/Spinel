@@ -8,7 +8,6 @@ mod chunk_memory;
 mod chunk_section;
 mod entity_attack;
 mod entity_instance_events;
-mod entity_target;
 mod entity_tracker;
 mod experience_orb;
 mod instance_api_surface;

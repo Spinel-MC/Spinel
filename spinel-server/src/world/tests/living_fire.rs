@@ -23,11 +23,11 @@ fn living_fire_set_listener(event: &mut EntitySetFireEvent, _server: &mut Minecr
     if !LIVING_FIRE_SET_EVENT_ENABLED.load(Ordering::SeqCst) {
         return;
     }
-    if *LIVING_FIRE_TEST_ENTITY.lock().unwrap() != Some(event.entity_id()) {
+    if *LIVING_FIRE_TEST_ENTITY.lock().unwrap() != Some(event.get_entity_id()) {
         return;
     }
-    let event_entity_id = event.entity_id();
-    if event.entity().entity_id() == event_entity_id {
+    let event_entity_id = event.get_entity_id();
+    if event.get_entity().get_entity_id() == event_entity_id {
         LIVING_FIRE_SET_EVENT_ENTITY_ACCESSOR_MATCHED.store(true, Ordering::SeqCst);
     }
     event.set_fire_ticks(LIVING_FIRE_SET_EVENT_TICKS.load(Ordering::SeqCst));
@@ -41,11 +41,11 @@ fn living_fire_extinguish_listener(
     if !LIVING_FIRE_EXTINGUISH_EVENT_ENABLED.load(Ordering::SeqCst) {
         return;
     }
-    if *LIVING_FIRE_TEST_ENTITY.lock().unwrap() != Some(event.entity_id()) {
+    if *LIVING_FIRE_TEST_ENTITY.lock().unwrap() != Some(event.get_entity_id()) {
         return;
     }
-    let event_entity_id = event.entity_id();
-    if event.entity().entity_id() == event_entity_id {
+    let event_entity_id = event.get_entity_id();
+    if event.get_entity().get_entity_id() == event_entity_id {
         LIVING_FIRE_EXTINGUISH_EVENT_ENTITY_ACCESSOR_MATCHED.store(true, Ordering::SeqCst);
     }
     LIVING_FIRE_EXTINGUISH_NATURAL.store(event.is_natural(), Ordering::SeqCst);
@@ -69,7 +69,7 @@ fn world_set_entity_fire_ticks_dispatches_minestom_set_fire_event_mutation() {
     assert!(world.set_entity_fire_ticks(entity_id, 20));
 
     let entity = tracked_living_entity(&server);
-    assert_eq!(entity.fire_ticks(), 3);
+    assert_eq!(entity.get_fire_ticks(), 3);
     assert!(entity.is_on_fire());
     assert!(LIVING_FIRE_SET_EVENT_ENTITY_ACCESSOR_MATCHED.load(Ordering::SeqCst));
     reset_living_fire_test_state();
@@ -92,7 +92,7 @@ fn world_set_player_fire_ticks_uses_the_same_minestom_set_fire_path() {
     assert!(world.set_entity_fire_ticks(entity_id, 20));
 
     let player = tracked_player(&server);
-    assert_eq!(player.fire_ticks(), 4);
+    assert_eq!(player.get_fire_ticks(), 4);
     assert!(player.is_on_fire());
     assert!(LIVING_FIRE_SET_EVENT_ENTITY_ACCESSOR_MATCHED.load(Ordering::SeqCst));
     reset_living_fire_test_state();
@@ -119,7 +119,7 @@ fn world_living_tick_dispatches_minestom_natural_fire_extinguish_event() {
     server.world_manager.tick(&registries, server_ptr);
 
     let entity = tracked_living_entity(&server);
-    assert_eq!(entity.fire_ticks(), 0);
+    assert_eq!(entity.get_fire_ticks(), 0);
     assert!(entity.is_on_fire());
     assert!(LIVING_FIRE_EXTINGUISH_NATURAL.load(Ordering::SeqCst));
     assert!(LIVING_FIRE_EXTINGUISH_EVENT_ENTITY_ACCESSOR_MATCHED.load(Ordering::SeqCst));
@@ -147,7 +147,7 @@ fn world_player_living_tick_dispatches_minestom_natural_fire_extinguish_event() 
     server.world_manager.tick(&registries, server_ptr);
 
     let player = tracked_player(&server);
-    assert_eq!(player.fire_ticks(), 0);
+    assert_eq!(player.get_fire_ticks(), 0);
     assert!(player.is_on_fire());
     assert!(LIVING_FIRE_EXTINGUISH_NATURAL.load(Ordering::SeqCst));
     assert!(LIVING_FIRE_EXTINGUISH_EVENT_ENTITY_ACCESSOR_MATCHED.load(Ordering::SeqCst));
@@ -192,7 +192,7 @@ fn positioned_living_entity() -> GenericEntity {
 }
 
 fn tracked_living_entity_id(server: &MinecraftServer) -> EntityId {
-    tracked_living_entity(server).entity_id()
+    tracked_living_entity(server).get_entity_id()
 }
 
 fn tracked_living_entity(server: &MinecraftServer) -> &GenericEntity {
@@ -200,7 +200,7 @@ fn tracked_living_entity(server: &MinecraftServer) -> &GenericEntity {
 }
 
 fn tracked_player_entity_id(server: &MinecraftServer) -> EntityId {
-    tracked_player(server).entity_id()
+    tracked_player(server).get_entity_id()
 }
 
 fn tracked_player(server: &MinecraftServer) -> &Player {

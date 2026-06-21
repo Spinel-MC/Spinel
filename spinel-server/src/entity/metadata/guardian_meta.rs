@@ -11,7 +11,7 @@ pub struct GuardianMeta<'entity> {
 impl<'entity> GuardianMeta<'entity> {
     pub(crate) fn from_entity_meta(entity_meta: EntityMeta<'entity>) -> Option<Self> {
         matches!(
-            entity_meta.entity().entity_type(),
+            entity_meta.get_entity().get_entity_type(),
             EntityType::GUARDIAN | EntityType::ELDER_GUARDIAN
         )
         .then(|| Self {
@@ -21,9 +21,9 @@ impl<'entity> GuardianMeta<'entity> {
 
     pub fn is_retracting_spikes(&self) -> bool {
         match self
-            .entity()
-            .metadata()
-            .value(&definitions::guardian::is_retracting_spikes())
+            .get_entity()
+            .get_metadata()
+            .get_value(&definitions::guardian::is_retracting_spikes())
         {
             MetadataValue::Boolean(is_retracting_spikes) => is_retracting_spikes,
             _ => false,
@@ -31,17 +31,17 @@ impl<'entity> GuardianMeta<'entity> {
     }
 
     pub fn set_retracting_spikes(&mut self, is_retracting_spikes: bool) {
-        self.entity_mut().metadata_mut().set(
+        self.get_entity_mut().get_metadata_mut().set(
             &definitions::guardian::is_retracting_spikes(),
             MetadataValue::Boolean(is_retracting_spikes),
         );
     }
 
-    pub fn target_entity_id(&self) -> i32 {
+    pub fn get_target_entity_id(&self) -> i32 {
         match self
-            .entity()
-            .metadata()
-            .value(&definitions::guardian::target_entity_id())
+            .get_entity()
+            .get_metadata()
+            .get_value(&definitions::guardian::get_target_entity_id())
         {
             MetadataValue::VarInt(target_entity_id) => target_entity_id,
             _ => 0,
@@ -49,14 +49,14 @@ impl<'entity> GuardianMeta<'entity> {
     }
 
     pub fn set_target_entity_id(&mut self, target_entity_id: i32) {
-        self.entity_mut().metadata_mut().set(
-            &definitions::guardian::target_entity_id(),
+        self.get_entity_mut().get_metadata_mut().set(
+            &definitions::guardian::get_target_entity_id(),
             MetadataValue::VarInt(target_entity_id),
         );
     }
 
     pub fn set_target(&mut self, target: Option<&Entity>) {
-        self.set_target_entity_id(target.map_or(0, |target| target.entity_id().value()));
+        self.set_target_entity_id(target.map_or(0, |target| target.get_entity_id().get_value()));
     }
 }
 

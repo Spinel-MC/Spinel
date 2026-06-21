@@ -9,12 +9,23 @@ impl PlayerInventory {
         transaction_type: TransactionType,
         transaction_option: TransactionOption,
     ) -> TransactionResult {
+        let previous_item_stacks = self.item_stacks[..INNER_INVENTORY_SIZE].to_vec();
         let transaction =
             transaction_type.process(&self.item_stacks[..INNER_INVENTORY_SIZE], item_stack);
-        transaction.apply(
+        let transaction_result = transaction.apply(
             &mut self.item_stacks[..INNER_INVENTORY_SIZE],
             transaction_option,
-        )
+        );
+        let changed_slots = previous_item_stacks
+            .iter()
+            .zip(&self.item_stacks[..INNER_INVENTORY_SIZE])
+            .enumerate()
+            .filter_map(|(slot, (previous_item_stack, current_item_stack))| {
+                (previous_item_stack != current_item_stack).then_some(slot)
+            })
+            .collect::<Vec<_>>();
+        self.mark_dirty_slots(changed_slots);
+        transaction_result
     }
 
     pub fn add_item_stack(&mut self, item_stack: ItemStack) -> bool {
@@ -63,7 +74,7 @@ impl PlayerInventory {
     }
 
     pub fn copy_contents(&mut self, item_stacks: Vec<ItemStack>) -> bool {
-        if item_stacks.len() != self.size() {
+        if item_stacks.len() != self.get_size() {
             return false;
         }
         self.item_stacks = item_stacks;

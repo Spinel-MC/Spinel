@@ -14,7 +14,7 @@ pub(crate) fn break_ticks(
     registries: &Registries,
     player_is_in_water: bool,
 ) -> i32 {
-    if player.game_mode() == spinel_core::entity::game_mode::GameMode::Creative {
+    if player.get_game_mode() == spinel_core::entity::game_mode::GameMode::Creative {
         return 0;
     }
 
@@ -80,7 +80,7 @@ fn speed_multiplier(
     };
 
     if is_best_tool && speed_multiplier > 1.0 {
-        speed_multiplier += player.attribute_value(Attribute::MINING_EFFICIENCY) as f32;
+        speed_multiplier += player.get_attribute_value(Attribute::MINING_EFFICIENCY) as f32;
     }
     if player_has_effect(player, registries, &MobEffect::HASTE)
         || player_has_effect(player, registries, &MobEffect::CONDUIT_POWER)
@@ -91,9 +91,9 @@ fn speed_multiplier(
         speed_multiplier *= mining_fatigue_multiplier(player, registries);
     }
 
-    speed_multiplier *= player.attribute_value(Attribute::BLOCK_BREAK_SPEED) as f32;
+    speed_multiplier *= player.get_attribute_value(Attribute::BLOCK_BREAK_SPEED) as f32;
     if player_is_in_water {
-        speed_multiplier *= player.attribute_value(Attribute::SUBMERGED_MINING_SPEED) as f32;
+        speed_multiplier *= player.get_attribute_value(Attribute::SUBMERGED_MINING_SPEED) as f32;
     }
     if player.is_on_ground() {
         return speed_multiplier;
@@ -167,7 +167,7 @@ fn player_effect_level(
 ) -> i32 {
     registries
         .mob_effect_id(effect)
-        .and_then(|effect_id| player.effect_level(effect_id))
+        .and_then(|effect_id| player.get_effect_level(effect_id))
         .unwrap_or(-1)
 }
 

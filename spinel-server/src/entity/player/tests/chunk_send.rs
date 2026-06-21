@@ -18,5 +18,5 @@ fn player_send_chunk_queues_loaded_chunks_and_ignores_unloaded_chunks() {
 
     assert!(loaded_chunk.send_chunk_to_player(&mut player));
     assert!(!unloaded_chunk.send_chunk_to_player(&mut player));
-    assert_eq!(player.queued_chunk_count(), 1);
+    assert_eq!(player.get_queued_chunk_count(), 1);
 }

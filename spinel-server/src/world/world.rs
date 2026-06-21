@@ -3,7 +3,7 @@ use crate::entity::physics::{EntityMovement, EntityMovementPacket};
 use crate::entity::player::{PlayerSkin, PlayerViewerSnapshot};
 use crate::entity::{
     Damage, Entity, EntityId, EntityPosition, EntityTeleport, EquipmentSlot, ExperienceOrb,
-    GenericEntity, ItemEntity, Player, PlayerChunk, PlayerChunkTransition, PlayerPose,
+    GenericEntity, ItemEntity, Player, PlayerChunk, PlayerChunkTransition, EntityPose,
     TimedPotionEffect,
 };
 use crate::events::add_entity_to_instance::AddEntityToInstanceEvent;
@@ -266,21 +266,21 @@ struct GenericEntityViewerSnapshot {
 impl GenericEntityViewerSnapshot {
     fn from_entity(entity: &GenericEntity) -> Self {
         Self {
-            player_info_packet: (entity.entity_type() == EntityType::PLAYER).then(|| {
+            player_info_packet: (entity.get_entity_type() == EntityType::PLAYER).then(|| {
                 PlayerInfoUpdatePacket::add_listed_player(
-                    entity.uuid(),
-                    format!("test_player_{}", entity.entity_id().value()),
+                    entity.get_uuid(),
+                    format!("test_player_{}", entity.get_entity_id().get_value()),
                 )
             }),
             spawn_packet: entity.spawn_packet(),
-            velocity_packet: entity.has_velocity().then(|| entity.velocity_packet()),
-            metadata_packet: entity.metadata_packet(),
+            velocity_packet: entity.has_velocity().then(|| entity.get_velocity_packet()),
+            metadata_packet: entity.get_metadata_packet(),
             equipment_packet: entity.equipment_packet(),
-            head_look_packet: entity.head_look_packet(),
+            head_look_packet: entity.get_head_look_packet(),
             attributes_packet: entity
                 .has_attributes()
                 .then(|| entity.update_attributes_packet()),
-            effect_packets: entity.effect_packets(),
+            effect_packets: entity.get_effect_packets(),
         }
     }
 
@@ -471,7 +471,7 @@ impl World {
         self.registered = registered;
     }
 
-    pub fn dimension_type(&self) -> &RegistryKey<DimensionType> {
+    pub fn get_dimension_type(&self) -> &RegistryKey<DimensionType> {
         &self.dimension_type
     }
 
@@ -484,7 +484,7 @@ impl World {
     }
 
     pub fn is_in_void(&self, position: EntityPosition) -> bool {
-        position.y() < f64::from(self.cached_dimension_type.min_y - 64)
+        position.get_y() < f64::from(self.cached_dimension_type.min_y - 64)
     }
 
     pub const fn world_age(&self) -> i64 {
@@ -611,7 +611,7 @@ impl World {
         copied_world
     }
 
-    pub const fn world_border(&self) -> WorldBorder {
+    pub const fn get_world_border(&self) -> WorldBorder {
         self.world_border
     }
 
@@ -635,31 +635,31 @@ impl World {
             .iter()
             .find(|entity| match entity {
                 Entity::Creature(entity) => {
-                    entity.prevents_block_placement()
+                    entity.can_prevent_block_placement()
                         && entity.intersects_box_at(block_center, block_box)
                 }
                 Entity::ExperienceOrb(entity) => {
-                    entity.prevents_block_placement()
+                    entity.can_prevent_block_placement()
                         && entity.intersects_box_at(block_center, block_box)
                 }
                 Entity::Generic(entity) => {
-                    entity.prevents_block_placement()
+                    entity.can_prevent_block_placement()
                         && entity.intersects_box_at(block_center, block_box)
                 }
                 Entity::Item(entity) => {
-                    entity.prevents_block_placement()
+                    entity.can_prevent_block_placement()
                         && entity.intersects_box_at(block_center, block_box)
                 }
                 Entity::Player(player) => {
-                    player.prevents_block_placement()
-                        && player_intersects_block(player.position(), block_center, block_box)
+                    player.can_prevent_block_placement()
+                        && player_intersects_block(player.get_position(), block_center, block_box)
                 }
                 Entity::Projectile(entity) => {
-                    entity.prevents_block_placement()
+                    entity.can_prevent_block_placement()
                         && entity.intersects_box_at(block_center, block_box)
                 }
             })
-            .map(Entity::entity_id)
+            .map(Entity::get_entity_id)
     }
 
     pub(crate) fn chunk_is_read_only_at(&self, position: BlockPosition) -> bool {
@@ -753,9 +753,9 @@ impl World {
             return Ok(false);
         };
         self.entities.iter_mut().for_each(|entity| match entity {
-            Entity::Generic(entity) if entity.team() == Some(team_name) => entity.set_team(None),
+            Entity::Generic(entity) if entity.get_team() == Some(team_name) => entity.set_team(None),
             Entity::Item(_) => {}
-            Entity::Player(player) if player.team() == Some(team_name) => {
+            Entity::Player(player) if player.get_team() == Some(team_name) => {
                 player.set_scoreboard_team(None, None);
             }
             _ => {}
@@ -1162,13 +1162,13 @@ impl World {
         let Some(player) = self.player_by_uuid(player_uuid) else {
             return Ok(None);
         };
-        let entity_id = player.entity_id();
-        let previous_position = player.position();
+        let entity_id = player.get_entity_id();
+        let previous_position = player.get_position();
         let destination = player.teleport_destination(position, flags);
         let chunk_transition = player.chunk_transition(
-            destination.x(),
-            destination.y(),
-            destination.z(),
+            destination.get_x(),
+            destination.get_y(),
+            destination.get_z(),
             self.view_distance,
         );
         self.dispatch_entity_teleport_event(entity_id, position, destination, flags);
@@ -1189,7 +1189,7 @@ impl World {
         };
         let entity_id = self
             .player_by_uuid(player_uuid)
-            .map(Player::entity_id)
+            .map(Player::get_entity_id)
             .ok_or_else(|| Error::new(ErrorKind::NotFound, "Player was removed after teleport"))?;
         self.entity_tracker.move_entity(entity_id, destination);
         self.refresh_passenger_positions(entity_id);
@@ -1243,24 +1243,24 @@ impl World {
                 true,
             );
         }
-        let previous_position = entity.position();
+        let previous_position = entity.get_position();
         let teleport = EntityTeleport::resolve(
             previous_position,
-            entity.velocity(),
+            entity.get_velocity(),
             position,
             velocity,
             chunks,
             flags,
         );
-        self.dispatch_entity_teleport_event(entity_id, position, teleport.position(), flags);
-        self.load_teleport_chunks(previous_position, teleport.position(), teleport.chunks())?;
+        self.dispatch_entity_teleport_event(entity_id, position, teleport.get_position(), flags);
+        self.load_teleport_chunks(previous_position, teleport.get_position(), teleport.get_chunks())?;
         let entity = self
             .entity_by_id_mut(entity_id)
             .ok_or_else(|| Error::new(ErrorKind::NotFound, "Entity was removed before teleport"))?;
-        entity.set_position(teleport.position());
-        entity.set_velocity(teleport.velocity());
+        entity.set_position(teleport.get_position());
+        entity.set_velocity(teleport.get_velocity());
         self.entity_tracker
-            .move_entity(entity_id, teleport.position());
+            .move_entity(entity_id, teleport.get_position());
         self.refresh_passenger_positions(entity_id);
         self.schedule_entity_visibility_refresh(entity_id);
         let synchronization_packet = self
@@ -1305,20 +1305,20 @@ impl World {
         let Some(entity) = self.entity_by_id(entity_id) else {
             return Ok(None);
         };
-        let previous_position = entity.position();
+        let previous_position = entity.get_position();
         let teleport = EntityTeleport::resolve(
             previous_position,
-            entity.velocity(),
+            entity.get_velocity(),
             position,
             velocity,
             chunks,
             flags,
         );
-        self.dispatch_entity_teleport_event(entity_id, position, teleport.position(), flags);
+        self.dispatch_entity_teleport_event(entity_id, position, teleport.get_position(), flags);
         let chunk_load_tickets = self.begin_teleport_chunk_loads(
             previous_position,
-            teleport.position(),
-            teleport.chunks(),
+            teleport.get_position(),
+            teleport.get_chunks(),
         )?;
         Ok(Some(EntityTeleportTicket {
             entity_id,
@@ -1342,7 +1342,7 @@ impl World {
             ))
         })?;
         entity.set_velocity(velocity);
-        let velocity_packet = entity.velocity_packet();
+        let velocity_packet = entity.get_velocity_packet();
         self.send_packet_to_player_viewers_and_self(entity_id, velocity_packet)?;
         Ok(true)
     }
@@ -1363,9 +1363,9 @@ impl World {
         let teleport = ticket.teleport.clone();
         let player_chunk_transition = match self.entity_by_id(entity_id) {
             Some(Entity::Player(player)) => player.chunk_transition(
-                teleport.position().x(),
-                teleport.position().y(),
-                teleport.position().z(),
+                teleport.get_position().get_x(),
+                teleport.get_position().get_y(),
+                teleport.get_position().get_z(),
                 self.view_distance,
             ),
             Some(_) => None,
@@ -1380,7 +1380,7 @@ impl World {
             let player_address = self
                 .entity_by_id(entity_id)
                 .and_then(|entity| match entity {
-                    Entity::Player(player) => Some(player.address()),
+                    Entity::Player(player) => Some(player.get_address()),
                     _ => None,
                 })
                 .ok_or_else(|| Error::new(ErrorKind::NotFound, "Player was removed"))?;
@@ -1400,12 +1400,12 @@ impl World {
                 player.apply_teleport(&teleport, ticket.should_confirm)?;
             }
             _ => {
-                entity.set_position(teleport.position());
-                entity.set_velocity(teleport.velocity());
+                entity.set_position(teleport.get_position());
+                entity.set_velocity(teleport.get_velocity());
             }
         }
         self.entity_tracker
-            .move_entity(entity_id, teleport.position());
+            .move_entity(entity_id, teleport.get_position());
         self.refresh_passenger_positions(entity_id);
         self.schedule_entity_visibility_refresh(entity_id);
         let synchronization_packet = self
@@ -1750,7 +1750,7 @@ impl World {
                 _ => None,
             })
             .try_for_each(|player| {
-                let Some(client) = player.client_mut().map(|client| client as *mut Client) else {
+                let Some(client) = player.get_client_mut().map(|client| client as *mut Client) else {
                     return Ok(());
                 };
                 let client = unsafe { &mut *client };
@@ -1762,8 +1762,8 @@ impl World {
         let removed_entity_ids = self
             .entities
             .iter()
-            .filter(|entity| chunk_position_for_entity_position(entity.position()) == position)
-            .map(Entity::entity_id)
+            .filter(|entity| chunk_position_for_entity_position(entity.get_position()) == position)
+            .map(Entity::get_entity_id)
             .collect::<Vec<_>>();
         removed_entity_ids.into_iter().for_each(|entity_id| {
             self.take_entity(entity_id);
@@ -1827,7 +1827,7 @@ impl World {
     pub(crate) fn add_entity_after_instance_event(&mut self, mut entity: Entity) {
         entity.set_world(self.uuid);
         self.entity_tracker.register(&entity);
-        let entity_id = entity.entity_id();
+        let entity_id = entity.get_entity_id();
         self.entities.push(entity);
         self.schedule_entity_visibility_refresh(entity_id);
         self.dispatch_entity_spawn_event(entity_id);
@@ -1846,28 +1846,28 @@ impl World {
         let entity_index = self
             .entities
             .iter()
-            .position(|entity| entity.entity_id() == entity_id)?;
+            .position(|entity| entity.get_entity_id() == entity_id)?;
         self.entity_tracker.unregister(entity_id);
         Some(self.entities.remove(entity_index))
     }
 
     pub(crate) fn take_player_by_uuid(&mut self, player_uuid: Uuid) -> Option<Player> {
         let entity_index = self.entities.iter().position(|entity| match entity {
-            Entity::Player(player) => player.uuid() == player_uuid,
+            Entity::Player(player) => player.get_uuid() == player_uuid,
             Entity::Creature(_) => false,
             Entity::ExperienceOrb(_) => false,
             Entity::Generic(_) => false,
             Entity::Item(_) => false,
             Entity::Projectile(_) => false,
         })?;
-        let player_id = self.entities[entity_index].entity_id();
+        let player_id = self.entities[entity_index].get_entity_id();
         self.detach_entity_passenger_relations(player_id);
         self.detach_leashed_entities(player_id);
         let _ = self.hide_entity_from_all_viewers(player_id);
         let Entity::Player(player) = self.entities.remove(entity_index) else {
             return None;
         };
-        self.entity_tracker.unregister(player.entity_id());
+        self.entity_tracker.unregister(player.get_entity_id());
         Some(player)
     }
 
@@ -1884,30 +1884,74 @@ impl World {
         self.entities.iter()
     }
 
-    pub fn entity(&self, entity_id: EntityId) -> Option<&Entity> {
+    pub fn get_entity(&self, entity_id: EntityId) -> Option<&Entity> {
         self.entities
             .iter()
-            .find(|entity| entity.entity_id() == entity_id)
+            .find(|entity| entity.get_entity_id() == entity_id)
     }
 
-    pub fn entity_mut(&mut self, entity_id: EntityId) -> Option<&mut Entity> {
+    pub fn get_entity_mut(&mut self, entity_id: EntityId) -> Option<&mut Entity> {
         self.entities
             .iter_mut()
-            .find(|entity| entity.entity_id() == entity_id)
+            .find(|entity| entity.get_entity_id() == entity_id)
+    }
+
+    pub fn update_entity_viewable_rule(
+        &mut self,
+        entity_id: EntityId,
+        predicate: impl Fn(EntityId) -> bool + Send + Sync + 'static,
+    ) -> Result<bool> {
+        let Some(entity) = self.get_entity_mut(entity_id) else {
+            return Ok(false);
+        };
+        entity.get_view_mut().update_viewable_rule(predicate);
+        self.refresh_visibility_for_entity(entity_id)?;
+        Ok(true)
+    }
+
+    pub fn clear_entity_viewable_rule(&mut self, entity_id: EntityId) -> Result<bool> {
+        let Some(entity) = self.get_entity_mut(entity_id) else {
+            return Ok(false);
+        };
+        entity.get_view_mut().clear_viewable_rule();
+        self.refresh_visibility_for_entity(entity_id)?;
+        Ok(true)
+    }
+
+    pub fn update_entity_viewer_rule(
+        &mut self,
+        entity_id: EntityId,
+        predicate: impl Fn(EntityId) -> bool + Send + Sync + 'static,
+    ) -> Result<bool> {
+        let Some(entity) = self.get_entity_mut(entity_id) else {
+            return Ok(false);
+        };
+        entity.get_view_mut().update_viewer_rule(predicate);
+        self.refresh_visibility_for_entity(entity_id)?;
+        Ok(true)
+    }
+
+    pub fn clear_entity_viewer_rule(&mut self, entity_id: EntityId) -> Result<bool> {
+        let Some(entity) = self.get_entity_mut(entity_id) else {
+            return Ok(false);
+        };
+        entity.get_view_mut().clear_viewer_rule();
+        self.refresh_visibility_for_entity(entity_id)?;
+        Ok(true)
     }
 
     pub(crate) fn entity_by_id(&self, entity_id: EntityId) -> Option<&Entity> {
-        self.entity(entity_id)
+        self.get_entity(entity_id)
     }
 
     pub(crate) fn entity_by_id_mut(&mut self, entity_id: EntityId) -> Option<&mut Entity> {
-        self.entity_mut(entity_id)
+        self.get_entity_mut(entity_id)
     }
 
     pub fn entity_by_uuid(&self, entity_uuid: Uuid) -> Option<&Entity> {
         self.entities
             .iter()
-            .find(|entity| entity.uuid() == entity_uuid)
+            .find(|entity| entity.get_uuid() == entity_uuid)
     }
 
     pub fn add_entity_viewer(
@@ -1924,7 +1968,7 @@ impl World {
                 "Entity must be in this world before adding viewers",
             ));
         };
-        if viewed_entity.world() != Some(self.uuid) {
+        if viewed_entity.get_world() != Some(self.uuid) {
             return Err(Error::new(
                 ErrorKind::InvalidInput,
                 "Entity must be active in this world before adding viewers",
@@ -1939,7 +1983,7 @@ impl World {
         let Some(viewed_entity) = self.entity_by_id_mut(viewed_entity_id) else {
             return Ok(false);
         };
-        if !viewed_entity.view_mut().manual_add(viewer_player_id) {
+        if !viewed_entity.get_view_mut().manual_add(viewer_player_id) {
             return Ok(false);
         }
         self.send_single_entity_spawn_to_player(viewed_entity_id, viewer_player_id)?;
@@ -1958,8 +2002,8 @@ impl World {
             return Ok(false);
         };
         if !viewed_entity
-            .view()
-            .manual_viewers()
+            .get_view()
+            .get_manual_viewers()
             .contains(&viewer_player_id)
         {
             return Ok(false);
@@ -1986,32 +2030,32 @@ impl World {
         let Some(vehicle) = self.entity_by_id(vehicle_id) else {
             return Ok(false);
         };
-        if vehicle.vehicle() == Some(passenger_id) {
+        if vehicle.get_vehicle() == Some(passenger_id) {
             return Ok(false);
         }
         let Some(passenger) = self.entity_by_id(passenger_id) else {
             return Ok(false);
         };
-        if let Some(previous_vehicle_id) = passenger.vehicle() {
+        if let Some(previous_vehicle_id) = passenger.get_vehicle() {
             self.remove_passenger(previous_vehicle_id, passenger_id)?;
         }
         let Some(vehicle_index) = self
             .entities
             .iter()
-            .position(|entity| entity.entity_id() == vehicle_id)
+            .position(|entity| entity.get_entity_id() == vehicle_id)
         else {
             return Ok(false);
         };
         let passenger_index = self
             .entities
             .iter()
-            .position(|entity| entity.entity_id() == passenger_id);
+            .position(|entity| entity.get_entity_id() == passenger_id);
         let Some(passenger_index) = passenger_index else {
             let vehicle = &mut self.entities[vehicle_index];
             if !vehicle.detach_passenger(passenger_id) {
                 return Ok(false);
             }
-            let passenger_packet = vehicle.passenger_packet();
+            let passenger_packet = vehicle.get_passenger_packet();
             self.send_packet_to_player_viewers_and_self(vehicle_id, passenger_packet)?;
             return Ok(true);
         };
@@ -2024,9 +2068,9 @@ impl World {
             if !passenger_was_added {
                 return Ok(false);
             }
-            vehicle.passenger_packet()
+            vehicle.get_passenger_packet()
         };
-        let passenger_position = self.entities[passenger_index].position();
+        let passenger_position = self.entities[passenger_index].get_position();
         self.entity_tracker
             .move_entity(passenger_id, passenger_position);
         self.schedule_entity_visibility_refresh(passenger_id);
@@ -2052,20 +2096,20 @@ impl World {
         let Some(vehicle_index) = self
             .entities
             .iter()
-            .position(|entity| entity.entity_id() == vehicle_id)
+            .position(|entity| entity.get_entity_id() == vehicle_id)
         else {
             return Ok(false);
         };
         let passenger_index = self
             .entities
             .iter()
-            .position(|entity| entity.entity_id() == passenger_id);
+            .position(|entity| entity.get_entity_id() == passenger_id);
         let Some(passenger_index) = passenger_index else {
             let vehicle = &mut self.entities[vehicle_index];
             if !vehicle.detach_passenger(passenger_id) {
                 return Ok(false);
             }
-            let passenger_packet = vehicle.passenger_packet();
+            let passenger_packet = vehicle.get_passenger_packet();
             self.send_packet_to_player_viewers_and_self(vehicle_id, passenger_packet)?;
             return Ok(true);
         };
@@ -2078,7 +2122,7 @@ impl World {
             if !passenger_was_removed {
                 return Ok(false);
             }
-            vehicle.passenger_packet()
+            vehicle.get_passenger_packet()
         };
         self.send_packet_to_player_viewers_and_self(vehicle_id, passenger_packet)?;
         if let Some(position_sync_packet) = self
@@ -2095,7 +2139,7 @@ impl World {
         entity_id: EntityId,
         leash_holder_id: Option<EntityId>,
     ) -> Result<bool> {
-        let Some(previous_leash_holder_id) = self.entity_by_id(entity_id).map(Entity::leash_holder)
+        let Some(previous_leash_holder_id) = self.entity_by_id(entity_id).map(Entity::get_leash_holder)
         else {
             return Ok(false);
         };
@@ -2116,7 +2160,7 @@ impl World {
             return Ok(false);
         };
         entity.set_leash_holder(leash_holder_id);
-        let attach_entity_packet = entity.attach_entity_packet();
+        let attach_entity_packet = entity.get_attach_entity_packet();
         self.send_packet_to_player_viewers_and_self(entity_id, attach_entity_packet)?;
         Ok(true)
     }
@@ -2125,8 +2169,8 @@ impl World {
         let Some(entity) = self.entity_by_id(entity_id) else {
             return;
         };
-        let passenger_ids = entity.passengers().iter().copied().collect::<Vec<_>>();
-        let vehicle_id = entity.vehicle();
+        let passenger_ids = entity.get_passengers().iter().copied().collect::<Vec<_>>();
+        let vehicle_id = entity.get_vehicle();
         passenger_ids.into_iter().for_each(|passenger_id| {
             let _ = self.remove_passenger(entity_id, passenger_id);
         });
@@ -2140,7 +2184,7 @@ impl World {
             .entity_by_id(entity_id)
             .map(|entity| {
                 entity
-                    .leashed_entities()
+                    .get_leashed_entities()
                     .iter()
                     .copied()
                     .collect::<Vec<_>>()
@@ -2164,7 +2208,7 @@ impl World {
                 .entity_by_id(vehicle_id)
                 .map(|vehicle| {
                     vehicle
-                        .passengers()
+                        .get_passengers()
                         .iter()
                         .filter_map(|passenger_id| {
                             self.entity_by_id(*passenger_id).map(|passenger| {
@@ -2219,7 +2263,7 @@ impl World {
         self.entities
             .iter()
             .filter_map(|entity| match entity {
-                Entity::Generic(entity) if entity.entity_type().is_living() => Some(entity),
+                Entity::Generic(entity) if entity.get_entity_type().is_living() => Some(entity),
                 _ => None,
             })
             .collect()
@@ -2248,14 +2292,14 @@ impl World {
     }
 
     pub fn player_by_uuid(&self, player_uuid: Uuid) -> Option<&Player> {
-        self.players().find(|player| player.uuid() == player_uuid)
+        self.players().find(|player| player.get_uuid() == player_uuid)
     }
 
-    pub fn set_player_pose(&mut self, player_uuid: Uuid, pose: PlayerPose) -> bool {
+    pub fn set_player_pose(&mut self, player_uuid: Uuid, pose: EntityPose) -> bool {
         let Some(player) = self.player_by_uuid(player_uuid) else {
             return false;
         };
-        if !player_pose_fits_at(self, player.position(), pose) {
+        if !player_pose_fits_at(self, player.get_position(), pose) {
             return false;
         }
         let Some(player) = self.player_by_uuid_mut(player_uuid) else {
@@ -2271,7 +2315,7 @@ impl World {
             Entity::ExperienceOrb(_) => None,
             Entity::Generic(_) => None,
             Entity::Item(_) => None,
-            Entity::Player(player) if player.uuid() == player_uuid => Some(player),
+            Entity::Player(player) if player.get_uuid() == player_uuid => Some(player),
             Entity::Player(_) => None,
             Entity::Projectile(_) => None,
         })
@@ -2288,7 +2332,7 @@ impl World {
         if let Some(nbt) = nbt {
             entity.apply_summon_nbt(nbt);
         }
-        let entity_id = entity.entity_id();
+        let entity_id = entity.get_entity_id();
         if !self.add_entity(Entity::Generic(entity)) {
             return Err(Error::new(ErrorKind::Interrupted, "Entity add cancelled."));
         }
@@ -2301,8 +2345,9 @@ impl World {
         position: EntityPosition,
     ) -> Result<EntityId> {
         let mut item_entity = ItemEntity::new(item_stack);
-        item_entity.spawn(position);
-        let entity_id = item_entity.entity_id();
+        item_entity.set_position(position);
+        item_entity.spawn();
+        let entity_id = item_entity.get_entity_id();
         if !self.add_entity(Entity::Item(item_entity)) {
             return Err(Error::new(ErrorKind::Interrupted, "Entity add cancelled."));
         }
@@ -2316,7 +2361,7 @@ impl World {
     ) -> Result<EntityId> {
         let mut experience_orb = ExperienceOrb::new(experience_count);
         experience_orb.set_position(position);
-        let entity_id = experience_orb.entity_id();
+        let entity_id = experience_orb.get_entity_id();
         if !self.add_entity(Entity::ExperienceOrb(experience_orb)) {
             return Err(Error::new(ErrorKind::Interrupted, "Entity add cancelled."));
         }
@@ -2331,7 +2376,7 @@ impl World {
     ) -> Result<EntityId> {
         let mut projectile = crate::entity::ProjectileEntity::new(shooter_id, entity_type);
         projectile.set_position(position);
-        let projectile_id = projectile.entity_id();
+        let projectile_id = projectile.get_entity_id();
         if !self.add_entity(Entity::Projectile(projectile)) {
             return Err(Error::new(ErrorKind::Interrupted, "Entity add cancelled."));
         }
@@ -2348,7 +2393,7 @@ impl World {
         let Some(shooter_id) = self
             .entity_by_id(projectile_id)
             .and_then(|entity| match entity {
-                Entity::Projectile(projectile) => projectile.shooter(),
+                Entity::Projectile(projectile) => projectile.get_shooter(),
                 _ => None,
             })
         else {
@@ -2356,7 +2401,7 @@ impl World {
         };
         let Some((shooter_position, shooter_eye_height)) = self
             .entity_by_id(shooter_id)
-            .map(|shooter| (shooter.position(), shooter.eye_height()))
+            .map(|shooter| (shooter.get_position(), shooter.get_eye_height()))
         else {
             return false;
         };
@@ -2382,7 +2427,7 @@ impl World {
             return false;
         }
         projectile.shoot_from(
-            shooter_position.offset(0.0, shooter_eye_height, 0.0),
+            shooter_position.get_offset(0.0, shooter_eye_height, 0.0),
             event.target(),
             event.power(),
             event.spread(),
@@ -2396,7 +2441,7 @@ impl World {
         experience_count: i16,
     ) -> Result<bool> {
         let viewer_ids = match self.entity_by_id(entity_id) {
-            Some(Entity::ExperienceOrb(experience_orb)) => experience_orb.viewers(),
+            Some(Entity::ExperienceOrb(experience_orb)) => experience_orb.get_viewers(),
             _ => return Ok(false),
         };
         viewer_ids
@@ -2417,7 +2462,7 @@ impl World {
         entity_id: EntityId,
         entity_type: EntityType,
     ) -> Result<bool> {
-        let Some(viewer_ids) = self.entity_by_id(entity_id).map(Entity::viewers) else {
+        let Some(viewer_ids) = self.entity_by_id(entity_id).map(Entity::get_viewers) else {
             return Ok(false);
         };
         viewer_ids.iter().try_for_each(|viewer_id| {
@@ -2436,14 +2481,14 @@ impl World {
     }
 
     pub fn set_entity_position(&mut self, entity_id: EntityId, position: EntityPosition) -> bool {
-        let Some(previous_position) = self.entity_by_id(entity_id).map(Entity::position) else {
+        let Some(previous_position) = self.entity_by_id(entity_id).map(Entity::get_position) else {
             return false;
         };
         let Some(entity) = self.entity_by_id_mut(entity_id) else {
             return false;
         };
         entity.set_position(position);
-        let current_position = entity.position();
+        let current_position = entity.get_position();
         self.entity_tracker.move_entity(entity_id, current_position);
         self.refresh_passenger_positions(entity_id);
         if chunk_position_for_entity_position(previous_position)
@@ -2464,7 +2509,7 @@ impl World {
         let Some(Entity::Generic(vehicle)) = self.entity_by_id_mut(vehicle_id) else {
             return false;
         };
-        if !vehicle.entity_type().path().contains("boat") {
+        if !vehicle.get_entity_type().path().contains("boat") {
             return false;
         }
         if vehicle.is_left_paddle_turning() != left_paddle_turning {
@@ -2560,13 +2605,13 @@ impl World {
             } => {
                 let Some((shooter_position, shooter_eye_height)) = self
                     .entity_by_id(shooter)
-                    .map(|entity| (entity.position(), entity.eye_height()))
+                    .map(|entity| (entity.get_position(), entity.get_eye_height()))
                 else {
                     return;
                 };
                 projectile.set_shooter(Some(shooter));
-                projectile.set_position(shooter_position.offset(0.0, shooter_eye_height, 0.0));
-                let projectile_id = projectile.entity_id();
+                projectile.set_position(shooter_position.get_offset(0.0, shooter_eye_height, 0.0));
+                let projectile_id = projectile.get_entity_id();
                 if !self.add_entity(Entity::Projectile(projectile)) {
                     return;
                 }
@@ -2589,13 +2634,13 @@ impl World {
         let Some(Entity::Generic(entity)) = self.entity_by_id_mut(entity_id) else {
             return None;
         };
-        let previous_position = entity.position();
+        let previous_position = entity.get_position();
         entity.set_position(position);
         Some((
             previous_position,
-            entity.position(),
+            entity.get_position(),
             entity.position_and_rotation_delta_packet(previous_position, on_ground),
-            entity.head_look_packet(),
+            entity.get_head_look_packet(),
         ))
     }
 
@@ -2655,8 +2700,8 @@ impl World {
                 _ => None,
             })
             .map(|entity| {
-                let previous_position = entity.position();
-                entity.set_position(previous_position.offset(0.0, 1.0, 0.0));
+                let previous_position = entity.get_position();
+                entity.set_position(previous_position.get_offset(0.0, 1.0, 0.0));
                 entity.set_velocity(Velocity(Vector3d {
                     x: 0.0,
                     y: 0.25,
@@ -2664,9 +2709,9 @@ impl World {
                 }));
                 entity.teleport_packet().dispatch(client)?;
                 entity
-                    .velocity_packet()
+                    .get_velocity_packet()
                     .dispatch(client)
-                    .map(|_| (entity.entity_id(), entity.position()))
+                    .map(|_| (entity.get_entity_id(), entity.get_position()))
             })
             .collect::<Result<Vec<_>>>()?;
         moved_entities.iter().for_each(|(entity_id, position)| {
@@ -2688,7 +2733,7 @@ impl World {
             .filter_map(|entity| match entity {
                 Entity::Generic(entity) if !entity.is_removed() => {
                     entity.remove();
-                    Some((entity.entity_id(), entity.entity_type(), entity.uuid()))
+                    Some((entity.get_entity_id(), entity.get_entity_type(), entity.get_uuid()))
                 }
                 _ => None,
             })
@@ -2697,7 +2742,7 @@ impl World {
         removed_entities
             .iter()
             .try_for_each(|(entity_id, entity_type, uuid)| {
-                RemoveEntitiesPacket::new(vec![entity_id.value()]).dispatch(client)?;
+                RemoveEntitiesPacket::new(vec![entity_id.get_value()]).dispatch(client)?;
                 if *entity_type == EntityType::PLAYER {
                     PlayerInfoRemovePacket::new(*uuid).dispatch(client)?;
                 }
@@ -2713,12 +2758,12 @@ impl World {
                 }
                 _ => None,
             })
-            .filter_map(Player::client_mut)
+            .filter_map(Player::get_client_mut)
             .try_for_each(|viewer_client| {
                 removed_entities
                     .iter()
                     .try_for_each(|(entity_id, entity_type, uuid)| {
-                        RemoveEntitiesPacket::new(vec![entity_id.value()])
+                        RemoveEntitiesPacket::new(vec![entity_id.get_value()])
                             .dispatch(viewer_client)?;
                         if *entity_type == EntityType::PLAYER {
                             PlayerInfoRemovePacket::new(*uuid).dispatch(viewer_client)?;
@@ -2837,8 +2882,8 @@ impl World {
             (
                 player as *mut Player,
                 first_spawn,
-                player.entity_id(),
-                player.position(),
+                player.get_entity_id(),
+                player.get_position(),
             )
         };
         self.entity_tracker.move_entity(player_id, player_position);
@@ -2864,21 +2909,21 @@ impl World {
         if !player.has_entered_world() {
             return Ok(());
         }
-        let previous_position = player.position();
+        let previous_position = player.get_position();
         if player_coordinate_is_too_large(x)
             || player_coordinate_is_too_large(y)
             || player_coordinate_is_too_large(z)
         {
             return player.kick(Component::text("You moved too far away!"));
         }
-        if previous_position.x() == x && previous_position.y() == y && previous_position.z() == z {
+        if previous_position.get_x() == x && previous_position.get_y() == y && previous_position.get_z() == z {
             return Ok(());
         }
         if player.has_pending_teleport_confirmation() {
             return Ok(());
         }
         let packet_position =
-            EntityPosition::new(x, y, z, previous_position.yaw(), previous_position.pitch());
+            EntityPosition::new(x, y, z, previous_position.get_yaw(), previous_position.get_pitch());
         let Some(event_position) =
             self.process_player_move_event(client, previous_position, packet_position, on_ground)?
         else {
@@ -2886,9 +2931,9 @@ impl World {
         };
         let pending_transition = self.player_by_addr(&client.addr).and_then(|player| {
             player.chunk_transition(
-                event_position.x(),
-                event_position.y(),
-                event_position.z(),
+                event_position.get_x(),
+                event_position.get_y(),
+                event_position.get_z(),
                 self.view_distance,
             )
         });
@@ -2918,18 +2963,18 @@ impl World {
         let Some(player) = self.player_by_addr_mut(&client.addr) else {
             return Err(Error::new(ErrorKind::NotFound, "Player not found."));
         };
-        let moving_player_id = player.entity_id();
+        let moving_player_id = player.get_entity_id();
         player.move_to_loaded_chunks(
             client,
-            event_position.x(),
-            event_position.y(),
-            event_position.z(),
+            event_position.get_x(),
+            event_position.get_y(),
+            event_position.get_z(),
             on_ground,
             transition,
             chunks,
             world_view_distance,
         )?;
-        let current_position = player.position();
+        let current_position = player.get_position();
         self.entity_tracker
             .move_entity(moving_player_id, current_position);
         self.refresh_visibility_for_entity(moving_player_id)?;
@@ -2960,7 +3005,7 @@ impl World {
         if !player.has_entered_world() {
             return Ok(());
         }
-        let previous_position = player.position();
+        let previous_position = player.get_position();
         if player_coordinate_is_too_large(x)
             || player_coordinate_is_too_large(y)
             || player_coordinate_is_too_large(z)
@@ -2981,9 +3026,9 @@ impl World {
         };
         let pending_transition = self.player_by_addr(&client.addr).and_then(|player| {
             player.chunk_transition(
-                event_position.x(),
-                event_position.y(),
-                event_position.z(),
+                event_position.get_x(),
+                event_position.get_y(),
+                event_position.get_z(),
                 self.view_distance,
             )
         });
@@ -3013,20 +3058,20 @@ impl World {
         let Some(player) = self.player_by_addr_mut(&client.addr) else {
             return Err(Error::new(ErrorKind::NotFound, "Player not found."));
         };
-        let moving_player_id = player.entity_id();
+        let moving_player_id = player.get_entity_id();
         player.move_to_with_view_loaded_chunks(
             client,
-            event_position.x(),
-            event_position.y(),
-            event_position.z(),
-            event_position.yaw(),
-            event_position.pitch(),
+            event_position.get_x(),
+            event_position.get_y(),
+            event_position.get_z(),
+            event_position.get_yaw(),
+            event_position.get_pitch(),
             on_ground,
             transition,
             chunks,
             world_view_distance,
         )?;
-        let current_position = player.position();
+        let current_position = player.get_position();
         self.entity_tracker
             .move_entity(moving_player_id, current_position);
         self.refresh_visibility_for_entity(moving_player_id)?;
@@ -3056,7 +3101,7 @@ impl World {
         let mut event = PlayerMoveEvent::new(player_ptr, packet_position, on_ground);
         event.dispatch(server, client);
         let player = unsafe { &mut *player_ptr };
-        if player.position() != current_position {
+        if player.get_position() != current_position {
             return Ok(None);
         }
         if event.is_cancelled() {
@@ -3076,9 +3121,9 @@ impl World {
         if packet_position == event_position {
             return Ok(Some(event_position));
         }
-        if packet_position.x() == event_position.x()
-            && packet_position.y() == event_position.y()
-            && packet_position.z() == event_position.z()
+        if packet_position.get_x() == event_position.get_x()
+            && packet_position.get_y() == event_position.get_y()
+            && packet_position.get_z() == event_position.get_z()
         {
             player.set_position_and_view(event_position);
             player.set_on_ground(on_ground);
@@ -3106,7 +3151,7 @@ impl World {
         let Some(player) = self.player_by_addr(&client.addr) else {
             return Err(Error::new(ErrorKind::NotFound, "Player not found."));
         };
-        let animating_player_id = player.entity_id();
+        let animating_player_id = player.get_entity_id();
         let animation_packet = player.animation_packet(hand);
         let animation_entity_id = animation_packet.entity_id;
         let animation = animation_packet.animation;
@@ -3114,13 +3159,13 @@ impl World {
             .iter_mut()
             .filter_map(|entity| match entity {
                 Entity::Player(player)
-                    if player.entity_id() != animating_player_id && player.has_entered_world() =>
+                    if player.get_entity_id() != animating_player_id && player.has_entered_world() =>
                 {
                     Some(player)
                 }
                 _ => None,
             })
-            .filter_map(Player::client_mut)
+            .filter_map(Player::get_client_mut)
             .try_for_each(|viewer_client| {
                 spinel_core::network::clientbound::play::entity_animation::EntityAnimationPacket {
                     entity_id: animation_entity_id,
@@ -3144,11 +3189,11 @@ impl World {
         let Some(player) = self.player_by_addr_mut(&client.addr) else {
             return Err(Error::new(ErrorKind::NotFound, "Player not found."));
         };
-        let player_entity_id = player.entity_id();
+        let player_entity_id = player.get_entity_id();
         if !player.refresh_input(forward, backward, left, right, jump, shift, sprint) {
             return Ok(());
         }
-        let Some(metadata_packet) = player.dirty_metadata_packet() else {
+        let Some(metadata_packet) = player.get_dirty_metadata_packet() else {
             return Ok(());
         };
         let metadata_entity_id = metadata_packet.entity_id;
@@ -3160,11 +3205,11 @@ impl World {
         let Some(player) = self.player_by_addr_mut(&client.addr) else {
             return Err(Error::new(ErrorKind::NotFound, "Player not found."));
         };
-        let player_entity_id = player.entity_id();
+        let player_entity_id = player.get_entity_id();
         if !player.set_sprinting(sprinting) {
             return Ok(());
         }
-        let Some(metadata_packet) = player.dirty_metadata_packet() else {
+        let Some(metadata_packet) = player.get_dirty_metadata_packet() else {
             return Ok(());
         };
         let metadata_entity_id = metadata_packet.entity_id;
@@ -3181,11 +3226,11 @@ impl World {
             return Err(Error::new(ErrorKind::NotFound, "Player not found."));
         };
         let current_center = player.chunks_loaded_by_client;
-        let previous_view_distance = player.client_chunk_view_distance();
+        let previous_view_distance = player.get_client_chunk_view_distance();
         if !player.refresh_settings(settings) {
             return Ok(());
         }
-        let next_view_distance = player.client_chunk_view_distance();
+        let next_view_distance = player.get_client_chunk_view_distance();
         let previous_chunks = current_center
             .surrounding(previous_view_distance)
             .into_iter()
@@ -3213,11 +3258,11 @@ impl World {
         let Some(player) = self.player_by_addr_mut(&client.addr) else {
             return Err(Error::new(ErrorKind::NotFound, "Player not found."));
         };
-        let player_entity_id = player.entity_id();
+        let player_entity_id = player.get_entity_id();
         if !player.set_flying_with_elytra(true) {
             return Ok(());
         }
-        let Some(metadata_packet) = player.dirty_metadata_packet() else {
+        let Some(metadata_packet) = player.get_dirty_metadata_packet() else {
             return Ok(());
         };
         let metadata_entity_id = metadata_packet.entity_id;
@@ -3234,15 +3279,15 @@ impl World {
         let Some(player) = self.player_by_addr_mut(&client.addr) else {
             return Err(Error::new(ErrorKind::NotFound, "Player not found."));
         };
-        let player_entity_id = player.entity_id();
+        let player_entity_id = player.get_entity_id();
         let server = unsafe { &mut *server };
         if !player.change_held_slot(held_slot, server, client) {
             return Ok(false);
         }
-        let equipment_packet = player.visible_equipment_packet();
+        let equipment_packet = player.get_visible_equipment_packet();
         let equipment_entity_id = equipment_packet.entity_id;
         let equipment_entries = equipment_packet.equipment.0;
-        let metadata_packet = player.dirty_metadata_packet();
+        let metadata_packet = player.get_dirty_metadata_packet();
         self.broadcast_player_equipment(player_entity_id, equipment_entity_id, equipment_entries)?;
         if let Some(metadata_packet) = metadata_packet {
             self.broadcast_player_metadata(
@@ -3258,8 +3303,8 @@ impl World {
         let Some(player) = self.player_by_addr_mut(&client.addr) else {
             return Err(Error::new(ErrorKind::NotFound, "Player not found."));
         };
-        let player_entity_id = player.entity_id();
-        let Some(metadata_packet) = player.dirty_metadata_packet() else {
+        let player_entity_id = player.get_entity_id();
+        let Some(metadata_packet) = player.get_dirty_metadata_packet() else {
             return Ok(());
         };
         let metadata_entity_id = metadata_packet.entity_id;
@@ -3271,8 +3316,8 @@ impl World {
         let Some(player) = self.player_by_addr(&client.addr) else {
             return Err(Error::new(ErrorKind::NotFound, "Player not found."));
         };
-        let player_entity_id = player.entity_id();
-        let equipment_packet = player.visible_equipment_packet();
+        let player_entity_id = player.get_entity_id();
+        let equipment_packet = player.get_visible_equipment_packet();
         let equipment_entity_id = equipment_packet.entity_id;
         let equipment_entries = equipment_packet.equipment.0;
         self.broadcast_player_equipment(player_entity_id, equipment_entity_id, equipment_entries)
@@ -3288,11 +3333,11 @@ impl World {
         let Some(player) = self.player_by_addr_mut(&client.addr) else {
             return Err(Error::new(ErrorKind::NotFound, "Player not found."));
         };
-        let previous_position = player.position();
+        let previous_position = player.get_position();
         player.look(yaw, pitch);
         player.set_on_ground(on_ground);
-        let current_position = player.position();
-        let looking_player_id = player.entity_id();
+        let current_position = player.get_position();
+        let looking_player_id = player.get_entity_id();
         self.broadcast_player_movement(
             looking_player_id,
             previous_position,
@@ -3313,8 +3358,8 @@ impl World {
             let stopped_flying_with_elytra = player.refresh_on_ground(on_ground);
             (
                 player as *mut Player,
-                player.entity_id(),
-                player.dirty_metadata_packet(),
+                player.get_entity_id(),
+                player.get_dirty_metadata_packet(),
                 stopped_flying_with_elytra,
             )
         };
@@ -3356,42 +3401,42 @@ impl World {
         current_position: EntityPosition,
         on_ground: bool,
     ) -> Result<()> {
-        let moved_entity_id = moving_player_id.value();
+        let moved_entity_id = moving_player_id.get_value();
         let moved_position = current_position.as_vector();
-        let moved_yaw = current_position.yaw();
-        let moved_pitch = current_position.pitch();
+        let moved_yaw = current_position.get_yaw();
+        let moved_pitch = current_position.get_pitch();
         let moved_delta_x =
-            EntityPositionPacket::delta(current_position.x(), previous_position.x());
+            EntityPositionPacket::delta(current_position.get_x(), previous_position.get_x());
         let moved_delta_y =
-            EntityPositionPacket::delta(current_position.y(), previous_position.y());
+            EntityPositionPacket::delta(current_position.get_y(), previous_position.get_y());
         let moved_delta_z =
-            EntityPositionPacket::delta(current_position.z(), previous_position.z());
-        let position_changed = current_position.x() != previous_position.x()
-            || current_position.y() != previous_position.y()
-            || current_position.z() != previous_position.z();
+            EntityPositionPacket::delta(current_position.get_z(), previous_position.get_z());
+        let position_changed = current_position.get_x() != previous_position.get_x()
+            || current_position.get_y() != previous_position.get_y()
+            || current_position.get_z() != previous_position.get_z();
         if position_changed {
             self.refresh_passenger_positions(moving_player_id);
         }
-        let view_changed = current_position.yaw() != previous_position.yaw()
-            || current_position.pitch() != previous_position.pitch();
-        let movement_requires_teleport = (current_position.x() - previous_position.x()).abs() > 8.0
-            || (current_position.y() - previous_position.y()).abs() > 8.0
-            || (current_position.z() - previous_position.z()).abs() > 8.0;
+        let view_changed = current_position.get_yaw() != previous_position.get_yaw()
+            || current_position.get_pitch() != previous_position.get_pitch();
+        let movement_requires_teleport = (current_position.get_x() - previous_position.get_x()).abs() > 8.0
+            || (current_position.get_y() - previous_position.get_y()).abs() > 8.0
+            || (current_position.get_z() - previous_position.get_z()).abs() > 8.0;
         let viewer_ids = self
             .entity_by_id(moving_player_id)
-            .map(Entity::viewers)
+            .map(Entity::get_viewers)
             .unwrap_or_default();
         self.entities
             .iter_mut()
             .filter_map(|entity| match entity {
                 Entity::Player(player)
-                    if viewer_ids.contains(&player.entity_id()) && player.has_entered_world() =>
+                    if viewer_ids.contains(&player.get_entity_id()) && player.has_entered_world() =>
                 {
                     Some(player)
                 }
                 _ => None,
             })
-            .filter_map(Player::client_mut)
+            .filter_map(Player::get_client_mut)
             .try_for_each(|viewer_client| {
                 if movement_requires_teleport {
                     EntityTeleportPacket {
@@ -3468,19 +3513,19 @@ impl World {
     ) -> Result<()> {
         let viewer_ids = self
             .entity_by_id(changed_player_id)
-            .map(Entity::viewers)
+            .map(Entity::get_viewers)
             .unwrap_or_default();
         self.entities
             .iter_mut()
             .filter_map(|entity| match entity {
                 Entity::Player(player)
-                    if viewer_ids.contains(&player.entity_id()) && player.has_entered_world() =>
+                    if viewer_ids.contains(&player.get_entity_id()) && player.has_entered_world() =>
                 {
                     Some(player)
                 }
                 _ => None,
             })
-            .filter_map(Player::client_mut)
+            .filter_map(Player::get_client_mut)
             .try_for_each(|viewer_client| {
                 SetEntityDataPacket::new(metadata_entity_id, metadata_entries.clone())
                     .dispatch(viewer_client)
@@ -3495,7 +3540,7 @@ impl World {
     where
         P: PacketStruct + DataType,
     {
-        let Some(mut viewer_ids) = self.entity_by_id(player_id).map(Entity::viewers) else {
+        let Some(mut viewer_ids) = self.entity_by_id(player_id).map(Entity::get_viewers) else {
             return Ok(());
         };
         viewer_ids.insert(player_id);
@@ -3505,13 +3550,13 @@ impl World {
             .iter_mut()
             .filter_map(|entity| match entity {
                 Entity::Player(player)
-                    if player.has_entered_world() && viewer_ids.contains(&player.entity_id()) =>
+                    if player.has_entered_world() && viewer_ids.contains(&player.get_entity_id()) =>
                 {
                     Some(player)
                 }
                 _ => None,
             })
-            .filter_map(Player::client_mut)
+            .filter_map(Player::get_client_mut)
             .try_for_each(|client| client.send_packet(P::get_id(), &payload))
     }
 
@@ -3521,22 +3566,22 @@ impl World {
     {
         let viewer_ids = self
             .entity_by_id(entity_id)
-            .map(Entity::viewers)
+            .map(Entity::get_viewers)
             .unwrap_or_default();
         let mut payload = Vec::new();
         packet.encode(&mut payload)?;
         self.entities
             .iter_mut()
             .filter_map(|entity| match entity {
-                Entity::Player(player) if viewer_ids.contains(&player.entity_id()) => Some(player),
+                Entity::Player(player) if viewer_ids.contains(&player.get_entity_id()) => Some(player),
                 _ => None,
             })
-            .filter_map(Player::client_mut)
+            .filter_map(Player::get_client_mut)
             .try_for_each(|client| client.send_packet(P::get_id(), &payload))
     }
 
     fn refresh_visibility_for_entity(&mut self, entity_id: EntityId) -> Result<()> {
-        let Some(position) = self.entity_by_id(entity_id).map(Entity::position) else {
+        let Some(position) = self.entity_by_id(entity_id).map(Entity::get_position) else {
             return Ok(());
         };
         let mut player_ids = self.entity_tracker.nearby_entities_by_chunk_range(
@@ -3546,7 +3591,7 @@ impl World {
         );
         player_ids.extend(
             self.entity_by_id(entity_id)
-                .map(Entity::viewers)
+                .map(Entity::get_viewers)
                 .unwrap_or_default(),
         );
         player_ids.sort_unstable();
@@ -3564,7 +3609,7 @@ impl World {
         );
         viewed_entity_ids.extend(
             self.entity_by_id(entity_id)
-                .map(|entity| entity.view().viewed_entities().iter().copied())
+                .map(|entity| entity.get_view().get_viewed_entities().iter().copied())
                 .into_iter()
                 .flatten(),
         );
@@ -3588,14 +3633,14 @@ impl World {
         let Some(viewed_entity_index) = self
             .entities
             .iter()
-            .position(|entity| entity.entity_id() == viewed_entity_id)
+            .position(|entity| entity.get_entity_id() == viewed_entity_id)
         else {
             return Ok(());
         };
         let Some(viewer_player_index) = self
             .entities
             .iter()
-            .position(|entity| entity.entity_id() == viewer_player_id)
+            .position(|entity| entity.get_entity_id() == viewer_player_id)
         else {
             return Ok(());
         };
@@ -3612,13 +3657,13 @@ impl World {
             viewed_player_is_vanished,
         );
         let is_automatically_visible = viewed_entity
-            .view()
-            .automatic_viewers()
+            .get_view()
+            .get_automatic_viewers()
             .contains(&viewer_player_id);
-        if should_be_visible && !viewed_entity.view().is_viewer(viewer_player_id) {
-            viewed_entity.view_mut().automatic_add(viewer_player_id);
+        if should_be_visible && !viewed_entity.get_view().is_viewer(viewer_player_id) {
+            viewed_entity.get_view_mut().automatic_add(viewer_player_id);
             viewer_player
-                .view_mut()
+                .get_view_mut()
                 .register_viewed_entity(viewed_entity_id);
             return self.send_entity_chain_spawn_to_player(viewed_entity_id, viewer_player_id);
         }
@@ -3631,14 +3676,14 @@ impl World {
     fn hide_entity_from_all_viewers(&mut self, entity_id: EntityId) -> Result<()> {
         let viewer_ids = self
             .entity_by_id(entity_id)
-            .map(Entity::viewers)
+            .map(Entity::get_viewers)
             .unwrap_or_default();
         viewer_ids
             .into_iter()
             .try_for_each(|viewer_id| self.hide_visibility_pair(entity_id, viewer_id))?;
         let viewed_entity_ids = self
             .entity_by_id(entity_id)
-            .map(|entity| entity.view().viewed_entities().clone())
+            .map(|entity| entity.get_view().get_viewed_entities().clone())
             .unwrap_or_default();
         viewed_entity_ids
             .into_iter()
@@ -3660,7 +3705,7 @@ impl World {
                 .entity_by_id(entity_id)
                 .map(|entity| {
                     entity
-                        .passengers()
+                        .get_passengers()
                         .iter()
                         .rev()
                         .copied()
@@ -3684,7 +3729,7 @@ impl World {
     ) -> Result<()> {
         if self
             .entity_by_id(viewed_entity_id)
-            .is_none_or(|entity| !entity.view().is_viewer(viewer_player_id))
+            .is_none_or(|entity| !entity.get_view().is_viewer(viewer_player_id))
         {
             return Ok(());
         }
@@ -3692,11 +3737,11 @@ impl World {
             .entity_by_id(viewed_entity_id)
             .map(|entity| {
                 entity
-                    .leashed_entities()
+                    .get_leashed_entities()
                     .iter()
                     .map(|leashed_entity_id| {
                         spinel_core::network::clientbound::play::attach_entity::AttachEntityPacket {
-                            attached_entity_id: leashed_entity_id.value(),
+                            attached_entity_id: leashed_entity_id.get_value(),
                             holding_entity_id: -1,
                         }
                     })
@@ -3706,14 +3751,14 @@ impl World {
         let Some(viewed_entity_index) = self
             .entities
             .iter()
-            .position(|entity| entity.entity_id() == viewed_entity_id)
+            .position(|entity| entity.get_entity_id() == viewed_entity_id)
         else {
             return Ok(());
         };
         let Some(viewer_player_index) = self
             .entities
             .iter()
-            .position(|entity| entity.entity_id() == viewer_player_id)
+            .position(|entity| entity.get_entity_id() == viewer_player_id)
         else {
             return Ok(());
         };
@@ -3722,15 +3767,15 @@ impl World {
         let Entity::Player(viewer_player) = viewer_player else {
             return Ok(());
         };
-        viewed_entity.view_mut().automatic_remove(viewer_player_id);
-        viewed_entity.view_mut().manual_remove(viewer_player_id);
+        viewed_entity.get_view_mut().automatic_remove(viewer_player_id);
+        viewed_entity.get_view_mut().manual_remove(viewer_player_id);
         viewer_player
-            .view_mut()
+            .get_view_mut()
             .unregister_viewed_entity(viewed_entity_id);
         if let Some(client) =
             self.entity_by_id_mut(viewer_player_id)
                 .and_then(|entity| match entity {
-                    Entity::Player(player) => player.client_mut(),
+                    Entity::Player(player) => player.get_client_mut(),
                     _ => None,
                 })
         {
@@ -3770,8 +3815,8 @@ impl World {
         let Some(Entity::Player(player)) = self.entity_by_id(player_id) else {
             return Ok(());
         };
-        let player_uuid = player.uuid();
-        let viewer_ids = player.viewers();
+        let player_uuid = player.get_uuid();
+        let viewer_ids = player.get_viewers();
         let snapshot = PlayerViewerSnapshot::from_player(player);
         viewer_ids.into_iter().try_for_each(|viewer_id| {
             self.send_player_skin_refresh_to_viewer(player_id, player_uuid, &snapshot, viewer_id)
@@ -3788,14 +3833,14 @@ impl World {
         let Some(client) = self
             .entity_by_id_mut(viewer_id)
             .and_then(|entity| match entity {
-                Entity::Player(player) => player.client_mut(),
+                Entity::Player(player) => player.get_client_mut(),
                 _ => None,
             })
         else {
             return Ok(());
         };
         PlayerInfoRemovePacket::new(player_uuid).dispatch(client)?;
-        RemoveEntitiesPacket::new(vec![player_id.value()]).dispatch(client)?;
+        RemoveEntitiesPacket::new(vec![player_id.get_value()]).dispatch(client)?;
         snapshot.dispatch(client)
     }
 
@@ -3823,16 +3868,16 @@ impl World {
             .filter_map(|entity_id| self.entity_by_id(*entity_id))
             .filter(|entity| {
                 entity
-                    .passengers()
+                    .get_passengers()
                     .iter()
                     .any(|passenger_id| visible_entity_ids.contains(passenger_id))
             })
-            .map(Entity::passenger_packet)
+            .map(Entity::get_passenger_packet)
             .collect::<Vec<_>>();
         let Some(client) =
             self.entity_by_id_mut(viewer_player_id)
                 .and_then(|entity| match entity {
-                    Entity::Player(player) => player.client_mut(),
+                    Entity::Player(player) => player.get_client_mut(),
                     _ => None,
                 })
         else {
@@ -3860,7 +3905,7 @@ impl World {
         let Some(client) =
             self.entity_by_id_mut(viewer_player_id)
                 .and_then(|entity| match entity {
-                    Entity::Player(player) => player.client_mut(),
+                    Entity::Player(player) => player.get_client_mut(),
                     _ => None,
                 })
         else {
@@ -3880,7 +3925,7 @@ impl World {
             .entity_by_id(root_entity_id)
             .map(|entity| {
                 entity
-                    .passengers()
+                    .get_passengers()
                     .iter()
                     .rev()
                     .copied()
@@ -3896,7 +3941,7 @@ impl World {
             collected_entity_ids.insert(entity_id);
             visible_chain.push(entity_id);
             if let Some(entity) = self.entity_by_id(entity_id) {
-                pending_entity_ids.extend(entity.passengers().iter().rev().copied());
+                pending_entity_ids.extend(entity.get_passengers().iter().rev().copied());
             }
         }
         visible_chain
@@ -3913,14 +3958,14 @@ impl World {
         let Some(viewed_entity_index) = self
             .entities
             .iter()
-            .position(|entity| entity.entity_id() == viewed_entity_id)
+            .position(|entity| entity.get_entity_id() == viewed_entity_id)
         else {
             return false;
         };
         let Some(viewer_player_index) = self
             .entities
             .iter()
-            .position(|entity| entity.entity_id() == viewer_player_id)
+            .position(|entity| entity.get_entity_id() == viewer_player_id)
         else {
             return false;
         };
@@ -3931,7 +3976,7 @@ impl World {
         };
         let viewed_player_is_vanished =
             matches!(viewed_entity, Entity::Player(player) if player.is_vanished());
-        if viewed_entity.view().is_viewer(viewer_player_id)
+        if viewed_entity.get_view().is_viewer(viewer_player_id)
             || !automatic_visibility_pair_is_allowed(
                 viewed_entity,
                 viewer_player,
@@ -3940,9 +3985,9 @@ impl World {
         {
             return false;
         }
-        viewed_entity.view_mut().automatic_add(viewer_player_id);
+        viewed_entity.get_view_mut().automatic_add(viewer_player_id);
         viewer_player
-            .view_mut()
+            .get_view_mut()
             .register_viewed_entity(viewed_entity_id);
         true
     }
@@ -3956,21 +4001,21 @@ impl World {
             return Vec::new();
         };
         let mut packets = Vec::new();
-        if entity.leash_holder().is_some_and(|leash_holder_id| {
+        if entity.get_leash_holder().is_some_and(|leash_holder_id| {
             leash_holder_id == viewer_player_id
                 || self
                     .entity_by_id(leash_holder_id)
-                    .is_some_and(|holder| holder.view().is_viewer(viewer_player_id))
+                    .is_some_and(|holder| holder.get_view().is_viewer(viewer_player_id))
         }) {
-            packets.push(entity.attach_entity_packet());
+            packets.push(entity.get_attach_entity_packet());
         }
         packets.extend(
             entity
-                .leashed_entities()
+                .get_leashed_entities()
                 .iter()
                 .filter_map(|leashed_entity_id| self.entity_by_id(*leashed_entity_id))
-                .filter(|leashed_entity| leashed_entity.view().is_viewer(viewer_player_id))
-                .map(Entity::attach_entity_packet),
+                .filter(|leashed_entity| leashed_entity.get_view().is_viewer(viewer_player_id))
+                .map(Entity::get_attach_entity_packet),
         );
         packets
     }
@@ -4030,14 +4075,14 @@ impl World {
     ) -> Result<()> {
         let Some((viewed_entity_type, viewed_entity_uuid)) = self
             .entity_by_id(viewed_entity_id)
-            .map(|entity| (entity.entity_type(), entity.uuid()))
+            .map(|entity| (entity.get_entity_type(), entity.get_uuid()))
         else {
             return Ok(());
         };
         let Some(client) =
             self.entity_by_id_mut(viewer_player_id)
                 .and_then(|entity| match entity {
-                    Entity::Player(player) => player.client_mut(),
+                    Entity::Player(player) => player.get_client_mut(),
                     _ => None,
                 })
         else {
@@ -4046,7 +4091,7 @@ impl World {
         if viewed_entity_type == EntityType::PLAYER {
             PlayerInfoRemovePacket::new(viewed_entity_uuid).dispatch(client)?;
         }
-        RemoveEntitiesPacket::new(vec![viewed_entity_id.value()]).dispatch(client)
+        RemoveEntitiesPacket::new(vec![viewed_entity_id.get_value()]).dispatch(client)
     }
 
     fn send_entity_switch_remove_to_player(
@@ -4057,13 +4102,13 @@ impl World {
         let Some(client) =
             self.entity_by_id_mut(viewer_player_id)
                 .and_then(|entity| match entity {
-                    Entity::Player(player) => player.client_mut(),
+                    Entity::Player(player) => player.get_client_mut(),
                     _ => None,
                 })
         else {
             return Ok(());
         };
-        RemoveEntitiesPacket::new(vec![viewed_entity_id.value()]).dispatch(client)
+        RemoveEntitiesPacket::new(vec![viewed_entity_id.get_value()]).dispatch(client)
     }
 
     fn broadcast_player_equipment(
@@ -4076,19 +4121,19 @@ impl World {
     ) -> Result<()> {
         let viewer_ids = self
             .entity_by_id(changed_player_id)
-            .map(Entity::viewers)
+            .map(Entity::get_viewers)
             .unwrap_or_default();
         self.entities
             .iter_mut()
             .filter_map(|entity| match entity {
                 Entity::Player(player)
-                    if viewer_ids.contains(&player.entity_id()) && player.has_entered_world() =>
+                    if viewer_ids.contains(&player.get_entity_id()) && player.has_entered_world() =>
                 {
                     Some(player)
                 }
                 _ => None,
             })
-            .filter_map(Player::client_mut)
+            .filter_map(Player::get_client_mut)
             .try_for_each(|viewer_client| {
                 SetEquipmentPacket::new(equipment_entity_id, equipment_entries.clone())
                     .dispatch(viewer_client)
@@ -4124,10 +4169,10 @@ impl World {
                 let entity_ptr = entity as *mut Entity;
                 match entity {
                     Entity::Creature(entity) => {
-                        if entity.fire_ticks() == 1 {
-                            expired_fire_entities.push(entity.entity_id());
+                        if entity.get_fire_ticks() == 1 {
+                            expired_fire_entities.push(entity.get_entity_id());
                         }
-                        let previous_position = entity.position();
+                        let previous_position = entity.get_position();
                         entity.tick_before_movement(&world_snapshot, self.world_age as u64);
                         if let Some(movement) = entity.movement_tick(&world_snapshot) {
                             entity_movements.push(movement);
@@ -4138,16 +4183,16 @@ impl World {
                         }
                         creature_ai_actions.extend(entity.take_ai_actions());
                         dispatch_entity_tick_event(entity_ptr, event_dispatcher);
-                        if entity.position() != previous_position {
-                            moved_entities.push((entity.entity_id(), entity.position()));
+                        if entity.get_position() != previous_position {
+                            moved_entities.push((entity.get_entity_id(), entity.get_position()));
                         }
                         expired_effects.extend(
                             entity
                                 .take_expired_effects()
                                 .into_iter()
-                                .map(|effect| (entity.entity_id(), effect)),
+                                .map(|effect| (entity.get_entity_id(), effect)),
                         );
-                        entity_touches.push((entity.entity_id(), entity.position()));
+                        entity_touches.push((entity.get_entity_id(), entity.get_position()));
                         None
                     }
                     Entity::ExperienceOrb(entity) => {
@@ -4156,13 +4201,13 @@ impl World {
                         }
                         entity.tick();
                         dispatch_entity_tick_event(entity_ptr, event_dispatcher);
-                        experience_orb_ids.push(entity.entity_id());
-                        entity_touches.push((entity.entity_id(), entity.position()));
+                        experience_orb_ids.push(entity.get_entity_id());
+                        entity_touches.push((entity.get_entity_id(), entity.get_position()));
                         None
                     }
                     Entity::Generic(entity) => {
-                        if entity.fire_ticks() == 1 {
-                            expired_fire_entities.push(entity.entity_id());
+                        if entity.get_fire_ticks() == 1 {
+                            expired_fire_entities.push(entity.get_entity_id());
                         }
                         if let Some(movement) = entity.movement_tick(&world_snapshot) {
                             entity_movements.push(movement);
@@ -4173,9 +4218,9 @@ impl World {
                             entity
                                 .take_expired_effects()
                                 .into_iter()
-                                .map(|effect| (entity.entity_id(), effect)),
+                                .map(|effect| (entity.get_entity_id(), effect)),
                         );
-                        entity_touches.push((entity.entity_id(), entity.position()));
+                        entity_touches.push((entity.get_entity_id(), entity.get_position()));
                         None
                     }
                     Entity::Item(entity) => {
@@ -4185,33 +4230,33 @@ impl World {
                         entity.tick();
                         dispatch_entity_tick_event(entity_ptr, event_dispatcher);
                         if entity.should_check_merge(self.world_age as u64) {
-                            mergeable_item_entity_ids.push(entity.entity_id());
+                            mergeable_item_entity_ids.push(entity.get_entity_id());
                         }
-                        entity_touches.push((entity.entity_id(), entity.position()));
+                        entity_touches.push((entity.get_entity_id(), entity.get_position()));
                         None
                     }
                     Entity::Projectile(entity) => {
-                        if entity.fire_ticks() == 1 {
-                            expired_fire_entities.push(entity.entity_id());
+                        if entity.get_fire_ticks() == 1 {
+                            expired_fire_entities.push(entity.get_entity_id());
                         }
-                        let position_before_tick = entity.position();
+                        let position_before_tick = entity.get_position();
                         if let Some(movement) = entity.movement_tick(&world_snapshot) {
                             entity_movements.push(movement);
                         }
                         entity.tick();
                         projectile_paths.push((
-                            entity.entity_id(),
+                            entity.get_entity_id(),
                             position_before_tick,
-                            entity.position(),
+                            entity.get_position(),
                         ));
                         dispatch_entity_tick_event(entity_ptr, event_dispatcher);
                         expired_effects.extend(
                             entity
                                 .take_expired_effects()
                                 .into_iter()
-                                .map(|effect| (entity.entity_id(), effect)),
+                                .map(|effect| (entity.get_entity_id(), effect)),
                         );
-                        entity_touches.push((entity.entity_id(), entity.position()));
+                        entity_touches.push((entity.get_entity_id(), entity.get_position()));
                         None
                     }
                     Entity::Player(player) => {
@@ -4219,17 +4264,17 @@ impl World {
                         let item_use_completion = player.tick();
                         dispatch_player_tick_event(player);
                         dispatch_entity_tick_event(entity_ptr, event_dispatcher);
-                        if player.fire_ticks() == 1 {
-                            expired_fire_entities.push(player.entity_id());
+                        if player.get_fire_ticks() == 1 {
+                            expired_fire_entities.push(player.get_entity_id());
                         }
                         player.tick_fire_ticks();
                         expired_effects.extend(
                             player
                                 .tick_living_state()
                                 .into_iter()
-                                .map(|effect| (player.entity_id(), effect)),
+                                .map(|effect| (player.get_entity_id(), effect)),
                         );
-                        entity_touches.push((player.entity_id(), player.position()));
+                        entity_touches.push((player.get_entity_id(), player.get_position()));
                         if player.has_entered_world() && player.is_online() {
                             player_addresses.push(player.addr);
                         }
@@ -4253,12 +4298,12 @@ impl World {
             .iter_mut()
             .filter_map(|entity| {
                 entity
-                    .scheduled_position_sync_packet()
+                    .get_scheduled_position_sync_packet()
                     .map(|position_packet| {
                         (
-                            entity.entity_id(),
+                            entity.get_entity_id(),
                             position_packet,
-                            entity.velocity_packet(),
+                            entity.get_velocity_packet(),
                         )
                     })
             })
@@ -4268,8 +4313,8 @@ impl World {
             .iter_mut()
             .filter_map(|entity| {
                 entity
-                    .dirty_metadata_packet()
-                    .map(|packet| (entity.entity_id(), packet))
+                    .get_dirty_metadata_packet()
+                    .map(|packet| (entity.get_entity_id(), packet))
             })
             .collect::<Vec<_>>();
         moved_entities
@@ -4326,9 +4371,9 @@ impl World {
     }
 
     fn apply_entity_movement(&mut self, movement: EntityMovement) {
-        let entity_id = movement.entity_id();
+        let entity_id = movement.get_entity_id();
         self.entity_tracker
-            .move_entity(entity_id, movement.position());
+            .move_entity(entity_id, movement.get_position());
         self.refresh_passenger_positions(entity_id);
         let (movement_packet, head_look_packet) = movement.into_packets();
         let Some(packet) = movement_packet else {
@@ -4384,9 +4429,9 @@ impl World {
             return None;
         };
         Some(ProjectileCollisionState {
-            shooter_id: projectile.shooter(),
+            shooter_id: projectile.get_shooter(),
             alive_ticks: projectile.ticks(),
-            bounding_box: projectile.bounding_box(),
+            bounding_box: projectile.get_bounding_box(),
             is_on_ground: projectile.is_on_ground(),
         })
     }
@@ -4409,7 +4454,7 @@ impl World {
         projectile_sample_positions(
             position_before_tick,
             position_after_tick,
-            projectile_state.bounding_box.width(),
+            projectile_state.bounding_box.get_width(),
         )
         .into_iter()
         .find_map(|collision_position| {
@@ -4473,8 +4518,8 @@ impl World {
                         entity_boxes_intersect_at(
                             collision_position,
                             projectile_state.bounding_box,
-                            target.position(),
-                            target.bounding_box(),
+                            target.get_position(),
+                            target.get_bounding_box(),
                         )
                     })
                     .map(|_| target_id)
@@ -4499,7 +4544,7 @@ impl World {
         projectile.set_no_gravity(true);
         projectile.set_was_stuck(true);
         let teleport_packet = projectile.synchronize_position_packet();
-        let velocity_packet = projectile.velocity_packet();
+        let velocity_packet = projectile.get_velocity_packet();
         self.entity_tracker
             .move_entity(projectile_id, collision_position);
         self.refresh_passenger_positions(projectile_id);
@@ -4573,9 +4618,9 @@ impl World {
             return Ok(false);
         };
         let equipment_packet = SetEquipmentPacket::new(
-            entity_id.value(),
+            entity_id.get_value(),
             vec![EntityEquipmentEntry {
-                slot: equipment_slot.entity_equipment_slot(),
+                slot: equipment_slot.get_entity_equipment_slot(),
                 item: Slot::from_item_stack(&item_stack),
             }],
         );
@@ -4601,8 +4646,8 @@ impl World {
         if !self.dispatch_entity_potion_add_event(entity_id, effect.clone()) {
             return Ok(false);
         }
-        if self.entity_has_effect(entity_id, effect.effect_id()) {
-            self.remove_entity_effect(entity_id, effect.effect_id())?;
+        if self.entity_has_effect(entity_id, effect.get_effect_id()) {
+            self.remove_entity_effect(entity_id, effect.get_effect_id())?;
         }
         let Some(packet) = self.apply_entity_effect(entity_id, effect) else {
             return Ok(false);
@@ -4623,7 +4668,7 @@ impl World {
         let effect_ids = self
             .entity_effects(entity_id)
             .into_iter()
-            .map(TimedPotionEffect::effect_id)
+            .map(TimedPotionEffect::get_effect_id)
             .collect::<Vec<_>>();
         effect_ids.iter().try_for_each(|effect_id| {
             self.remove_entity_effect(entity_id, *effect_id).map(|_| ())
@@ -4635,12 +4680,12 @@ impl World {
         let Some(current_fire_ticks) =
             self.entity_by_id(entity_id)
                 .and_then(|entity| match entity {
-                    Entity::Creature(entity) => Some(entity.fire_ticks()),
-                    Entity::ExperienceOrb(entity) => Some(entity.fire_ticks()),
-                    Entity::Generic(entity) => Some(entity.fire_ticks()),
+                    Entity::Creature(entity) => Some(entity.get_fire_ticks()),
+                    Entity::ExperienceOrb(entity) => Some(entity.get_fire_ticks()),
+                    Entity::Generic(entity) => Some(entity.get_fire_ticks()),
                     Entity::Item(_) => None,
-                    Entity::Player(player) => Some(player.fire_ticks()),
-                    Entity::Projectile(entity) => Some(entity.fire_ticks()),
+                    Entity::Player(player) => Some(player.get_fire_ticks()),
+                    Entity::Projectile(entity) => Some(entity.get_fire_ticks()),
                 })
         else {
             return false;
@@ -4678,7 +4723,7 @@ impl World {
         if self.entity_rejects_damage(entity_id, &damage) {
             return Ok(false);
         }
-        if damage.sound().is_none() {
+        if damage.get_sound().is_none() {
             damage.set_sound(Some(damage.default_sound(self.entity_is_player(entity_id))));
         }
         let Some(damage) = self.dispatch_entity_damage_event(entity_id, damage) else {
@@ -4697,21 +4742,21 @@ impl World {
             self.send_packet_to_player_viewers_and_self(
                 entity_id,
                 DamageEventPacket {
-                    target_entity_id: entity_id.value(),
+                    target_entity_id: entity_id.get_value(),
                     damage_type_id,
                     source_entity_id: damage
-                        .attacker()
-                        .map(|attacker| attacker.value() + 1)
+                        .get_attacker()
+                        .map(|attacker| attacker.get_value() + 1)
                         .unwrap_or(0),
                     source_direct_id: damage
-                        .source()
-                        .map(|source| source.value() + 1)
+                        .get_source()
+                        .map(|source| source.get_value() + 1)
                         .unwrap_or(0),
-                    source_position: damage.source_position(),
+                    source_position: damage.get_source_position(),
                 },
             )?;
         }
-        if let Some(sound) = damage.sound() {
+        if let Some(sound) = damage.get_sound() {
             let sound_source_id = damage_sound_source_id(entity_id, self);
             self.play_entity_sound_except(None, sound, sound_source_id, entity_id, 1.0, 1.0, 0)?;
         }
@@ -4732,7 +4777,7 @@ impl World {
         self.send_packet_to_player_viewers_and_self(
             entity_id,
             EntityStatusPacket {
-                entity_id: entity_id.value(),
+                entity_id: entity_id.get_value(),
                 status: 3,
             },
         )?;
@@ -4755,11 +4800,11 @@ impl World {
             .iter()
             .filter_map(|entity| match entity {
                 Entity::Generic(entity)
-                    if entity.entity_type().is_living() && entity.can_pickup_item() =>
+                    if entity.get_entity_type().is_living() && entity.can_pickup_item() =>
                 {
-                    Some(entity.entity_id())
+                    Some(entity.get_entity_id())
                 }
-                Entity::Player(player) if player.can_pickup_item() => Some(player.entity_id()),
+                Entity::Player(player) if player.can_pickup_item() => Some(player.get_entity_id()),
                 _ => None,
             })
             .collect::<Vec<_>>();
@@ -4775,15 +4820,15 @@ impl World {
             return;
         };
         experience_orb.apply_gravity();
-        let experience_orb_position = experience_orb.position();
-        let current_target = experience_orb.target();
+        let experience_orb_position = experience_orb.get_position();
+        let current_target = experience_orb.get_target();
         let target_refresh_tick =
-            current_tick - 20 + i64::from(experience_orb.entity_id().value() % 100);
-        let should_refresh_target = experience_orb.last_target_update_tick() < target_refresh_tick;
+            current_tick - 20 + i64::from(experience_orb.get_entity_id().get_value() % 100);
+        let should_refresh_target = experience_orb.get_last_target_update_tick() < target_refresh_tick;
 
         let target_is_missing_or_distant = current_target.is_none_or(|target_id| {
             self.entity_by_id(target_id).is_none_or(|target| {
-                target.position().distance_squared(experience_orb_position) > 64.0
+                target.get_position().get_distance_squared(experience_orb_position) > 64.0
             })
         });
         let refreshed_target = (should_refresh_target && target_is_missing_or_distant)
@@ -4805,12 +4850,12 @@ impl World {
         let target = self
             .entity_by_id(experience_orb_id)
             .and_then(|entity| match entity {
-                Entity::ExperienceOrb(experience_orb) => experience_orb.target(),
+                Entity::ExperienceOrb(experience_orb) => experience_orb.get_target(),
                 _ => None,
             })
             .and_then(|target_id| match self.entity_by_id(target_id) {
-                Some(Entity::Player(player)) if player.game_mode() != GameMode::Spectator => {
-                    Some((target_id, player.position(), player.eye_height()))
+                Some(Entity::Player(player)) if player.get_game_mode() != GameMode::Spectator => {
+                    Some((target_id, player.get_position(), player.get_eye_height()))
                 }
                 _ => None,
             });
@@ -4836,8 +4881,8 @@ impl World {
         self.players()
             .map(|player| {
                 (
-                    player.entity_id(),
-                    player.position().distance_squared(position),
+                    player.get_entity_id(),
+                    player.get_position().get_distance_squared(position),
                 )
             })
             .filter(|(_, distance_squared)| *distance_squared <= maximum_distance_squared)
@@ -4855,7 +4900,7 @@ impl World {
             .filter_map(|entity| match entity {
                 Entity::Player(player) if player.experience_pickup_is_ready(current_tick) => {
                     player.refresh_experience_pickup_cooldown(current_tick);
-                    Some(player.entity_id())
+                    Some(player.get_entity_id())
                 }
                 _ => None,
             })
@@ -4870,7 +4915,7 @@ impl World {
             self.entity_by_id(player_id)
                 .and_then(|entity| match entity {
                     Entity::Player(player) => {
-                        Some((player.position(), player.expanded_bounding_box()))
+                        Some((player.get_position(), player.get_expanded_bounding_box()))
                     }
                     _ => None,
                 })
@@ -4879,7 +4924,7 @@ impl World {
         };
         let experience_orb_ids = self.entity_tracker.nearby_entities(
             player_position,
-            expanded_bounding_box.width(),
+            expanded_bounding_box.get_width(),
             EntityTrackerTarget::ExperienceOrbs,
         );
         experience_orb_ids
@@ -4894,7 +4939,7 @@ impl World {
                                     expanded_bounding_box,
                                 ) =>
                             {
-                                Some(experience_orb.experience_count())
+                                Some(experience_orb.get_experience_count())
                             }
                             _ => None,
                         })
@@ -4939,7 +4984,7 @@ impl World {
         };
         let item_entity_ids = self.entity_tracker.nearby_entities(
             position,
-            expanded_bounding_box.width(),
+            expanded_bounding_box.get_width(),
             EntityTrackerTarget::Items,
         );
         item_entity_ids.into_iter().for_each(|item_entity_id| {
@@ -4957,15 +5002,15 @@ impl World {
             let Some(pickup_item_count) = self
                 .entity_by_id(item_entity_id)
                 .and_then(item_entity)
-                .map(|item_entity| item_entity.item_stack().amount())
+                .map(|item_entity| item_entity.get_item_stack().amount())
             else {
                 return;
             };
             let _ = self.send_packet_to_player_viewers_and_self(
                 living_entity_id,
                 TakeItemEntityPacket {
-                    collected_entity_id: item_entity_id.value(),
-                    collector_entity_id: living_entity_id.value(),
+                    collected_entity_id: item_entity_id.get_value(),
+                    collector_entity_id: living_entity_id.get_value(),
                     pickup_item_count,
                 },
             );
@@ -4978,11 +5023,11 @@ impl World {
             return false;
         };
         match entity {
-            Entity::Generic(entity) if entity.item_pickup_cooldown() == 0 => {
+            Entity::Generic(entity) if entity.get_item_pickup_cooldown() == 0 => {
                 entity.set_item_pickup_cooldown(5);
                 true
             }
-            Entity::Player(player) if player.item_pickup_cooldown() == 0 => {
+            Entity::Player(player) if player.get_item_pickup_cooldown() == 0 => {
                 player.set_item_pickup_cooldown(5);
                 true
             }
@@ -5031,7 +5076,7 @@ impl World {
         let Some((source_position, merge_range)) = self
             .entity_by_id(source_item_entity_id)
             .and_then(item_entity)
-            .map(|item_entity| (item_entity.position(), item_entity.merge_range()))
+            .map(|item_entity| (item_entity.get_position(), item_entity.get_merge_range()))
         else {
             return;
         };
@@ -5057,7 +5102,7 @@ impl World {
             .entity_by_id(source_item_entity_id)
             .and_then(item_entity)
             .filter(|item_entity| item_entity.is_pickable() && item_entity.is_mergeable())
-            .map(|item_entity| item_entity.item_stack().clone())
+            .map(|item_entity| item_entity.get_item_stack().clone())
         else {
             return;
         };
@@ -5065,7 +5110,7 @@ impl World {
             .entity_by_id(merged_item_entity_id)
             .and_then(item_entity)
             .filter(|item_entity| item_entity.is_pickable() && item_entity.is_mergeable())
-            .map(|item_entity| item_entity.item_stack().clone())
+            .map(|item_entity| item_entity.get_item_stack().clone())
         else {
             return;
         };
@@ -5093,7 +5138,7 @@ impl World {
         else {
             return;
         };
-        source_item_entity.set_item_stack(result);
+        source_item_entity.set_item_metadata(result);
         self.take_entity(merged_item_entity_id);
     }
 
@@ -5150,7 +5195,7 @@ impl World {
     )> {
         let entity = self.entity_by_id_mut(entity_id)?;
         match entity {
-            Entity::Generic(entity) if entity.entity_type().is_living() => {
+            Entity::Generic(entity) if entity.get_entity_type().is_living() => {
                 entity.set_equipment(equipment_slot, item_stack);
                 Some((entity.update_attributes_packet(), false))
             }
@@ -5208,7 +5253,7 @@ impl World {
             Entity::ExperienceOrb(entity) => entity.effect(effect_id),
             Entity::Generic(entity) => entity.effect(effect_id),
             Entity::Item(entity) => entity.effect(effect_id),
-            Entity::Player(player) => player.effect(effect_id),
+            Entity::Player(player) => player.get_effect(effect_id),
             Entity::Projectile(entity) => entity.effect(effect_id),
         }
     }
@@ -5219,7 +5264,7 @@ impl World {
             Some(Entity::ExperienceOrb(entity)) => entity.active_effects(),
             Some(Entity::Generic(entity)) => entity.active_effects(),
             Some(Entity::Item(entity)) => entity.active_effects(),
-            Some(Entity::Player(player)) => player.active_effects(),
+            Some(Entity::Player(player)) => player.get_active_effects(),
             Some(Entity::Projectile(entity)) => entity.active_effects(),
             None => Vec::new(),
         }
@@ -5265,7 +5310,7 @@ impl World {
         effect: TimedPotionEffect,
     ) -> Result<()> {
         let packet = self
-            .apply_entity_effect_removal(entity_id, effect.effect_id())
+            .apply_entity_effect_removal(entity_id, effect.get_effect_id())
             .unwrap_or_else(|| effect.remove_packet(entity_id));
         self.send_packet_to_player_viewers_and_self(entity_id, packet)?;
         self.dispatch_entity_potion_remove_event(entity_id, effect);
@@ -5299,7 +5344,7 @@ impl World {
     fn apply_living_death_state(&mut self, entity_id: EntityId) -> Result<()> {
         let passenger_ids = self
             .entity_by_id(entity_id)
-            .map(|entity| entity.passengers().iter().copied().collect::<Vec<_>>())
+            .map(|entity| entity.get_passengers().iter().copied().collect::<Vec<_>>())
             .unwrap_or_default();
         let Some(entity) = self.entity_by_id_mut(entity_id) else {
             return Ok(());
@@ -5324,7 +5369,7 @@ impl World {
             }
             Entity::Item(_) => {}
             Entity::Player(player) => {
-                player.set_pose(PlayerPose::Dying);
+                player.set_pose(EntityPose::Dying);
             }
             Entity::Projectile(_) => {}
         }
@@ -5509,20 +5554,20 @@ impl World {
         let should_kill = match entity {
             Entity::Creature(entity) => {
                 entity.apply_damage(damage);
-                entity.health() <= 0.0
+                entity.get_health() <= 0.0
             }
             Entity::ExperienceOrb(entity) => {
                 entity.apply_damage(damage);
-                entity.health() <= 0.0
+                entity.get_health() <= 0.0
             }
             Entity::Generic(entity) => {
                 entity.apply_damage(damage);
-                entity.health() <= 0.0
+                entity.get_health() <= 0.0
             }
             Entity::Item(_) => return Ok(false),
             Entity::Player(player) => {
                 player.apply_damage(damage)?;
-                player.health() <= 0.0
+                player.get_health() <= 0.0
             }
             Entity::Projectile(_) => return Ok(false),
         };
@@ -5552,7 +5597,7 @@ impl World {
         if event.is_cancelled() {
             return None;
         }
-        Some(event.fire_ticks())
+        Some(event.get_fire_ticks())
     }
 
     fn dispatch_entity_fire_extinguish_event(
@@ -5638,9 +5683,9 @@ impl World {
 
     fn touch_entity_blocks(&self, entity_id: EntityId, position: EntityPosition) {
         let block_position = BlockPosition::new(
-            position.x().floor() as i32,
-            position.y().floor() as i32,
-            position.z().floor() as i32,
+            position.get_x().floor() as i32,
+            position.get_y().floor() as i32,
+            position.get_z().floor() as i32,
         );
         let Some(block_instance) = self.loaded_block_instance_at(block_position) else {
             return;
@@ -5676,7 +5721,7 @@ impl World {
                 Entity::Player(player) if player.has_entered_world() => Some(player),
                 _ => None,
             })
-            .filter_map(Player::client_mut)
+            .filter_map(Player::get_client_mut)
             .try_for_each(|client| {
                 SetTimePacket::new(
                     time_packet.world_age,
@@ -5695,7 +5740,7 @@ impl World {
                 Entity::Player(player) if player.has_entered_world() => Some(player),
                 _ => None,
             })
-            .filter_map(Player::client_mut)
+            .filter_map(Player::get_client_mut)
             .try_for_each(|client| {
                 if previous_weather.is_raining() != weather.is_raining() {
                     weather.is_raining_packet().dispatch(client)?;
@@ -5734,7 +5779,7 @@ impl World {
     ) -> Result<()> {
         let _ = self.broadcast_entity_status(completion.entity_id, completion.status);
         let player = unsafe { &mut *completion.player };
-        let Some(client) = player.client_mut().map(|client| client as *mut Client) else {
+        let Some(client) = player.get_client_mut().map(|client| client as *mut Client) else {
             return Ok(());
         };
         let client = unsafe { &mut *client };
@@ -5754,13 +5799,13 @@ impl World {
 
     fn refresh_player_metadata_by_entity_id(&mut self, entity_id: i32) -> Result<()> {
         let Some(player) = self.entities.iter_mut().find_map(|entity| match entity {
-            Entity::Player(player) if player.entity_id().value() == entity_id => Some(player),
+            Entity::Player(player) if player.get_entity_id().get_value() == entity_id => Some(player),
             _ => None,
         }) else {
             return Ok(());
         };
-        let changed_player_id = player.entity_id();
-        let Some(metadata_packet) = player.dirty_metadata_packet() else {
+        let changed_player_id = player.get_entity_id();
+        let Some(metadata_packet) = player.get_dirty_metadata_packet() else {
             return Ok(());
         };
         self.broadcast_player_metadata(
@@ -5777,7 +5822,7 @@ impl World {
                 Entity::Player(player) if player.has_entered_world() => Some(player),
                 _ => None,
             })
-            .filter_map(Player::client_mut)
+            .filter_map(Player::get_client_mut)
             .try_for_each(|viewer_client| {
                 EntityStatusPacket { entity_id, status }.dispatch(viewer_client)
             })
@@ -5789,7 +5834,7 @@ impl World {
             .iter()
             .filter_map(|entity| match entity {
                 Entity::Player(player) if player.addr == *addr => {
-                    Some((player.entity_id(), player.uuid))
+                    Some((player.get_entity_id(), player.uuid))
                 }
                 _ => None,
             })
@@ -5802,11 +5847,11 @@ impl World {
                 }
                 _ => None,
             })
-            .filter_map(Player::client_mut)
+            .filter_map(Player::get_client_mut)
             .try_for_each(|viewer_client| {
                 removed_players.iter().try_for_each(|(entity_id, uuid)| {
                     PlayerInfoRemovePacket::new(*uuid).dispatch(viewer_client)?;
-                    RemoveEntitiesPacket::new(vec![entity_id.value()]).dispatch(viewer_client)
+                    RemoveEntitiesPacket::new(vec![entity_id.get_value()]).dispatch(viewer_client)
                 })
             })?;
         self.entities.retain(|entity| match entity {
@@ -5858,7 +5903,7 @@ impl World {
     }
 
     pub(crate) fn synchronize_player_visibility(&mut self, client: &mut Client) -> Result<()> {
-        let Some(joining_player_id) = self.player_by_addr(&client.addr).map(Player::entity_id)
+        let Some(joining_player_id) = self.player_by_addr(&client.addr).map(Player::get_entity_id)
         else {
             return Err(Error::new(ErrorKind::NotFound, "Player not found."));
         };
@@ -5872,7 +5917,7 @@ impl World {
         client: &mut Client,
     ) {
         let Some(player) = self.entities.iter_mut().find_map(|entity| match entity {
-            Entity::Player(player) if player.uuid() == player_uuid => Some(player),
+            Entity::Player(player) if player.get_uuid() == player_uuid => Some(player),
             _ => None,
         }) else {
             return;
@@ -6158,7 +6203,7 @@ impl World {
             placement.block_face(),
             position,
             placement.cursor_position(),
-            player.map(Player::position),
+            player.map(Player::get_position),
             placement.player(),
             placement.hand(),
             player.is_some_and(Player::is_sneaking),
@@ -6280,7 +6325,7 @@ impl World {
             return Vec::new();
         };
         let eye_position = entity_eye_position(entity);
-        let direction = view_direction(entity.position());
+        let direction = view_direction(entity.get_position());
         self.ray_positions(eye_position, direction, max_distance as f64)
             .into_iter()
             .filter(|position| {
@@ -6314,7 +6359,7 @@ impl World {
         let source_eye_position = entity_eye_position(source);
         let target_eye_position = entity_eye_position(target);
         let target_direction = normalized_vector_between(source_eye_position, target_eye_position);
-        if exact_view && !vectors_are_aligned(view_direction(source.position()), target_direction) {
+        if exact_view && !vectors_are_aligned(view_direction(source.get_position()), target_direction) {
             return false;
         }
         !self
@@ -6338,10 +6383,10 @@ impl World {
     ) -> Option<&Entity> {
         let source = self.entity_by_id(entity_id)?;
         let source_eye_position = entity_eye_position(source);
-        let direction = view_direction(source.position());
+        let direction = view_direction(source.get_position());
         self.entities
             .iter()
-            .filter(|entity| entity.entity_id() != entity_id)
+            .filter(|entity| entity.get_entity_id() != entity_id)
             .filter(|entity| predicate(entity))
             .filter_map(|entity| {
                 let target_eye_position = entity_eye_position(entity);
@@ -6352,7 +6397,7 @@ impl World {
                 if !ray_reaches_entity(source_eye_position, direction, entity) {
                     return None;
                 }
-                if !self.has_exact_line_of_sight(entity_id, entity.entity_id(), false) {
+                if !self.has_exact_line_of_sight(entity_id, entity.get_entity_id(), false) {
                     return None;
                 }
                 Some((distance, entity))
@@ -6509,16 +6554,16 @@ impl World {
                 Entity::Player(player) if player.has_entered_world() => Some(player),
                 _ => None,
             })
-            .filter(|player| Some(player.uuid()) != excluded_player)
-            .filter_map(Player::client_mut)
+            .filter(|player| Some(player.get_uuid()) != excluded_player)
+            .filter_map(Player::get_client_mut)
             .try_for_each(|client| {
                 SoundEffectPacket {
                     sound_event: NetworkPositionedSoundEvent(sound_event.clone()),
                     source_id,
                     position: Vector3d {
-                        x: position.x(),
-                        y: position.y(),
-                        z: position.z(),
+                        x: position.get_x(),
+                        y: position.get_y(),
+                        z: position.get_z(),
                     },
                     volume,
                     pitch,
@@ -6575,13 +6620,13 @@ impl World {
                 Entity::Player(player) if player.has_entered_world() => Some(player),
                 _ => None,
             })
-            .filter(|player| Some(player.uuid()) != excluded_player)
-            .filter_map(Player::client_mut)
+            .filter(|player| Some(player.get_uuid()) != excluded_player)
+            .filter_map(Player::get_client_mut)
             .try_for_each(|client| {
                 EntitySoundEffectPacket {
                     sound_event: NetworkSoundEvent(sound_event.clone()),
                     source_id,
-                    entity_id: entity_id.value() as i32,
+                    entity_id: entity_id.get_value() as i32,
                     volume,
                     pitch,
                     seed,
@@ -6605,10 +6650,10 @@ impl World {
                 Entity::Player(player) if player.has_entered_world() => Some(player),
                 _ => None,
             })
-            .filter(|player| Some(player.uuid()) != excluded_player)
+            .filter(|player| Some(player.get_uuid()) != excluded_player)
             .try_for_each(|player| {
-                let entity_id = player.entity_id().value() as i32;
-                let Some(client) = player.client_mut() else {
+                let entity_id = player.get_entity_id().get_value() as i32;
+                let Some(client) = player.get_client_mut() else {
                     return Ok(());
                 };
                 EntitySoundEffectPacket {
@@ -6644,7 +6689,7 @@ impl World {
         self.entities
             .iter_mut()
             .filter_map(|entity| match entity {
-                Entity::Player(player) if viewer_ids.contains(&player.entity_id().value()) => {
+                Entity::Player(player) if viewer_ids.contains(&player.get_entity_id().get_value()) => {
                     Some(player)
                 }
                 _ => None,
@@ -6671,13 +6716,13 @@ impl World {
         self.entities
             .iter_mut()
             .filter_map(|entity| match entity {
-                Entity::Player(player) if viewer_ids.contains(&player.entity_id().value()) => {
+                Entity::Player(player) if viewer_ids.contains(&player.get_entity_id().get_value()) => {
                     Some(player)
                 }
                 _ => None,
             })
             .try_for_each(|player| {
-                let Some(client) = player.client_mut() else {
+                let Some(client) = player.get_client_mut() else {
                     return Ok(());
                 };
                 client.send_packet(P::get_id(), &payload)
@@ -6703,7 +6748,7 @@ impl World {
                 Entity::Player(player) if player.has_entered_world() => Some(player),
                 _ => None,
             })
-            .filter_map(Player::client_mut)
+            .filter_map(Player::get_client_mut)
             .try_for_each(|client| client.send_packet(P::get_id(), &payload))
     }
 
@@ -6874,7 +6919,7 @@ impl World {
 
     fn player_pointer_for_block_break(&mut self, player_id: EntityId) -> Option<*mut Player> {
         self.entities.iter_mut().find_map(|entity| match entity {
-            Entity::Player(player) if player.entity_id() == player_id => {
+            Entity::Player(player) if player.get_entity_id() == player_id => {
                 Some(player as *mut Player)
             }
             _ => None,
@@ -6892,7 +6937,7 @@ impl World {
             return Some(Block::AIR);
         };
         let Some(client) = (unsafe { &mut *player })
-            .client_mut()
+            .get_client_mut()
             .map(|client| client as *mut Client)
         else {
             return Some(Block::AIR);
@@ -6911,7 +6956,7 @@ impl World {
         self.entities
             .iter_mut()
             .filter_map(|entity| match entity {
-                Entity::Player(player) if player.entity_id() == player_id => Some(player),
+                Entity::Player(player) if player.get_entity_id() == player_id => Some(player),
                 _ => None,
             })
             .for_each(|player| {
@@ -6958,14 +7003,14 @@ impl World {
             .iter_mut()
             .filter_map(|entity| match entity {
                 Entity::Player(player)
-                    if player.entity_id() != excluded_player
-                        && viewer_ids.contains(&player.entity_id().value()) =>
+                    if player.get_entity_id() != excluded_player
+                        && viewer_ids.contains(&player.get_entity_id().get_value()) =>
                 {
                     Some(player)
                 }
                 _ => None,
             })
-            .filter_map(Player::client_mut)
+            .filter_map(Player::get_client_mut)
             .try_for_each(|client| client.send_packet(P::get_id(), &payload))
     }
 
@@ -6985,7 +7030,7 @@ impl World {
                 Entity::Player(player) if player.has_entered_world() => Some(player),
                 _ => None,
             })
-            .filter_map(Player::client_mut)
+            .filter_map(Player::get_client_mut)
             .try_for_each(|viewer_client| {
                 BlockUpdatePacket::new(block_position, block_state.state_id())
                     .dispatch(viewer_client)
@@ -7253,7 +7298,7 @@ impl World {
         let Some(player) = self.player_pointer_by_addr(&address) else {
             return Ok(());
         };
-        let Some(client) = (unsafe { &mut *player }).client_mut() else {
+        let Some(client) = (unsafe { &mut *player }).get_client_mut() else {
             return Ok(());
         };
         let client = client as *mut Client;
@@ -7485,8 +7530,8 @@ fn generate_chunk(
 
 fn chunk_position_for_entity_position(position: EntityPosition) -> ChunkPosition {
     ChunkPosition::new(
-        (position.x().floor() as i32).div_euclid(16),
-        (position.z().floor() as i32).div_euclid(16),
+        (position.get_x().floor() as i32).div_euclid(16),
+        (position.get_z().floor() as i32).div_euclid(16),
     )
 }
 
@@ -7507,19 +7552,19 @@ fn automatic_visibility_pair_is_allowed(
 ) -> bool {
     viewer_player.has_entered_world()
         && !viewed_player_is_vanished
-        && viewer_player.vehicle() != Some(viewed_entity.entity_id())
+        && viewer_player.get_vehicle() != Some(viewed_entity.get_entity_id())
         && entity_positions_are_within_view_distance(
-            viewed_entity.position(),
-            viewer_player.position(),
+            viewed_entity.get_position(),
+            viewer_player.get_position(),
         )
-        && viewed_entity.view().is_auto_viewable()
-        && viewer_player.view().is_auto_viewer()
+        && viewed_entity.get_view().is_auto_viewable()
+        && viewer_player.get_view().is_auto_viewer()
         && viewed_entity
-            .view()
-            .viewable_rule_allows(viewer_player.entity_id())
+            .get_view()
+            .viewable_rule_allows(viewer_player.get_entity_id())
         && viewer_player
-            .view()
-            .viewer_rule_allows(viewed_entity.entity_id())
+            .get_view()
+            .viewer_rule_allows(viewed_entity.get_entity_id())
 }
 
 fn block_is_air(block: Block) -> bool {
@@ -7542,17 +7587,17 @@ fn block_is_sight_block(block: Block) -> bool {
 }
 
 fn entity_eye_position(entity: &Entity) -> Vector3d {
-    let position = entity.position();
+    let position = entity.get_position();
     Vector3d {
-        x: position.x(),
-        y: position.y() + entity.eye_height(),
-        z: position.z(),
+        x: position.get_x(),
+        y: position.get_y() + entity.get_eye_height(),
+        z: position.get_z(),
     }
 }
 
 fn view_direction(position: EntityPosition) -> Vector3d {
-    let yaw = position.yaw().to_radians() as f64;
-    let pitch = position.pitch().to_radians() as f64;
+    let yaw = position.get_yaw().to_radians() as f64;
+    let pitch = position.get_pitch().to_radians() as f64;
     let pitch_cosine = pitch.cos();
     Vector3d {
         x: -yaw.sin() * pitch_cosine,
@@ -7597,16 +7642,16 @@ fn ray_reaches_entity(start: Vector3d, direction: Vector3d, entity: &Entity) -> 
     if target_distance == 0.0 {
         return true;
     }
-    let bounding_box = entity.bounding_box();
+    let bounding_box = entity.get_bounding_box();
     let ray_direction = Vector3d {
         x: direction.x * target_distance,
         y: direction.y * target_distance,
         z: direction.z * target_distance,
     };
     RaycastBoundingBox::from_center_dimensions(
-        entity.position().as_vector(),
-        bounding_box.width(),
-        bounding_box.height(),
+        entity.get_position().as_vector(),
+        bounding_box.get_width(),
+        bounding_box.get_height(),
         bounding_box.depth(),
     )
     .ray_intersection(start, ray_direction)
@@ -7618,25 +7663,25 @@ fn player_intersects_block(
     block_center: Vector3d,
     block_box: EntityBoundingBox,
 ) -> bool {
-    let player_box = EntityType::PLAYER.bounding_box();
+    let player_box = EntityType::PLAYER.get_bounding_box();
     let player_start = Vector3d {
-        x: player_position.x() - player_box.width() / 2.0,
-        y: player_position.y(),
-        z: player_position.z() - player_box.depth() / 2.0,
+        x: player_position.get_x() - player_box.get_width() / 2.0,
+        y: player_position.get_y(),
+        z: player_position.get_z() - player_box.depth() / 2.0,
     };
     let player_end = Vector3d {
-        x: player_position.x() + player_box.width() / 2.0,
-        y: player_position.y() + player_box.height(),
-        z: player_position.z() + player_box.depth() / 2.0,
+        x: player_position.get_x() + player_box.get_width() / 2.0,
+        y: player_position.get_y() + player_box.get_height(),
+        z: player_position.get_z() + player_box.depth() / 2.0,
     };
     let block_start = Vector3d {
-        x: block_center.x - block_box.width() / 2.0,
+        x: block_center.x - block_box.get_width() / 2.0,
         y: block_center.y,
         z: block_center.z - block_box.depth() / 2.0,
     };
     let block_end = Vector3d {
-        x: block_center.x + block_box.width() / 2.0,
-        y: block_center.y + block_box.height(),
+        x: block_center.x + block_box.get_width() / 2.0,
+        y: block_center.y + block_box.get_height(),
         z: block_center.z + block_box.depth() / 2.0,
     };
 
@@ -7648,19 +7693,19 @@ fn player_intersects_block(
         && player_end.z >= block_start.z
 }
 
-fn player_pose_fits_at(world: &World, player_position: EntityPosition, pose: PlayerPose) -> bool {
-    let Some(player_box) = pose.bounding_box(EntityType::PLAYER.bounding_box()) else {
+fn player_pose_fits_at(world: &World, player_position: EntityPosition, pose: EntityPose) -> bool {
+    let Some(player_box) = pose.get_bounding_box(EntityType::PLAYER.get_bounding_box()) else {
         return false;
     };
     let player_start = Vector3d {
-        x: player_position.x() - player_box.width() / 2.0,
-        y: player_position.y(),
-        z: player_position.z() - player_box.depth() / 2.0,
+        x: player_position.get_x() - player_box.get_width() / 2.0,
+        y: player_position.get_y(),
+        z: player_position.get_z() - player_box.depth() / 2.0,
     };
     let player_end = Vector3d {
-        x: player_position.x() + player_box.width() / 2.0,
-        y: player_position.y() + player_box.height(),
-        z: player_position.z() + player_box.depth() / 2.0,
+        x: player_position.get_x() + player_box.get_width() / 2.0,
+        y: player_position.get_y() + player_box.get_height(),
+        z: player_position.get_z() + player_box.depth() / 2.0,
     };
     pose_block_positions(player_start, player_end)
         .into_iter()
@@ -7740,9 +7785,9 @@ fn projectile_sample_positions(
     position_after_tick: EntityPosition,
     projectile_width: f64,
 ) -> Vec<EntityPosition> {
-    let delta_x = position_after_tick.x() - position_before_tick.x();
-    let delta_y = position_after_tick.y() - position_before_tick.y();
-    let delta_z = position_after_tick.z() - position_before_tick.z();
+    let delta_x = position_after_tick.get_x() - position_before_tick.get_x();
+    let delta_y = position_after_tick.get_y() - position_before_tick.get_y();
+    let delta_z = position_after_tick.get_z() - position_before_tick.get_z();
     let distance = delta_x
         .mul_add(delta_x, delta_y.mul_add(delta_y, delta_z * delta_z))
         .sqrt();
@@ -7760,7 +7805,7 @@ fn projectile_sample_positions(
                 return position_after_tick;
             }
             let sample_multiplier = (sample_index + 1) as f64;
-            position_before_tick.offset(
+            position_before_tick.get_offset(
                 direction_x * sample_multiplier,
                 direction_y * sample_multiplier,
                 direction_z * sample_multiplier,
@@ -7771,16 +7816,16 @@ fn projectile_sample_positions(
 
 fn block_position_for_entity(position: EntityPosition) -> BlockPosition {
     BlockPosition::new(
-        position.x().floor() as i32,
-        position.y().floor() as i32,
-        position.z().floor() as i32,
+        position.get_x().floor() as i32,
+        position.get_y().floor() as i32,
+        position.get_z().floor() as i32,
     )
 }
 
 fn entity_is_living(entity: &Entity) -> bool {
     match entity {
         Entity::Creature(_) | Entity::Player(_) => true,
-        Entity::Generic(entity) => entity.entity_type().is_living(),
+        Entity::Generic(entity) => entity.get_entity_type().is_living(),
         Entity::ExperienceOrb(_) | Entity::Item(_) | Entity::Projectile(_) => false,
     }
 }
@@ -7800,9 +7845,9 @@ fn entity_positions_share_point(
     first_position: EntityPosition,
     second_position: EntityPosition,
 ) -> bool {
-    first_position.x() == second_position.x()
-        && first_position.y() == second_position.y()
-        && first_position.z() == second_position.z()
+    first_position.get_x() == second_position.get_x()
+        && first_position.get_y() == second_position.get_y()
+        && first_position.get_z() == second_position.get_z()
 }
 
 fn entity_boxes_intersect_at(
@@ -7824,9 +7869,9 @@ fn entity_box_start(
     bounding_box: spinel_registry::EntityBoundingBox,
 ) -> Vector3d {
     Vector3d {
-        x: position.x() + bounding_box.minimum_x(),
-        y: position.y() + bounding_box.minimum_y(),
-        z: position.z() + bounding_box.minimum_z(),
+        x: position.get_x() + bounding_box.minimum_x(),
+        y: position.get_y() + bounding_box.minimum_y(),
+        z: position.get_z() + bounding_box.minimum_z(),
     }
 }
 
@@ -7835,9 +7880,9 @@ fn entity_box_end(
     bounding_box: spinel_registry::EntityBoundingBox,
 ) -> Vector3d {
     Vector3d {
-        x: position.x() + bounding_box.maximum_x(),
-        y: position.y() + bounding_box.maximum_y(),
-        z: position.z() + bounding_box.maximum_z(),
+        x: position.get_x() + bounding_box.maximum_x(),
+        y: position.get_y() + bounding_box.maximum_y(),
+        z: position.get_z() + bounding_box.maximum_z(),
     }
 }
 
@@ -7878,22 +7923,22 @@ fn dispatch_player_spawn_event(
 
 fn entity_scoreboard_team_name(entity: &Entity) -> Option<&str> {
     match entity {
-        Entity::Creature(entity) => entity.team(),
-        Entity::ExperienceOrb(entity) => entity.team(),
-        Entity::Generic(entity) => entity.team(),
+        Entity::Creature(entity) => entity.get_team(),
+        Entity::ExperienceOrb(entity) => entity.get_team(),
+        Entity::Generic(entity) => entity.get_team(),
         Entity::Item(_) => None,
-        Entity::Player(player) => player.team(),
-        Entity::Projectile(entity) => entity.team(),
+        Entity::Player(player) => player.get_team(),
+        Entity::Projectile(entity) => entity.get_team(),
     }
 }
 
 fn living_item_pickup_scan(entity: &Entity) -> Option<(EntityPosition, EntityBoundingBox)> {
     match entity {
-        Entity::Creature(entity) => Some((entity.position(), entity.expanded_bounding_box())),
-        Entity::Generic(entity) if entity.entity_type().is_living() => {
-            Some((entity.position(), entity.expanded_bounding_box()))
+        Entity::Creature(entity) => Some((entity.get_position(), entity.get_expanded_bounding_box())),
+        Entity::Generic(entity) if entity.get_entity_type().is_living() => {
+            Some((entity.get_position(), entity.get_expanded_bounding_box()))
         }
-        Entity::Player(player) => Some((player.position(), player.expanded_bounding_box())),
+        Entity::Player(player) => Some((player.get_position(), player.get_expanded_bounding_box())),
         _ => None,
     }
 }
@@ -7914,7 +7959,7 @@ fn damage_sound_source_id(entity_id: EntityId, world: &World) -> i32 {
 
 fn dispatch_player_tick_event(player: &mut Player) {
     let player_ptr = player as *mut Player;
-    let Some(client) = player.client_mut() else {
+    let Some(client) = player.get_client_mut() else {
         return;
     };
     let Some(server_ptr) = client.server_ptr else {
@@ -7934,7 +7979,7 @@ fn dispatch_entity_tick_event(entity: *mut Entity, server_ptr: Option<usize>) {
 
 fn dispatch_player_tick_end_event(player: &mut Player) {
     let player_ptr = player as *mut Player;
-    let Some(client) = player.client_mut() else {
+    let Some(client) = player.get_client_mut() else {
         return;
     };
     let Some(server_ptr) = client.server_ptr else {

@@ -31,7 +31,7 @@ fn equipment_attributes_apply_vanilla_main_hand_modifier() {
     ));
 
     assert_eq!(
-        player.attribute_value(Attribute::ATTACK_SPEED),
+        player.get_attribute_value(Attribute::ATTACK_SPEED),
         1.2000000476837158
     );
 }
@@ -54,10 +54,10 @@ fn equipment_attributes_replace_old_modifier_for_changed_slot() {
     };
 
     assert!(player.set_equipment(EquipmentSlot::MainHand, main_hand(-1.0)));
-    assert_eq!(player.attribute_value(Attribute::ATTACK_SPEED), 3.0);
+    assert_eq!(player.get_attribute_value(Attribute::ATTACK_SPEED), 3.0);
 
     assert!(player.set_equipment(EquipmentSlot::MainHand, main_hand(-2.0)));
-    assert_eq!(player.attribute_value(Attribute::ATTACK_SPEED), 2.0);
+    assert_eq!(player.get_attribute_value(Attribute::ATTACK_SPEED), 2.0);
 }
 
 #[test]
@@ -66,14 +66,14 @@ fn login_attribute_sync_applies_preconfigured_selected_slot_item() {
     let mut client = queued_client();
     assert!(
         player
-            .inventory()
+            .get_inventory()
             .set_item_stack(0, ItemStack::of(Material::DIAMOND_PICKAXE))
     );
 
     player.sync_main_hand_attributes(&mut client).unwrap();
 
     assert_eq!(
-        player.attribute_value(Attribute::ATTACK_SPEED),
+        player.get_attribute_value(Attribute::ATTACK_SPEED),
         1.2000000476837158
     );
     assert_eq!(
@@ -94,7 +94,7 @@ fn active_equipment_change_syncs_inventory_slot_and_attributes() {
     ));
 
     assert_eq!(
-        player.attribute_value(Attribute::ATTACK_SPEED),
+        player.get_attribute_value(Attribute::ATTACK_SPEED),
         1.2000000476837158
     );
     assert_eq!(

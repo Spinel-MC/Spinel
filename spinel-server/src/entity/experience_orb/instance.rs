@@ -17,8 +17,8 @@ impl ExperienceOrb {
     pub fn new(experience_count: i16) -> Self {
         let mut entity = GenericEntity::new(EntityType::EXPERIENCE_ORB);
         entity.set_bounding_box_dimensions(0.5, 0.5, 0.5);
-        entity.metadata_mut().set(
-            &definitions::experience_orb::value(),
+        entity.get_metadata_mut().set(
+            &definitions::experience_orb::get_value(),
             MetadataValue::VarInt(i32::from(experience_count)),
         );
         Self {
@@ -29,19 +29,19 @@ impl ExperienceOrb {
         }
     }
 
-    pub const fn experience_count(&self) -> i16 {
+    pub const fn get_experience_count(&self) -> i16 {
         self.experience_count
     }
 
     pub fn set_experience_count(&mut self, experience_count: i16) {
         self.experience_count = experience_count;
-        self.entity.metadata_mut().set(
-            &definitions::experience_orb::value(),
+        self.entity.get_metadata_mut().set(
+            &definitions::experience_orb::get_value(),
             MetadataValue::VarInt(i32::from(experience_count)),
         );
     }
 
-    pub(crate) const fn target(&self) -> Option<EntityId> {
+    pub(crate) const fn get_target(&self) -> Option<EntityId> {
         self.target
     }
 
@@ -49,7 +49,7 @@ impl ExperienceOrb {
         self.target = target;
     }
 
-    pub(crate) const fn last_target_update_tick(&self) -> i64 {
+    pub(crate) const fn get_last_target_update_tick(&self) -> i64 {
         self.last_target_update_tick
     }
 
@@ -58,11 +58,11 @@ impl ExperienceOrb {
     }
 
     pub(crate) fn apply_attraction(&mut self, target_position: EntityPosition, eye_height: f64) {
-        let position = self.position();
+        let position = self.get_position();
         let delta = Vector3d {
-            x: target_position.x() - position.x(),
-            y: target_position.y() + eye_height / 2.0 - position.y(),
-            z: target_position.z() - position.z(),
+            x: target_position.get_x() - position.get_x(),
+            y: target_position.get_y() + eye_height / 2.0 - position.get_y(),
+            z: target_position.get_z() - position.get_z(),
         };
         let distance = delta
             .x
@@ -72,7 +72,7 @@ impl ExperienceOrb {
             return;
         }
         let acceleration = (1.0 - distance / 8.0).powi(2) * 0.1;
-        let velocity = self.velocity().0;
+        let velocity = self.get_velocity().0;
         self.set_velocity(Velocity(Vector3d {
             x: velocity.x + delta.x / distance * acceleration,
             y: velocity.y + delta.y / distance * acceleration,
@@ -81,7 +81,7 @@ impl ExperienceOrb {
     }
 
     pub(crate) fn apply_gravity(&mut self) {
-        let velocity = self.velocity().0;
+        let velocity = self.get_velocity().0;
         if !self.has_no_gravity() {
             return;
         }
@@ -93,7 +93,7 @@ impl ExperienceOrb {
     }
 
     pub(crate) fn apply_drag(&mut self) {
-        let velocity = self.velocity().0;
+        let velocity = self.get_velocity().0;
         let horizontal_drag = if self.is_on_ground() {
             0.6 * 0.98
         } else {

@@ -15,7 +15,6 @@ mod chunk_loader;
 mod chunk_loading_executor;
 mod chunk_position;
 mod chunk_section;
-mod entity_target;
 mod entity_tracker;
 mod explosion;
 mod generator;
@@ -61,7 +60,6 @@ pub use chunk_position::ChunkPosition;
 pub use chunk_section::{
     ChunkSection, ChunkSectionBiomePalette, ChunkSectionBlockPalette, SetChunkSectionLightError,
 };
-pub use entity_target::SetEntityTargetError;
 pub use entity_tracker::{EntityTracker, EntityTrackerTarget};
 pub use explosion::{Explosion, ExplosionSupplier};
 pub use generator::{
@@ -83,6 +81,6 @@ pub use world::{ChunkLoadTicket, ChunkSupplier, EntityTeleportTicket, World, Wor
 pub use world_border::WorldBorder;
 pub use world_event_node::WorldEventNode;
 pub use world_handle::WorldHandle;
-pub use world_manager::{PlayerWorldTransitionTicket, WorldManager};
+pub use world_manager::WorldManager;
 pub use world_scheduler::WorldScheduler;
 pub use world_snapshot::{ChunkSnapshot, WorldSnapshot};

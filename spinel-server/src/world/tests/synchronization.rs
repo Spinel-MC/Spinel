@@ -64,13 +64,13 @@ fn scheduled_position_synchronization_delta_uses_displacement_from_last_synchron
     target.set_position(EntityPosition::new(8.0, 64.0, 4.0, 0.0, 0.0));
     target.set_no_gravity(true);
     target.set_has_physics(false);
-    let target_id = target.entity_id();
+    let target_id = target.get_entity_id();
     world.add_entity(Entity::Player(viewer));
     world.add_entity(Entity::Generic(target));
     world.process_pending_entity_visibility_refreshes().unwrap();
     viewer_client.discard_queued_outbound_packets();
 
-    let target = match world.entity_by_id_mut(target_id).unwrap() {
+    let target = match world.get_entity_mut(target_id).unwrap() {
         Entity::Generic(target) => target,
         _ => panic!("target must remain a generic entity"),
     };
@@ -104,14 +104,14 @@ fn scheduled_position_synchronization_is_suppressed_for_passengers() {
     let mut viewer_client = queued_client();
     let viewer = entered_player(&mut viewer_client);
     let vehicle = GenericEntity::new(EntityType::PIG);
-    let vehicle_id = vehicle.entity_id();
+    let vehicle_id = vehicle.get_entity_id();
     let passenger = GenericEntity::new(EntityType::ZOMBIE);
-    let passenger_id = passenger.entity_id();
+    let passenger_id = passenger.get_entity_id();
     world.add_entity(Entity::Player(viewer));
     world.add_entity(Entity::Generic(vehicle));
     world.add_entity(Entity::Generic(passenger));
     world.add_passenger(vehicle_id, passenger_id).unwrap();
-    if let Some(Entity::Generic(passenger)) = world.entity_by_id_mut(passenger_id) {
+    if let Some(Entity::Generic(passenger)) = world.get_entity_mut(passenger_id) {
         passenger.synchronize_next_tick();
     }
     world.process_pending_entity_visibility_refreshes().unwrap();
@@ -166,13 +166,13 @@ fn creature_pathfinding_tick_sends_body_and_head_rotation_to_viewers() {
     let mut creature = EntityCreature::new(EntityType::ZOMBIE);
     creature.set_position(EntityPosition::new(0.5, 65.0, 0.5, 0.0, 0.0));
     creature.set_on_ground(true);
-    let creature_id = creature.entity_id();
+    let creature_id = creature.get_entity_id();
     world.add_entity(Entity::Player(viewer));
     world.add_entity(Entity::Creature(creature));
     world.process_pending_entity_visibility_refreshes().unwrap();
     viewer_client.discard_queued_outbound_packets();
     {
-        let Entity::Creature(creature) = world.entity_by_id_mut(creature_id).unwrap() else {
+        let Entity::Creature(creature) = world.get_entity_mut(creature_id).unwrap() else {
             panic!("creature entity must preserve its subtype");
         };
         assert!(
@@ -204,7 +204,7 @@ fn synchronization_only_entity_suppresses_ordinary_physics_movement_packet() {
     let mut viewer_client = queued_client();
     let viewer = entered_player(&mut viewer_client);
     let mut target = GenericEntity::new(EntityType::ITEM);
-    let target_id = target.entity_id();
+    let target_id = target.get_entity_id();
     target.set_position(EntityPosition::new(1.0, 64.0, 1.0, 0.0, 0.0));
     target.set_no_gravity(true);
     target.set_velocity(Velocity(Vector3d {
@@ -219,7 +219,7 @@ fn synchronization_only_entity_suppresses_ordinary_physics_movement_packet() {
 
     world.tick_with_registries(&Registries::new_vanilla());
 
-    assert_eq!(world.entity_by_id(target_id).unwrap().position().x(), 2.0);
+    assert_eq!(world.get_entity(target_id).unwrap().get_position().get_x(), 2.0);
     assert!(
         !viewer_client
             .queued_outbound_packet_ids()
@@ -233,8 +233,8 @@ fn switch_entity_type_resends_entity_to_existing_viewers_in_minestom_order() {
     let mut viewer_client = queued_client();
     let viewer = entered_player(&mut viewer_client);
     let target = GenericEntity::new(EntityType::ZOMBIE);
-    let target_id = target.entity_id();
-    let original_bounding_box = target.bounding_box();
+    let target_id = target.get_entity_id();
+    let original_bounding_box = target.get_bounding_box();
     world.add_entity(Entity::Player(viewer));
     world.add_entity(Entity::Generic(target));
     world.process_pending_entity_visibility_refreshes().unwrap();
@@ -246,9 +246,9 @@ fn switch_entity_type_resends_entity_to_existing_viewers_in_minestom_order() {
             .unwrap()
     );
 
-    let target = world.entity_by_id(target_id).unwrap();
-    assert_eq!(target.entity_type(), EntityType::ARROW);
-    assert_eq!(target.bounding_box(), original_bounding_box);
+    let target = world.get_entity(target_id).unwrap();
+    assert_eq!(target.get_entity_type(), EntityType::ARROW);
+    assert_eq!(target.get_bounding_box(), original_bounding_box);
     assert_eq!(
         &viewer_client.queued_outbound_packet_ids()[..2],
         &[RemoveEntitiesPacket::get_id(), SpawnEntityPacket::get_id()]
@@ -266,8 +266,8 @@ fn switch_player_visual_entity_type_uses_entity_destroy_and_spawn_without_player
         0,
         SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 25566),
     );
-    let target_id = target.entity_id();
-    let original_bounding_box = target.bounding_box();
+    let target_id = target.get_entity_id();
+    let original_bounding_box = target.get_bounding_box();
     world.add_entity(Entity::Player(viewer));
     world.add_entity(Entity::Player(target));
     world.process_pending_entity_visibility_refreshes().unwrap();
@@ -279,15 +279,15 @@ fn switch_player_visual_entity_type_uses_entity_destroy_and_spawn_without_player
             .unwrap()
     );
 
-    let target = world.entity_by_id(target_id).unwrap();
+    let target = world.get_entity(target_id).unwrap();
     let packet_ids = viewer_client.queued_outbound_packet_ids();
-    assert_eq!(target.entity_type(), EntityType::ARROW);
-    assert_eq!(target.bounding_box(), original_bounding_box);
+    assert_eq!(target.get_entity_type(), EntityType::ARROW);
+    assert_eq!(target.get_bounding_box(), original_bounding_box);
     let Entity::Player(target) = target else {
         panic!("target must stay owned by the player entity variant");
     };
     assert!(target.has_entity_collision());
-    assert!(!target.prevents_block_placement());
+    assert!(!target.can_prevent_block_placement());
     assert_eq!(
         &packet_ids[..2],
         &[RemoveEntitiesPacket::get_id(), SpawnEntityPacket::get_id()]

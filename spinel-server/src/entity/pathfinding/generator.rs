@@ -54,7 +54,7 @@ pub trait NodeGenerator: Send {
     }
 
     fn heuristic(&self, node: EntityPosition, target: EntityPosition) -> f64 {
-        node.distance_squared(target).sqrt()
+        node.get_distance_squared(target).sqrt()
     }
 }
 
@@ -102,11 +102,11 @@ impl NodeGenerator for GroundNodeGenerator {
         maximum_fall: i32,
     ) -> Option<f64> {
         let centered_position = EntityPosition::new(
-            position.x().floor() + 0.5,
-            position.y().floor(),
-            position.z().floor() + 0.5,
-            position.yaw(),
-            position.pitch(),
+            position.get_x().floor() + 0.5,
+            position.get_y().floor(),
+            position.get_z().floor() + 0.5,
+            position.get_yaw(),
+            position.get_pitch(),
         );
         (1..=maximum_fall).find_map(|fall_distance| {
             footprint_positions(centered_position, bounding_box, -fall_distance)
@@ -149,11 +149,11 @@ impl NodeGenerator for PreciseGroundNodeGenerator {
         _maximum_fall: i32,
     ) -> Option<f64> {
         let centered_position = EntityPosition::new(
-            position.x().floor() + 0.5,
-            position.y(),
-            position.z().floor() + 0.5,
-            position.yaw(),
-            position.pitch(),
+            position.get_x().floor() + 0.5,
+            position.get_y(),
+            position.get_z().floor() + 0.5,
+            position.get_yaw(),
+            position.get_pitch(),
         );
         Some(
             simulate_collision(
@@ -167,8 +167,8 @@ impl NodeGenerator for PreciseGroundNodeGenerator {
                 world,
                 None,
             )
-            .new_position()
-            .y(),
+            .get_new_position()
+            .get_y(),
         )
     }
 
@@ -181,8 +181,8 @@ impl NodeGenerator for PreciseGroundNodeGenerator {
     ) -> bool {
         movement_has_no_collision(
             world,
-            start.offset(0.0, PRECISE_MOVEMENT_EPSILON, 0.0),
-            end.offset(0.0, PRECISE_MOVEMENT_EPSILON, 0.0),
+            start.get_offset(0.0, PRECISE_MOVEMENT_EPSILON, 0.0),
+            end.get_offset(0.0, PRECISE_MOVEMENT_EPSILON, 0.0),
             bounding_box,
         )
     }
@@ -197,15 +197,15 @@ impl NodeGenerator for FlyingNodeGenerator {
         goal: EntityPosition,
         bounding_box: EntityBoundingBox,
     ) -> Vec<PathNode> {
-        flying_neighbors(current.position(), bounding_box, 0.5)
+        flying_neighbors(current.get_position(), bounding_box, 0.5)
             .into_iter()
             .filter(|neighbor| {
-                self.can_move_towards(world, current.position(), neighbor.position, bounding_box)
+                self.can_move_towards(world, current.get_position(), neighbor.position, bounding_box)
             })
             .map(|neighbor| {
                 let mut candidate_node = PathNode::new(
                     neighbor.position,
-                    current.cost() + neighbor.cost,
+                    current.get_cost() + neighbor.cost,
                     self.heuristic(neighbor.position, goal),
                     PathNodeType::Fly,
                 );
@@ -227,7 +227,7 @@ impl NodeGenerator for FlyingNodeGenerator {
         _bounding_box: EntityBoundingBox,
         _maximum_fall: i32,
     ) -> Option<f64> {
-        Some(position.y())
+        Some(position.get_y())
     }
 }
 
@@ -240,15 +240,15 @@ impl NodeGenerator for WaterNodeGenerator {
         goal: EntityPosition,
         bounding_box: EntityBoundingBox,
     ) -> Vec<PathNode> {
-        water_neighbors(world, current.position(), bounding_box)
+        water_neighbors(world, current.get_position(), bounding_box)
             .into_iter()
             .filter(|neighbor| {
-                self.can_move_towards(world, current.position(), neighbor.position, bounding_box)
+                self.can_move_towards(world, current.get_position(), neighbor.position, bounding_box)
             })
             .map(|neighbor| {
                 let mut candidate_node = PathNode::new(
                     neighbor.position,
-                    current.cost() + neighbor.cost,
+                    current.get_cost() + neighbor.cost,
                     self.heuristic(neighbor.position, goal),
                     PathNodeType::Fly,
                 );
@@ -270,12 +270,12 @@ impl NodeGenerator for WaterNodeGenerator {
         _bounding_box: EntityBoundingBox,
         _maximum_fall: i32,
     ) -> Option<f64> {
-        Some(position.y())
+        Some(position.get_y())
     }
 }
 
 fn horizontal_step_size(bounding_box: EntityBoundingBox) -> i32 {
-    (bounding_box.width() / 2.0).floor().max(1.0) as i32
+    (bounding_box.get_width() / 2.0).floor().max(1.0) as i32
 }
 
 #[derive(Clone, Copy)]
@@ -287,8 +287,8 @@ enum GroundNeighborStrategy {
 impl GroundNeighborStrategy {
     const fn candidate_y(self, current: EntityPosition) -> f64 {
         match self {
-            Self::Normal => current.y().floor(),
-            Self::Precise => current.y(),
+            Self::Normal => current.get_y().floor(),
+            Self::Precise => current.get_y(),
         }
     }
 
@@ -313,7 +313,7 @@ fn ground_neighbors(
     bounding_box: EntityBoundingBox,
     strategy: GroundNeighborStrategy,
 ) -> Vec<PathNode> {
-    let current_position = current.position();
+    let current_position = current.get_position();
     let candidate_y = strategy.candidate_y(current_position);
     let step_size = horizontal_step_size(bounding_box);
     let mut nearby_nodes = Vec::new();
@@ -323,14 +323,14 @@ fn ground_neighbors(
                 continue;
             }
             let cost = ((x_offset * x_offset + z_offset * z_offset) as f64).sqrt() * 0.98;
-            let candidate_x = current_position.x().floor() + 0.5 + f64::from(x_offset);
-            let candidate_z = current_position.z().floor() + 0.5 + f64::from(z_offset);
+            let candidate_x = current_position.get_x().floor() + 0.5 + f64::from(x_offset);
+            let candidate_z = current_position.get_z().floor() + 0.5 + f64::from(z_offset);
             let floor_candidate = EntityPosition::new(
                 candidate_x,
                 candidate_y,
                 candidate_z,
-                current_position.yaw(),
-                current_position.pitch(),
+                current_position.get_yaw(),
+                current_position.get_pitch(),
             );
             let Some(floor_y) = generator.gravity_snap(
                 world,
@@ -344,8 +344,8 @@ fn ground_neighbors(
                 candidate_x,
                 floor_y,
                 candidate_z,
-                current_position.yaw(),
-                current_position.pitch(),
+                current_position.get_yaw(),
+                current_position.get_pitch(),
             );
             let floor_candidate = if strategy.should_resnap_walk() {
                 let Some(resnapped_y) = generator.gravity_snap(
@@ -357,11 +357,11 @@ fn ground_neighbors(
                     continue;
                 };
                 EntityPosition::new(
-                    floor_candidate.x(),
+                    floor_candidate.get_x(),
                     resnapped_y,
-                    floor_candidate.z(),
-                    floor_candidate.yaw(),
-                    floor_candidate.pitch(),
+                    floor_candidate.get_z(),
+                    floor_candidate.get_yaw(),
+                    floor_candidate.get_pitch(),
                 )
             } else {
                 floor_candidate
@@ -382,8 +382,8 @@ fn ground_neighbors(
                 candidate_x,
                 candidate_y + 1.0,
                 candidate_z,
-                current_position.yaw(),
-                current_position.pitch(),
+                current_position.get_yaw(),
+                current_position.get_pitch(),
             );
             let Some(jump_y) = generator.gravity_snap(
                 world,
@@ -397,8 +397,8 @@ fn ground_neighbors(
                 candidate_x,
                 jump_y,
                 candidate_z,
-                current_position.yaw(),
-                current_position.pitch(),
+                current_position.get_yaw(),
+                current_position.get_pitch(),
             );
             if same_block(floor_candidate, jump_candidate) {
                 continue;
@@ -430,19 +430,19 @@ fn create_ground_walk_node(
     candidate: EntityPosition,
     cost: f64,
 ) -> Option<PathNode> {
-    let current_position = current.position();
-    let vertical_delta = candidate.y() - current_position.y();
+    let current_position = current.get_position();
+    let vertical_delta = candidate.get_y() - current_position.get_y();
     let is_fall = vertical_delta.abs() > PRECISE_MOVEMENT_EPSILON && vertical_delta < 0.0;
     let movement_target = if is_fall {
         if -vertical_delta > f64::from(MAXIMUM_GROUND_FALL_DISTANCE) {
             return None;
         }
         EntityPosition::new(
-            candidate.x(),
-            current_position.y(),
-            candidate.z(),
-            candidate.yaw(),
-            candidate.pitch(),
+            candidate.get_x(),
+            current_position.get_y(),
+            candidate.get_z(),
+            candidate.get_yaw(),
+            candidate.get_pitch(),
         )
     } else {
         candidate
@@ -452,7 +452,7 @@ fn create_ground_walk_node(
     }
     let candidate_node = path_node_with_parent(
         candidate,
-        current.cost() + cost,
+        current.get_cost() + cost,
         generator.heuristic(candidate, goal),
         if is_fall {
             PathNodeType::Fall
@@ -474,8 +474,8 @@ fn create_ground_jump_node(
     candidate: EntityPosition,
     cost: f64,
 ) -> Option<PathNode> {
-    let current_position = current.position();
-    let vertical_delta = candidate.y() - current_position.y();
+    let current_position = current.get_position();
+    let vertical_delta = candidate.get_y() - current_position.get_y();
     if vertical_delta.abs() < PRECISE_MOVEMENT_EPSILON || vertical_delta > 2.0 {
         return None;
     }
@@ -489,13 +489,13 @@ fn create_ground_jump_node(
     if generator.point_is_invalid(world, candidate, bounding_box) {
         return None;
     }
-    let start_headroom = current_position.offset(0.0, 1.0, 0.0);
+    let start_headroom = current_position.get_offset(0.0, 1.0, 0.0);
     if generator.point_is_invalid(world, start_headroom, bounding_box) {
         return None;
     }
     let candidate_node = path_node_with_parent(
         candidate,
-        current.cost() + cost,
+        current.get_cost() + cost,
         generator.heuristic(candidate, goal),
         PathNodeType::Jump,
         current,
@@ -522,12 +522,12 @@ fn movement_has_no_collision(
     bounding_box: EntityBoundingBox,
 ) -> bool {
     let movement = Velocity(Vector3d {
-        x: end.x() - start.x(),
-        y: end.y() - start.y(),
-        z: end.z() - start.z(),
+        x: end.get_x() - start.get_x(),
+        y: end.get_y() - start.get_y(),
+        z: end.get_z() - start.get_z(),
     });
     let collision = simulate_collision(start, movement, bounding_box, world, None);
-    !collision.collision_x() && !collision.collision_y() && !collision.collision_z()
+    !collision.has_collision_x() && !collision.has_collision_y() && !collision.has_collision_z()
 }
 
 fn same_block(left: EntityPosition, right: EntityPosition) -> bool {
@@ -568,11 +568,11 @@ fn water_neighbors(
         }
     }
     let block_above = EntityPosition::new(
-        position.x(),
-        position.y().floor() + 1.5,
-        position.z(),
-        position.yaw(),
-        position.pitch(),
+        position.get_x(),
+        position.get_y().floor() + 1.5,
+        position.get_z(),
+        position.get_yaw(),
+        position.get_pitch(),
     );
     if world.block(position_block(block_above)) == Block::WATER {
         neighbors.push(FlightNeighbor {
@@ -581,11 +581,11 @@ fn water_neighbors(
         });
     }
     let block_below = EntityPosition::new(
-        position.x(),
-        position.y().floor() - 0.5,
-        position.z(),
-        position.yaw(),
-        position.pitch(),
+        position.get_x(),
+        position.get_y().floor() - 0.5,
+        position.get_z(),
+        position.get_yaw(),
+        position.get_pitch(),
     );
     if world.block(position_block(block_below)) == Block::WATER {
         neighbors.push(FlightNeighbor {
@@ -630,21 +630,21 @@ fn flying_neighbors(
     }
     neighbors.push(FlightNeighbor {
         position: EntityPosition::new(
-            position.x(),
-            position.y().floor() + 1.5,
-            position.z(),
-            position.yaw(),
-            position.pitch(),
+            position.get_x(),
+            position.get_y().floor() + 1.5,
+            position.get_z(),
+            position.get_yaw(),
+            position.get_pitch(),
         ),
         cost: 2.0,
     });
     neighbors.push(FlightNeighbor {
         position: EntityPosition::new(
-            position.x(),
-            position.y().floor() - 0.5,
-            position.z(),
-            position.yaw(),
-            position.pitch(),
+            position.get_x(),
+            position.get_y().floor() - 0.5,
+            position.get_z(),
+            position.get_yaw(),
+            position.get_pitch(),
         ),
         cost: 2.0,
     });
@@ -658,27 +658,27 @@ fn centered_block_offset(
     z_offset: i32,
 ) -> EntityPosition {
     EntityPosition::new(
-        position.x().floor() + 0.5 + x_offset as f64,
-        position.y().floor() + y_offset,
-        position.z().floor() + 0.5 + z_offset as f64,
-        position.yaw(),
-        position.pitch(),
+        position.get_x().floor() + 0.5 + x_offset as f64,
+        position.get_y().floor() + y_offset,
+        position.get_z().floor() + 0.5 + z_offset as f64,
+        position.get_yaw(),
+        position.get_pitch(),
     )
 }
 
 fn block_coordinates(position: EntityPosition) -> (i32, i32, i32) {
     (
-        position.x().floor() as i32,
-        position.y().floor() as i32,
-        position.z().floor() as i32,
+        position.get_x().floor() as i32,
+        position.get_y().floor() as i32,
+        position.get_z().floor() as i32,
     )
 }
 
 fn position_block(position: EntityPosition) -> BlockPosition {
     BlockPosition::new(
-        position.x().floor() as i32,
-        position.y().floor() as i32,
-        position.z().floor() as i32,
+        position.get_x().floor() as i32,
+        position.get_y().floor() as i32,
+        position.get_z().floor() as i32,
     )
 }
 
@@ -686,12 +686,12 @@ fn occupancy_positions(
     position: EntityPosition,
     bounding_box: EntityBoundingBox,
 ) -> Vec<BlockPosition> {
-    let minimum_x = (position.x() + bounding_box.minimum_x()).floor() as i32;
-    let maximum_x = (position.x() + bounding_box.maximum_x()).floor() as i32;
-    let minimum_y = (position.y() + bounding_box.minimum_y()).floor() as i32;
-    let maximum_y = (position.y() + bounding_box.maximum_y()).floor() as i32;
-    let minimum_z = (position.z() + bounding_box.minimum_z()).floor() as i32;
-    let maximum_z = (position.z() + bounding_box.maximum_z()).floor() as i32;
+    let minimum_x = (position.get_x() + bounding_box.minimum_x()).floor() as i32;
+    let maximum_x = (position.get_x() + bounding_box.maximum_x()).floor() as i32;
+    let minimum_y = (position.get_y() + bounding_box.minimum_y()).floor() as i32;
+    let maximum_y = (position.get_y() + bounding_box.maximum_y()).floor() as i32;
+    let minimum_z = (position.get_z() + bounding_box.minimum_z()).floor() as i32;
+    let maximum_z = (position.get_z() + bounding_box.maximum_z()).floor() as i32;
     (minimum_x..=maximum_x)
         .flat_map(|x| {
             (minimum_y..=maximum_y).flat_map(move |y| {
@@ -706,11 +706,11 @@ fn footprint_positions(
     bounding_box: EntityBoundingBox,
     y_offset: i32,
 ) -> Vec<BlockPosition> {
-    let minimum_x = (position.x() + bounding_box.minimum_x()).floor() as i32;
-    let maximum_x = (position.x() + bounding_box.maximum_x()).floor() as i32;
-    let minimum_z = (position.z() + bounding_box.minimum_z()).floor() as i32;
-    let maximum_z = (position.z() + bounding_box.maximum_z()).floor() as i32;
-    let y = (position.y() + bounding_box.minimum_y()).floor() as i32 + y_offset;
+    let minimum_x = (position.get_x() + bounding_box.minimum_x()).floor() as i32;
+    let maximum_x = (position.get_x() + bounding_box.maximum_x()).floor() as i32;
+    let minimum_z = (position.get_z() + bounding_box.minimum_z()).floor() as i32;
+    let maximum_z = (position.get_z() + bounding_box.maximum_z()).floor() as i32;
+    let y = (position.get_y() + bounding_box.minimum_y()).floor() as i32 + y_offset;
     (minimum_x..=maximum_x)
         .flat_map(|x| (minimum_z..=maximum_z).map(move |z| BlockPosition::new(x, y, z)))
         .collect()

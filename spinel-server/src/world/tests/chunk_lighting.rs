@@ -237,12 +237,12 @@ fn block_change_coalesces_delayed_light_updates_for_loaded_neighbor_chunks() {
         .zip(affected_clients.iter_mut())
         .for_each(|(position, client)| {
             let player = entered_player(client);
-            let player_id = player.entity_id();
+            let player_id = player.get_entity_id();
             world.add_entity(Entity::Player(player));
             world.load_chunk(*position).unwrap().add_viewer(player_id);
         });
     let unrelated_player = entered_player(&mut unrelated_client);
-    let unrelated_player_id = unrelated_player.entity_id();
+    let unrelated_player_id = unrelated_player.get_entity_id();
     world.add_entity(Entity::Player(unrelated_player));
     world
         .load_chunk(unrelated_position)
@@ -339,7 +339,7 @@ fn generated_chunk_invalidates_neighbors_and_resends_after_twenty_ticks() {
     world.load_chunk(neighbor_position).unwrap();
     let mut neighbor_client = queued_client();
     let neighbor_player = entered_player(&mut neighbor_client);
-    let neighbor_player_id = neighbor_player.entity_id();
+    let neighbor_player_id = neighbor_player.get_entity_id();
     world.add_entity(Entity::Player(neighbor_player));
     world
         .load_chunk(neighbor_position)

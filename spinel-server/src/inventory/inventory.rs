@@ -66,7 +66,7 @@ impl Inventory {
         self.set_item_stack(slot, operator(stored_item_stack))
     }
 
-    pub fn item_stack(&self, slot: usize) -> Option<&ItemStack> {
+    pub fn get_item_stack(&self, slot: usize) -> Option<&ItemStack> {
         self.item_stacks.get(slot)
     }
 
@@ -74,12 +74,12 @@ impl Inventory {
         &self.item_stacks
     }
 
-    pub fn size(&self) -> usize {
+    pub fn get_size(&self) -> usize {
         self.item_stacks.len()
     }
 
     pub fn inner_size(&self) -> usize {
-        self.size()
+        self.get_size()
     }
 
     pub fn window_id(&self) -> i32 {
@@ -155,7 +155,7 @@ impl Inventory {
     }
 
     pub fn copy_contents(&mut self, item_stacks: Vec<ItemStack>) -> bool {
-        if item_stacks.len() != self.size() {
+        if item_stacks.len() != self.get_size() {
             return false;
         }
         self.item_stacks = item_stacks;

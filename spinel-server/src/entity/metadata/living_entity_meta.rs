@@ -13,77 +13,77 @@ impl<'entity> LivingEntityMeta<'entity> {
     }
 
     pub fn is_hand_active(&self) -> bool {
-        self.entity().is_hand_active()
+        self.get_entity().is_hand_active()
     }
 
     pub fn set_hand_active(&mut self, is_hand_active: bool) {
-        self.entity_mut().set_hand_active(is_hand_active);
+        self.get_entity_mut().set_hand_active(is_hand_active);
     }
 
-    pub fn active_hand(&self) -> PlayerHand {
-        self.entity().active_hand()
+    pub fn get_active_hand(&self) -> PlayerHand {
+        self.get_entity().get_active_hand()
     }
 
     pub fn set_active_hand(&mut self, active_hand: PlayerHand) {
-        self.entity_mut().set_active_hand(active_hand);
+        self.get_entity_mut().set_active_hand(active_hand);
     }
 
     pub fn is_in_riptide_spin_attack(&self) -> bool {
-        self.entity().is_in_riptide_spin_attack()
+        self.get_entity().is_in_riptide_spin_attack()
     }
 
     pub fn set_in_riptide_spin_attack(&mut self, is_in_riptide_spin_attack: bool) {
-        self.entity_mut()
+        self.get_entity_mut()
             .set_in_riptide_spin_attack(is_in_riptide_spin_attack);
     }
 
-    pub fn health(&self) -> f32 {
-        self.entity().health()
+    pub fn get_health(&self) -> f32 {
+        self.get_entity().get_health()
     }
 
     pub fn set_health(&mut self, health: f32) {
-        self.entity_mut().set_health(health);
+        self.get_entity_mut().set_health(health);
     }
 
-    pub fn effect_particles(&self) -> Vec<Particle> {
-        self.entity().effect_particles()
+    pub fn get_effect_particles(&self) -> Vec<Particle> {
+        self.get_entity().get_effect_particles()
     }
 
     pub fn set_effect_particles(&mut self, effect_particles: Vec<Particle>) {
-        self.entity_mut().set_effect_particles(effect_particles);
+        self.get_entity_mut().set_effect_particles(effect_particles);
     }
 
     pub fn is_potion_effect_ambient(&self) -> bool {
-        self.entity().is_potion_effect_ambient()
+        self.get_entity().is_potion_effect_ambient()
     }
 
     pub fn set_potion_effect_ambient(&mut self, is_potion_effect_ambient: bool) {
-        self.entity_mut()
+        self.get_entity_mut()
             .set_potion_effect_ambient(is_potion_effect_ambient);
     }
 
-    pub fn arrow_count(&self) -> i32 {
-        self.entity().arrow_count()
+    pub fn get_arrow_count(&self) -> i32 {
+        self.get_entity().get_arrow_count()
     }
 
     pub fn set_arrow_count(&mut self, arrow_count: i32) {
-        self.entity_mut().set_arrow_count(arrow_count);
+        self.get_entity_mut().set_arrow_count(arrow_count);
     }
 
-    pub fn bee_stinger_count(&self) -> i32 {
-        self.entity().bee_stinger_count()
+    pub fn get_bee_stinger_count(&self) -> i32 {
+        self.get_entity().get_bee_stinger_count()
     }
 
     pub fn set_bee_stinger_count(&mut self, bee_stinger_count: i32) {
-        self.entity_mut().set_bee_stinger_count(bee_stinger_count);
+        self.get_entity_mut().set_bee_stinger_count(bee_stinger_count);
     }
 
-    pub fn bed_in_which_sleeping_position(&self) -> Option<Position> {
-        self.entity().bed_in_which_sleeping_position()
+    pub fn get_bed_in_which_sleeping_position(&self) -> Option<Position> {
+        self.get_entity().get_bed_in_which_sleeping_position()
     }
 
     pub fn set_bed_in_which_sleeping_position(&mut self, bed_position: Option<Position>) {
-        self.entity_mut()
+        self.get_entity_mut()
             .set_bed_in_which_sleeping_position(bed_position);
     }
 }

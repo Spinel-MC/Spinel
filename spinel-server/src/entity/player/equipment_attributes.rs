@@ -21,8 +21,8 @@ impl Player {
         self.sync_main_hand_attributes(client).is_ok()
     }
 
-    pub(crate) fn slot_is_held_main_hand(&self, slot: i32) -> bool {
-        slot - self.open_inventory_size() == self.held_slot()
+    pub(crate) fn get_slot_is_held_main_hand(&self, slot: i32) -> bool {
+        slot - self.open_inventory_size() == self.get_held_slot()
     }
 
     pub(crate) fn update_inventory_slot_attributes(
@@ -32,12 +32,12 @@ impl Player {
         current_item_stack: &ItemStack,
     ) -> bool {
         let Some(equipment_slot) = self
-            .inventory_ref()
-            .equipment_slot_for_slot(slot, self.held_slot())
+            .get_inventory_ref()
+            .equipment_slot_for_slot(slot, self.get_held_slot())
         else {
             return false;
         };
-        self.living.attributes_mut().update_equipment_attributes(
+        self.living.get_attributes_mut().update_equipment_attributes(
             previous_item_stack,
             current_item_stack,
             equipment_slot,
@@ -45,12 +45,12 @@ impl Player {
         true
     }
 
-    pub fn attribute_value(&self, attribute: Attribute) -> f64 {
-        self.living.attribute_value(attribute)
+    pub fn get_attribute_value(&self, attribute: Attribute) -> f64 {
+        self.living.get_attribute_value(attribute)
     }
 
     pub fn update_attributes_packet(&self) -> UpdateAttributesPacket {
-        self.living.update_attributes_packet(self.entity_id())
+        self.living.update_attributes_packet(self.get_entity_id())
     }
 
     pub(crate) fn refresh_current_equipment_attributes(&mut self) {
@@ -65,13 +65,13 @@ impl Player {
         .into_iter()
         .for_each(|equipment_slot| {
             let current_item_stack = self
-                .inventory_ref()
-                .equipment(equipment_slot, self.held_slot());
+                .get_inventory_ref()
+                .get_equipment(equipment_slot, self.get_held_slot());
             let previous_item_stack = self
                 .attribute_equipment
                 .insert(equipment_slot, current_item_stack.clone())
                 .unwrap_or_else(ItemStack::air);
-            self.living.attributes_mut().update_equipment_attributes(
+            self.living.get_attributes_mut().update_equipment_attributes(
                 &previous_item_stack,
                 &current_item_stack,
                 equipment_slot,

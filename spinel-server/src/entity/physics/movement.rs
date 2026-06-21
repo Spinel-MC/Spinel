@@ -32,11 +32,11 @@ impl EntityMovement {
         }
     }
 
-    pub(crate) const fn entity_id(&self) -> EntityId {
+    pub(crate) const fn get_entity_id(&self) -> EntityId {
         self.entity_id
     }
 
-    pub(crate) const fn position(&self) -> EntityPosition {
+    pub(crate) const fn get_position(&self) -> EntityPosition {
         self.position
     }
 
@@ -54,41 +54,41 @@ impl EntityMovementPacket {
         position: EntityPosition,
         is_on_ground: bool,
     ) -> Self {
-        let distance_x = (position.x() - previous_position.x()).abs();
-        let distance_y = (position.y() - previous_position.y()).abs();
-        let distance_z = (position.z() - previous_position.z()).abs();
+        let distance_x = (position.get_x() - previous_position.get_x()).abs();
+        let distance_y = (position.get_y() - previous_position.get_y()).abs();
+        let distance_z = (position.get_z() - previous_position.get_z()).abs();
         let requires_teleport = distance_x > 8.0 || distance_y > 8.0 || distance_z > 8.0;
         if requires_teleport {
             return Self::Teleport(EntityTeleportPacket {
-                entity_id: entity_id.value(),
+                entity_id: entity_id.get_value(),
                 position: position.as_vector(),
                 delta: Vector3d {
                     x: 0.0,
                     y: 0.0,
                     z: 0.0,
                 },
-                yaw: position.yaw(),
-                pitch: position.pitch(),
+                yaw: position.get_yaw(),
+                pitch: position.get_pitch(),
                 flags: TeleportFlags::DELTA_COORD,
                 on_ground: is_on_ground,
             });
         }
         Self::Position(EntityPositionAndRotationPacket {
-            entity_id: entity_id.value(),
+            entity_id: entity_id.get_value(),
             delta_x: spinel_core::network::clientbound::play::entity_position::EntityPositionPacket::delta(
-                position.x(),
-                previous_position.x(),
+                position.get_x(),
+                previous_position.get_x(),
             ),
             delta_y: spinel_core::network::clientbound::play::entity_position::EntityPositionPacket::delta(
-                position.y(),
-                previous_position.y(),
+                position.get_y(),
+                previous_position.get_y(),
             ),
             delta_z: spinel_core::network::clientbound::play::entity_position::EntityPositionPacket::delta(
-                position.z(),
-                previous_position.z(),
+                position.get_z(),
+                previous_position.get_z(),
             ),
-            yaw: EntityAngle(position.yaw()),
-            pitch: EntityAngle(position.pitch()),
+            yaw: EntityAngle(position.get_yaw()),
+            pitch: EntityAngle(position.get_pitch()),
             on_ground: is_on_ground,
         })
     }

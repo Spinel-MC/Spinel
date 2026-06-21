@@ -26,15 +26,15 @@ fn living_pickup_listener(event: &mut PickupItemEvent, _server: &mut MinecraftSe
 fn generic_living_pickup_refreshes_cooldown_sends_removal_and_unregisters_item() {
     let mut world = World::new(Identifier::minecraft("overworld"));
     let living_entity = positioned_living_entity();
-    let living_entity_id = living_entity.entity_id();
+    let living_entity_id = living_entity.get_entity_id();
     let item_entity = positioned_item_entity();
-    let item_entity_id = item_entity.entity_id();
+    let item_entity_id = item_entity.get_entity_id();
     world.add_entity(Entity::Generic(living_entity));
     world.add_entity(Entity::Item(item_entity));
 
     world.tick_with_registries(&Registries::new_vanilla());
 
-    assert!(world.entity_by_id(item_entity_id).is_none());
+    assert!(world.get_entity(item_entity_id).is_none());
     assert!(
         world
             .entity_tracker()
@@ -43,10 +43,10 @@ fn generic_living_pickup_refreshes_cooldown_sends_removal_and_unregisters_item()
     );
     assert_eq!(
         world
-            .entity_by_id(living_entity_id)
+            .get_entity(living_entity_id)
             .and_then(generic_entity)
             .unwrap()
-            .item_pickup_cooldown(),
+            .get_item_pickup_cooldown(),
         5
     );
 }
@@ -64,13 +64,13 @@ fn cancelled_living_pickup_preserves_item_entity() {
     world.use_server_event_dispatcher(server_ptr);
     let living_entity = positioned_living_entity();
     let item_entity = positioned_item_entity();
-    let item_entity_id = item_entity.entity_id();
+    let item_entity_id = item_entity.get_entity_id();
     world.add_entity(Entity::Generic(living_entity));
     world.add_entity(Entity::Item(item_entity));
 
     world.tick_with_registries(&Registries::new_vanilla());
 
-    assert!(world.entity_by_id(item_entity_id).is_some());
+    assert!(world.get_entity(item_entity_id).is_some());
     LIVING_PICKUP_EVENT_CANCELLED.store(false, Ordering::SeqCst);
 }
 
@@ -79,13 +79,13 @@ fn player_pickup_rejects_item_not_visible_to_player() {
     let mut world = World::new(Identifier::minecraft("overworld"));
     let player = positioned_player(25565);
     let item_entity = positioned_item_entity();
-    let item_entity_id = item_entity.entity_id();
+    let item_entity_id = item_entity.get_entity_id();
     world.add_entity(Entity::Player(player));
     world.add_entity(Entity::Item(item_entity));
 
     world.tick_with_registries(&Registries::new_vanilla());
 
-    assert!(world.entity_by_id(item_entity_id).is_some());
+    assert!(world.get_entity(item_entity_id).is_some());
 }
 
 #[test]
@@ -96,10 +96,10 @@ fn player_pickup_sends_collect_packet_and_removes_visible_item() {
     player.set_client(&mut viewer_client);
     player.mark_entered_world();
     player.mark_chunk_sent_to_client(PlayerChunk::new(0, 0));
-    let player_id = player.entity_id();
+    let player_id = player.get_entity_id();
     let mut item_entity = positioned_item_entity();
-    let item_entity_id = item_entity.entity_id();
-    item_entity.view_mut().manual_add(player_id);
+    let item_entity_id = item_entity.get_entity_id();
+    item_entity.get_view_mut().manual_add(player_id);
     world.add_entity(Entity::Player(player));
     world.add_entity(Entity::Item(item_entity));
 
@@ -113,10 +113,10 @@ fn player_pickup_sends_collect_packet_and_removes_visible_item() {
         })
         .unwrap();
     let packet = TakeItemEntityPacket::decode(&mut payload.as_slice()).unwrap();
-    assert_eq!(packet.collected_entity_id, item_entity_id.value());
-    assert_eq!(packet.collector_entity_id, player_id.value());
+    assert_eq!(packet.collected_entity_id, item_entity_id.get_value());
+    assert_eq!(packet.collector_entity_id, player_id.get_value());
     assert_eq!(packet.pickup_item_count, 3);
-    assert!(world.entity_by_id(item_entity_id).is_none());
+    assert!(world.get_entity(item_entity_id).is_none());
 }
 
 fn positioned_living_entity() -> GenericEntity {
@@ -127,7 +127,8 @@ fn positioned_living_entity() -> GenericEntity {
 
 fn positioned_item_entity() -> ItemEntity {
     let mut entity = ItemEntity::new(ItemStack::of(Material::DIAMOND).with_amount(3));
-    entity.spawn(EntityPosition::new(1.0, 64.0, 1.0, 0.0, 0.0));
+    entity.spawn();
+    entity.set_position(EntityPosition::new(1.0, 64.0, 1.0, 0.0, 0.0));
     entity
 }
 

@@ -17,15 +17,15 @@ impl EntitySetFireEvent {
         }
     }
 
-    pub fn entity(&mut self) -> &mut Entity {
+    pub fn get_entity(&mut self) -> &mut Entity {
         unsafe { &mut *self.entity }
     }
 
-    pub fn entity_id(&self) -> EntityId {
-        unsafe { (&*self.entity).entity_id() }
+    pub fn get_entity_id(&self) -> EntityId {
+        unsafe { (&*self.entity).get_entity_id() }
     }
 
-    pub fn fire_ticks(&self) -> i32 {
+    pub fn get_fire_ticks(&self) -> i32 {
         self.fire_ticks
     }
 

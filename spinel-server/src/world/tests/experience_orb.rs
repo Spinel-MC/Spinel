@@ -24,7 +24,7 @@ static EXPERIENCE_PICKUP_COUNT: AtomicI16 = AtomicI16::new(0);
 
 #[event_listener]
 fn experience_pickup_listener(event: &mut PickupExperienceEvent, _server: &mut MinecraftServer) {
-    EXPERIENCE_PICKUP_COUNT.store(event.experience_count(), Ordering::SeqCst);
+    EXPERIENCE_PICKUP_COUNT.store(event.get_experience_count(), Ordering::SeqCst);
     event.set_experience_count(27);
     event.set_cancelled(EXPERIENCE_PICKUP_CANCELLED.load(Ordering::SeqCst));
 }
@@ -37,18 +37,18 @@ fn experience_orb_spawn_count_and_world_query_use_the_dedicated_owner() {
     let entity_id = world.spawn_experience_orb(12, position).unwrap();
 
     let experience_orb = world.experience_orbs().into_iter().next().unwrap();
-    assert_eq!(experience_orb.entity_id(), entity_id);
-    assert_eq!(experience_orb.experience_count(), 12);
+    assert_eq!(experience_orb.get_entity_id(), entity_id);
+    assert_eq!(experience_orb.get_experience_count(), 12);
     assert_eq!(experience_orb.spawn_packet().data, 12);
     assert_eq!(
         experience_orb
-            .metadata()
-            .value(&definitions::experience_orb::value()),
+            .get_metadata()
+            .get_value(&definitions::experience_orb::get_value()),
         MetadataValue::VarInt(12)
     );
-    assert_eq!(experience_orb.bounding_box().width(), 0.5);
-    assert_eq!(experience_orb.bounding_box().height(), 0.5);
-    assert_eq!(experience_orb.bounding_box().depth(), 0.5);
+    assert_eq!(experience_orb.get_bounding_box().get_width(), 0.5);
+    assert_eq!(experience_orb.get_bounding_box().get_height(), 0.5);
+    assert_eq!(experience_orb.get_bounding_box().depth(), 0.5);
 }
 
 #[test]
@@ -56,11 +56,11 @@ fn changing_experience_count_removes_and_respawns_the_orb_for_existing_viewers()
     let mut world = World::new(Identifier::minecraft("overworld"));
     let mut viewer_client = queued_client();
     let viewer = entered_player(&mut viewer_client, "Viewer", 0.0);
-    let viewer_id = viewer.entity_id();
+    let viewer_id = viewer.get_entity_id();
     let mut experience_orb = ExperienceOrb::new(3);
     experience_orb.set_position(EntityPosition::new(0.0, 64.0, 0.0, 0.0, 0.0));
-    experience_orb.view_mut().set_auto_viewable(false);
-    let experience_orb_id = experience_orb.entity_id();
+    experience_orb.get_view_mut().set_auto_viewable(false);
+    let experience_orb_id = experience_orb.get_entity_id();
     world.add_entity(Entity::Player(viewer));
     world.add_entity(Entity::ExperienceOrb(experience_orb));
     world
@@ -87,19 +87,19 @@ fn changing_experience_count_removes_and_respawns_the_orb_for_existing_viewers()
     let spawn_packet = SpawnEntityPacket::decode(&mut spawn_payload.as_slice()).unwrap();
     assert_eq!(spawn_packet.data, 19);
     assert_eq!(
-        match world.entity_by_id(experience_orb_id).unwrap() {
+        match world.get_entity(experience_orb_id).unwrap() {
             Entity::ExperienceOrb(experience_orb) => experience_orb
-                .metadata()
-                .value(&definitions::experience_orb::value()),
+                .get_metadata()
+                .get_value(&definitions::experience_orb::get_value()),
             _ => MetadataValue::VarInt(0),
         },
         MetadataValue::VarInt(19)
     );
     assert!(
         world
-            .entity_by_id(experience_orb_id)
+            .get_entity(experience_orb_id)
             .unwrap()
-            .view()
+            .get_view()
             .is_viewer(viewer_id)
     );
 }
@@ -109,7 +109,7 @@ fn experience_orb_targets_the_nearest_player_and_applies_attraction() {
     let mut world = World::new(Identifier::minecraft("overworld"));
     world.set_world_age(100).unwrap();
     let player = positioned_player("Target", 4.0);
-    let player_id = player.entity_id();
+    let player_id = player.get_entity_id();
     let experience_orb_id = world
         .spawn_experience_orb(1, EntityPosition::new(0.0, 64.0, 0.0, 0.0, 0.0))
         .unwrap();
@@ -118,13 +118,13 @@ fn experience_orb_targets_the_nearest_player_and_applies_attraction() {
     world.tick_with_registries(&Registries::new_vanilla());
 
     let experience_orb = experience_orb(&world, experience_orb_id);
-    assert_eq!(experience_orb.target(), Some(player_id));
-    assert!(experience_orb.velocity().0.x > 0.0);
-    assert_eq!(experience_orb.position().x(), 0.0);
+    assert_eq!(experience_orb.get_target(), Some(player_id));
+    assert!(experience_orb.get_velocity().0.x > 0.0);
+    assert_eq!(experience_orb.get_position().get_x(), 0.0);
 }
 
 #[test]
-fn nearest_spectator_is_selected_then_cleared_without_falling_back_to_another_player() {
+fn nearest_spectator_isselected_then_cleared_without_falling_back_to_another_player() {
     let mut world = World::new(Identifier::minecraft("overworld"));
     world.set_world_age(100).unwrap();
     let mut spectator = positioned_player("Spectator", 2.0);
@@ -139,9 +139,9 @@ fn nearest_spectator_is_selected_then_cleared_without_falling_back_to_another_pl
     world.tick_with_registries(&Registries::new_vanilla());
 
     let experience_orb = experience_orb(&world, experience_orb_id);
-    assert_eq!(experience_orb.target(), None);
+    assert_eq!(experience_orb.get_target(), None);
     assert_eq!(
-        experience_orb.velocity(),
+        experience_orb.get_velocity(),
         Velocity(Vector3d {
             x: 0.0,
             y: 0.0,
@@ -164,7 +164,7 @@ fn experience_orb_motion_matches_minestom_gravity_drag_and_ground_bounce() {
     experience_orb.apply_gravity();
     experience_orb.apply_drag();
 
-    let velocity = experience_orb.velocity().0;
+    let velocity = experience_orb.get_velocity().0;
     assert!((velocity.x - 0.588).abs() < f64::EPSILON);
     assert!((velocity.y - -0.6174).abs() < f64::EPSILON);
     assert!((velocity.z - 0.588).abs() < f64::EPSILON);
@@ -190,20 +190,20 @@ fn pickup_event_cancellation_and_player_cooldown_match_minestom() {
     world.tick_with_registries(&Registries::new_vanilla());
 
     assert_eq!(EXPERIENCE_PICKUP_COUNT.load(Ordering::SeqCst), 9);
-    assert!(world.entity_by_id(experience_orb_id).is_some());
+    assert!(world.get_entity(experience_orb_id).is_some());
     EXPERIENCE_PICKUP_CANCELLED.store(false, Ordering::SeqCst);
     (0..9).for_each(|_| world.tick_with_registries(&Registries::new_vanilla()));
-    assert!(world.entity_by_id(experience_orb_id).is_some());
+    assert!(world.get_entity(experience_orb_id).is_some());
 
     world.tick_with_registries(&Registries::new_vanilla());
 
-    assert!(world.entity_by_id(experience_orb_id).is_none());
+    assert!(world.get_entity(experience_orb_id).is_none());
     EXPERIENCE_PICKUP_CANCELLED.store(false, Ordering::SeqCst);
     EXPERIENCE_PICKUP_COUNT.store(0, Ordering::SeqCst);
 }
 
 fn experience_orb(world: &World, entity_id: EntityId) -> &ExperienceOrb {
-    match world.entity_by_id(entity_id).unwrap() {
+    match world.get_entity(entity_id).unwrap() {
         Entity::ExperienceOrb(experience_orb) => experience_orb,
         _ => panic!("entity is not an experience orb"),
     }

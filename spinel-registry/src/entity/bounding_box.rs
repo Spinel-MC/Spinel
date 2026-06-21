@@ -25,17 +25,17 @@ impl EntityBoundingBox {
             minimum_x: x,
             minimum_y: y,
             minimum_z: z,
-            maximum_x: x + self.width(),
-            maximum_y: y + self.height(),
+            maximum_x: x + self.get_width(),
+            maximum_y: y + self.get_height(),
             maximum_z: z + self.depth(),
         }
     }
 
-    pub const fn width(self) -> f64 {
+    pub const fn get_width(self) -> f64 {
         self.maximum_x - self.minimum_x
     }
 
-    pub const fn height(self) -> f64 {
+    pub const fn get_height(self) -> f64 {
         self.maximum_y - self.minimum_y
     }
 

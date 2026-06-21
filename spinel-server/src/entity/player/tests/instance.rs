@@ -1,7 +1,7 @@
 use super::super::{
     BelowNameTag, Player, PlayerHand, PlayerMessageType, PlayerSkin, QueuedPlayerPacket,
 };
-use crate::entity::player::PlayerPose;
+use crate::entity::EntityPose;
 use crate::entity::player::ResourcePackRequest;
 use crate::entity::player::{PlayerChunk, PlayerChunkTransition};
 use crate::entity::{
@@ -33,6 +33,7 @@ use spinel_core::network::clientbound::play::respawn::RespawnPacket;
 use spinel_core::network::clientbound::play::set_equipment::SetEquipmentPacket;
 use spinel_core::network::clientbound::play::set_experience::SetExperiencePacket;
 use spinel_core::network::clientbound::play::set_health::SetHealthPacket;
+use spinel_core::network::clientbound::play::set_player_inventory::SetPlayerInventoryPacket;
 use spinel_core::network::clientbound::play::set_time::SetTimePacket;
 use spinel_core::network::clientbound::play::spawn_entity::SpawnEntityPacket;
 use spinel_core::network::clientbound::play::start_configuration::StartConfigurationPacket;
@@ -101,19 +102,19 @@ fn chunk_batch_acknowledgement_matches_minestom_target_and_lead_rules() {
         SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 25565),
     );
 
-    assert_eq!(player.chunk_batch_lead(), 0);
-    assert_eq!(player.max_chunk_batch_lead(), 1);
-    assert_eq!(player.target_chunks_per_tick(), 9.0);
+    assert_eq!(player.get_chunk_batch_lead(), 0);
+    assert_eq!(player.get_max_chunk_batch_lead(), 1);
+    assert_eq!(player.get_target_chunks_per_tick(), 9.0);
 
     player.on_chunk_batch_received(1000.0);
 
-    assert_eq!(player.chunk_batch_lead(), -1);
-    assert_eq!(player.max_chunk_batch_lead(), 10);
-    assert_eq!(player.target_chunks_per_tick(), 64.0);
+    assert_eq!(player.get_chunk_batch_lead(), -1);
+    assert_eq!(player.get_max_chunk_batch_lead(), 10);
+    assert_eq!(player.get_target_chunks_per_tick(), 64.0);
 
     player.on_chunk_batch_received(f32::NAN);
 
-    assert_eq!(player.target_chunks_per_tick(), 0.01);
+    assert_eq!(player.get_target_chunks_per_tick(), 0.01);
 }
 
 #[test]
@@ -134,10 +135,10 @@ fn chunk_queue_reset_preserves_minestom_batch_lead_state() {
     player.reset_chunk_queue();
 
     assert_eq!(player.queued_chunk_count(), 0);
-    assert_eq!(player.chunk_batch_lead(), 4);
-    assert_eq!(player.max_chunk_batch_lead(), 10);
-    assert_eq!(player.target_chunks_per_tick(), 9.0);
-    assert_eq!(player.pending_chunk_count(), 0.0);
+    assert_eq!(player.get_chunk_batch_lead(), 4);
+    assert_eq!(player.get_max_chunk_batch_lead(), 10);
+    assert_eq!(player.get_target_chunks_per_tick(), 9.0);
+    assert_eq!(player.get_pending_chunk_count(), 0.0);
     assert!(player.needs_chunk_position_sync);
 }
 
@@ -170,8 +171,8 @@ fn queued_chunks_send_minestom_batch_packets_and_first_position_sync() {
     );
     assert_eq!(sync_position_packet_id, SyncPlayerPositionPacket::get_id());
     assert_eq!(player.queued_chunk_count(), 0);
-    assert_eq!(player.chunk_batch_lead(), 1);
-    assert_eq!(player.pending_chunk_count(), 8.0);
+    assert_eq!(player.get_chunk_batch_lead(), 1);
+    assert_eq!(player.get_pending_chunk_count(), 8.0);
 }
 
 #[test]
@@ -305,6 +306,61 @@ fn enter_world_sends_minestom_chunk_batch_then_position_sync_sequence() {
 }
 
 #[test]
+fn first_spawn_inventory_sync_waits_until_client_starts_waiting_for_chunks() {
+    let (mut client, mut peer_stream) = test_client_pair();
+    client.state = ConnectionState::Play;
+    let mut player = Player::new(
+        Uuid::nil(),
+        "Player".to_string(),
+        0,
+        SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 25565),
+    );
+    player.set_client(&mut client);
+    assert!(
+        player
+            .get_inventory()
+            .set_item_stack(0, ItemStack::of(Material::DIAMOND_PICKAXE))
+    );
+
+    player
+        .spawn_after_instance_transition(
+            &mut client,
+            Identifier::minecraft("overworld"),
+            vec![PlayerChunk::new(0, 0)],
+            SetTimePacket::new(42, 18000, true),
+            WorldBorder::DEFAULT.initialize_packet(WorldBorder::DEFAULT.diameter(), 0),
+            Weather::CLEAR,
+            true,
+            false,
+            true,
+        )
+        .unwrap();
+
+    let packet_frames = read_available_packet_frames(&mut peer_stream);
+    let packet_ids = packet_frames
+        .iter()
+        .map(|(packet_id, _)| *packet_id)
+        .collect::<Vec<_>>();
+    let waiting_for_chunks_event_index = packet_frames
+        .iter()
+        .enumerate()
+        .find_map(|(packet_index, (packet_id, payload))| {
+            if *packet_id != GameEventPacket::get_id() {
+                return None;
+            }
+            let game_event_packet = GameEventPacket::decode(&mut payload.as_slice()).unwrap();
+            (game_event_packet.event == GameEvent::StartWaitingForLevelChunks.event_id())
+                .then_some(packet_index)
+        })
+        .unwrap();
+    let player_inventory_index = packet_ids
+        .iter()
+        .position(|packet_id| *packet_id == SetPlayerInventoryPacket::get_id())
+        .unwrap();
+
+    assert!(waiting_for_chunks_event_index < player_inventory_index);
+}
+#[test]
 fn queued_chunk_batch_finished_counts_only_sent_chunks() {
     let (mut client, mut peer_stream) = test_client_pair();
     let mut player = Player::new(
@@ -346,7 +402,7 @@ fn queued_chunk_batch_finished_counts_only_sent_chunks() {
             .0,
         1
     );
-    assert_eq!(player.pending_chunk_count(), 8.0);
+    assert_eq!(player.get_pending_chunk_count(), 8.0);
     assert_eq!(player.queued_chunk_count(), 0);
 }
 
@@ -382,8 +438,8 @@ fn unavailable_queued_chunks_still_finish_an_empty_minestom_batch() {
             .0,
         0
     );
-    assert_eq!(player.chunk_batch_lead(), 1);
-    assert_eq!(player.pending_chunk_count(), 9.0);
+    assert_eq!(player.get_chunk_batch_lead(), 1);
+    assert_eq!(player.get_pending_chunk_count(), 9.0);
     assert_eq!(player.queued_chunk_count(), 0);
 }
 
@@ -474,9 +530,9 @@ fn ordinary_chunk_border_crossing_keeps_throttled_queue_state() {
             .iter()
             .any(|queued_chunk| queued_chunk.chunk == PlayerChunk::new(8, 8))
     );
-    assert_eq!(player.chunk_batch_lead(), 0);
-    assert_eq!(player.pending_chunk_count(), 0.0);
-    assert_eq!(player.target_chunks_per_tick(), 9.0);
+    assert_eq!(player.get_chunk_batch_lead(), 0);
+    assert_eq!(player.get_pending_chunk_count(), 0.0);
+    assert_eq!(player.get_target_chunks_per_tick(), 9.0);
     assert!(!player.needs_chunk_position_sync);
 }
 
@@ -556,8 +612,8 @@ fn slow_chunk_acknowledgements_do_not_block_multi_border_player_movement() {
             .unwrap();
     });
 
-    assert_eq!(player.position().x(), 48.1);
-    assert_eq!(player.chunk_batch_lead(), 1);
+    assert_eq!(player.get_position().get_x(), 48.1);
+    assert_eq!(player.get_chunk_batch_lead(), 1);
     assert!(player.queued_chunk_count() > 0);
     assert!(
         !client
@@ -733,13 +789,13 @@ fn effective_chunk_view_distance_matches_minestom_client_world_cap_plus_one() {
 
     player.set_client_chunk_view_distance(4);
 
-    assert_eq!(player.client_chunk_view_distance(), 4);
+    assert_eq!(player.get_client_chunk_view_distance(), 4);
     assert_eq!(player.effective_chunk_view_distance(10), 5);
     assert_eq!(player.effective_chunk_view_distance(2), 3);
 
     player.set_client_chunk_view_distance(-10);
 
-    assert_eq!(player.client_chunk_view_distance(), 0);
+    assert_eq!(player.get_client_chunk_view_distance(), 0);
     assert_eq!(player.effective_chunk_view_distance(10), 1);
 }
 
@@ -765,21 +821,21 @@ fn player_settings_locale_and_view_distance_match_minestom_refresh_surface() {
 
     player.refresh_settings(settings);
 
-    assert_eq!(player.locale(), "fr_FR");
-    assert_eq!(player.client_chunk_view_distance(), 32);
-    assert_eq!(player.settings().view_distance, 32);
-    assert_eq!(player.settings().chat_mode, 1);
-    assert!(!player.settings().chat_colors);
-    assert_eq!(player.settings().displayed_skin_parts, 3);
-    assert_eq!(player.settings().main_hand, 0);
-    assert!(player.settings().enable_text_filtering);
-    assert!(!player.settings().allow_server_listings);
-    assert_eq!(player.settings().particle_status, 2);
+    assert_eq!(player.get_locale(), "fr_FR");
+    assert_eq!(player.get_client_chunk_view_distance(), 32);
+    assert_eq!(player.get_settings().view_distance, 32);
+    assert_eq!(player.get_settings().chat_mode, 1);
+    assert!(!player.get_settings().chat_colors);
+    assert_eq!(player.get_settings().displayed_skin_parts, 3);
+    assert_eq!(player.get_settings().main_hand, 0);
+    assert!(player.get_settings().enable_text_filtering);
+    assert!(!player.get_settings().allow_server_listings);
+    assert_eq!(player.get_settings().particle_status, 2);
 
     player.set_locale("de_DE");
 
-    assert_eq!(player.locale(), "de_DE");
-    assert_eq!(player.settings().view_distance, 32);
+    assert_eq!(player.get_locale(), "de_DE");
+    assert_eq!(player.get_settings().view_distance, 32);
 }
 
 #[test]
@@ -810,9 +866,9 @@ fn player_game_mode_defaults_to_survival_and_can_be_set_during_configuration() {
         SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 25565),
     );
 
-    assert_eq!(player.game_mode(), GameMode::Survival);
+    assert_eq!(player.get_game_mode(), GameMode::Survival);
     assert!(player.set_game_mode(GameMode::Creative));
-    assert_eq!(player.game_mode(), GameMode::Creative);
+    assert_eq!(player.get_game_mode(), GameMode::Creative);
     assert!(player.can_fly());
     assert!(player.has_instant_break());
     assert!(player.is_invulnerable());
@@ -835,7 +891,7 @@ fn active_player_game_mode_change_sends_client_game_mode_and_abilities() {
     player.mark_entered_world();
 
     assert!(player.set_game_mode(GameMode::Creative));
-    assert_eq!(player.game_mode(), GameMode::Creative);
+    assert_eq!(player.get_game_mode(), GameMode::Creative);
 
     let (game_event_packet_id, game_event_payload) = read_packet_frame(&mut peer_stream);
     let game_event_packet = GameEventPacket::decode(&mut game_event_payload.as_slice()).unwrap();
@@ -857,7 +913,7 @@ fn active_player_game_mode_change_sends_client_game_mode_and_abilities() {
     );
     assert_eq!(player_info_packet_id, PlayerInfoUpdatePacket::get_id());
     assert_eq!(player_info_actions, PlayerInfoActions::update_game_mode());
-    assert_eq!(player_info_uuid, player.uuid());
+    assert_eq!(player_info_uuid, player.get_uuid());
     assert_eq!(player_info_game_mode, GameMode::Creative);
     assert_eq!(abilities_packet_id, PlayerAbilitiesPacket::get_id());
     assert_eq!(
@@ -881,13 +937,13 @@ fn spectator_game_mode_enables_flying_like_minestom() {
 
     assert!(player.set_game_mode(GameMode::Spectator));
 
-    assert_eq!(player.game_mode(), GameMode::Spectator);
+    assert_eq!(player.get_game_mode(), GameMode::Spectator);
     assert!(player.can_fly());
     assert!(player.is_flying());
     assert!(!player.has_instant_break());
     assert!(player.is_invulnerable());
     assert!(!player.has_entity_collision());
-    assert!(!player.prevents_block_placement());
+    assert!(!player.can_prevent_block_placement());
 }
 
 static PLAYER_GAME_MODE_EVENT_TARGET: Mutex<Option<Uuid>> = Mutex::new(None);
@@ -934,9 +990,9 @@ fn player_game_mode_change_event_can_mutate_and_cancel_state_change() {
     *PLAYER_GAME_MODE_EVENT_TARGET.lock().unwrap() = Some(player_uuid);
 
     assert!(player.set_game_mode(GameMode::Creative));
-    assert_eq!(player.game_mode(), GameMode::Spectator);
+    assert_eq!(player.get_game_mode(), GameMode::Spectator);
     assert!(!player.set_game_mode(GameMode::Adventure));
-    assert_eq!(player.game_mode(), GameMode::Spectator);
+    assert_eq!(player.get_game_mode(), GameMode::Spectator);
     assert_eq!(
         PLAYER_GAME_MODE_EVENT_SEEN.lock().unwrap().as_slice(),
         [GameMode::Creative, GameMode::Adventure]
@@ -963,14 +1019,14 @@ fn player_identity_and_connection_getters_match_minestom_profile_surface() {
     let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 25565);
     let player = Player::new(Uuid::nil(), "Player".to_string(), 765, addr);
 
-    assert_eq!(player.uuid(), Uuid::nil());
-    assert_eq!(player.identity().uuid(), Uuid::nil());
-    assert_eq!(player.pointers().uuid(), Uuid::nil());
-    assert_eq!(player.pointers().entity_id(), player.entity_id());
-    assert_eq!(player.pointers().identity(), player.identity());
-    assert_eq!(player.username(), "Player");
-    assert_eq!(player.protocol_version(), 765);
-    assert_eq!(player.address(), addr);
+    assert_eq!(player.get_uuid(), Uuid::nil());
+    assert_eq!(player.get_identity().get_uuid(), Uuid::nil());
+    assert_eq!(player.get_pointers().get_uuid(), Uuid::nil());
+    assert_eq!(player.get_pointers().get_entity_id(), player.get_entity_id());
+    assert_eq!(player.get_pointers().get_identity(), player.get_identity());
+    assert_eq!(player.get_username(), "Player");
+    assert_eq!(player.get_protocol_version(), 765);
+    assert_eq!(player.get_address(), addr);
     assert!(player.can_pickup_item());
     assert!(!player.is_dead());
 }
@@ -984,15 +1040,15 @@ fn player_state_apis_match_minestom_health_food_experience_and_respawn_surface()
         SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 25565),
     );
 
-    assert_eq!(player.health(), 20.0);
-    assert_eq!(player.food(), 20);
-    assert_eq!(player.food_saturation(), 5.0);
+    assert_eq!(player.get_health(), 1.0);
+    assert_eq!(player.get_food(), 20);
+    assert_eq!(player.get_food_saturation(), 5.0);
     assert!(player.is_respawn_screen_enabled());
-    assert_eq!(player.experience(), 0.0);
-    assert_eq!(player.experience_level(), 0);
-    assert_eq!(player.total_experience(), 0);
-    assert_eq!(player.portal_cooldown(), 0);
-    assert_eq!(player.additional_hearts(), 0.0);
+    assert_eq!(player.get_experience(), 0.0);
+    assert_eq!(player.get_experience_level(), 0);
+    assert_eq!(player.get_total_experience(), 0);
+    assert_eq!(player.get_portal_cooldown(), 0);
+    assert_eq!(player.get_additional_hearts(), 0.0);
 
     player.set_health(12.5).unwrap();
     player.set_additional_hearts(4.0);
@@ -1004,16 +1060,16 @@ fn player_state_apis_match_minestom_health_food_experience_and_respawn_surface()
     player.set_total_experience(-2).unwrap();
     player.set_portal_cooldown(-90);
 
-    assert_eq!(player.health(), 12.5);
-    assert_eq!(player.food(), 20);
-    assert_eq!(player.food_saturation(), 20.0);
+    assert_eq!(player.get_health(), 12.5);
+    assert_eq!(player.get_food(), 20);
+    assert_eq!(player.get_food_saturation(), 20.0);
     assert!(!player.is_respawn_screen_enabled());
-    assert_eq!(player.experience(), 1.0);
-    assert_eq!(player.experience_level(), 0);
-    assert_eq!(player.total_experience(), 0);
-    assert_eq!(player.portal_cooldown(), 0);
-    assert_eq!(player.additional_hearts(), 4.0);
-    assert_eq!(player.player_metadata().entries().len(), 2);
+    assert_eq!(player.get_experience(), 1.0);
+    assert_eq!(player.get_experience_level(), 0);
+    assert_eq!(player.get_total_experience(), 0);
+    assert_eq!(player.get_portal_cooldown(), 0);
+    assert_eq!(player.get_additional_hearts(), 4.0);
+    assert_eq!(player.get_player_metadata().get_entries().len(), 2);
 }
 
 #[test]
@@ -1027,21 +1083,21 @@ fn player_death_location_inputs_debug_and_keepalive_state_match_minestom_surface
     let death_position = EntityPosition::new(1.0, 64.0, -2.0, 90.0, 30.0);
     player.set_death_location(death_position);
 
-    let death_location = player.death_location().unwrap();
+    let death_location = player.get_death_location().unwrap();
     assert_eq!(
-        death_location.dimension(),
+        death_location.get_dimension(),
         &Identifier::minecraft("overworld")
     );
-    assert_eq!(death_location.position(), death_position);
+    assert_eq!(death_location.get_position(), death_position);
 
     player.set_death_location_in_dimension(Identifier::minecraft("the_nether"), death_position);
     assert_eq!(
-        player.death_location().unwrap().dimension(),
+        player.get_death_location().unwrap().get_dimension(),
         &Identifier::minecraft("the_nether")
     );
 
     player.refresh_input(true, false, true, false, true, false, true);
-    let inputs = player.inputs();
+    let inputs = player.get_inputs();
     assert!(inputs.forward);
     assert!(inputs.left);
     assert!(inputs.jump);
@@ -1050,14 +1106,14 @@ fn player_death_location_inputs_debug_and_keepalive_state_match_minestom_surface
     assert!(!inputs.right);
     assert!(!inputs.shift);
 
-    assert_eq!(player.eye_height(), 1.62);
+    assert_eq!(player.get_eye_height(), 1.62);
     assert!(!player.has_reduced_debug_screen_information());
     player.set_reduced_debug_screen_information(true).unwrap();
     assert!(player.has_reduced_debug_screen_information());
 
     player.refresh_keep_alive(42);
     player.refresh_answer_keep_alive(true);
-    assert_eq!(player.last_keep_alive(), 42);
+    assert_eq!(player.get_last_keep_alive(), 42);
     assert!(player.did_answer_keep_alive());
 }
 
@@ -1073,7 +1129,7 @@ fn player_pending_options_match_minestom_configuration_handoff_state() {
 
     player.set_pending_options(spawning_world, true);
 
-    assert_eq!(player.pending_spawning_world(), Some(spawning_world));
+    assert_eq!(player.get_pending_spawning_world(), Some(spawning_world));
     assert!(player.is_hardcore());
 }
 
@@ -1244,7 +1300,7 @@ fn player_kill_sets_dead_state_and_sends_death_screen_without_dropping_items() {
     client.state = ConnectionState::Play;
     player.set_client(&mut client);
     player
-        .inventory()
+        .get_inventory()
         .set_item_stack(9, ItemStack::of(Material::STONE));
 
     player.kill().unwrap();
@@ -1257,7 +1313,7 @@ fn player_kill_sets_dead_state_and_sends_death_screen_without_dropping_items() {
     );
     assert!(player.is_dead());
     assert_eq!(
-        player.inventory_ref().item_stack(9),
+        player.get_inventory_ref().get_item_stack(9),
         Some(&ItemStack::of(Material::STONE))
     );
 }
@@ -1331,9 +1387,9 @@ fn player_respawn_event_can_mutate_respawn_position() {
     assert_eq!(event_position.x, 12.0);
     assert_eq!(event_position.y, 70.0);
     assert_eq!(event_position.z, -4.0);
-    assert_eq!(player.position().x(), 12.0);
-    assert_eq!(player.position().y(), 70.0);
-    assert_eq!(player.position().z(), -4.0);
+    assert_eq!(player.get_position().get_x(), 12.0);
+    assert_eq!(player.get_position().get_y(), 70.0);
+    assert_eq!(player.get_position().get_z(), -4.0);
     *PLAYER_RESPAWN_EVENT_TARGET.lock().unwrap() = None;
     *PLAYER_RESPAWN_EVENT_POSITION.lock().unwrap() = None;
 }
@@ -1488,10 +1544,10 @@ fn player_skin_is_state_only_before_world_entry_and_is_used_in_player_info() {
     let skin = PlayerSkin::new("texture-data", Some("signature-data".to_string()));
 
     player.set_skin(Some(skin)).unwrap();
-    let player_info_packet = player.player_info_packet();
+    let player_info_packet = player.get_player_info_packet();
 
-    assert_eq!(player.skin().unwrap().textures(), "texture-data");
-    assert_eq!(player.skin().unwrap().signature(), Some("signature-data"));
+    assert_eq!(player.get_skin().unwrap().get_textures(), "texture-data");
+    assert_eq!(player.get_skin().unwrap().get_signature(), Some("signature-data"));
     assert_eq!(player_info_packet.entries.0[0].properties.len(), 1);
     assert_eq!(
         player_info_packet.entries.0[0].properties[0].name,
@@ -1548,7 +1604,7 @@ fn active_player_skin_refresh_matches_minestom_self_viewer_and_player_list_recip
         let mut non_viewer_client = non_viewer_client.lock().unwrap();
         non_viewer.set_client(&mut non_viewer_client);
     }
-    source.view_mut().manual_add(viewer.entity_id());
+    source.get_view_mut().manual_add(viewer.get_entity_id());
     source.mark_entered_world();
 
     source
@@ -1620,7 +1676,7 @@ fn player_display_name_is_state_only_before_world_entry() {
         .set_display_name(Some(Component::text("Display").build()))
         .unwrap();
 
-    assert!(player.display_name().is_some());
+    assert!(player.get_display_name().is_some());
 }
 
 #[test]
@@ -1645,7 +1701,7 @@ fn active_player_display_name_syncs_client_player_info() {
 
     assert_eq!(packet_id, PlayerInfoUpdatePacket::get_id());
     assert_eq!(packet.actions, PlayerInfoActions::update_display_name());
-    assert_eq!(packet.entries.0[0].uuid, player.uuid());
+    assert_eq!(packet.entries.0[0].uuid, player.get_uuid());
     assert!(packet.entries.0[0].display_name.is_some());
 }
 
@@ -1658,14 +1714,14 @@ fn player_teleport_ids_match_minestom_sent_and_received_tracking() {
         SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 25565),
     );
 
-    assert_eq!(player.last_sent_teleport_id(), 0);
-    assert_eq!(player.last_received_teleport_id(), 0);
-    assert_eq!(player.next_teleport_id(), 1);
+    assert_eq!(player.get_last_sent_teleport_id(), 0);
+    assert_eq!(player.get_last_received_teleport_id(), 0);
+    assert_eq!(player.get_next_teleport_id(), 1);
     assert!(player.has_pending_teleport_confirmation());
     player.set_last_received_teleport_id(-1);
-    assert_eq!(player.last_received_teleport_id(), 0);
+    assert_eq!(player.get_last_received_teleport_id(), 0);
     player.set_last_received_teleport_id(1);
-    assert_eq!(player.last_received_teleport_id(), 1);
+    assert_eq!(player.get_last_received_teleport_id(), 1);
     assert!(!player.has_pending_teleport_confirmation());
 }
 
@@ -1694,7 +1750,7 @@ fn player_teleport_overloads_preserve_or_resolve_velocity_like_minestom() {
         .unwrap();
 
     assert_eq!(
-        preserved_velocity.velocity(),
+        preserved_velocity.get_velocity(),
         Velocity(Vector3d {
             x: 1.0,
             y: 2.0,
@@ -1702,7 +1758,7 @@ fn player_teleport_overloads_preserve_or_resolve_velocity_like_minestom() {
         })
     );
     assert_eq!(
-        preserved_velocity.flags().bitmask(),
+        preserved_velocity.get_flags().bitmask(),
         TeleportFlags::DELTA_COORD
     );
 
@@ -1728,11 +1784,11 @@ fn player_teleport_overloads_preserve_or_resolve_velocity_like_minestom() {
         .unwrap();
 
     assert_eq!(
-        teleport.position(),
+        teleport.get_position(),
         EntityPosition::new(6.0, 70.0, 3.0, 22.0, 25.0)
     );
     assert_eq!(
-        teleport.velocity(),
+        teleport.get_velocity(),
         Velocity(Vector3d {
             x: 1.5,
             y: 8.0,
@@ -1756,7 +1812,7 @@ fn player_velocity_packet_converts_blocks_per_second_to_blocks_per_tick() {
     }));
 
     assert_eq!(
-        player.velocity_packet().velocity,
+        player.get_velocity_packet().velocity,
         Velocity(Vector3d {
             x: 0.05,
             y: 0.1,
@@ -1798,7 +1854,7 @@ fn active_player_synchronize_position_after_teleport_sends_sync_packet() {
     assert_eq!(packet.x, 1.0);
     assert_eq!(packet.velocity_z, 0.3);
     assert_eq!(packet.flags.bitmask(), TeleportFlags::X | TeleportFlags::Y);
-    assert_eq!(player.last_sent_teleport_id(), 1);
+    assert_eq!(player.get_last_sent_teleport_id(), 1);
     assert!(player.has_pending_teleport_confirmation());
 }
 
@@ -1831,7 +1887,7 @@ fn player_synchronize_position_without_confirmation_uses_negative_id() {
     let packet = SyncPlayerPositionPacket::decode(&mut payload.as_slice()).unwrap();
 
     assert_eq!(packet.teleport_id, -1);
-    assert_eq!(player.last_sent_teleport_id(), 0);
+    assert_eq!(player.get_last_sent_teleport_id(), 0);
     assert!(!player.has_pending_teleport_confirmation());
 }
 
@@ -1880,13 +1936,13 @@ fn player_listed_latency_and_ability_setters_sync_active_client_state() {
         PlayerAbilitiesPacket::decode(&mut field_view_payload.as_slice()).unwrap();
 
     assert!(!player.is_listed());
-    assert_eq!(player.latency(), 42);
+    assert_eq!(player.get_latency(), 42);
     assert!(player.can_fly());
     assert!(player.is_flying());
     assert!(player.has_instant_break());
     assert!(player.is_invulnerable());
-    assert_eq!(player.flying_speed(), 0.2);
-    assert_eq!(player.field_view_modifier(), 0.3);
+    assert_eq!(player.get_flying_speed(), 0.2);
+    assert_eq!(player.get_field_view_modifier(), 0.3);
     assert!(!listed);
     assert_eq!(latency, 42);
     assert_eq!(
@@ -1955,9 +2011,9 @@ fn player_equipment_packet_includes_full_minestom_equipment_set() {
         ItemStack::of(Material::DIAMOND_HELMET),
     );
 
-    let equipment_packet = player.visible_equipment_packet();
+    let equipment_packet = player.get_visible_equipment_packet();
 
-    assert_eq!(equipment_packet.entity_id, player.entity_id().value());
+    assert_eq!(equipment_packet.entity_id, player.get_entity_id().get_value());
     assert_eq!(equipment_packet.equipment.0.len(), 7);
     assert_eq!(
         equipment_packet.equipment.0[0]
@@ -1987,7 +2043,7 @@ fn player_exposes_connected_client_like_minestom_player_connection() {
 
     player.set_client(&mut client);
 
-    assert_eq!(player.client().map(|client| client.addr), Some(client.addr));
+    assert_eq!(player.get_client().map(|client| client.addr), Some(client.addr));
 }
 
 #[test]
@@ -2001,12 +2057,12 @@ fn player_input_sprint_does_not_set_sprinting_metadata() {
 
     assert!(!player.refresh_input(false, false, false, false, false, false, true));
     assert_eq!(
-        player.metadata_packet().entries.0[0].value,
+        player.get_metadata_packet().entries.0[0].value,
         MetadataValue::Byte(0)
     );
     assert!(player.set_sprinting(true));
     assert_eq!(
-        player.metadata_packet().entries.0[0].value,
+        player.get_metadata_packet().entries.0[0].value,
         MetadataValue::Byte(8)
     );
     assert!(player.is_sprinting());
@@ -2026,7 +2082,7 @@ fn player_sneaking_api_matches_minestom_flying_pose_edge() {
     assert!(player.is_sneaking());
     assert!(
         player
-            .metadata_packet()
+            .get_metadata_packet()
             .entries
             .0
             .iter()
@@ -2039,7 +2095,7 @@ fn player_sneaking_api_matches_minestom_flying_pose_edge() {
     assert!(player.is_sneaking());
     assert!(
         !player
-            .metadata_packet()
+            .get_metadata_packet()
             .entries
             .0
             .iter()
@@ -2056,13 +2112,13 @@ fn player_base_metadata_api_matches_minestom_entity_meta_defaults() {
         SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 25565),
     );
 
-    assert_eq!(player.custom_name(), None);
+    assert_eq!(player.get_custom_name(), None);
     assert!(!player.is_custom_name_visible());
     assert!(!player.is_silent());
     assert!(!player.is_swimming());
     assert!(!player.is_invisible());
     assert!(!player.is_glowing());
-    assert_eq!(player.air_ticks(), 300);
+    assert_eq!(player.get_air_ticks(), 300);
     assert_eq!(player.ticks_frozen(), 0);
 
     let metadata_custom_name = TextComponent::literal("metadata-name");
@@ -2079,17 +2135,17 @@ fn player_base_metadata_api_matches_minestom_entity_meta_defaults() {
         .set_display_name(Some(player_info_display_name.clone()))
         .unwrap();
 
-    assert_eq!(player.custom_name(), Some(metadata_custom_name));
-    assert_eq!(player.display_name(), Some(&player_info_display_name));
+    assert_eq!(player.get_custom_name(), Some(metadata_custom_name));
+    assert_eq!(player.get_display_name(), Some(&player_info_display_name));
     assert!(player.is_custom_name_visible());
     assert!(player.is_silent());
     assert!(player.is_swimming());
     assert!(player.is_invisible());
     assert!(player.is_glowing());
-    assert_eq!(player.air_ticks(), 12);
+    assert_eq!(player.get_air_ticks(), 12);
     assert_eq!(player.ticks_frozen(), 9);
-    assert_eq!(player.pose(), PlayerPose::Swimming);
-    assert!(player.dirty_metadata_packet().is_some());
+    assert_eq!(player.get_pose(), EntityPose::Swimming);
+    assert!(player.get_dirty_metadata_packet().is_some());
 }
 
 #[test]
@@ -2104,13 +2160,13 @@ fn player_living_metadata_api_matches_minestom_living_entity_meta_surface() {
     let bed_position = Position { x: 1, y: 64, z: 2 };
 
     assert!(!player.is_hand_active());
-    assert_eq!(player.active_hand(), PlayerHand::Main);
+    assert_eq!(player.get_active_hand(), PlayerHand::Main);
     assert!(!player.is_in_riptide_spin_attack());
-    assert!(player.effect_particles().is_empty());
+    assert!(player.get_effect_particles().is_empty());
     assert!(!player.is_potion_effect_ambient());
-    assert_eq!(player.arrow_count(), 0);
-    assert_eq!(player.bee_stinger_count(), 0);
-    assert_eq!(player.bed_in_which_sleeping_position(), None);
+    assert_eq!(player.get_arrow_count(), 0);
+    assert_eq!(player.get_bee_stinger_count(), 0);
+    assert_eq!(player.get_bed_in_which_sleeping_position(), None);
 
     player.set_hand_active(true);
     player.set_active_hand(PlayerHand::Off);
@@ -2123,15 +2179,15 @@ fn player_living_metadata_api_matches_minestom_living_entity_meta_surface() {
     player.set_health(13.5).unwrap();
 
     assert!(player.is_hand_active());
-    assert_eq!(player.active_hand(), PlayerHand::Off);
+    assert_eq!(player.get_active_hand(), PlayerHand::Off);
     assert!(player.is_in_riptide_spin_attack());
-    assert_eq!(player.effect_particles(), vec![effect_particle]);
+    assert_eq!(player.get_effect_particles(), vec![effect_particle]);
     assert!(player.is_potion_effect_ambient());
-    assert_eq!(player.arrow_count(), 3);
-    assert_eq!(player.bee_stinger_count(), 4);
-    assert_eq!(player.bed_in_which_sleeping_position(), Some(bed_position));
-    assert_eq!(player.health(), 13.5);
-    assert!(player.dirty_metadata_packet().is_some());
+    assert_eq!(player.get_arrow_count(), 3);
+    assert_eq!(player.get_bee_stinger_count(), 4);
+    assert_eq!(player.get_bed_in_which_sleeping_position(), Some(bed_position));
+    assert_eq!(player.get_health(), 13.5);
+    assert!(player.get_dirty_metadata_packet().is_some());
 }
 
 #[test]
@@ -2143,40 +2199,49 @@ fn player_avatar_and_player_metadata_api_matches_minestom_meta_surface() {
         SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 25565),
     );
 
-    assert_eq!(player.main_hand(), MainHand::Right);
-    assert_eq!(player.displayed_skin_parts(), 0);
-    assert_eq!(player.score(), 0);
-    assert_eq!(player.left_shoulder_entity_data(), None);
-    assert_eq!(player.right_shoulder_entity_data(), None);
+    {
+        let player_meta = player.get_entity_meta_mut();
+        assert_eq!(player_meta.get_main_hand(), MainHand::Right);
+        assert_eq!(player_meta.get_displayed_skin_parts(), 0);
+        assert_eq!(player_meta.get_score(), 0);
+        assert_eq!(player_meta.get_left_shoulder_entity_data(), None);
+        assert_eq!(player_meta.get_right_shoulder_entity_data(), None);
+    }
 
-    player.set_main_hand(MainHand::Left);
-    player.set_cape_enabled(true);
-    player.set_jacket_enabled(true);
-    player.set_left_sleeve_enabled(true);
-    player.set_right_sleeve_enabled(true);
-    player.set_left_leg_enabled(true);
-    player.set_right_leg_enabled(true);
-    player.set_hat_enabled(true);
-    player.set_displayed_skin_parts(0x7f);
-    player.set_additional_hearts(2.5);
-    player.set_score(12);
-    player.set_left_shoulder_entity_data(Some(1));
-    player.set_right_shoulder_entity_data(Some(2));
+    {
+        let mut player_meta = player.get_entity_meta_mut();
+        player_meta.set_main_hand(MainHand::Left);
+        player_meta.set_cape_enabled(true);
+        player_meta.set_jacket_enabled(true);
+        player_meta.set_left_sleeve_enabled(true);
+        player_meta.set_right_sleeve_enabled(true);
+        player_meta.set_left_leg_enabled(true);
+        player_meta.set_right_leg_enabled(true);
+        player_meta.set_hat_enabled(true);
+        player_meta.set_displayed_skin_parts(0x7f);
+        player_meta.set_additional_hearts(2.5);
+        player_meta.set_score(12);
+        player_meta.set_left_shoulder_entity_data(Some(1));
+        player_meta.set_right_shoulder_entity_data(Some(2));
+    }
 
-    assert_eq!(player.main_hand(), MainHand::Left);
-    assert!(player.is_cape_enabled());
-    assert!(player.is_jacket_enabled());
-    assert!(player.is_left_sleeve_enabled());
-    assert!(player.is_right_sleeve_enabled());
-    assert!(player.is_left_leg_enabled());
-    assert!(player.is_right_leg_enabled());
-    assert!(player.is_hat_enabled());
-    assert_eq!(player.displayed_skin_parts(), 0x7f);
-    assert_eq!(player.additional_hearts(), 2.5);
-    assert_eq!(player.score(), 12);
-    assert_eq!(player.left_shoulder_entity_data(), Some(1));
-    assert_eq!(player.right_shoulder_entity_data(), Some(2));
-    assert!(player.dirty_metadata_packet().is_some());
+    {
+        let player_meta = player.get_entity_meta_mut();
+        assert_eq!(player_meta.get_main_hand(), MainHand::Left);
+        assert!(player_meta.is_cape_enabled());
+        assert!(player_meta.is_jacket_enabled());
+        assert!(player_meta.is_left_sleeve_enabled());
+        assert!(player_meta.is_right_sleeve_enabled());
+        assert!(player_meta.is_left_leg_enabled());
+        assert!(player_meta.is_right_leg_enabled());
+        assert!(player_meta.is_hat_enabled());
+        assert_eq!(player_meta.get_displayed_skin_parts(), 0x7f);
+        assert_eq!(player_meta.get_additional_hearts(), 2.5);
+        assert_eq!(player_meta.get_score(), 12);
+        assert_eq!(player_meta.get_left_shoulder_entity_data(), Some(1));
+        assert_eq!(player_meta.get_right_shoulder_entity_data(), Some(2));
+    }
+    assert!(player.get_dirty_metadata_packet().is_some());
 }
 
 #[test]
@@ -2221,7 +2286,7 @@ fn public_sneaking_and_sprinting_setters_broadcast_dirty_metadata_to_play_client
         let mut non_viewer_client = non_viewer_client.lock().unwrap();
         non_viewer.set_client(&mut non_viewer_client);
     }
-    player.view_mut().manual_add(viewer.entity_id());
+    player.get_view_mut().manual_add(viewer.get_entity_id());
     player.mark_entered_world();
 
     player.set_sneaking(true);
@@ -2276,22 +2341,22 @@ fn player_item_use_state_matches_minestom_timing_and_eating_checks() {
 
     assert!(!player.is_using_item());
     assert!(!player.is_eating());
-    assert_eq!(player.current_item_use_time(), 0);
+    assert_eq!(player.get_current_item_use_time(), 0);
 
     player.set_item_in_hand(PlayerHand::Main, ItemStack::of(Material::POTION));
     player.refresh_item_use(Some(PlayerHand::Main), 2);
 
     assert!(player.is_using_item());
     assert!(player.is_eating());
-    assert_eq!(player.item_use_hand(), Some(PlayerHand::Main));
-    assert_eq!(player.current_item_use_time(), 0);
+    assert_eq!(player.get_item_use_hand(), Some(PlayerHand::Main));
+    assert_eq!(player.get_current_item_use_time(), 0);
     assert!(player.tick().is_none());
-    assert_eq!(player.current_item_use_time(), 1);
+    assert_eq!(player.get_current_item_use_time(), 1);
     let item_use_completion = player.tick().unwrap();
-    assert_eq!(item_use_completion.entity_id, player.entity_id().value());
+    assert_eq!(item_use_completion.entity_id, player.get_entity_id().get_value());
     assert_eq!(item_use_completion.status, 9);
     assert!(!player.is_using_item());
-    assert_eq!(player.current_item_use_time(), 0);
+    assert_eq!(player.get_current_item_use_time(), 0);
 }
 
 #[test]
@@ -2422,8 +2487,8 @@ fn player_resource_pack_api_matches_minestom_request_status_and_required_kick_fl
 
     player.send_resource_packs(request).unwrap();
 
-    assert_eq!(player.pending_resource_pack_count(), 1);
-    assert_eq!(player.resource_pack_future().unwrap().pending_count(), 1);
+    assert_eq!(player.get_pending_resource_pack_count(), 1);
+    assert_eq!(player.get_resource_pack_future().unwrap().get_pending_count(), 1);
     let packet_frames = read_available_packet_frames(&mut peer_stream);
     assert_eq!(packet_frames[0].0, ResourcePackPopPacket::get_id());
     assert_eq!(packet_frames[1].0, ResourcePackPushPacket::get_id());
@@ -2437,7 +2502,7 @@ fn player_resource_pack_api_matches_minestom_request_status_and_required_kick_fl
     player
         .on_resource_pack_status(resource_pack_id, ResourcePackStatus::Accepted)
         .unwrap();
-    assert_eq!(player.pending_resource_pack_count(), 0);
+    assert_eq!(player.get_pending_resource_pack_count(), 0);
     let (disconnect_packet_id, disconnect_payload) = read_packet_frame(&mut peer_stream);
     let disconnect_packet =
         PlayDisconnectPacket::decode(&mut disconnect_payload.as_slice()).unwrap();
@@ -2468,7 +2533,7 @@ fn player_resource_pack_remove_clear_and_success_status_match_minestom_surface()
     player
         .on_resource_pack_status(first_pack_id, ResourcePackStatus::SuccessfullyLoaded)
         .unwrap();
-    assert!(player.resource_pack_future().is_none());
+    assert!(player.get_resource_pack_future().is_none());
 
     player
         .remove_resource_packs(first_pack_id, [second_pack_id])
@@ -2601,7 +2666,7 @@ fn player_permission_and_spectate_apis_send_minestom_packets() {
         .map(|(packet_id, _)| packet_id)
         .collect();
 
-    assert_eq!(player.permission_level(), 3);
+    assert_eq!(player.get_permission_level(), 3);
     assert_eq!(
         packet_ids,
         vec![
@@ -2622,14 +2687,14 @@ fn player_dimension_statistics_hover_and_leave_bed_api_match_minestom_surface() 
     );
 
     assert_eq!(
-        player.dimension_type(),
+        player.get_dimension_type(),
         &spinel_registry::dimension_type::DimensionType::OVERWORLD
     );
-    assert!(player.statistic_value_map().is_empty());
-    assert_eq!(player.statistic_value("minecraft:jump"), 0);
+    assert!(player.get_statistic_value_map().is_empty());
+    assert_eq!(player.get_statistic_value("minecraft:jump"), 0);
     player.set_statistic_value("minecraft:jump", 4);
     assert_eq!(player.increment_statistic_value("minecraft:jump", 2), 6);
-    assert_eq!(player.statistic_value("minecraft:jump"), 6);
+    assert_eq!(player.get_statistic_value("minecraft:jump"), 6);
     player.leave_bed();
 
     let HoverEvent::ShowEntity(hover_entity) = player.as_hover_event() else {
@@ -2637,15 +2702,15 @@ fn player_dimension_statistics_hover_and_leave_bed_api_match_minestom_surface() 
     };
 
     assert_eq!(hover_entity.entity_type, "minecraft:player");
-    assert_eq!(hover_entity.id, player.uuid().to_string());
+    assert_eq!(hover_entity.id, player.get_uuid().to_string());
     assert!(hover_entity.name.is_some());
 
     let snapshot = player.update_snapshot(|snapshot| {
-        assert_eq!(snapshot.username(), "Player");
-        assert_eq!(snapshot.game_mode(), GameMode::Survival);
+        assert_eq!(snapshot.get_username(), "Player");
+        assert_eq!(snapshot.get_game_mode(), GameMode::Survival);
     });
 
-    assert_eq!(snapshot.uuid(), player.uuid());
+    assert_eq!(snapshot.get_uuid(), player.get_uuid());
     assert_eq!(snapshot.statistics(), &[("minecraft:jump".to_string(), 6)]);
 }
 
@@ -2700,7 +2765,7 @@ fn player_look_at_and_face_position_apis_send_minestom_face_player_packets() {
     assert_eq!(second_packet.look_at.face_point, FacePoint::Feet);
     assert_eq!(
         third_packet.look_at.entity.unwrap().entity_id,
-        target_entity.value()
+        target_entity.get_value()
     );
 }
 
@@ -2712,7 +2777,7 @@ fn player_debug_subscriptions_and_vehicle_state_match_minestom_listener_surface(
     let world_uuid = world.uuid();
     let mut player = Player::new(Uuid::nil(), "Player".to_string(), 0, client.addr);
     let mut vehicle = GenericEntity::new(EntityType::MINECART);
-    let vehicle_id = vehicle.entity_id();
+    let vehicle_id = vehicle.get_entity_id();
     let vehicle_position = EntityPosition::new(1.0, 2.0, 3.0, 4.0, 5.0);
 
     player.set_debug_subscriptions(BTreeSet::from([0, 2]));
@@ -2725,15 +2790,15 @@ fn player_debug_subscriptions_and_vehicle_state_match_minestom_listener_surface(
     assert!(
         worlds
             .player_pointer_for_client(&client)
-            .map(|player| unsafe { &*player }.debug_subscriptions().contains(&2))
+            .map(|player| unsafe { &*player }.get_debug_subscriptions().contains(&2))
             .unwrap()
     );
     assert!(worlds.move_client_world_entity(&client, vehicle_id, vehicle_position));
     assert_eq!(
         worlds
             .world(world_uuid)
-            .and_then(|world| world.entity_by_id(vehicle_id))
-            .map(Entity::position),
+            .and_then(|world| world.get_entity(vehicle_id))
+            .map(Entity::get_position),
         Some(vehicle_position)
     );
 }
@@ -2798,6 +2863,70 @@ fn player_sound_effect_action_bar_and_boss_bar_apis_send_minestom_packets() {
     );
 }
 
+#[test]
+fn consuming_block_placement_syncs_only_the_held_slot() {
+    let (mut client, mut peer_stream) = test_client_pair();
+    client.state = ConnectionState::Play;
+    let mut player = Player::new(Uuid::nil(), "Player".to_string(), 0, client.addr);
+    assert!(player.set_item_in_hand(
+        PlayerHand::Main,
+        ItemStack::of(Material::STONE).with_amount(2),
+    ));
+    player.set_client(&mut client);
+
+    assert!(
+        crate::network::play::use_item_on::synchronize_placed_block_inventory(
+            &mut player,
+            PlayerHand::Main,
+            true,
+            &mut client,
+        )
+    );
+
+    assert_eq!(player.g(PlayerHand::Main).amount(), 1);
+    let packet_ids = read_available_packet_frames(&mut peer_stream)
+        .into_iter()
+        .map(|(packet_id, _)| packet_id)
+        .collect::<Vec<_>>();
+    assert_eq!(
+        packet_ids,
+        vec![
+            spinel_core::network::clientbound::play::set_player_inventory::SetPlayerInventoryPacket::get_id(),
+            UpdateAttributesPacket::get_id(),
+        ]
+    );
+}
+
+#[test]
+fn player_inventory_add_item_stacks_syncs_only_changed_slots() {
+    let (mut client, mut peer_stream) = test_client_pair();
+    client.state = ConnectionState::Play;
+    let mut player = Player::new(Uuid::nil(), "Player".to_string(), 0, client.addr);
+    let occupied_item = ItemStack::of(Material::DIAMOND);
+    assert!(player.get_inventory().set_item_stack(0, occupied_item.clone()));
+    player.set_client(&mut client);
+    player.mark_entered_world();
+
+    assert_eq!(
+        player.get_inventory().add_item_stacks(vec![
+            ItemStack::of(Material::STICK),
+            ItemStack::of(Material::EMERALD),
+        ]),
+        vec![true, true]
+    );
+    assert_eq!(player.get_inventory_ref().get_item_stack(0), Some(&occupied_item));
+
+    player.tick();
+
+    assert_eq!(
+        read_packet_frame(&mut peer_stream).0,
+        spinel_core::network::clientbound::play::set_player_inventory::SetPlayerInventoryPacket::get_id()
+    );
+    assert_eq!(
+        read_packet_frame(&mut peer_stream).0,
+        spinel_core::network::clientbound::play::set_player_inventory::SetPlayerInventoryPacket::get_id()
+    );
+}
 fn test_client() -> Client {
     test_client_pair().0
 }
@@ -2897,4 +3026,36 @@ fn empty_chunk_packet(chunk_x: i32, chunk_z: i32) -> ChunkDataAndUpdateLightPack
             block_light_arrays: Vec::new(),
         },
     )
+}
+
+#[test]
+fn player_schedule_remove_matches_shared_entity_lifecycle() {
+    let mut player = Player::new(
+        Uuid::new_v4(),
+        "ScheduledRemoval".to_owned(),
+        0,
+        "127.0.0.1:25567".parse().unwrap(),
+    );
+
+    assert_eq!(player.get_alive_ticks(), 0);
+    assert!(!player.is_removed());
+    player.schedule_remove_after_ticks(1);
+    player.tick();
+    assert_eq!(player.get_alive_ticks(), 1);
+    assert!(player.is_removed());
+
+    let mut duration_player = Player::new(
+        Uuid::new_v4(),
+        "DurationRemoval".to_owned(),
+        0,
+        "127.0.0.1:25568".parse().unwrap(),
+    );
+    assert_eq!(duration_player.get_alive_ticks(), 0);
+    duration_player.schedule_remove_after_duration(std::time::Duration::from_millis(51));
+    duration_player.tick();
+    assert_eq!(duration_player.get_alive_ticks(), 1);
+    assert!(!duration_player.is_removed());
+    duration_player.tick();
+    assert_eq!(duration_player.get_alive_ticks(), 2);
+    assert!(duration_player.is_removed());
 }

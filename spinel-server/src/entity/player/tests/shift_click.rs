@@ -15,16 +15,16 @@ use uuid::Uuid;
 fn player_inventory_shift_click_moves_hotbar_to_inventory() {
     let mut player = test_player();
     player
-        .inventory()
+        .get_inventory()
         .set_item_stack(0, ItemStack::of(Material::DIAMOND));
     let mut server = MinecraftServer::new();
     let mut client = test_client();
     let player_ptr = &mut player as *mut Player;
 
     assert!(player.apply_shift_click(0, player_ptr, &mut server, &mut client));
-    assert!(player.inventory_ref().item_stack(0).unwrap().is_air());
+    assert!(player.get_inventory_ref().get_item_stack(0).unwrap().is_air());
     assert_eq!(
-        player.inventory_ref().item_stack(9).unwrap().material(),
+        player.get_inventory_ref().get_item_stack(9).unwrap().material(),
         &Material::DIAMOND
     );
 }
@@ -33,16 +33,16 @@ fn player_inventory_shift_click_moves_hotbar_to_inventory() {
 fn player_inventory_shift_click_moves_inventory_to_hotbar() {
     let mut player = test_player();
     player
-        .inventory()
+        .get_inventory()
         .set_item_stack(9, ItemStack::of(Material::DIAMOND));
     let mut server = MinecraftServer::new();
     let mut client = test_client();
     let player_ptr = &mut player as *mut Player;
 
     assert!(player.apply_shift_click(9, player_ptr, &mut server, &mut client));
-    assert!(player.inventory_ref().item_stack(9).unwrap().is_air());
+    assert!(player.get_inventory_ref().get_item_stack(9).unwrap().is_air());
     assert_eq!(
-        player.inventory_ref().item_stack(0).unwrap().material(),
+        player.get_inventory_ref().get_item_stack(0).unwrap().material(),
         &Material::DIAMOND
     );
 }
@@ -51,7 +51,7 @@ fn player_inventory_shift_click_moves_inventory_to_hotbar() {
 fn player_inventory_shift_click_moves_offhand_to_inventory_before_hotbar() {
     let mut player = test_player();
     player
-        .inventory()
+        .get_inventory()
         .set_item_stack(OFFHAND_SLOT as usize, ItemStack::of(Material::DIAMOND));
     let mut server = MinecraftServer::new();
     let mut client = test_client();
@@ -60,13 +60,13 @@ fn player_inventory_shift_click_moves_offhand_to_inventory_before_hotbar() {
     assert!(player.apply_shift_click(OFFHAND_SLOT, player_ptr, &mut server, &mut client));
     assert!(
         player
-            .inventory_ref()
-            .item_stack(OFFHAND_SLOT as usize)
+            .get_inventory_ref()
+            .get_item_stack(OFFHAND_SLOT as usize)
             .unwrap()
             .is_air()
     );
     assert_eq!(
-        player.inventory_ref().item_stack(9).unwrap().material(),
+        player.get_inventory_ref().get_item_stack(9).unwrap().material(),
         &Material::DIAMOND
     );
 }
@@ -84,14 +84,14 @@ fn open_inventory_shift_click_uses_minestom_transfer_order() {
     assert!(player.apply_shift_click(0, player_ptr, &mut server, &mut client));
     assert!(
         player
-            .opened_inventory()
+            .get_opened_inventory()
             .unwrap()
-            .item_stack(0)
+            .get_item_stack(0)
             .unwrap()
             .is_air()
     );
     assert_eq!(
-        player.inventory_ref().item_stack(8).unwrap().material(),
+        player.get_inventory_ref().get_item_stack(8).unwrap().material(),
         &Material::DIAMOND
     );
 }
@@ -104,7 +104,7 @@ fn open_inventory_consecutive_shift_clicks_use_the_current_open_window() {
     inventory.set_item_stack(1, ItemStack::of(Material::EMERALD));
     inventory.set_item_stack(2, ItemStack::of(Material::GOLD_INGOT));
     player.open_inventory(inventory);
-    let container_id = player.opened_inventory().unwrap().id();
+    let container_id = player.get_opened_inventory().unwrap().id();
     let mut server = MinecraftServer::new();
     let mut client = test_client();
 
@@ -126,38 +126,38 @@ fn open_inventory_consecutive_shift_clicks_use_the_current_open_window() {
 
     assert!(
         player
-            .opened_inventory()
+            .get_opened_inventory()
             .unwrap()
-            .item_stack(0)
-            .unwrap()
-            .is_air()
-    );
-    assert!(
-        player
-            .opened_inventory()
-            .unwrap()
-            .item_stack(1)
+            .get_item_stack(0)
             .unwrap()
             .is_air()
     );
     assert!(
         player
-            .opened_inventory()
+            .get_opened_inventory()
             .unwrap()
-            .item_stack(2)
+            .get_item_stack(1)
+            .unwrap()
+            .is_air()
+    );
+    assert!(
+        player
+            .get_opened_inventory()
+            .unwrap()
+            .get_item_stack(2)
             .unwrap()
             .is_air()
     );
     assert_eq!(
-        player.inventory_ref().item_stack(8).unwrap().material(),
+        player.get_inventory_ref().get_item_stack(8).unwrap().material(),
         &Material::DIAMOND
     );
     assert_eq!(
-        player.inventory_ref().item_stack(7).unwrap().material(),
+        player.get_inventory_ref().get_item_stack(7).unwrap().material(),
         &Material::EMERALD
     );
     assert_eq!(
-        player.inventory_ref().item_stack(6).unwrap().material(),
+        player.get_inventory_ref().get_item_stack(6).unwrap().material(),
         &Material::GOLD_INGOT
     );
 }
@@ -168,7 +168,7 @@ fn open_inventory_rejects_clicks_for_a_different_window_id() {
     let mut inventory = Inventory::new(InventoryType::Chest(1), Component::text("Test").build());
     inventory.set_item_stack(0, ItemStack::of(Material::DIAMOND));
     player.open_inventory(inventory);
-    let container_id = player.opened_inventory().unwrap().id() + 1;
+    let container_id = player.get_opened_inventory().unwrap().id() + 1;
     let mut server = MinecraftServer::new();
     let mut client = test_client();
 
@@ -179,32 +179,32 @@ fn open_inventory_rejects_clicks_for_a_different_window_id() {
     ));
     assert_eq!(
         player
-            .opened_inventory()
+            .get_opened_inventory()
             .unwrap()
-            .item_stack(0)
+            .get_item_stack(0)
             .unwrap()
             .material(),
         &Material::DIAMOND
     );
-    assert!(player.inventory_ref().item_stack(8).unwrap().is_air());
+    assert!(player.get_inventory_ref().get_item_stack(8).unwrap().is_air());
 }
 
 #[test]
 fn player_inventory_shift_click_equips_registry_backed_head_items() {
     let mut player = test_player();
     player
-        .inventory()
+        .get_inventory()
         .set_item_stack(0, ItemStack::of(Material::CARVED_PUMPKIN));
     let mut server = MinecraftServer::new();
     let mut client = test_client();
     let player_ptr = &mut player as *mut Player;
 
     assert!(player.apply_shift_click(0, player_ptr, &mut server, &mut client));
-    assert!(player.inventory_ref().item_stack(0).unwrap().is_air());
+    assert!(player.get_inventory_ref().get_item_stack(0).unwrap().is_air());
     assert_eq!(
         player
-            .inventory_ref()
-            .equipment(crate::entity::EquipmentSlot::Helmet, player.held_slot())
+            .get_inventory_ref()
+            .get_equipment(crate::entity::EquipmentSlot::Helmet, player.get_held_slot())
             .material(),
         &Material::CARVED_PUMPKIN
     );
@@ -214,18 +214,18 @@ fn player_inventory_shift_click_equips_registry_backed_head_items() {
 fn player_inventory_shift_click_equips_extracted_component_helmet() {
     let mut player = test_player();
     player
-        .inventory()
+        .get_inventory()
         .set_item_stack(0, ItemStack::of(Material::DIAMOND_HELMET));
     let mut server = MinecraftServer::new();
     let mut client = test_client();
     let player_ptr = &mut player as *mut Player;
 
     assert!(player.apply_shift_click(0, player_ptr, &mut server, &mut client));
-    assert!(player.inventory_ref().item_stack(0).unwrap().is_air());
+    assert!(player.get_inventory_ref().get_item_stack(0).unwrap().is_air());
     assert_eq!(
         player
-            .inventory_ref()
-            .equipment(crate::entity::EquipmentSlot::Helmet, player.held_slot())
+            .get_inventory_ref()
+            .get_equipment(crate::entity::EquipmentSlot::Helmet, player.get_held_slot())
             .material(),
         &Material::DIAMOND_HELMET
     );
@@ -235,7 +235,7 @@ fn player_inventory_shift_click_equips_extracted_component_helmet() {
 fn window_zero_hotbar_shift_click_equips_extracted_component_helmet() {
     let mut player = test_player();
     player
-        .inventory()
+        .get_inventory()
         .set_item_stack(0, ItemStack::of(Material::DIAMOND_HELMET));
     let mut server = MinecraftServer::new();
     let mut client = test_client();
@@ -245,11 +245,11 @@ fn window_zero_hotbar_shift_click_equips_extracted_component_helmet() {
         &mut server,
         &mut client
     ));
-    assert!(player.inventory_ref().item_stack(0).unwrap().is_air());
+    assert!(player.get_inventory_ref().get_item_stack(0).unwrap().is_air());
     assert_eq!(
         player
-            .inventory_ref()
-            .equipment(crate::entity::EquipmentSlot::Helmet, player.held_slot())
+            .get_inventory_ref()
+            .get_equipment(crate::entity::EquipmentSlot::Helmet, player.get_held_slot())
             .material(),
         &Material::DIAMOND_HELMET
     );
@@ -259,18 +259,18 @@ fn window_zero_hotbar_shift_click_equips_extracted_component_helmet() {
 fn player_inventory_shift_click_equips_registry_backed_chest_items() {
     let mut player = test_player();
     player
-        .inventory()
+        .get_inventory()
         .set_item_stack(0, ItemStack::of(Material::ELYTRA));
     let mut server = MinecraftServer::new();
     let mut client = test_client();
     let player_ptr = &mut player as *mut Player;
 
     assert!(player.apply_shift_click(0, player_ptr, &mut server, &mut client));
-    assert!(player.inventory_ref().item_stack(0).unwrap().is_air());
+    assert!(player.get_inventory_ref().get_item_stack(0).unwrap().is_air());
     assert_eq!(
         player
-            .inventory_ref()
-            .equipment(crate::entity::EquipmentSlot::Chestplate, player.held_slot())
+            .get_inventory_ref()
+            .get_equipment(crate::entity::EquipmentSlot::Chestplate, player.get_held_slot())
             .material(),
         &Material::ELYTRA
     );

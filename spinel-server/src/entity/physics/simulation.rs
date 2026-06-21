@@ -34,13 +34,13 @@ pub fn simulate_movement(
         blockless_movement(position, velocity_per_tick)
     };
     let bordered_position =
-        apply_world_border(position, collision.new_position(), world.world_border());
-    let position_changed = bordered_position.x() != position.x()
-        || bordered_position.y() != position.y()
-        || bordered_position.z() != position.z();
+        apply_world_border(position, collision.get_new_position(), world.get_world_border());
+    let position_changed = bordered_position.get_x() != position.get_x()
+        || bordered_position.get_y() != position.get_y()
+        || bordered_position.get_z() != position.get_z();
     let new_velocity_per_tick = update_velocity(
         bordered_position,
-        collision.new_velocity_per_tick(),
+        collision.get_new_velocity_per_tick(),
         world,
         aerodynamics,
         position_changed,
@@ -48,9 +48,9 @@ pub fn simulate_movement(
         is_on_ground,
         has_no_gravity,
     );
-    let remains_cached = collision.cached()
-        && new_velocity_per_tick == collision.new_velocity_per_tick()
-        && bordered_position == collision.new_position();
+    let remains_cached = collision.is_cached()
+        && new_velocity_per_tick == collision.get_new_velocity_per_tick()
+        && bordered_position == collision.get_new_position();
     collision.with_movement(bordered_position, new_velocity_per_tick, remains_cached)
 }
 
@@ -187,14 +187,14 @@ fn earliest_block_intersection(
     world: &WorldSnapshot,
 ) -> Option<BlockIntersection> {
     let start_minimum = Vector3d {
-        x: position.x() + bounding_box.minimum_x(),
-        y: position.y() + bounding_box.minimum_y(),
-        z: position.z() + bounding_box.minimum_z(),
+        x: position.get_x() + bounding_box.minimum_x(),
+        y: position.get_y() + bounding_box.minimum_y(),
+        z: position.get_z() + bounding_box.minimum_z(),
     };
     let start_maximum = Vector3d {
-        x: position.x() + bounding_box.maximum_x(),
-        y: position.y() + bounding_box.maximum_y(),
-        z: position.z() + bounding_box.maximum_z(),
+        x: position.get_x() + bounding_box.maximum_x(),
+        y: position.get_y() + bounding_box.maximum_y(),
+        z: position.get_z() + bounding_box.maximum_z(),
     };
     let end_minimum = add_vector(start_minimum, delta);
     let end_maximum = add_vector(start_maximum, delta);
@@ -239,14 +239,14 @@ fn intersect_block_shape(
     shape: &BlockShapeBox,
 ) -> Option<RaycastIntersection> {
     let entity_minimum = Vector3d {
-        x: position.x() + bounding_box.minimum_x(),
-        y: position.y() + bounding_box.minimum_y(),
-        z: position.z() + bounding_box.minimum_z(),
+        x: position.get_x() + bounding_box.minimum_x(),
+        y: position.get_y() + bounding_box.minimum_y(),
+        z: position.get_z() + bounding_box.minimum_z(),
     };
     let entity_maximum = Vector3d {
-        x: position.x() + bounding_box.maximum_x(),
-        y: position.y() + bounding_box.maximum_y(),
-        z: position.z() + bounding_box.maximum_z(),
+        x: position.get_x() + bounding_box.maximum_x(),
+        y: position.get_y() + bounding_box.maximum_y(),
+        z: position.get_z() + bounding_box.maximum_z(),
     };
     let shape_minimum = Vector3d {
         x: f64::from(block_position.x) + shape.min_x,
@@ -339,17 +339,17 @@ fn cached_physics(
     previous_physics_result: Option<EntityPhysicsResult>,
 ) -> Option<EntityPhysicsResult> {
     let previous = previous_physics_result?;
-    let collision_shape_position = previous.collision_shape_positions()[1]?;
-    let collision_shape = previous.collision_shapes()[1]?;
+    let collision_shape_position = previous.get_collision_shape_positions()[1]?;
+    let collision_shape = previous.get_collision_shapes()[1]?;
     let current_collision_shape = world
         .block_state(collision_shape_position)
         .collision_shape();
-    let can_reuse = previous.collision_y()
-        && velocity_per_tick == previous.original_delta()
+    let can_reuse = previous.has_collision_y()
+        && velocity_per_tick == previous.get_original_delta()
         && current_collision_shape == collision_shape
         && velocity_per_tick.0.x == 0.0
         && velocity_per_tick.0.z == 0.0
-        && position == previous.new_position()
+        && position == previous.get_new_position()
         && !collision_shape.is_empty();
     can_reuse.then_some(previous.as_cached())
 }
@@ -380,29 +380,29 @@ fn apply_world_border(
     world_border: crate::world::WorldBorder,
 ) -> EntityPosition {
     let radius = world_border.diameter() / 2.0;
-    let has_x_collision = new_position.x() > world_border.center_x() + radius
-        || new_position.x() < world_border.center_x() - radius;
-    let has_z_collision = new_position.z() > world_border.center_z() + radius
-        || new_position.z() < world_border.center_z() - radius;
+    let has_x_collision = new_position.get_x() > world_border.center_x() + radius
+        || new_position.get_x() < world_border.center_x() - radius;
+    let has_z_collision = new_position.get_z() > world_border.center_z() + radius
+        || new_position.get_z() < world_border.center_z() - radius;
     if !has_x_collision && !has_z_collision {
         return new_position;
     }
     EntityPosition::new(
         if has_x_collision {
-            current_position.x()
+            current_position.get_x()
         } else {
-            new_position.x()
+            new_position.get_x()
         },
-        new_position.y(),
+        new_position.get_y(),
         if has_z_collision {
-            current_position.z()
+            current_position.get_z()
         } else {
-            new_position.z()
+            new_position.get_z()
         },
-        new_position.yaw(),
-        new_position.pitch(),
+        new_position.get_yaw(),
+        new_position.get_pitch(),
     )
-    .with_head_yaw(new_position.head_yaw())
+    .with_head_yaw(new_position.get_head_yaw())
 }
 
 fn update_velocity(
@@ -424,7 +424,7 @@ fn update_velocity(
             y: if has_no_gravity {
                 0.0
             } else {
-                -aerodynamics.gravity() * aerodynamics.vertical_air_resistance()
+                -aerodynamics.get_gravity() * aerodynamics.get_vertical_air_resistance()
             },
             z: 0.0,
         });
@@ -432,24 +432,24 @@ fn update_velocity(
 
     let drag = if is_on_ground {
         let block_below = BlockPosition::new(
-            position.x().floor() as i32,
-            (position.y() - 0.5000001).floor() as i32,
-            position.z().floor() as i32,
+            position.get_x().floor() as i32,
+            (position.get_y() - 0.5000001).floor() as i32,
+            position.get_z().floor() as i32,
         );
         f64::from(world.block_state(block_below).block().friction())
-            * aerodynamics.horizontal_air_resistance()
+            * aerodynamics.get_horizontal_air_resistance()
     } else {
-        aerodynamics.horizontal_air_resistance()
+        aerodynamics.get_horizontal_air_resistance()
     };
     let gravity = if is_flying {
         0.0
     } else {
-        aerodynamics.gravity()
+        aerodynamics.get_gravity()
     };
     let vertical_resistance = if is_flying {
         0.6
     } else {
-        aerodynamics.vertical_air_resistance()
+        aerodynamics.get_vertical_air_resistance()
     };
     let velocity = current_velocity.0;
     Velocity(Vector3d {
@@ -464,7 +464,7 @@ fn update_velocity(
 }
 
 fn offset_position(position: EntityPosition, delta: Vector3d) -> EntityPosition {
-    position.offset(delta.x, delta.y, delta.z)
+    position.get_offset(delta.x, delta.y, delta.z)
 }
 
 fn add_vector(left: Vector3d, right: Vector3d) -> Vector3d {

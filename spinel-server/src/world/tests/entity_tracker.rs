@@ -14,11 +14,11 @@ fn tracker_registration_indexes_players_and_generic_entities() {
         0,
         local_address(1),
     );
-    let player_id = player.entity_id();
-    let player_uuid = player.uuid();
+    let player_id = player.get_entity_id();
+    let player_uuid = player.get_uuid();
     let generic = positioned_entity(EntityType::ZOMBIE, 24.0, 64.0, 8.0);
-    let generic_id = generic.entity_id();
-    let generic_uuid = generic.uuid();
+    let generic_id = generic.get_entity_id();
+    let generic_uuid = generic.get_uuid();
 
     world.add_entity(Entity::Player(player));
     world.add_entity(Entity::Generic(generic));
@@ -32,7 +32,7 @@ fn tracker_registration_indexes_players_and_generic_entities() {
         Some(generic_id)
     );
     assert_eq!(
-        world.entity_by_uuid(player_uuid).map(Entity::entity_id),
+        world.entity_by_uuid(player_uuid).map(Entity::get_entity_id),
         Some(player_id)
     );
     assert!(
@@ -53,7 +53,7 @@ fn tracker_registration_indexes_players_and_generic_entities() {
 fn tracker_movement_updates_chunk_membership() {
     let mut world = World::new(Identifier::minecraft("overworld"));
     let entity = positioned_entity(EntityType::ZOMBIE, 1.0, 64.0, 1.0);
-    let entity_id = entity.entity_id();
+    let entity_id = entity.get_entity_id();
 
     world.add_entity(Entity::Generic(entity));
     assert_eq!(world.chunk_entities(ChunkPosition::new(0, 0)).len(), 1);
@@ -70,7 +70,7 @@ fn tracker_movement_updates_chunk_membership() {
 fn nearby_entity_queries_filter_by_distance() {
     let mut world = World::new(Identifier::minecraft("overworld"));
     let near_entity = positioned_entity(EntityType::ZOMBIE, 3.0, 64.0, 4.0);
-    let near_entity_id = near_entity.entity_id();
+    let near_entity_id = near_entity.get_entity_id();
     let far_entity = positioned_entity(EntityType::ZOMBIE, 40.0, 64.0, 40.0);
 
     world.add_entity(Entity::Generic(near_entity));
@@ -89,8 +89,8 @@ fn chunk_range_queries_include_entities_in_chunk_square() {
     let center_entity = positioned_entity(EntityType::ZOMBIE, 1.0, 64.0, 1.0);
     let adjacent_entity = positioned_entity(EntityType::ZOMBIE, 18.0, 64.0, 1.0);
     let outside_entity = positioned_entity(EntityType::ZOMBIE, 48.0, 64.0, 1.0);
-    let center_id = center_entity.entity_id();
-    let adjacent_id = adjacent_entity.entity_id();
+    let center_id = center_entity.get_entity_id();
+    let adjacent_id = adjacent_entity.get_entity_id();
 
     world.add_entity(Entity::Generic(center_entity));
     world.add_entity(Entity::Generic(adjacent_entity));
@@ -109,10 +109,10 @@ fn chunk_range_queries_include_entities_in_chunk_square() {
 fn item_and_experience_orb_targets_use_vanilla_entity_types() {
     let mut world = World::new(Identifier::minecraft("overworld"));
     let item = positioned_entity(EntityType::ITEM, 1.0, 64.0, 1.0);
-    let item_id = item.entity_id();
+    let item_id = item.get_entity_id();
     let mut experience_orb = ExperienceOrb::new(1);
     experience_orb.set_position(EntityPosition::new(2.0, 64.0, 1.0, 0.0, 0.0));
-    let experience_orb_id = experience_orb.entity_id();
+    let experience_orb_id = experience_orb.get_entity_id();
 
     world.add_entity(Entity::Generic(item));
     world.add_entity(Entity::ExperienceOrb(experience_orb));
@@ -140,7 +140,7 @@ fn creature_queries_include_living_generic_entities_only() {
         local_address(2),
     );
     let zombie = positioned_entity(EntityType::ZOMBIE, 1.0, 64.0, 1.0);
-    let zombie_id = zombie.entity_id();
+    let zombie_id = zombie.get_entity_id();
     let item = positioned_entity(EntityType::ITEM, 2.0, 64.0, 1.0);
 
     world.add_entity(Entity::Player(player));
@@ -151,7 +151,7 @@ fn creature_queries_include_living_generic_entities_only() {
         world
             .creatures()
             .into_iter()
-            .map(GenericEntity::entity_id)
+            .map(GenericEntity::get_entity_id)
             .collect::<Vec<_>>(),
         vec![zombie_id]
     );
@@ -162,7 +162,7 @@ fn chunk_load_and_unload_manage_tracker_partitions_and_generic_entities() {
     let mut world = World::new(Identifier::minecraft("overworld"));
     let chunk_position = ChunkPosition::new(0, 0);
     let entity = positioned_entity(EntityType::ZOMBIE, 1.0, 64.0, 1.0);
-    let entity_id = entity.entity_id();
+    let entity_id = entity.get_entity_id();
 
     world.load_chunk(chunk_position).unwrap();
     world.add_entity(Entity::Generic(entity));
@@ -182,7 +182,7 @@ fn viewable_chunk_players_returns_players_in_world_view_distance() {
     let mut world = World::new(Identifier::minecraft("overworld"));
     world.set_view_distance(2);
     let close_player = positioned_player("CloseViewer", local_address(3), 16.0, 64.0, 16.0);
-    let close_player_id = close_player.entity_id();
+    let close_player_id = close_player.get_entity_id();
     let far_player = positioned_player("FarViewer", local_address(4), 96.0, 64.0, 96.0);
 
     world.add_entity(Entity::Player(close_player));
@@ -192,7 +192,7 @@ fn viewable_chunk_players_returns_players_in_world_view_distance() {
         world
             .viewable_chunk_players(ChunkPosition::new(0, 0))
             .into_iter()
-            .map(Player::entity_id)
+            .map(Player::get_entity_id)
             .collect::<Vec<_>>(),
         vec![close_player_id]
     );
@@ -220,5 +220,5 @@ fn ids(mut entity_ids: Vec<EntityId>) -> Vec<EntityId> {
 }
 
 fn ids_from_entities(entities: Vec<&Entity>) -> Vec<EntityId> {
-    ids(entities.into_iter().map(Entity::entity_id).collect())
+    ids(entities.into_iter().map(Entity::get_entity_id).collect())
 }

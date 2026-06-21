@@ -2,6 +2,70 @@ use crate::entity::EntityPosition;
 use spinel_network::types::{TeleportFlags, Vector3d, Velocity};
 
 #[derive(Clone, Debug)]
+pub struct EntityTeleportRequest {
+    position: EntityPosition,
+    velocity: Velocity,
+    chunks: Option<Vec<i64>>,
+    flags: TeleportFlags,
+    should_confirm: bool,
+}
+
+impl From<EntityPosition> for EntityTeleportRequest {
+    fn from(position: EntityPosition) -> Self {
+        Self {
+            position,
+            velocity: Velocity(Vector3d { x: 0.0, y: 0.0, z: 0.0 }),
+            chunks: None,
+            flags: TeleportFlags::absolute().with(TeleportFlags::DELTA_COORD),
+            should_confirm: true,
+        }
+    }
+}
+
+impl EntityTeleportRequest {
+    pub const fn get_position(&self) -> EntityPosition {
+        self.position
+    }
+
+    pub const fn get_velocity(&self) -> Velocity {
+        self.velocity
+    }
+
+    pub fn into_chunks(self) -> Option<Vec<i64>> {
+        self.chunks
+    }
+
+    pub const fn get_flags(&self) -> TeleportFlags {
+        self.flags
+    }
+
+    pub const fn should_confirm(&self) -> bool {
+        self.should_confirm
+    }
+
+    pub fn with_velocity(mut self, velocity: Velocity) -> Self {
+        self.velocity = velocity;
+        self
+    }
+
+    pub fn with_chunks(mut self, chunks: Vec<i64>) -> Self {
+        self.chunks = Some(chunks);
+        self.flags = self.flags.with(TeleportFlags::DELTA_COORD);
+        self
+    }
+
+    pub const fn with_flags(mut self, flags: TeleportFlags) -> Self {
+        self.flags = flags;
+        self
+    }
+
+    pub const fn without_confirmation(mut self) -> Self {
+        self.should_confirm = false;
+        self
+    }
+}
+
+#[derive(Clone, Debug)]
 pub struct EntityTeleport {
     teleport_position: EntityPosition,
     position: EntityPosition,
@@ -36,29 +100,29 @@ impl EntityTeleport {
         flags: TeleportFlags,
     ) -> EntityPosition {
         let x = if flags.contains(TeleportFlags::X) {
-            current_position.x() + teleport_position.x()
+            current_position.get_x() + teleport_position.get_x()
         } else {
-            teleport_position.x()
+            teleport_position.get_x()
         };
         let y = if flags.contains(TeleportFlags::Y) {
-            current_position.y() + teleport_position.y()
+            current_position.get_y() + teleport_position.get_y()
         } else {
-            teleport_position.y()
+            teleport_position.get_y()
         };
         let z = if flags.contains(TeleportFlags::Z) {
-            current_position.z() + teleport_position.z()
+            current_position.get_z() + teleport_position.get_z()
         } else {
-            teleport_position.z()
+            teleport_position.get_z()
         };
         let yaw = if flags.contains(TeleportFlags::Y_ROTATION) {
-            current_position.yaw() + teleport_position.yaw()
+            current_position.get_yaw() + teleport_position.get_yaw()
         } else {
-            teleport_position.yaw()
+            teleport_position.get_yaw()
         };
         let pitch = if flags.contains(TeleportFlags::X_ROTATION) {
-            current_position.pitch() + teleport_position.pitch()
+            current_position.get_pitch() + teleport_position.get_pitch()
         } else {
-            teleport_position.pitch()
+            teleport_position.get_pitch()
         };
         EntityPosition::new(x, y, z, yaw, pitch)
     }
@@ -87,23 +151,23 @@ impl EntityTeleport {
         })
     }
 
-    pub const fn teleport_position(&self) -> EntityPosition {
+    pub const fn get_teleport_position(&self) -> EntityPosition {
         self.teleport_position
     }
 
-    pub const fn position(&self) -> EntityPosition {
+    pub const fn get_position(&self) -> EntityPosition {
         self.position
     }
 
-    pub const fn teleport_velocity(&self) -> Velocity {
+    pub const fn get_teleport_velocity(&self) -> Velocity {
         self.teleport_velocity
     }
 
-    pub const fn velocity(&self) -> Velocity {
+    pub const fn get_velocity(&self) -> Velocity {
         self.velocity
     }
 
-    pub fn chunks(&self) -> Option<&[i64]> {
+    pub fn get_chunks(&self) -> Option<&[i64]> {
         self.chunks.as_deref()
     }
 
@@ -111,7 +175,7 @@ impl EntityTeleport {
         self.chunks
     }
 
-    pub const fn flags(&self) -> TeleportFlags {
+    pub const fn get_flags(&self) -> TeleportFlags {
         self.flags
     }
 }

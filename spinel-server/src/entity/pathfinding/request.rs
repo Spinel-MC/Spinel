@@ -39,19 +39,19 @@ impl PathRequest {
         self
     }
 
-    pub(crate) const fn destination(&self) -> Option<EntityPosition> {
+    pub(crate) const fn get_destination(&self) -> Option<EntityPosition> {
         self.destination
     }
 
-    pub(crate) const fn minimum_distance(&self) -> Option<f64> {
+    pub(crate) const fn get_minimum_distance(&self) -> Option<f64> {
         self.minimum_distance
     }
 
-    pub(crate) const fn maximum_distance(&self) -> Option<f64> {
+    pub(crate) const fn get_maximum_distance(&self) -> Option<f64> {
         self.maximum_distance
     }
 
-    pub(crate) const fn variance(&self) -> Option<f64> {
+    pub(crate) const fn get_variance(&self) -> Option<f64> {
         self.variance
     }
 

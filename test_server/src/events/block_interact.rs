@@ -110,5 +110,5 @@ fn sign_player_context(
     spinel::uuid::Uuid,
 )> {
     let player = event.player();
-    Some((player.current_world()?, player.position(), player.uuid()))
+    Some((player.current_world()?, player.get_position(), player.get_uuid()))
 }

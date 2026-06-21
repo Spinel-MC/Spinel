@@ -68,7 +68,7 @@ impl EntityView {
         self.automatic_viewed_entities.remove(&entity_id)
     }
 
-    pub fn viewed_entities(&self) -> &BTreeSet<EntityId> {
+    pub fn get_viewed_entities(&self) -> &BTreeSet<EntityId> {
         &self.automatic_viewed_entities
     }
 
@@ -76,15 +76,15 @@ impl EntityView {
         self.manual_viewers.contains(&viewer_id) || self.automatic_viewers.contains(&viewer_id)
     }
 
-    pub fn manual_viewers(&self) -> &BTreeSet<EntityId> {
+    pub fn get_manual_viewers(&self) -> &BTreeSet<EntityId> {
         &self.manual_viewers
     }
 
-    pub fn automatic_viewers(&self) -> &BTreeSet<EntityId> {
+    pub fn get_automatic_viewers(&self) -> &BTreeSet<EntityId> {
         &self.automatic_viewers
     }
 
-    pub fn viewers(&self) -> BTreeSet<EntityId> {
+    pub fn get_viewers(&self) -> BTreeSet<EntityId> {
         self.manual_viewers
             .union(&self.automatic_viewers)
             .copied()

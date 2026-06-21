@@ -34,11 +34,11 @@ pub struct LivingState {
 impl LivingState {
     pub fn new(entity_type: EntityType) -> Self {
         let attributes = LivingAttributes::from_entity_type(entity_type);
-        let max_health = attributes.attribute_value(Attribute::MAX_HEALTH) as f32;
+        let max_health = attributes.get_attribute_value(Attribute::MAX_HEALTH) as f32;
         Self {
             arrow_count: 0,
             fire_ticks: 0,
-            health: max_health,
+            health: 1.0_f32.min(max_health),
             max_health,
             dead: false,
             invulnerable: false,
@@ -46,7 +46,7 @@ impl LivingState {
             last_damage_source: None,
             item_pickup_cooldown: 0,
             can_pickup_item: true,
-            expanded_bounding_box: expanded_bounding_box(entity_type.bounding_box()),
+            expanded_bounding_box: expanded_bounding_box(entity_type.get_bounding_box()),
             team: None,
             bed_position: None,
             is_flying_with_elytra: false,
@@ -56,7 +56,7 @@ impl LivingState {
         }
     }
 
-    pub const fn arrow_count(&self) -> i32 {
+    pub const fn get_arrow_count(&self) -> i32 {
         self.arrow_count
     }
 
@@ -64,7 +64,7 @@ impl LivingState {
         self.arrow_count = arrow_count.max(0);
     }
 
-    pub const fn fire_ticks(&self) -> i32 {
+    pub const fn get_fire_ticks(&self) -> i32 {
         self.fire_ticks
     }
 
@@ -78,7 +78,7 @@ impl LivingState {
         }
     }
 
-    pub const fn health(&self) -> f32 {
+    pub const fn get_health(&self) -> f32 {
         self.health
     }
 
@@ -86,7 +86,7 @@ impl LivingState {
         self.health = health.clamp(0.0, self.max_health);
     }
 
-    pub const fn max_health(&self) -> f32 {
+    pub const fn get_max_health(&self) -> f32 {
         self.max_health
     }
 
@@ -123,7 +123,7 @@ impl LivingState {
     pub fn apply_damage(&mut self, damage: Damage) {
         self.last_damage_source = Some(damage.damage_type().key().to_string());
         self.last_damage = Some(damage.clone());
-        self.set_health(self.health - damage.amount());
+        self.set_health(self.health - damage.get_amount());
     }
 
     pub fn store_last_damage(&mut self, damage: Damage) {
@@ -147,15 +147,15 @@ impl LivingState {
         }
     }
 
-    pub fn last_damage(&self) -> Option<&Damage> {
+    pub fn get_last_damage(&self) -> Option<&Damage> {
         self.last_damage.as_ref()
     }
 
-    pub fn last_damage_source(&self) -> Option<&str> {
+    pub fn get_last_damage_source(&self) -> Option<&str> {
         self.last_damage_source.as_deref()
     }
 
-    pub const fn item_pickup_cooldown(&self) -> u32 {
+    pub const fn get_item_pickup_cooldown(&self) -> u32 {
         self.item_pickup_cooldown
     }
 
@@ -175,7 +175,7 @@ impl LivingState {
         self.can_pickup_item = can_pickup_item;
     }
 
-    pub const fn expanded_bounding_box(&self) -> EntityBoundingBox {
+    pub const fn get_expanded_bounding_box(&self) -> EntityBoundingBox {
         self.expanded_bounding_box
     }
 
@@ -183,42 +183,42 @@ impl LivingState {
         self.expanded_bounding_box = expanded_bounding_box(bounding_box);
     }
 
-    pub fn attribute(&mut self, attribute: Attribute) -> &mut EntityAttributeState {
-        self.attributes.attribute(attribute)
+    pub fn get_attribute(&mut self, attribute: Attribute) -> &mut EntityAttributeState {
+        self.attributes.get_attribute(attribute)
     }
 
-    pub fn attributes(&self) -> Vec<&EntityAttributeState> {
-        self.attributes.attributes()
+    pub fn get_attributes(&self) -> Vec<&EntityAttributeState> {
+        self.attributes.get_attributes()
     }
 
-    pub fn attribute_value(&self, attribute: Attribute) -> f64 {
-        self.attributes.attribute_value(attribute)
+    pub fn get_attribute_value(&self, attribute: Attribute) -> f64 {
+        self.attributes.get_attribute_value(attribute)
     }
 
-    pub fn attributes_mut(&mut self) -> &mut LivingAttributes {
+    pub fn get_attributes_mut(&mut self) -> &mut LivingAttributes {
         &mut self.attributes
     }
 
-    pub fn equipment(&self, equipment_slot: EquipmentSlot) -> &ItemStack {
-        self.equipment.item_stack(equipment_slot)
+    pub fn get_equipment(&self, equipment_slot: EquipmentSlot) -> &ItemStack {
+        self.equipment.get_item_stack(equipment_slot)
     }
 
     pub fn set_equipment(&mut self, equipment_slot: EquipmentSlot, item_stack: ItemStack) {
-        let previous_item_stack = self.equipment.item_stack(equipment_slot).clone();
+        let previous_item_stack = self.equipment.get_item_stack(equipment_slot).clone();
         self.equipment.set_item_stack(equipment_slot, item_stack);
         self.attributes.update_equipment_attributes(
             &previous_item_stack,
-            self.equipment.item_stack(equipment_slot),
+            self.equipment.get_item_stack(equipment_slot),
             equipment_slot,
         );
     }
 
-    pub fn visible_equipment_entries(&self) -> Vec<EntityEquipmentEntry> {
-        self.equipment.visible_entries()
+    pub fn get_visible_equipment_entries(&self) -> Vec<EntityEquipmentEntry> {
+        self.equipment.get_visible_entries()
     }
 
     pub fn update_attributes_packet(&self, entity_id: EntityId) -> UpdateAttributesPacket {
-        self.attributes.packet(entity_id.value())
+        self.attributes.packet(entity_id.get_value())
     }
 
     pub fn has_attributes(&self) -> bool {
@@ -231,7 +231,7 @@ impl LivingState {
         effect: TimedPotionEffect,
     ) -> EntityEffectPacket {
         let packet = effect.packet(entity_id);
-        self.effects.insert(effect.effect_id(), effect);
+        self.effects.insert(effect.get_effect_id(), effect);
         packet
     }
 
@@ -249,11 +249,11 @@ impl LivingState {
         self.effects.contains_key(&effect_id)
     }
 
-    pub fn effect(&self, effect_id: i32) -> Option<&TimedPotionEffect> {
+    pub fn get_effect(&self, effect_id: i32) -> Option<&TimedPotionEffect> {
         self.effects.get(&effect_id)
     }
 
-    pub fn active_effects(&self) -> Vec<&TimedPotionEffect> {
+    pub fn get_active_effects(&self) -> Vec<&TimedPotionEffect> {
         self.effects.values().collect()
     }
 
@@ -264,7 +264,7 @@ impl LivingState {
             .collect()
     }
 
-    pub fn effect_packets(&self, entity_id: EntityId) -> Vec<EntityEffectPacket> {
+    pub fn get_effect_packets(&self, entity_id: EntityId) -> Vec<EntityEffectPacket> {
         self.effects
             .values()
             .map(|effect| effect.packet(entity_id))
@@ -283,7 +283,7 @@ impl LivingState {
             .collect()
     }
 
-    pub fn team(&self) -> Option<&str> {
+    pub fn get_team(&self) -> Option<&str> {
         self.team.as_deref()
     }
 
@@ -291,7 +291,7 @@ impl LivingState {
         self.team = team;
     }
 
-    pub const fn bed_position(&self) -> Option<EntityPosition> {
+    pub const fn get_bed_position(&self) -> Option<EntityPosition> {
         self.bed_position
     }
 
@@ -310,8 +310,8 @@ impl LivingState {
 
 fn expanded_bounding_box(bounding_box: EntityBoundingBox) -> EntityBoundingBox {
     EntityBoundingBox::new(
-        bounding_box.width() + 1.0,
-        bounding_box.height() + 0.5,
+        bounding_box.get_width() + 1.0,
+        bounding_box.get_height() + 0.5,
         bounding_box.depth() + 1.0,
     )
 }

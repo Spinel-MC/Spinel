@@ -24,7 +24,7 @@ impl Player {
         let Some(clicked) = self.item_at(slot) else {
             return false;
         };
-        let cursor = self.inventory_ref().cursor_item().clone();
+        let cursor = self.get_inventory_ref().cursor_item().clone();
         let result = match click_type {
             ClickType::LeftClick => InventoryClickProcessor::left_click(clicked, cursor),
             ClickType::RightClick => InventoryClickProcessor::right_click(clicked, cursor),
@@ -34,7 +34,7 @@ impl Player {
             return false;
         }
         self.set_item_at_with_change_event(slot, result.clicked().clone(), player, server, client);
-        self.inventory().set_cursor_item(result.cursor().clone());
+        self.get_inventory().set_cursor_item(result.cursor().clone());
         self.dispatch_inventory_click(
             slot,
             click_type,
@@ -60,7 +60,7 @@ impl Player {
         let held_item_slot = self.player_inventory_slot_in_click_window(held_slot);
         let held_item = self.item_at(held_item_slot).unwrap_or_else(ItemStack::air);
         let cursor_is_held =
-            self.opened_inventory().is_none() && !self.inventory_ref().cursor_item().is_air();
+            self.get_opened_inventory().is_none() && !self.get_inventory_ref().cursor_item().is_air();
         if cursor_is_held {
             return false;
         }
@@ -130,7 +130,7 @@ impl Player {
         server: &mut MinecraftServer,
         client: &mut Client,
     ) -> bool {
-        let cursor = self.inventory_ref().cursor_item().clone();
+        let cursor = self.get_inventory_ref().cursor_item().clone();
         if cursor.is_air() {
             return true;
         }
@@ -147,7 +147,7 @@ impl Player {
         } else {
             cursor.consume(1)
         };
-        self.inventory().set_cursor_item(updated_cursor);
+        self.get_inventory().set_cursor_item(updated_cursor);
         self.dispatch_inventory_click(
             -999,
             ClickType::Drop,
@@ -169,12 +169,12 @@ impl Player {
         let Some(clicked) = self.item_at(slot) else {
             return false;
         };
-        let cursor = self.inventory_ref().cursor_item().clone();
+        let cursor = self.get_inventory_ref().cursor_item().clone();
         if cursor.is_air() {
             return true;
         }
         let updated_cursor = self.collect_double_click_items(slot, cursor, player, server, client);
-        self.inventory().set_cursor_item(updated_cursor.clone());
+        self.get_inventory().set_cursor_item(updated_cursor.clone());
         let click_was_dispatched = self.dispatch_inventory_click(
             slot,
             ClickType::DoubleClick,
@@ -196,7 +196,7 @@ impl Player {
         server: &mut MinecraftServer,
         client: &mut Client,
     ) -> bool {
-        let cursor = self.inventory_ref().cursor_item().clone();
+        let cursor = self.get_inventory_ref().cursor_item().clone();
         if cursor.is_air() || slots.is_empty() {
             return true;
         }
@@ -222,7 +222,7 @@ impl Player {
             }
             remaining_after_slot
         });
-        self.inventory().set_cursor_item(remaining_cursor);
+        self.get_inventory().set_cursor_item(remaining_cursor);
         self.resync_inventory_after_bulk_click(client)
     }
 
@@ -230,10 +230,10 @@ impl Player {
         let Some(clicked) = self.item_at(slot) else {
             return false;
         };
-        if self.game_mode() != GameMode::Creative || clicked.is_air() {
+        if self.get_game_mode() != GameMode::Creative || clicked.is_air() {
             return false;
         }
-        self.inventory()
+        self.get_inventory()
             .set_cursor_item(clicked.with_amount(clicked.max_stack_size()));
         true
     }
@@ -252,7 +252,7 @@ impl Player {
         InventoryClickEvent::new(
             player,
             in_open_inventory,
-            self.window_slot(slot),
+            self.g(slot),
             click_type,
             clicked_item.clone(),
             cursor_item.clone(),

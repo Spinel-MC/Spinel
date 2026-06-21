@@ -10,7 +10,7 @@ pub enum PufferfishState {
 }
 
 impl PufferfishState {
-    pub const fn protocol_id(self) -> i32 {
+    pub const fn get_protocol_id(self) -> i32 {
         match self {
             Self::Unpuffed => 0,
             Self::SemiPuffed => 1,
@@ -27,7 +27,7 @@ impl PufferfishState {
         }
     }
 
-    pub const fn bounding_box_size(self) -> f64 {
+    pub const fn get_bounding_box_size(self) -> f64 {
         match self {
             Self::Unpuffed => 0.35,
             Self::SemiPuffed => 0.5,
@@ -58,15 +58,15 @@ impl TropicalFishVariant {
         }
     }
 
-    pub const fn pattern(self) -> TropicalFishPattern {
+    pub const fn get_pattern(self) -> TropicalFishPattern {
         self.pattern
     }
 
-    pub const fn base_color(self) -> DyeColor {
+    pub const fn get_base_color(self) -> DyeColor {
         self.base_color
     }
 
-    pub const fn pattern_color(self) -> DyeColor {
+    pub const fn get_pattern_color(self) -> DyeColor {
         self.pattern_color
     }
 
@@ -77,7 +77,7 @@ impl TropicalFishVariant {
         Some(Self::new(pattern, base_color, pattern_color))
     }
 
-    pub fn packed_id(self) -> i32 {
+    pub fn get_packed_id(self) -> i32 {
         (dye_color_protocol_id(self.pattern_color) << 24)
             | (dye_color_protocol_id(self.base_color) << 16)
             | self.pattern.id()

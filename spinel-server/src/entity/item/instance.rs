@@ -1,6 +1,7 @@
+use crate::entity::GenericEntity;
+use crate::entity::item::metadata::ItemEntityMeta;
 use crate::entity::metadata::definitions;
 use crate::entity::physics::EntityMovement;
-use crate::entity::{EntityPosition, GenericEntity};
 use crate::world::WorldSnapshot;
 use spinel_core::network::clientbound::play::spawn_entity::SpawnEntityPacket;
 use spinel_network::types::Slot;
@@ -40,17 +41,21 @@ impl ItemEntity {
             previous_on_ground: false,
         };
         item_entity.set_bounding_box_dimensions(0.25, 0.25, 0.25);
-        item_entity.set_item_stack(item_stack);
+        item_entity.set_item_metadata(item_stack);
         item_entity
     }
 
-    pub fn item_stack(&self) -> &ItemStack {
+    pub fn get_item_stack(&self) -> &ItemStack {
         &self.item_stack
     }
 
-    pub fn set_item_stack(&mut self, item_stack: ItemStack) {
-        self.entity.metadata_mut().set(
-            &definitions::item_stack(),
+    pub fn get_entity_meta_mut(&mut self) -> ItemEntityMeta<'_> {
+        ItemEntityMeta::new(self)
+    }
+
+    pub(crate) fn set_item_metadata(&mut self, item_stack: ItemStack) {
+        self.entity.get_metadata_mut().set(
+            &definitions::get_item_stack(),
             MetadataValue::Slot(Slot::from_item_stack(&item_stack)),
         );
         self.item_stack = item_stack;
@@ -59,7 +64,7 @@ impl ItemEntity {
     pub fn spawn_packet(&self) -> SpawnEntityPacket {
         let mut packet = self.entity.spawn_packet();
         packet.data = 1;
-        packet.velocity = self.entity.protocol_velocity();
+        packet.velocity = self.entity.get_protocol_velocity();
         packet
     }
 
@@ -89,7 +94,7 @@ impl ItemEntity {
         self.is_mergeable = is_mergeable;
     }
 
-    pub const fn merge_range(&self) -> f32 {
+    pub const fn get_merge_range(&self) -> f32 {
         self.merge_range
     }
 
@@ -97,7 +102,7 @@ impl ItemEntity {
         self.merge_range = merge_range;
     }
 
-    pub const fn pickup_delay(&self) -> Duration {
+    pub const fn get_pickup_delay(&self) -> Duration {
         self.pickup_delay
     }
 
@@ -105,11 +110,11 @@ impl ItemEntity {
         self.pickup_delay = pickup_delay;
     }
 
-    pub fn time_since_spawn(&self) -> Duration {
+    pub fn get_time_since_spawn(&self) -> Duration {
         self.spawned_at.elapsed()
     }
 
-    pub fn merge_delay() -> Option<Duration> {
+    pub fn get_merge_delay() -> Option<Duration> {
         let merge_delay_ticks = MERGE_DELAY_TICKS.load(Ordering::Relaxed);
         (merge_delay_ticks != NO_MERGE_DELAY)
             .then(|| Duration::from_millis(merge_delay_ticks.saturating_mul(SERVER_TICK_MILLIS)))
@@ -137,9 +142,8 @@ impl ItemEntity {
         true
     }
 
-    pub fn spawn(&mut self, position: EntityPosition) {
+    pub fn spawn(&mut self) {
         self.spawned_at = Instant::now();
-        self.set_position(position);
     }
 }
 

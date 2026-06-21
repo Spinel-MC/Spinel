@@ -67,9 +67,9 @@ fn finished_consumable_applies_removes_clears_random_teleports_and_updates_stati
 
     assert!(player.has_effect(haste_id));
     assert!(!player.has_effect(poison_id));
-    assert_eq!(player.statistic_value("minecraft:used:minecraft:apple"), 1);
+    assert_eq!(player.get_statistic_value("minecraft:used:minecraft:apple"), 1);
     assert_ne!(
-        player.position(),
+        player.get_position(),
         EntityPosition::new(10.0, 64.0, 10.0, 0.0, 0.0)
     );
 
@@ -109,7 +109,7 @@ fn right_click_swappable_armor_matches_minestom_equipment_swap() {
             .unwrap()
     );
     assert_eq!(
-        player.equipment(EquipmentSlot::Helmet).material(),
+        player.get_equipment(EquipmentSlot::Helmet).material(),
         &Material::DIAMOND_HELMET
     );
     assert_eq!(
@@ -136,7 +136,7 @@ fn goat_horn_use_duration_comes_from_instrument_component_shape() {
             .use_item(PlayerHand::Main, 0, &mut server, &mut client)
             .unwrap()
     );
-    assert_eq!(player.item_use_hand(), Some(PlayerHand::Main));
+    assert_eq!(player.get_item_use_hand(), Some(PlayerHand::Main));
 
     let mut invalid_instrument_player = test_player();
     invalid_instrument_player.set_item_in_hand(
@@ -150,7 +150,7 @@ fn goat_horn_use_duration_comes_from_instrument_component_shape() {
     invalid_instrument_player
         .use_item(PlayerHand::Main, 0, &mut server, &mut client)
         .unwrap();
-    assert_eq!(invalid_instrument_player.item_use_hand(), None);
+    assert_eq!(invalid_instrument_player.get_item_use_hand(), None);
 }
 
 #[test]
@@ -170,7 +170,7 @@ fn right_click_armor_places_previous_equipment_in_used_hand() {
             .unwrap()
     );
     assert_eq!(
-        player.equipment(EquipmentSlot::Helmet).material(),
+        player.get_equipment(EquipmentSlot::Helmet).material(),
         &Material::DIAMOND_HELMET
     );
     assert_eq!(
@@ -229,7 +229,7 @@ fn finished_consumable_uses_remainder_and_dispatches_play_sound_effect() {
         .unwrap();
 
     assert_eq!(
-        player.item_in_hand(PlayerHand::Main).material(),
+        player.g(PlayerHand::Main).material(),
         &Material::GLASS_BOTTLE
     );
 }

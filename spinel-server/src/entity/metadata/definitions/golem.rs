@@ -31,13 +31,13 @@ pub mod snow_golem {
 
 pub mod shulker {
     use super::*;
-    value_definition!(attach_face, 16, MetadataValue::Direction(0));
-    value_definition!(shield_height, 17, MetadataValue::Byte(0));
-    value_definition!(color, 18, MetadataValue::Byte(16));
+    value_definition!(get_attach_face, 16, MetadataValue::Direction(0));
+    value_definition!(get_shield_height, 17, MetadataValue::Byte(0));
+    value_definition!(get_color, 18, MetadataValue::Byte(16));
 }
 
 pub mod copper_golem {
     use super::*;
-    value_definition!(weather_state, 16, MetadataValue::WeatherState(0));
-    value_definition!(state, 17, MetadataValue::CopperGolemState(0));
+    value_definition!(get_weather_state, 16, MetadataValue::WeatherState(0));
+    value_definition!(get_state, 17, MetadataValue::CopperGolemState(0));
 }

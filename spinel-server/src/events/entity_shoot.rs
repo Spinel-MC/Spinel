@@ -29,27 +29,27 @@ impl EntityShootEvent {
         }
     }
 
-    pub fn entity(&mut self) -> &mut Entity {
+    pub fn get_entity(&mut self) -> &mut Entity {
         unsafe { &mut *self.entity }
     }
 
-    pub fn shooter_id(&self) -> EntityId {
-        unsafe { (&*self.entity).entity_id() }
+    pub fn get_shooter_id(&self) -> EntityId {
+        unsafe { (&*self.entity).get_entity_id() }
     }
 
-    pub fn projectile(&mut self) -> &mut Entity {
+    pub fn get_projectile(&mut self) -> &mut Entity {
         unsafe { &mut *self.projectile }
     }
 
-    pub fn projectile_id(&self) -> EntityId {
-        unsafe { (&*self.projectile).entity_id() }
+    pub fn get_projectile_id(&self) -> EntityId {
+        unsafe { (&*self.projectile).get_entity_id() }
     }
 
-    pub const fn target(&self) -> EntityPosition {
+    pub const fn get_target(&self) -> EntityPosition {
         self.target
     }
 
-    pub const fn power(&self) -> f64 {
+    pub const fn get_power(&self) -> f64 {
         self.power
     }
 
@@ -57,7 +57,7 @@ impl EntityShootEvent {
         self.power = power;
     }
 
-    pub const fn spread(&self) -> f64 {
+    pub const fn get_spread(&self) -> f64 {
         self.spread
     }
 

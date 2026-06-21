@@ -19,11 +19,11 @@ static VELOCITY_EVENT_ENTITY_ACCESSOR_MATCHED: AtomicBool = AtomicBool::new(fals
 
 #[event_listener]
 fn entity_velocity_listener(event: &mut EntityVelocityEvent, _server: &mut MinecraftServer) {
-    if *VELOCITY_TEST_ENTITY.lock().unwrap() != Some(event.entity_id()) {
+    if *VELOCITY_TEST_ENTITY.lock().unwrap() != Some(event.get_entity_id()) {
         return;
     }
-    let event_entity_id = event.entity_id();
-    if event.entity().entity_id() == event_entity_id {
+    let event_entity_id = event.get_entity_id();
+    if event.get_entity().get_entity_id() == event_entity_id {
         VELOCITY_EVENT_ENTITY_ACCESSOR_MATCHED.store(true, Ordering::SeqCst);
     }
     event.set_velocity(Velocity(Vector3d {
@@ -62,7 +62,7 @@ fn world_set_entity_velocity_applies_event_mutation_and_sends_packet_to_viewers(
     );
 
     assert_eq!(
-        world.entity_by_id(entity_id).unwrap().velocity(),
+        world.get_entity(entity_id).unwrap().get_velocity(),
         Velocity(Vector3d {
             x: 4.0,
             y: 5.0,
@@ -105,7 +105,7 @@ fn world_set_entity_velocity_cancellation_preserves_state_and_sends_no_packet() 
     );
 
     assert_eq!(
-        world.entity_by_id(entity_id).unwrap().velocity(),
+        world.get_entity(entity_id).unwrap().get_velocity(),
         Velocity(Vector3d {
             x: 0.0,
             y: 0.0,
@@ -137,7 +137,7 @@ fn world_set_player_velocity_sends_packet_to_the_player() {
     );
     player.set_client(player_client.as_mut());
     player.mark_entered_world();
-    let player_id = player.entity_id();
+    let player_id = player.get_entity_id();
     *VELOCITY_TEST_ENTITY.lock().unwrap() = Some(player_id);
     let server_ptr = &mut server as *mut MinecraftServer as usize;
     let world = server.world_manager.world_mut(world_uuid).unwrap();
@@ -179,11 +179,11 @@ fn velocity_server() -> (MinecraftServer, Box<Client>, EntityId) {
     );
     viewer.set_client(viewer_client.as_mut());
     viewer.mark_entered_world();
-    let viewer_id = viewer.entity_id();
+    let viewer_id = viewer.get_entity_id();
     let mut entity = GenericEntity::new(EntityType::ZOMBIE);
     entity.set_position(EntityPosition::new(1.0, 64.0, 1.0, 0.0, 0.0));
-    entity.view_mut().set_auto_viewable(false);
-    let entity_id = entity.entity_id();
+    entity.get_view_mut().set_auto_viewable(false);
+    let entity_id = entity.get_entity_id();
     let world = server.world_manager.world_mut(world_uuid).unwrap();
     world.add_entity(Entity::Player(viewer));
     world.add_entity(Entity::Generic(entity));

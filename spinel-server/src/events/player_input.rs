@@ -106,6 +106,6 @@ impl PlayerInputEvent {
     }
 
     fn inputs(&self) -> PlayerInputs {
-        unsafe { &*self.player }.inputs()
+        unsafe { &*self.player }.get_inputs()
     }
 }

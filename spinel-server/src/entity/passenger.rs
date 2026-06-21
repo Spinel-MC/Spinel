@@ -27,48 +27,42 @@ pub enum PassengerError {
 
 impl Entity {
     pub fn add_passenger(&mut self, passenger: &mut Entity) -> Result<bool, PassengerError> {
-        if self.entity_id() == passenger.entity_id() {
+        if self.get_entity_id() == passenger.get_entity_id() {
             return Err(PassengerError::SameEntity);
         }
-        if self.vehicle() == Some(passenger.entity_id()) {
+        if self.get_vehicle() == Some(passenger.get_entity_id()) {
             return Err(PassengerError::PassengerIsVehicle);
         }
-        let vehicle_world = self.world().ok_or(PassengerError::VehicleHasNoWorld)?;
-        let passenger_world = passenger
-            .world()
+        let vehicle_world = self.get_world().ok_or(PassengerError::VehicleHasNoWorld)?;
+        passenger
+            .get_world()
             .ok_or(PassengerError::PassengerHasNoWorld)?;
-        if vehicle_world != passenger_world {
-            return Err(PassengerError::DifferentWorlds {
-                vehicle_world,
-                passenger_world,
-            });
+        if passenger.get_world() != Some(vehicle_world) {
+            passenger.set_world(vehicle_world);
         }
         if passenger
-            .vehicle()
-            .is_some_and(|vehicle_id| vehicle_id != self.entity_id())
+            .get_vehicle()
+            .is_some_and(|vehicle_id| vehicle_id != self.get_entity_id())
         {
             return Err(PassengerError::PassengerHasDifferentVehicle);
         }
-        if !self.attach_passenger(passenger.entity_id()) {
+        if !self.attach_passenger(passenger.get_entity_id()) {
             return Ok(false);
         }
-        passenger.set_vehicle(self.entity_id());
+        passenger.set_vehicle(self.get_entity_id());
         passenger.set_position(self.passenger_position(passenger));
         Ok(true)
     }
 
     pub fn remove_passenger(&mut self, passenger: &mut Entity) -> Result<bool, PassengerError> {
-        let vehicle_world = self.world().ok_or(PassengerError::VehicleHasNoWorld)?;
-        let passenger_world = passenger
-            .world()
+        let vehicle_world = self.get_world().ok_or(PassengerError::VehicleHasNoWorld)?;
+        passenger
+            .get_world()
             .ok_or(PassengerError::PassengerHasNoWorld)?;
-        if vehicle_world != passenger_world {
-            return Err(PassengerError::DifferentWorlds {
-                vehicle_world,
-                passenger_world,
-            });
+        if passenger.get_world() != Some(vehicle_world) {
+            passenger.set_world(vehicle_world);
         }
-        if !self.detach_passenger(passenger.entity_id()) {
+        if !self.detach_passenger(passenger.get_entity_id()) {
             return Ok(false);
         }
         passenger.clear_vehicle();

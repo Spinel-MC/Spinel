@@ -29,7 +29,7 @@ use std::io;
 
 impl Player {
     pub fn refresh_commands(&mut self) -> io::Result<()> {
-        let Some(client) = self.client_mut() else {
+        let Some(client) = self.get_client_mut() else {
             return Ok(());
         };
         server_commands_packet(client)
@@ -52,8 +52,8 @@ impl Player {
         self.initialize_chunk_update_history();
         self.reset_chunk_queue();
         LoginPlayPacket::new(
-            self.entity_id().value(),
-            self.game_mode(),
+            self.get_entity_id().get_value(),
+            self.get_game_mode(),
             dimension_type_id,
             world_name.clone(),
         )
@@ -92,8 +92,8 @@ impl Player {
         self.initialize_chunk_update_history();
         self.reset_chunk_queue();
         LoginPlayPacket::new(
-            self.entity_id().value(),
-            self.game_mode(),
+            self.get_entity_id().get_value(),
+            self.get_game_mode(),
             dimension_type_id,
             world_name.clone(),
         )
@@ -129,7 +129,7 @@ impl Player {
     ) -> io::Result<()> {
         self.prepare_instance_spawn(world_name.clone());
         if dimension_change {
-            RespawnPacket::new(self.game_mode(), world_name.clone()).dispatch(client)?;
+            RespawnPacket::new(self.get_game_mode(), world_name.clone()).dispatch(client)?;
         }
         world_border_packet.dispatch(client)?;
         SetTimePacket::new(
@@ -158,7 +158,7 @@ impl Player {
         if dimension_change || first_spawn {
             self.sync_inventory(client)?;
             SetHeldSlotPacket {
-                slot: self.held_slot() as i8,
+                slot: self.get_held_slot() as i8,
             }
             .dispatch(client)?;
             GameEventPacket::from(GameEvent::StartWaitingForLevelChunks).dispatch(client)?;
@@ -262,13 +262,13 @@ impl Player {
 
     pub(crate) fn set_position(&mut self, position: crate::entity::EntityPosition) {
         self.position = PlayerPosition::new(
-            position.x(),
-            position.y(),
-            position.z(),
-            position.yaw(),
-            position.pitch(),
+            position.get_x(),
+            position.get_y(),
+            position.get_z(),
+            position.get_yaw(),
+            position.get_pitch(),
         );
-        if self.current_world().is_none() {
+        if self.get_current_world().is_none() {
             self.record_synchronization_position(position);
         }
     }
@@ -284,11 +284,11 @@ impl Player {
         should_reset_chunks: bool,
     ) -> Vec<PlayerChunk> {
         self.position = PlayerPosition::new(
-            position.x(),
-            position.y(),
-            position.z(),
-            position.yaw(),
-            position.pitch(),
+            position.get_x(),
+            position.get_y(),
+            position.get_z(),
+            position.get_yaw(),
+            position.get_pitch(),
         );
         self.loaded_chunk = PlayerChunk::from_position(self.position);
         self.chunks_loaded_by_client = self.loaded_chunk;
@@ -305,7 +305,7 @@ impl Player {
             .surrounding(self.effective_chunk_view_distance(world_view_distance))
     }
 
-    pub(crate) fn chunk_transition(
+    pub(crate) fn get_chunk_transition(
         &self,
         x: f64,
         y: f64,
@@ -594,7 +594,7 @@ impl Player {
             .sort_by_key(|queued_chunk| queued_chunk.chunk.distance_to(chunks_loaded_by_client));
     }
 
-    pub fn queued_chunk_count(&self) -> usize {
+    pub fn get_queued_chunk_count(&self) -> usize {
         self.chunk_queue.len()
     }
 
@@ -620,7 +620,7 @@ impl Player {
         if !self.client_sent_chunks.remove(&chunk) {
             return Ok(());
         }
-        ForgetLevelChunkPacket::new(chunk.packet_position()).dispatch(client)?;
+        ForgetLevelChunkPacket::new(chunk.get_packet_position()).dispatch(client)?;
         self.dispatch_player_chunk_unload_event(client, chunk.x, chunk.z);
         Ok(())
     }
@@ -631,7 +631,7 @@ impl Player {
         chunk: PlayerChunk,
     ) -> io::Result<()> {
         self.client_sent_chunks.remove(&chunk);
-        ForgetLevelChunkPacket::new(chunk.packet_position()).dispatch(client)?;
+        ForgetLevelChunkPacket::new(chunk.get_packet_position()).dispatch(client)?;
         self.dispatch_player_chunk_unload_event(client, chunk.x, chunk.z);
         Ok(())
     }

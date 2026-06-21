@@ -1,4 +1,4 @@
-use crate::entity::{Entity, Player, PlayerPose};
+use crate::entity::{Entity, EntityPose, Player};
 use crate::network::client::instance::Client;
 use crate::world::{Block, BlockPosition, ChunkPosition, World};
 use spinel_network::types::Identifier;
@@ -14,15 +14,15 @@ fn player_pose_fit_accepts_sneaking_and_rejects_standing_under_loaded_ceiling() 
         .set_block(BlockPosition::new(0, 66, 0), Block::STONE)
         .unwrap();
 
-    assert!(world.set_player_pose(player_uuid, PlayerPose::Sneaking));
+    assert!(world.set_player_pose(player_uuid, EntityPose::Sneaking));
     assert_eq!(
-        world.player_by_uuid(player_uuid).unwrap().pose(),
-        PlayerPose::Sneaking
+        world.player_by_uuid(player_uuid).unwrap().get_pose(),
+        EntityPose::Sneaking
     );
-    assert!(!world.set_player_pose(player_uuid, PlayerPose::Standing));
+    assert!(!world.set_player_pose(player_uuid, EntityPose::Standing));
     assert_eq!(
-        world.player_by_uuid(player_uuid).unwrap().pose(),
-        PlayerPose::Sneaking
+        world.player_by_uuid(player_uuid).unwrap().get_pose(),
+        EntityPose::Sneaking
     );
 
     drop(client);
@@ -32,10 +32,10 @@ fn player_pose_fit_accepts_sneaking_and_rejects_standing_under_loaded_ceiling() 
 fn player_pose_fit_ignores_missing_chunks_like_minestom() {
     let (mut world, client, player_uuid, _peer_stream) = world_with_player_without_loaded_chunks();
 
-    assert!(world.set_player_pose(player_uuid, PlayerPose::Standing));
+    assert!(world.set_player_pose(player_uuid, EntityPose::Standing));
     assert_eq!(
-        world.player_by_uuid(player_uuid).unwrap().pose(),
-        PlayerPose::Standing
+        world.player_by_uuid(player_uuid).unwrap().get_pose(),
+        EntityPose::Standing
     );
 
     drop(client);

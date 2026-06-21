@@ -31,7 +31,7 @@ fn projectile_shoot_listener(event: &mut EntityShootEvent, _server: &mut Minecra
     }
     let shooter_id = event.shooter_id();
     let projectile_id = event.projectile_id();
-    let event_entity_id = event.entity().entity_id();
+    let event_entity_id = event.get_entity().get_entity_id();
     let event_projectile_id = event.projectile().entity_id();
     if event_entity_id == shooter_id && event_projectile_id == projectile_id {
         PROJECTILE_SHOOT_EVENT_ENTITY_ACCESSOR_MATCHED.store(true, Ordering::SeqCst);
@@ -98,7 +98,7 @@ fn projectile_shoot_event_can_mutate_power_and_cancel_the_shot() {
     world.use_server_event_dispatcher(server_ptr);
     let mut shooter = GenericEntity::new(EntityType::ZOMBIE);
     shooter.set_position(EntityPosition::new(0.0, 64.0, 0.0, 0.0, 0.0));
-    let shooter_id = shooter.entity_id();
+    let shooter_id = shooter.get_entity_id();
     world.add_entity(Entity::Generic(shooter));
     let projectile_id = world
         .spawn_projectile(
@@ -116,11 +116,11 @@ fn projectile_shoot_event_can_mutate_power_and_cancel_the_shot() {
         4.0,
     ));
     let shot_projectile = projectile_entity(&world, projectile_id);
-    let speed = shot_projectile.velocity().0.x.mul_add(
-        shot_projectile.velocity().0.x,
-        shot_projectile.velocity().0.y.mul_add(
-            shot_projectile.velocity().0.y,
-            shot_projectile.velocity().0.z.powi(2),
+    let speed = shot_projectile.get_velocity().0.x.mul_add(
+        shot_projectile.get_velocity().0.x,
+        shot_projectile.get_velocity().0.y.mul_add(
+            shot_projectile.get_velocity().0.y,
+            shot_projectile.get_velocity().0.z.powi(2),
         ),
     );
     assert!((speed.sqrt() - 10.0).abs() < 0.000001);
@@ -156,7 +156,7 @@ fn projectile_tick_samples_its_path_and_sticks_in_a_solid_block() {
         )
         .unwrap();
     *PROJECTILE_TEST_ID.lock().unwrap() = Some(projectile_id);
-    let Some(Entity::Projectile(projectile)) = world.entity_by_id_mut(projectile_id) else {
+    let Some(Entity::Projectile(projectile)) = world.get_entity_mut(projectile_id) else {
         panic!("spawned projectile must remain a projectile");
     };
     projectile.set_no_gravity(true);
@@ -168,22 +168,22 @@ fn projectile_tick_samples_its_path_and_sticks_in_a_solid_block() {
 
     world.tick();
 
-    let Some(Entity::Projectile(projectile)) = world.entity_by_id(projectile_id) else {
+    let Some(Entity::Projectile(projectile)) = world.get_entity(projectile_id) else {
         panic!("spawned projectile must remain in the world");
     };
     assert!(projectile.was_stuck());
     assert!(projectile.is_on_ground());
     assert!(projectile.has_no_gravity());
     assert_eq!(
-        projectile.velocity().0,
+        projectile.get_velocity().0,
         Vector3d {
             x: 0.0,
             y: 0.0,
             z: 0.0,
         }
     );
-    assert!(projectile.position().x() >= 1.0);
-    assert!(projectile.position().x() < 2.0);
+    assert!(projectile.get_position().get_x() >= 1.0);
+    assert!(projectile.get_position().get_x() < 2.0);
     assert_eq!(PROJECTILE_BLOCK_COLLISION_COUNT.load(Ordering::SeqCst), 1);
     assert_eq!(PROJECTILE_SHARED_COLLISION_COUNT.load(Ordering::SeqCst), 1);
     reset_projectile_event_state();
@@ -209,7 +209,7 @@ fn shared_projectile_collision_listener_can_cancel_concrete_block_collision() {
         .unwrap();
     *PROJECTILE_TEST_ID.lock().unwrap() = Some(projectile_id);
     PROJECTILE_SHARED_COLLISION_CANCELLED.store(true, Ordering::SeqCst);
-    let Some(Entity::Projectile(projectile)) = world.entity_by_id_mut(projectile_id) else {
+    let Some(Entity::Projectile(projectile)) = world.get_entity_mut(projectile_id) else {
         panic!("spawned projectile must remain a projectile");
     };
     projectile.set_no_gravity(true);
@@ -244,7 +244,7 @@ fn stuck_projectile_uncollides_after_its_block_is_removed() {
         )
         .unwrap();
     *PROJECTILE_TEST_ID.lock().unwrap() = Some(projectile_id);
-    let Some(Entity::Projectile(projectile)) = world.entity_by_id_mut(projectile_id) else {
+    let Some(Entity::Projectile(projectile)) = world.get_entity_mut(projectile_id) else {
         panic!("spawned projectile must remain a projectile");
     };
     projectile.set_no_gravity(true);
@@ -258,7 +258,7 @@ fn stuck_projectile_uncollides_after_its_block_is_removed() {
 
     world.tick();
 
-    let Some(Entity::Projectile(projectile)) = world.entity_by_id(projectile_id) else {
+    let Some(Entity::Projectile(projectile)) = world.get_entity(projectile_id) else {
         panic!("spawned projectile must remain in the world");
     };
     assert!(!projectile.was_stuck());
@@ -282,7 +282,7 @@ fn projectile_tick_emits_entity_collision_for_living_targets() {
     let mut target = GenericEntity::new(EntityType::ZOMBIE);
     target.set_position(EntityPosition::new(1.25, 64.0, 0.5, 0.0, 0.0));
     target.set_no_gravity(true);
-    let target_id = target.entity_id();
+    let target_id = target.get_entity_id();
     world.add_entity(Entity::Generic(target));
     let projectile_id = world
         .spawn_projectile(
@@ -292,7 +292,7 @@ fn projectile_tick_emits_entity_collision_for_living_targets() {
         )
         .unwrap();
     *PROJECTILE_TEST_ID.lock().unwrap() = Some(projectile_id);
-    let Some(Entity::Projectile(projectile)) = world.entity_by_id_mut(projectile_id) else {
+    let Some(Entity::Projectile(projectile)) = world.get_entity_mut(projectile_id) else {
         panic!("spawned projectile must remain a projectile");
     };
     projectile.set_no_gravity(true);
@@ -301,42 +301,36 @@ fn projectile_tick_emits_entity_collision_for_living_targets() {
         y: 0.0,
         z: 0.0,
     }));
-    assert!(
+    assert!(world.get_entity(target_id).is_some_and(|target| match target {
         world
-            .entity_by_id(target_id)
-            .is_some_and(|target| match target {
-                Entity::Generic(target) => target.intersects_box_at(
-                    Vector3d {
-                        x: 0.75,
-                        y: 64.0,
-                        z: 0.5,
-                    },
-                    EntityType::ARROW.bounding_box(),
-                ),
-                _ => false,
-            })
-    );
+            Vector3d {
+                x: 0.75,
+                y: 64.0,
+                z: 0.5,
+            },
+            EntityType::ARROW.get_bounding_box(),
+        ),
+        _ => false,
+    }));
     assert!(
         world
             .chunk_entities(crate::world::ChunkPosition::new(0, 0))
             .iter()
-            .any(|entity| entity.entity_id() == target_id)
+            .any(|entity| entity.get_entity_id() == target_id)
     );
 
     world.tick();
 
-    let projectile_position = projectile_entity(&world, projectile_id).position();
-    let target_position = world.entity_by_id(target_id).unwrap().position();
+    let projectile_position = projectile_entity(&world, projectile_id).get_position();
+    let target_position = world.get_entity(target_id).unwrap().get_position();
     assert!(
-        world
+        world.get_entity(target_id).is_some_and(|target| match target {
             .entity_by_id(target_id)
-            .is_some_and(|target| match target {
-                Entity::Generic(target) => target.intersects_box_at(
-                    projectile_position.as_vector(),
-                    EntityType::ARROW.bounding_box(),
-                ),
-                _ => false,
-            }),
+                projectile_position.as_vector(),
+                EntityType::ARROW.get_bounding_box(),
+            ),
+            _ => false,
+        }),
         "projectile={projectile_position:?} target={target_position:?}"
     );
     assert!(PROJECTILE_ENTITY_COLLISION_COUNT.load(Ordering::SeqCst) >= 1);
@@ -346,7 +340,7 @@ fn projectile_tick_emits_entity_collision_for_living_targets() {
 }
 
 fn projectile_entity(world: &World, projectile_id: EntityId) -> &crate::entity::ProjectileEntity {
-    let Some(Entity::Projectile(projectile)) = world.entity_by_id(projectile_id) else {
+    let Some(Entity::Projectile(projectile)) = world.get_entity(projectile_id) else {
         panic!("projectile must remain in the world");
     };
     projectile

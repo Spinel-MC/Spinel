@@ -15,11 +15,11 @@ impl EntityLeash {
         }
     }
 
-    pub(crate) const fn holder(&self) -> Option<EntityId> {
+    pub(crate) const fn get_holder(&self) -> Option<EntityId> {
         self.holder
     }
 
-    pub(crate) fn leashed_entities(&self) -> &BTreeSet<EntityId> {
+    pub(crate) fn get_leashed_entities(&self) -> &BTreeSet<EntityId> {
         &self.leashed_entities
     }
 
@@ -35,10 +35,10 @@ impl EntityLeash {
         self.leashed_entities.remove(&entity_id)
     }
 
-    pub(crate) fn packet(&self, entity_id: EntityId) -> AttachEntityPacket {
+    pub(crate) fn get_packet(&self, entity_id: EntityId) -> AttachEntityPacket {
         AttachEntityPacket {
-            attached_entity_id: entity_id.value(),
-            holding_entity_id: self.holder.map(EntityId::value).unwrap_or(-1),
+            attached_entity_id: entity_id.get_value(),
+            holding_entity_id: self.holder.map(EntityId::get_value).unwrap_or(-1),
         }
     }
 }

@@ -14,15 +14,15 @@ impl PlayerSkin {
         }
     }
 
-    pub fn textures(&self) -> &str {
+    pub fn get_textures(&self) -> &str {
         &self.textures
     }
 
-    pub fn signature(&self) -> Option<&str> {
+    pub fn get_signature(&self) -> Option<&str> {
         self.signature.as_deref()
     }
 
-    pub fn property(&self) -> PlayerInfoProperty {
+    pub fn get_property(&self) -> PlayerInfoProperty {
         PlayerInfoProperty {
             name: "textures".to_string(),
             value: self.textures.clone(),

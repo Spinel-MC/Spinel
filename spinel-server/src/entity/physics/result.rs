@@ -28,6 +28,14 @@ pub struct EntitySweepResult {
     collision_shape: Option<&'static [BlockShapeBox]>,
     collision_shape_position: Option<BlockPosition>,
 }
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct EntityBoundingBoxSweepResult {
+    ratio: f64,
+    normal: Vector3d,
+    collision_point: Option<Vector3d>,
+    collision_shape: Option<spinel_registry::EntityBoundingBox>,
+    collision_shape_position: Option<Vector3d>,
+}
 
 impl EntityPhysicsResult {
     pub const fn new(
@@ -84,11 +92,11 @@ impl EntityPhysicsResult {
         )
     }
 
-    pub const fn new_position(self) -> EntityPosition {
+    pub const fn get_new_position(self) -> EntityPosition {
         self.new_position
     }
 
-    pub const fn new_velocity_per_tick(self) -> Velocity {
+    pub const fn get_new_velocity_per_tick(self) -> Velocity {
         self.new_velocity_per_tick
     }
 
@@ -96,31 +104,31 @@ impl EntityPhysicsResult {
         self.is_on_ground
     }
 
-    pub const fn collision_x(self) -> bool {
+    pub const fn has_collision_x(self) -> bool {
         self.collision_x
     }
 
-    pub const fn collision_y(self) -> bool {
+    pub const fn has_collision_y(self) -> bool {
         self.collision_y
     }
 
-    pub const fn collision_z(self) -> bool {
+    pub const fn has_collision_z(self) -> bool {
         self.collision_z
     }
 
-    pub const fn original_delta(self) -> Velocity {
+    pub const fn get_original_delta(self) -> Velocity {
         self.original_delta
     }
 
-    pub const fn collision_points(self) -> [Option<Vector3d>; 3] {
+    pub const fn get_collision_points(self) -> [Option<Vector3d>; 3] {
         self.collision_points
     }
 
-    pub const fn collision_shapes(self) -> [Option<&'static [BlockShapeBox]>; 3] {
+    pub const fn get_collision_shapes(self) -> [Option<&'static [BlockShapeBox]>; 3] {
         self.collision_shapes
     }
 
-    pub const fn collision_shape_positions(self) -> [Option<BlockPosition>; 3] {
+    pub const fn get_collision_shape_positions(self) -> [Option<BlockPosition>; 3] {
         self.collision_shape_positions
     }
 
@@ -128,11 +136,11 @@ impl EntityPhysicsResult {
         self.has_collision
     }
 
-    pub const fn sweep(self) -> EntitySweepResult {
+    pub const fn get_sweep(self) -> EntitySweepResult {
         self.sweep
     }
 
-    pub const fn cached(self) -> bool {
+    pub const fn is_cached(self) -> bool {
         self.cached
     }
 
@@ -189,23 +197,74 @@ impl EntitySweepResult {
         )
     }
 
-    pub const fn ratio(self) -> f64 {
+    pub const fn get_ratio(self) -> f64 {
         self.ratio
     }
 
-    pub const fn normal(self) -> Vector3d {
+    pub const fn get_normal(self) -> Vector3d {
         self.normal
     }
 
-    pub const fn collision_point(self) -> Option<Vector3d> {
+    pub const fn get_collision_point(self) -> Option<Vector3d> {
         self.collision_point
     }
 
-    pub const fn collision_shape(self) -> Option<&'static [BlockShapeBox]> {
+    pub const fn get_collision_shape(self) -> Option<&'static [BlockShapeBox]> {
         self.collision_shape
     }
 
-    pub const fn collision_shape_position(self) -> Option<BlockPosition> {
+    pub const fn get_collision_shape_position(self) -> Option<BlockPosition> {
         self.collision_shape_position
+    }
+}
+
+impl EntityBoundingBoxSweepResult {
+    pub const fn no_collision() -> Self {
+        Self {
+            ratio: f64::MAX,
+            normal: Vector3d {
+                x: 0.0,
+                y: 0.0,
+                z: 0.0,
+            },
+            collision_point: None,
+            collision_shape: None,
+            collision_shape_position: None,
+        }
+    }
+
+    pub const fn get_ratio(self) -> f64 {
+        self.ratio
+    }
+
+    pub const fn get_normal(self) -> Vector3d {
+        self.normal
+    }
+
+    pub const fn get_collision_point(self) -> Option<Vector3d> {
+        self.collision_point
+    }
+
+    pub const fn get_collision_shape(self) -> Option<spinel_registry::EntityBoundingBox> {
+        self.collision_shape
+    }
+
+    pub const fn get_collision_shape_position(self) -> Option<Vector3d> {
+        self.collision_shape_position
+    }
+
+    pub(crate) fn set_collision(
+        &mut self,
+        ratio: f64,
+        normal: Vector3d,
+        collision_point: Vector3d,
+        collision_shape: spinel_registry::EntityBoundingBox,
+        collision_shape_position: Vector3d,
+    ) {
+        self.ratio = ratio;
+        self.normal = normal;
+        self.collision_point = Some(collision_point);
+        self.collision_shape = Some(collision_shape);
+        self.collision_shape_position = Some(collision_shape_position);
     }
 }

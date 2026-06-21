@@ -19,14 +19,14 @@ use std::time::Duration;
 fn creature_kill_uses_minestom_removal_animation_delay() {
     let mut animated_creature = EntityCreature::new(EntityType::ZOMBIE);
 
-    assert_eq!(animated_creature.removal_animation_delay_millis(), 1000);
+    assert_eq!(animated_creature.get_removal_animation_delay_millis(), 1000);
     assert!(animated_creature.kill());
     assert!(!animated_creature.is_removed());
 
-    (0..19).for_each(|_| animated_creature.entity_mut().tick());
+    (0..19).for_each(|_| animated_creature.get_entity_mut().tick());
 
     assert!(!animated_creature.is_removed());
-    animated_creature.entity_mut().tick();
+    animated_creature.get_entity_mut().tick();
     assert!(animated_creature.is_removed());
 
     let mut immediately_removed_creature = EntityCreature::new(EntityType::ZOMBIE);
@@ -95,7 +95,7 @@ fn ai_group_preempts_lower_priority_goal_in_minestom_order() {
             "high:end"
         ]
     );
-    assert!(creature.ai_groups()[0].current_goal_selector().is_none());
+    assert!(creature.get_ai_groups()[0].get_current_goal_selector().is_none());
 }
 
 #[test]
@@ -123,7 +123,7 @@ fn active_goal_identity_survives_goal_selector_reordering() {
     let snapshot = world.update_snapshot();
 
     creature.ai_tick(&snapshot, 1);
-    creature.ai_groups_mut()[0].goal_selectors_mut().swap(0, 1);
+    creature.get_ai_groups_mut()[0].get_goal_selectors_mut().swap(0, 1);
     creature.ai_tick(&snapshot, 2);
 
     assert_eq!(
@@ -150,14 +150,14 @@ fn removed_active_goal_keeps_running_until_it_ends() {
     let snapshot = world.update_snapshot();
 
     creature.ai_tick(&snapshot, 1);
-    creature.ai_groups_mut()[0].goal_selectors_mut().clear();
+    creature.get_ai_groups_mut()[0].get_goal_selectors_mut().clear();
     creature.ai_tick(&snapshot, 2);
 
     assert_eq!(
         *events.lock().unwrap(),
         vec!["low:start", "low:tick", "low:tick"]
     );
-    assert!(creature.ai_groups()[0].current_goal_selector().is_some());
+    assert!(creature.get_ai_groups()[0].get_current_goal_selector().is_some());
 }
 
 #[test]
@@ -170,17 +170,17 @@ fn current_goal_selector_rejects_a_selector_attached_to_another_group() {
             Arc::new(AtomicBool::new(false)),
         ))
         .build();
-    let selector = first_group.goal_selectors()[0].clone();
+    let selector = first_group.get_goal_selectors()[0].clone();
     let mut second_group = EntityAiGroupBuilder::default().build();
 
     assert!(!second_group.set_current_goal_selector(Some(selector)));
-    assert!(second_group.current_goal_selector().is_none());
+    assert!(second_group.get_current_goal_selector().is_none());
 }
 
 #[test]
 fn goal_target_lookup_uses_target_selector_priority() {
     let mut creature = EntityCreature::new(EntityType::ZOMBIE);
-    let expected = creature.entity_id();
+    let expected = creature.get_entity_id();
     let world = ai_world();
     let snapshot = world.update_snapshot();
     let mut goal = RecordingGoal::new(
@@ -203,7 +203,7 @@ fn goal_target_lookup_uses_target_selector_priority() {
         .add_target_selector(FixedTarget(None))
         .build();
     creature.add_ai_group(group);
-    assert_eq!(creature.ai_groups()[0].target_selectors().len(), 1);
+    assert_eq!(creature.get_ai_groups()[0].get_target_selectors().len(), 1);
 }
 
 #[test]
@@ -211,10 +211,10 @@ fn closest_and_last_damager_targets_match_minestom_selection_rules() {
     let mut world = ai_world();
     let mut creature = EntityCreature::new(EntityType::ZOMBIE);
     creature.set_position(EntityPosition::new(1.5, 65.0, 1.5, 0.0, 0.0));
-    let creature_id = creature.entity_id();
+    let creature_id = creature.get_entity_id();
     let mut near_target = EntityCreature::new(EntityType::COW);
     near_target.set_position(EntityPosition::new(3.5, 65.0, 1.5, 0.0, 0.0));
-    let near_target_id = near_target.entity_id();
+    let near_target_id = near_target.get_entity_id();
     let mut far_target = EntityCreature::new(EntityType::COW);
     far_target.set_position(EntityPosition::new(8.5, 65.0, 1.5, 0.0, 0.0));
     world.add_entity(Entity::Creature(creature));
@@ -225,7 +225,7 @@ fn closest_and_last_damager_targets_match_minestom_selection_rules() {
         panic!("creature entity must preserve its subtype");
     };
     let mut closest =
-        ClosestEntityTarget::new(10.0, |entity| entity.entity_type() == EntityType::COW);
+        ClosestEntityTarget::new(10.0, |entity| entity.get_entity_type() == EntityType::COW);
 
     assert_eq!(
         closest.find_target(creature, &snapshot),
@@ -236,7 +236,7 @@ fn closest_and_last_damager_targets_match_minestom_selection_rules() {
         panic!("creature entity must preserve its subtype");
     };
     creature
-        .entity_mut()
+        .get_entity_mut()
         .apply_damage(Damage::new(DamageType::GENERIC, 1.0).with_source(near_target_id));
     let mut last_damager = LastEntityDamagerTarget::new(3.0);
     assert_eq!(
@@ -255,14 +255,14 @@ fn follow_target_owns_creature_target_and_starts_navigation() {
     let mut world = ai_world();
     let mut creature = EntityCreature::new(EntityType::ZOMBIE);
     creature.set_position(EntityPosition::new(1.5, 65.0, 1.5, 0.0, 0.0));
-    let creature_id = creature.entity_id();
+    let creature_id = creature.get_entity_id();
     let mut target = EntityCreature::new(EntityType::COW);
     target.set_position(EntityPosition::new(8.5, 65.0, 1.5, 0.0, 0.0));
-    let target_id = target.entity_id();
+    let target_id = target.get_entity_id();
     let group = EntityAiGroupBuilder::default()
         .add_goal_selector(FollowTargetGoal::new(Duration::from_millis(100)))
         .add_target_selector(ClosestEntityTarget::new(16.0, |entity| {
-            entity.entity_type() == EntityType::COW
+            entity.get_entity_type() == EntityType::COW
         }))
         .build();
     creature.add_ai_group(group);
@@ -275,12 +275,12 @@ fn follow_target_owns_creature_target_and_starts_navigation() {
 
     creature.ai_tick(&snapshot, 1);
 
-    assert_eq!(creature.target(), Some(target_id));
+    assert_eq!(creature.get_target(), Some(target_id));
     assert_eq!(
         creature
-            .navigator()
-            .path_position()
-            .map(|position| position.x()),
+            .get_navigator()
+            .get_path_position()
+            .map(|position| position.get_x()),
         Some(8.5)
     );
 }
@@ -297,7 +297,7 @@ fn random_look_and_stroll_goal_public_configuration_matches_minestom_surface() {
     assert!(look.should_start(&creature, &snapshot, &mut targets));
     look.start(&mut creature, &snapshot, &mut targets);
     look.tick(&mut creature, &snapshot, &mut targets, 1);
-    assert_eq!(creature.position().yaw(), -90.0);
+    assert_eq!(creature.get_position().get_yaw(), -90.0);
     assert!(!look.should_end(&creature, &snapshot, &mut targets));
     look.tick(&mut creature, &snapshot, &mut targets, 2);
     assert!(look.should_end(&creature, &snapshot, &mut targets));
@@ -325,10 +325,10 @@ fn melee_and_combined_goals_queue_minestom_attack_branches() {
     let mut world = ai_world();
     let mut creature = EntityCreature::new(EntityType::ZOMBIE);
     creature.set_position(EntityPosition::new(1.5, 65.0, 1.5, 0.0, 0.0));
-    let creature_id = creature.entity_id();
+    let creature_id = creature.get_entity_id();
     let mut target = EntityCreature::new(EntityType::COW);
     target.set_position(EntityPosition::new(2.5, 65.0, 1.5, 0.0, 0.0));
-    let target_id = target.entity_id();
+    let target_id = target.get_entity_id();
     world.add_entity(Entity::Creature(creature));
     world.add_entity(Entity::Creature(target));
     let snapshot = world.update_snapshot();
@@ -371,10 +371,10 @@ fn ranged_goal_world_tick_spawns_and_shoots_default_arrow() {
     let mut world = ai_world();
     let mut creature = EntityCreature::new(EntityType::SKELETON);
     creature.set_position(EntityPosition::new(1.5, 65.0, 1.5, 0.0, 0.0));
-    let creature_id = creature.entity_id();
+    let creature_id = creature.get_entity_id();
     let mut target = EntityCreature::new(EntityType::COW);
     target.set_position(EntityPosition::new(6.5, 65.0, 1.5, 0.0, 0.0));
-    let target_id = target.entity_id();
+    let target_id = target.get_entity_id();
     let ranged = RangedAttackGoal::new(Duration::ZERO, 10, 8, false, 1.0, 0.0).unwrap();
     let group = EntityAiGroupBuilder::default()
         .add_goal_selector(ranged)
@@ -391,9 +391,9 @@ fn ranged_goal_world_tick_spawns_and_shoots_default_arrow() {
         _ => None,
     });
     assert!(projectile.is_some_and(|projectile| {
-        projectile.shooter() == Some(creature_id)
-            && projectile.entity_type() == EntityType::ARROW
-            && projectile.velocity().0.x > 0.0
+        projectile.get_shooter() == Some(creature_id)
+            && projectile.get_entity_type() == EntityType::ARROW
+            && projectile.get_velocity().0.x > 0.0
     }));
 }
 

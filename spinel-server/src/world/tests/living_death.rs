@@ -1,5 +1,5 @@
-use crate::entity::player::{Player, PlayerChunk, PlayerPose};
-use crate::entity::{Entity, EntityId, EntityPosition, GenericEntity};
+use crate::entity::player::{Player, PlayerChunk};
+use crate::entity::{Entity, EntityId, EntityPose, EntityPosition, GenericEntity};
 use crate::events::entity_death::EntityDeathEvent;
 use crate::network::client::instance::Client;
 use crate::server::MinecraftServer;
@@ -22,11 +22,11 @@ static LIVING_DEATH_EVENT_ENTITY_ACCESSOR_MATCHED: AtomicBool = AtomicBool::new(
 
 #[event_listener]
 fn living_death_listener(event: &mut EntityDeathEvent, _server: &mut MinecraftServer) {
-    if *LIVING_DEATH_TEST_ENTITY.lock().unwrap() != Some(event.entity_id()) {
+    if *LIVING_DEATH_TEST_ENTITY.lock().unwrap() != Some(event.get_entity_id()) {
         return;
     }
-    let event_entity_id = event.entity_id();
-    if event.entity().entity_id() == event_entity_id {
+    let event_entity_id = event.get_entity_id();
+    if event.get_entity().get_entity_id() == event_entity_id {
         LIVING_DEATH_EVENT_ENTITY_ACCESSOR_MATCHED.store(true, Ordering::SeqCst);
     }
     LIVING_DEATH_EVENT_FIRED.store(true, Ordering::SeqCst);
@@ -46,7 +46,7 @@ fn world_kill_entity_sends_death_status_and_applies_generic_death_state_once() {
     viewer.mark_entered_world();
     viewer.mark_chunk_sent_to_client(PlayerChunk::new(0, 0));
     let mut entity = positioned_living_entity();
-    let entity_id = entity.entity_id();
+    let entity_id = entity.get_entity_id();
     let passenger_id = EntityId::from_raw(999);
     entity.add_passenger(passenger_id);
     entity.set_velocity(Velocity(Vector3d {
@@ -65,11 +65,11 @@ fn world_kill_entity_sends_death_status_and_applies_generic_death_state_once() {
 
     let entity = world.creatures()[0];
     assert!(entity.is_dead());
-    assert_eq!(entity.pose(), 6);
-    assert_eq!(entity.velocity().0.x, 0.0);
-    assert_eq!(entity.velocity().0.y, 0.0);
-    assert_eq!(entity.velocity().0.z, 0.0);
-    assert!(entity.passengers().is_empty());
+    assert_eq!(entity.get_pose(), EntityPose::Dying);
+    assert_eq!(entity.get_velocity().0.x, 0.0);
+    assert_eq!(entity.get_velocity().0.y, 0.0);
+    assert_eq!(entity.get_velocity().0.z, 0.0);
+    assert!(entity.get_passengers().is_empty());
     assert_eq!(
         viewer_client.queued_outbound_packet_ids(),
         vec![EntityStatusPacket::get_id(), SetPassengersPacket::get_id(),]
@@ -105,7 +105,7 @@ fn world_kill_entity_applies_player_dying_pose_and_dead_state_once() {
         0,
         SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 25565),
     );
-    let player_id = player.entity_id();
+    let player_id = player.get_entity_id();
     world.add_entity(Entity::Player(player));
 
     assert!(world.kill_entity(player_id).unwrap());
@@ -113,7 +113,7 @@ fn world_kill_entity_applies_player_dying_pose_and_dead_state_once() {
 
     let player = world.players().next().unwrap();
     assert!(player.is_dead());
-    assert_eq!(player.pose(), PlayerPose::Dying);
+    assert_eq!(player.get_pose(), EntityPose::Dying);
 }
 
 fn server_with_living_entity() -> MinecraftServer {
@@ -136,7 +136,7 @@ fn positioned_living_entity() -> GenericEntity {
 }
 
 fn tracked_living_entity_id(server: &MinecraftServer) -> EntityId {
-    tracked_living_entity(server).entity_id()
+    tracked_living_entity(server).get_entity_id()
 }
 
 fn tracked_living_entity(server: &MinecraftServer) -> &GenericEntity {

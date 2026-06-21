@@ -38,7 +38,7 @@ impl SpawnCommand {
         let Some(player) = sender.player(server) else {
             return CommandExecutionResult::precondition_failed();
         };
-        let player_position = player.position();
+        let player_position = player.get_position();
         let Some(world) = player.world() else {
             return CommandExecutionResult::precondition_failed();
         };

@@ -18,19 +18,19 @@ impl PlayerPickEntityEvent {
         }
     }
 
-    pub fn player(&mut self) -> &mut Player {
+    pub fn get_player(&mut self) -> &mut Player {
         unsafe { &mut *self.player }
     }
 
-    pub fn target(&mut self) -> Option<&mut Entity> {
+    pub fn get_target(&mut self) -> Option<&mut Entity> {
         self.target.map(|target| unsafe { &mut *target })
     }
 
-    pub fn target_id(&self) -> Option<EntityId> {
-        self.target.map(|target| unsafe { (&*target).entity_id() })
+    pub fn get_target_id(&self) -> Option<EntityId> {
+        self.target.map(|target| unsafe { (&*target).get_entity_id() })
     }
 
-    pub const fn include_data(&self) -> bool {
+    pub const fn get_include_data(&self) -> bool {
         self.include_data
     }
 }

@@ -44,8 +44,8 @@ impl PlayerChangeHeldSlotEvent {
     pub fn item_in_old_slot(&mut self) -> ItemStack {
         let old_slot = self.old_slot;
         self.player()
-            .inventory_ref()
-            .item_stack(old_slot as usize)
+            .get_inventory_ref()
+            .get_item_stack(old_slot as usize)
             .cloned()
             .unwrap_or_else(ItemStack::air)
     }
@@ -53,8 +53,8 @@ impl PlayerChangeHeldSlotEvent {
     pub fn item_in_new_slot(&mut self) -> ItemStack {
         let new_slot = self.new_slot;
         self.player()
-            .inventory_ref()
-            .item_stack(new_slot as usize)
+            .get_inventory_ref()
+            .get_item_stack(new_slot as usize)
             .cloned()
             .unwrap_or_else(ItemStack::air)
     }

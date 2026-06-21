@@ -19,7 +19,7 @@ impl PlayerStabEvent {
         unsafe { &mut *self.player }
     }
 
-    pub fn item_stack(&self) -> ItemStack {
-        unsafe { &*self.player }.item_in_hand(PlayerHand::Main)
+    pub fn get_item_stack(&self) -> ItemStack {
+        unsafe { &*self.player }.g(PlayerHand::Main)
     }
 }

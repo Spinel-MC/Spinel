@@ -1,5 +1,5 @@
 use crate::entity::player::{Player, PlayerChunk};
-use crate::entity::{Damage, Entity, EntityId, EntityPosition, GenericEntity};
+use crate::entity::{Damage, Entity, EntityId, EntityPose, EntityPosition, GenericEntity};
 use crate::events::entity_damage::EntityDamageEvent;
 use crate::network::client::instance::Client;
 use crate::server::MinecraftServer;
@@ -30,11 +30,11 @@ fn living_damage_listener(event: &mut EntityDamageEvent, _server: &mut Minecraft
     if !LIVING_DAMAGE_EVENT_ENABLED.load(Ordering::SeqCst) {
         return;
     }
-    if *LIVING_DAMAGE_TEST_ENTITY.lock().unwrap() != Some(event.entity_id()) {
+    if *LIVING_DAMAGE_TEST_ENTITY.lock().unwrap() != Some(event.get_entity_id()) {
         return;
     }
-    let event_entity_id = event.entity_id();
-    if event.entity().entity_id() == event_entity_id {
+    let event_entity_id = event.get_entity_id();
+    if event.get_entity().get_entity_id() == event_entity_id {
         LIVING_DAMAGE_EVENT_ENTITY_ACCESSOR_MATCHED.store(true, Ordering::SeqCst);
     }
     event.set_damage(f32::from_bits(
@@ -70,9 +70,21 @@ fn world_damage_entity_applies_minestom_event_mutation_and_last_damage_order() {
     );
 
     let entity = tracked_living_entity(&server);
-    assert_eq!(entity.health(), 17.0);
-    assert_eq!(entity.last_damage().unwrap().amount(), 3.0);
-    assert_eq!(entity.last_damage_source(), Some("minecraft:generic"));
+    assert_eq!(entity.get_health(), 17.0);
+    assert_eq!(entity.get_last_damage().unwrap().get_amount(), 3.0);
+    assert_eq!(entity.get_last_damage_source(), Some("minecraft:generic"));
+    let world_uuid = server.world_manager.instance_uuids()[0];
+    let shared_entity = server
+        .world_manager
+        .world(world_uuid)
+        .unwrap()
+        .get_entity(entity_id)
+        .unwrap();
+    assert_eq!(
+        shared_entity.get_last_damage_source().unwrap().damage_type(),
+        &DamageType::GENERIC
+    );
+    assert_eq!(shared_entity.get_last_damage_source().unwrap().get_amount(), 3.0);
     assert!(LIVING_DAMAGE_EVENT_ENTITY_ACCESSOR_MATCHED.load(Ordering::SeqCst));
     reset_living_damage_test_state();
 }
@@ -103,8 +115,8 @@ fn world_damage_entity_cancellation_does_not_store_last_damage_or_reduce_health(
     );
 
     let entity = tracked_living_entity(&server);
-    assert_eq!(entity.health(), 20.0);
-    assert!(entity.last_damage().is_none());
+    assert_eq!(entity.get_health(), 20.0);
+    assert!(entity.get_last_damage().is_none());
     reset_living_damage_test_state();
 }
 
@@ -117,7 +129,8 @@ fn world_damage_entity_uses_player_additional_hearts_before_health_damage() {
         0,
         SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 25565),
     );
-    let player_id = player.entity_id();
+    let player_id = player.get_entity_id();
+    player.heal().unwrap();
     player.set_additional_hearts(4.0);
     world.add_entity(Entity::Player(player));
 
@@ -132,7 +145,7 @@ fn world_damage_entity_uses_player_additional_hearts_before_health_damage() {
     );
 
     let player = world
-        .entity_by_id(player_id)
+        .get_entity(player_id)
         .and_then(|entity| match entity {
             Entity::Player(player) => Some(player),
             Entity::Creature(_) => None,
@@ -142,9 +155,9 @@ fn world_damage_entity_uses_player_additional_hearts_before_health_damage() {
             Entity::Projectile(_) => None,
         })
         .unwrap();
-    assert_eq!(player.additional_hearts(), 0.0);
-    assert_eq!(player.health(), 18.0);
-    assert_eq!(player.last_damage().unwrap().amount(), 6.0);
+    assert_eq!(player.get_additional_hearts(), 0.0);
+    assert_eq!(player.get_health(), 18.0);
+    assert_eq!(player.get_last_damage().unwrap().get_amount(), 6.0);
 }
 
 #[test]
@@ -161,7 +174,7 @@ fn world_damage_entity_dispatches_damage_event_packet_to_current_viewers() {
     viewer.mark_entered_world();
     viewer.mark_chunk_sent_to_client(PlayerChunk::new(0, 0));
     let entity = Entity::Generic(positioned_living_entity());
-    let entity_id = entity.entity_id();
+    let entity_id = entity.get_entity_id();
 
     world.add_entity(entity);
     world.add_entity(Entity::Player(viewer));
@@ -202,7 +215,7 @@ fn world_damage_entity_dispatches_damage_event_packet_to_current_viewers() {
             )
             .unwrap()
     );
-    assert_eq!(packet.target_entity_id, entity_id.value());
+    assert_eq!(packet.target_entity_id, entity_id.get_value());
 }
 
 #[test]
@@ -219,7 +232,7 @@ fn lethal_world_damage_runs_living_death_after_damage_and_sound_packets() {
     viewer.mark_entered_world();
     viewer.mark_chunk_sent_to_client(PlayerChunk::new(0, 0));
     let entity = Entity::Generic(positioned_living_entity());
-    let entity_id = entity.entity_id();
+    let entity_id = entity.get_entity_id();
     world.add_entity(entity);
     world.add_entity(Entity::Player(viewer));
     world.process_pending_entity_visibility_refreshes().unwrap();
@@ -236,7 +249,7 @@ fn lethal_world_damage_runs_living_death_after_damage_and_sound_packets() {
     );
 
     assert!(world.creatures()[0].is_dead());
-    assert_eq!(world.creatures()[0].pose(), 6);
+    assert_eq!(world.creatures()[0].get_pose(), EntityPose::Dying);
     assert_eq!(
         viewer_client.queued_outbound_packet_ids(),
         vec![
@@ -262,12 +275,13 @@ fn server_with_living_entity() -> MinecraftServer {
 
 fn positioned_living_entity() -> GenericEntity {
     let mut entity = GenericEntity::new(EntityType::ZOMBIE);
+    entity.heal();
     entity.set_position(EntityPosition::new(1.0, 64.0, 1.0, 0.0, 0.0));
     entity
 }
 
 fn tracked_living_entity_id(server: &MinecraftServer) -> EntityId {
-    tracked_living_entity(server).entity_id()
+    tracked_living_entity(server).get_entity_id()
 }
 
 fn tracked_living_entity(server: &MinecraftServer) -> &GenericEntity {

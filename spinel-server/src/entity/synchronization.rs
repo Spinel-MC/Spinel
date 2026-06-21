@@ -19,7 +19,7 @@ impl EntitySynchronization {
         }
     }
 
-    pub(crate) const fn interval_ticks(&self) -> u64 {
+    pub(crate) const fn get_interval_ticks(&self) -> u64 {
         self.interval_ticks
     }
 
@@ -39,7 +39,7 @@ impl EntitySynchronization {
         self.next_tick <= current_tick.saturating_add(1)
     }
 
-    pub(crate) const fn last_position(&self) -> EntityPosition {
+    pub(crate) const fn get_last_position(&self) -> EntityPosition {
         self.last_position
     }
 
@@ -58,19 +58,19 @@ impl EntitySynchronization {
         self.last_position = position;
         self.next_tick = current_tick.saturating_add(self.interval_ticks);
         EntityPositionSyncPacket {
-            entity_id: entity_id.value(),
+            entity_id: entity_id.get_value(),
             position: Vector3d {
-                x: position.x(),
-                y: position.y(),
-                z: position.z(),
+                x: position.get_x(),
+                y: position.get_y(),
+                z: position.get_z(),
             },
             delta: Vector3d {
-                x: position.x() - previous_position.x(),
-                y: position.y() - previous_position.y(),
-                z: position.z() - previous_position.z(),
+                x: position.get_x() - previous_position.get_x(),
+                y: position.get_y() - previous_position.get_y(),
+                z: position.get_z() - previous_position.get_z(),
             },
-            yaw: position.yaw(),
-            pitch: position.pitch(),
+            yaw: position.get_yaw(),
+            pitch: position.get_pitch(),
             on_ground,
         }
     }

@@ -45,8 +45,8 @@ impl From<BlockPosition> for ChunkPosition {
 impl From<EntityPosition> for ChunkPosition {
     fn from(position: EntityPosition) -> Self {
         Self {
-            x: (position.x().floor() as i32).div_euclid(16),
-            z: (position.z().floor() as i32).div_euclid(16),
+            x: (position.get_x().floor() as i32).div_euclid(16),
+            z: (position.get_z().floor() as i32).div_euclid(16),
         }
     }
 }

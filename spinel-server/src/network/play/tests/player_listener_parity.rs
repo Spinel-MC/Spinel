@@ -1,3 +1,4 @@
+use crate::entity::metadata::definitions;
 use crate::entity::{Entity, EntityId, EntityPosition, GenericEntity, Player};
 use crate::events::entity_attack::EntityAttackEvent;
 use crate::events::player_chat::PlayerChatEvent;
@@ -45,6 +46,7 @@ use spinel_core::network::serverbound::play::steer_boat::SteerBoatPacket;
 use spinel_core::network::serverbound::play::teleport_to_entity::TeleportToEntityPacket;
 use spinel_macros::event_listener;
 use spinel_network::types::Identifier;
+use spinel_network::types::entity_metadata::MetadataValue;
 use spinel_network::{ConnectionState, DataType, PacketStruct, VarIntWrapper};
 use spinel_registry::data_components::vanilla_components::PIERCING_WEAPON;
 use spinel_registry::{EntityType, ItemStack, Material, PiercingWeapon};
@@ -101,7 +103,7 @@ fn entity_attack_test_listener(event: &mut EntityAttackEvent, _server: &mut Mine
     LISTENER_PARITY_ATTACKS
         .lock()
         .unwrap()
-        .push((event.entity_id(), event.target_id()));
+        .push((event.get_entity_id(), event.target_id()));
 }
 
 #[event_listener]
@@ -113,8 +115,8 @@ fn player_entity_interact_test_listener(
         return;
     }
     LISTENER_PARITY_INTERACTIONS.lock().unwrap().push((
-        event.target().entity_id(),
-        event.hand().protocol_id(),
+        event.target().get_entity_id(),
+        event.hand().get_protocol_id(),
         event.interact_position(),
     ));
 }
@@ -127,7 +129,7 @@ fn player_pick_entity_test_listener(
     if !LISTENER_PARITY_ENABLED.load(Ordering::SeqCst) {
         return;
     }
-    let target_id = event.target().map(|target| target.entity_id());
+    let target_id = event.target().map(|target| target.get_entity_id());
     LISTENER_PARITY_ENTITY_PICKS
         .lock()
         .unwrap()
@@ -136,7 +138,7 @@ fn player_pick_entity_test_listener(
 
 #[event_listener]
 fn player_stab_test_listener(event: &mut PlayerStabEvent, _server: &mut MinecraftServer) {
-    if LISTENER_PARITY_ENABLED.load(Ordering::SeqCst) && event.item_stack().has(PIERCING_WEAPON) {
+    if LISTENER_PARITY_ENABLED.load(Ordering::SeqCst) && event.get_item_stack().has(PIERCING_WEAPON) {
         LISTENER_PARITY_STABS.fetch_add(1, Ordering::SeqCst);
     }
 }
@@ -333,11 +335,11 @@ fn movement_packet_listeners_preserve_each_minestom_variant_shape() {
         .unwrap();
     assert_eq!(
         (
-            player.position().x(),
-            player.position().y(),
-            player.position().z(),
-            player.position().yaw(),
-            player.position().pitch(),
+            player.get_position().get_x(),
+            player.get_position().get_y(),
+            player.get_position().get_z(),
+            player.get_position().get_yaw(),
+            player.get_position().get_pitch(),
             player.is_on_ground(),
         ),
         (1.0, 65.0, 2.0, 0.0, 0.0, true)
@@ -360,11 +362,11 @@ fn movement_packet_listeners_preserve_each_minestom_variant_shape() {
         .unwrap();
     assert_eq!(
         (
-            player.position().x(),
-            player.position().y(),
-            player.position().z(),
-            player.position().yaw(),
-            player.position().pitch(),
+            player.get_position().get_x(),
+            player.get_position().get_y(),
+            player.get_position().get_z(),
+            player.get_position().get_yaw(),
+            player.get_position().get_pitch(),
             player.is_on_ground(),
         ),
         (1.0, 65.0, 2.0, 90.0, 30.0, false)
@@ -390,11 +392,11 @@ fn movement_packet_listeners_preserve_each_minestom_variant_shape() {
         .unwrap();
     assert_eq!(
         (
-            player.position().x(),
-            player.position().y(),
-            player.position().z(),
-            player.position().yaw(),
-            player.position().pitch(),
+            player.get_position().get_x(),
+            player.get_position().get_y(),
+            player.get_position().get_z(),
+            player.get_position().get_yaw(),
+            player.get_position().get_pitch(),
             player.is_on_ground(),
         ),
         (3.0, 66.0, 4.0, 180.0, 10.0, true)
@@ -413,11 +415,11 @@ fn movement_packet_listeners_preserve_each_minestom_variant_shape() {
         .unwrap();
     assert_eq!(
         (
-            player.position().x(),
-            player.position().y(),
-            player.position().z(),
-            player.position().yaw(),
-            player.position().pitch(),
+            player.get_position().get_x(),
+            player.get_position().get_y(),
+            player.get_position().get_z(),
+            player.get_position().get_yaw(),
+            player.get_position().get_pitch(),
             player.is_on_ground(),
         ),
         (3.0, 66.0, 4.0, 180.0, 10.0, false)
@@ -431,8 +433,8 @@ fn use_entity_listener_dispatches_attack_and_interact_for_viewable_targets() {
         server_with_play_player(GameMode::Survival);
     attach_client_to_player(&mut server, &mut client);
     let mut target = GenericEntity::new(EntityType::ZOMBIE);
-    let target_id = target.entity_id();
-    target.view_mut().manual_add(player_id);
+    let target_id = target.get_entity_id();
+    target.get_view_mut().manual_add(player_id);
     server
         .world_manager
         .world_mut(world_uuid)
@@ -443,7 +445,7 @@ fn use_entity_listener_dispatches_attack_and_interact_for_viewable_targets() {
         &mut server,
         &mut client,
         InteractPacket {
-            entity_id: target_id.value(),
+            entity_id: target_id.get_value(),
             action: InteractAction::Attack,
             using_secondary_action: false,
         },
@@ -452,7 +454,7 @@ fn use_entity_listener_dispatches_attack_and_interact_for_viewable_targets() {
         &mut server,
         &mut client,
         InteractPacket {
-            entity_id: target_id.value(),
+            entity_id: target_id.get_value(),
             action: InteractAction::InteractAt {
                 target_x: 0.25,
                 target_y: 0.5,
@@ -480,16 +482,16 @@ fn use_entity_listener_enforces_configurable_interaction_range() {
         server_with_play_player(GameMode::Survival);
     attach_client_to_player(&mut server, &mut client);
     let mut target = GenericEntity::new(EntityType::ZOMBIE);
-    let target_id = target.entity_id();
+    let target_id = target.get_entity_id();
     target.set_position(EntityPosition::new(32.0, 0.0, 0.0, 0.0, 0.0));
-    target.view_mut().manual_add(player_id);
+    target.get_view_mut().manual_add(player_id);
     server
         .world_manager
         .world_mut(world_uuid)
         .unwrap()
         .add_entity(Entity::Generic(target));
     let attack_packet = InteractPacket {
-        entity_id: target_id.value(),
+        entity_id: target_id.get_value(),
         action: InteractAction::Attack,
         using_secondary_action: false,
     };
@@ -526,7 +528,7 @@ fn player_pick_listener_dispatches_nullable_entity_targets() {
     ));
 
     let target = GenericEntity::new(EntityType::ZOMBIE);
-    let target_id = target.entity_id();
+    let target_id = target.get_entity_id();
     server
         .world_manager
         .world_mut(world_uuid)
@@ -536,7 +538,7 @@ fn player_pick_listener_dispatches_nullable_entity_targets() {
         &mut server,
         &mut client,
         PickItemFromEntityPacket {
-            entity_id: target_id.value(),
+            entity_id: target_id.get_value(),
             include_data: false,
         },
     ));
@@ -554,7 +556,7 @@ fn vehicle_move_listener_refreshes_the_ridden_vehicle_position() {
         server_with_play_player(GameMode::Survival);
     attach_client_to_player(&mut server, &mut client);
     let vehicle = GenericEntity::new(EntityType::MINECART);
-    let vehicle_id = vehicle.entity_id();
+    let vehicle_id = vehicle.get_entity_id();
     server
         .world_manager
         .world_mut(world_uuid)
@@ -583,9 +585,9 @@ fn vehicle_move_listener_refreshes_the_ridden_vehicle_position() {
             .world_manager
             .world(world_uuid)
             .unwrap()
-            .entity_by_id(vehicle_id)
+            .get_entity(vehicle_id)
             .unwrap()
-            .position(),
+            .get_position(),
         EntityPosition::new(1.0, 2.0, 3.0, 4.0, 5.0)
     );
 }
@@ -597,7 +599,7 @@ fn steer_boat_listener_refreshes_the_ridden_boat_paddles() {
         server_with_play_player(GameMode::Survival);
     attach_client_to_player(&mut server, &mut client);
     let boat = GenericEntity::new(EntityType::OAK_BOAT);
-    let boat_id = boat.entity_id();
+    let boat_id = boat.get_entity_id();
     server
         .world_manager
         .world_mut(world_uuid)
@@ -621,13 +623,21 @@ fn steer_boat_listener_refreshes_the_ridden_boat_paddles() {
         .world_manager
         .world(world_uuid)
         .unwrap()
-        .entity_by_id(boat_id)
+        .get_entity(boat_id)
         .unwrap()
     else {
         panic!("expected boat entity");
     };
-    assert!(boat.is_left_paddle_turning());
-    assert!(!boat.is_right_paddle_turning());
+    assert_eq!(
+        boat.get_metadata()
+            .get_value(&definitions::boat::is_left_paddle_turning()),
+        MetadataValue::Boolean(true)
+    );
+    assert_eq!(
+        boat.get_metadata()
+            .get_value(&definitions::boat::is_right_paddle_turning()),
+        MetadataValue::Boolean(false)
+    );
 }
 
 #[test]
@@ -637,7 +647,7 @@ fn steer_boat_listener_ignores_non_boat_vehicle_like_minestom() {
         server_with_play_player(GameMode::Survival);
     attach_client_to_player(&mut server, &mut client);
     let minecart = GenericEntity::new(EntityType::MINECART);
-    let minecart_id = minecart.entity_id();
+    let minecart_id = minecart.get_entity_id();
     server
         .world_manager
         .world_mut(world_uuid)
@@ -661,13 +671,23 @@ fn steer_boat_listener_ignores_non_boat_vehicle_like_minestom() {
         .world_manager
         .world(world_uuid)
         .unwrap()
-        .entity_by_id(minecart_id)
+        .get_entity(minecart_id)
         .unwrap()
     else {
         panic!("expected minecart entity");
     };
-    assert!(!minecart.is_left_paddle_turning());
-    assert!(!minecart.is_right_paddle_turning());
+    assert_eq!(
+        minecart
+            .get_metadata()
+            .get_value(&definitions::boat::is_left_paddle_turning()),
+        MetadataValue::Boolean(false)
+    );
+    assert_eq!(
+        minecart
+            .get_metadata()
+            .get_value(&definitions::boat::is_right_paddle_turning()),
+        MetadataValue::Boolean(false)
+    );
 }
 
 #[test]
@@ -762,7 +782,7 @@ fn failed_digging_correction_teleports_player_when_block_is_under_position() {
             .set_block(crate::world::BlockPosition::new(0, 64, 0), Block::STONE)
             .unwrap();
         world
-            .entity_by_id_mut(player_id)
+            .get_entity_mut(player_id)
             .unwrap()
             .set_position(EntityPosition::new(0.0, 65.0, 0.0, 0.0, 0.0));
         world
@@ -864,7 +884,7 @@ fn player_status_listener_dispatches_stop_flying_with_elytra_after_landing() {
         .world_manager
         .world(world_uuid)
         .unwrap()
-        .entity_by_id(player_id)
+        .get_entity(player_id)
         .unwrap();
     assert!(!matches!(player, Entity::Player(player) if player.is_flying_with_elytra()));
     assert_eq!(LISTENER_PARITY_START_ELYTRA.load(Ordering::SeqCst), 1);
@@ -941,9 +961,9 @@ fn change_game_mode_listener_dispatches_request_without_mutating_player_mode() {
         .world_manager
         .world(world_uuid)
         .unwrap()
-        .entity_by_id(player_id)
+        .get_entity(player_id)
         .unwrap();
-    assert!(matches!(player, Entity::Player(player) if player.game_mode() == GameMode::Survival));
+    assert!(matches!(player, Entity::Player(player) if player.get_game_mode() == GameMode::Survival));
     assert_eq!(
         LISTENER_PARITY_GAME_MODE_REQUESTS
             .lock()
@@ -971,7 +991,7 @@ fn player_abilities_listener_dispatches_flying_events_after_can_fly_gate() {
         .world_manager
         .world(world_uuid)
         .unwrap()
-        .entity_by_id(player_id)
+        .get_entity(player_id)
         .unwrap();
     assert!(!matches!(player, Entity::Player(player) if player.is_flying()));
     assert_eq!(LISTENER_PARITY_START_FLYING.load(Ordering::SeqCst), 0);
@@ -998,7 +1018,7 @@ fn player_abilities_listener_dispatches_flying_events_after_can_fly_gate() {
         .world_manager
         .world(world_uuid)
         .unwrap()
-        .entity_by_id(player_id)
+        .get_entity(player_id)
         .unwrap();
     assert!(!matches!(player, Entity::Player(player) if player.is_flying()));
     assert_eq!(LISTENER_PARITY_START_FLYING.load(Ordering::SeqCst), 1);
@@ -1012,8 +1032,8 @@ fn spectate_listener_requires_spectator_target_in_same_world_and_sets_camera() {
         server_with_play_player(GameMode::Spectator);
     attach_client_to_player(&mut server, &mut client);
     let target = GenericEntity::new(EntityType::ZOMBIE);
-    let target_id = target.entity_id();
-    let target_uuid = target.uuid();
+    let target_id = target.get_entity_id();
+    let target_uuid = target.get_uuid();
     server
         .world_manager
         .world_mut(world_uuid)
@@ -1033,7 +1053,7 @@ fn spectate_listener_requires_spectator_target_in_same_world_and_sets_camera() {
     let camera_packet = SetCameraPacket::decode(&mut payload.as_slice()).unwrap();
 
     assert_eq!(packet_id, SetCameraPacket::get_id());
-    assert_eq!(camera_packet.camera_id, target_id.value());
+    assert_eq!(camera_packet.camera_id, target_id.get_value());
     assert_eq!(
         LISTENER_PARITY_SPECTATES.lock().unwrap().as_slice(),
         [target_id]
@@ -1082,7 +1102,7 @@ fn signed_command_chat_listener_uses_minestom_chat_rejection_gate() {
         .world_manager
         .player_pointer_for_client(&client)
         .unwrap();
-    let mut settings = unsafe { &*player }.settings().clone();
+    let mut settings = unsafe { &*player }.get_settings().clone();
     settings.chat_mode = 2;
     unsafe { &mut *player }.refresh_settings(settings);
 
@@ -1161,7 +1181,7 @@ fn server_with_play_player(
     let mut player = Player::new(Uuid::nil(), "Listener".to_string(), 0, client.addr);
     player.set_game_mode(game_mode);
     player.mark_entered_world();
-    let player_id = player.entity_id();
+    let player_id = player.get_entity_id();
     server
         .world_manager
         .add_entity(world_uuid, Entity::Player(player));

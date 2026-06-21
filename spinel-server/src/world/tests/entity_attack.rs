@@ -18,7 +18,7 @@ static ENTITY_ATTACK_EVENT_LOG: Mutex<Vec<(EntityId, EntityId)>> = Mutex::new(Ve
 
 #[event_listener]
 fn creature_attack_listener(event: &mut EntityAttackEvent, _server: &mut MinecraftServer) {
-    let attack_pair = (event.entity_id(), event.target_id());
+    let attack_pair = (event.get_entity_id(), event.target_id());
     if *ENTITY_ATTACK_TEST_PAIR.lock().unwrap() != Some(attack_pair) {
         return;
     }
@@ -33,13 +33,20 @@ fn entity_creature_attack_dispatches_entity_attack_event_without_client_context(
     let mut world = event_world("creature_attack_event", &mut server);
     let creature = EntityCreature::new(EntityType::ZOMBIE);
     let target = Entity::Generic(GenericEntity::new(EntityType::PLAYER));
-    let creature_id = creature.entity_id();
-    let target_id = target.entity_id();
+    let creature_id = creature.get_entity_id();
+    let target_id = target.get_entity_id();
     *ENTITY_ATTACK_TEST_PAIR.lock().unwrap() = Some((creature_id, target_id));
-    let mut creature = creature;
-    creature.attack(&target);
     creature.set_instance(&mut world);
-    target.set_instance(&mut world);
+
+    let Some(Entity::Creature(creature)) = world.get_entity_mut(creature_id) else {
+        panic!("creature must be assigned to the test world");
+    };
+    creature.attack(&target).unwrap();
+
+    assert_eq!(
+        ENTITY_ATTACK_EVENT_LOG.lock().unwrap().as_slice(),
+        [(creature_id, target_id)]
+    );
 
     world.tick();
 
@@ -54,24 +61,33 @@ fn entity_creature_attack_with_swing_swings_main_hand_before_dispatching_attack_
     let _lock = ENTITY_ATTACK_TEST_LOCK.lock().unwrap();
     reset_entity_attack_state();
     let mut server = MinecraftServer::new();
-    let mut world = event_world("creature_attack_swing", &mut server);
+    let world = event_world("creature_attack_swing", &mut server);
+    let world_uuid = world.uuid();
+    server.world_manager.register_world(world);
+    let mut world = server.world_manager.world_mut(world_uuid).unwrap();
     let mut viewer_client = queued_client();
     let viewer = entered_player("AttackViewer", &mut viewer_client);
-    let viewer_id = viewer.entity_id();
+    let viewer_id = viewer.get_entity_id();
     let mut creature = EntityCreature::new(EntityType::ZOMBIE);
     creature.set_position(EntityPosition::new(1.0, 64.0, 1.0, 0.0, 0.0));
     let target = Entity::Generic(GenericEntity::new(EntityType::PLAYER));
-    let creature_id = creature.entity_id();
-    let target_id = target.entity_id();
+    let creature_id = creature.get_entity_id();
+    let target_id = target.get_entity_id();
     *ENTITY_ATTACK_TEST_PAIR.lock().unwrap() = Some((creature_id, target_id));
-    creature.attack_with_swing(&target);
     Entity::Player(viewer).set_instance(&mut world);
     creature.set_instance(&mut world);
-    target.set_instance(&mut world);
     world.add_entity_viewer(creature_id, viewer_id).unwrap();
     viewer_client.discard_queued_outbound_packets();
 
-    world.tick();
+    let Some(Entity::Creature(creature)) = world.get_entity_mut(creature_id) else {
+        panic!("creature must be assigned to the test world");
+    };
+    creature.attack_with_swing(&target).unwrap();
+
+    assert_eq!(
+        ENTITY_ATTACK_EVENT_LOG.lock().unwrap().as_slice(),
+        [(creature_id, target_id)]
+    );
 
     assert_eq!(
         viewer_client.queued_outbound_packet_ids().first().copied(),

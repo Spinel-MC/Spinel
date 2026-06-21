@@ -53,7 +53,7 @@ impl AttributeList {
     }
 
     #[must_use]
-    pub fn modifiers(&self) -> &[AttributeModifierEntry] {
+    pub fn get_modifiers(&self) -> &[AttributeModifierEntry] {
         &self.modifiers
     }
 
@@ -107,7 +107,7 @@ impl AttributeModifierEntry {
     }
 
     #[must_use]
-    pub const fn amount(&self) -> f64 {
+    pub const fn get_amount(&self) -> f64 {
         self.amount
     }
 

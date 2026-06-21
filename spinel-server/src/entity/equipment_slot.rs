@@ -15,7 +15,7 @@ pub enum EquipmentSlot {
 }
 
 impl EquipmentSlot {
-    pub fn protocol_id(&self) -> i32 {
+    pub fn get_protocol_id(&self) -> i32 {
         match self {
             Self::MainHand => 0,
             Self::Boots => 1,
@@ -28,7 +28,7 @@ impl EquipmentSlot {
         }
     }
 
-    pub fn legacy_protocol_id(&self) -> i32 {
+    pub fn get_legacy_protocol_id(&self) -> i32 {
         match self {
             Self::MainHand => 0,
             Self::OffHand => 1,
@@ -41,7 +41,7 @@ impl EquipmentSlot {
         }
     }
 
-    pub fn nbt_name(&self) -> &'static str {
+    pub fn get_nbt_name(&self) -> &'static str {
         match self {
             Self::MainHand => "mainhand",
             Self::OffHand => "offhand",
@@ -86,7 +86,7 @@ impl EquipmentSlot {
         }
     }
 
-    pub fn armor_slot(&self) -> i32 {
+    pub fn get_armor_slot(&self) -> i32 {
         match self {
             Self::Boots => BOOTS_SLOT,
             Self::Leggings => LEGGINGS_SLOT,
@@ -96,7 +96,7 @@ impl EquipmentSlot {
         }
     }
 
-    pub fn entity_equipment_slot(&self) -> EntityEquipmentSlot {
+    pub fn get_entity_equipment_slot(&self) -> EntityEquipmentSlot {
         match self {
             Self::MainHand => EntityEquipmentSlot::MainHand,
             Self::OffHand => EntityEquipmentSlot::OffHand,

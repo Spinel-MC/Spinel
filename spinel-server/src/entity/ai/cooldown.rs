@@ -15,7 +15,7 @@ impl AiCooldown {
         }
     }
 
-    pub const fn duration(&self) -> Duration {
+    pub const fn get_duration(&self) -> Duration {
         self.duration
     }
 

@@ -23,7 +23,7 @@ impl InventoryCloseEvent {
         unsafe { &mut *self.player }
     }
 
-    pub fn inventory(&self) -> &Inventory {
+    pub fn get_inventory(&self) -> &Inventory {
         &self.inventory
     }
 

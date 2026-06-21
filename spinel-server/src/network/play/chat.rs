@@ -9,7 +9,7 @@ fn on_chat(client: &mut Client, packet: ChatPacket, server: &mut MinecraftServer
     let Some(player) = server.world_manager.player_pointer_for_client(client) else {
         return false;
     };
-    let sender = unsafe { &*player }.uuid();
+    let sender = unsafe { &*player }.get_uuid();
     if !unsafe { &*player }.can_receive_chat_message() {
         return unsafe { &mut *player }
             .send_chat_rejection_message()

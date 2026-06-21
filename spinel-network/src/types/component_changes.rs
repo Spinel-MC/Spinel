@@ -2319,15 +2319,15 @@ fn encode_bees_component(component_nbt: &Nbt, data: &mut Vec<u8>) -> Option<()> 
 
 fn encode_attribute_modifiers_component(component_nbt: &Nbt, data: &mut Vec<u8>) -> Option<()> {
     let attribute_list = AttributeList::from_component_nbt(component_nbt)?;
-    VarIntWrapper(attribute_list.modifiers().len() as i32)
+    VarIntWrapper(attribute_list.get_modifiers().len() as i32)
         .encode(data)
         .ok()?;
-    for modifier in attribute_list.modifiers() {
+    for modifier in attribute_list.get_modifiers() {
         VarIntWrapper(attribute_protocol_id(modifier.attribute_type())?)
             .encode(data)
             .ok()?;
         modifier.id().to_string().encode(data).ok()?;
-        modifier.amount().encode(data).ok()?;
+        modifier.get_amount().encode(data).ok()?;
         VarIntWrapper(modifier.operation().protocol_id())
             .encode(data)
             .ok()?;
@@ -2379,7 +2379,7 @@ fn encode_custom_potion_effect(
     VarIntWrapper(potion_effect_protocol_id(custom_effect.effect_id())?)
         .encode(data)
         .ok()?;
-    encode_potion_effect_settings(custom_effect.settings(), data)
+    encode_potion_effect_settings(custom_effect.get_settings(), data)
 }
 
 fn encode_potion_effect_settings(

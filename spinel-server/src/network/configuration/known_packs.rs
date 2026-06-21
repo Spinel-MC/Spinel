@@ -115,7 +115,7 @@ fn create_player(client: &mut Client, server: &mut MinecraftServer) -> Option<Pl
     player.set_client(client);
     player.refresh_settings(client.pending_client_settings.clone());
     let player_pointer = &mut player as *mut Player;
-    let mut skin_init_event = PlayerSkinInitEvent::new(player_pointer, player.skin().cloned());
+    let mut skin_init_event = PlayerSkinInitEvent::new(player_pointer, player.get_skin().cloned());
     skin_init_event.dispatch(server, client);
     player.apply_skin(skin_init_event.into_skin());
     Some(player)

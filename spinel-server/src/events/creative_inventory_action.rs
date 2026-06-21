@@ -29,7 +29,7 @@ impl CreativeInventoryActionEvent {
         self.slot
     }
 
-    pub fn item_stack(&self) -> &ItemStack {
+    pub fn get_item_stack(&self) -> &ItemStack {
         &self.item_stack
     }
 

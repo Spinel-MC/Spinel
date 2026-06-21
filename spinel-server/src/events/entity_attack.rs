@@ -15,11 +15,11 @@ impl EntityAttackEvent {
         }
     }
 
-    pub fn entity_id(&self) -> EntityId {
+    pub fn get_entity_id(&self) -> EntityId {
         self.entity_id
     }
 
-    pub fn target_id(&self) -> EntityId {
+    pub fn get_target_id(&self) -> EntityId {
         self.target_id
     }
 }

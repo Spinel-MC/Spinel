@@ -1,72 +1,84 @@
 use crate::entity::ai::{CreatureAiAction, EntityAiGroup};
-use crate::entity::metadata::EntityMeta;
+use crate::entity::metadata::EntityMetaCast;
 use crate::entity::pathfinding::{
     Navigator, NodeFollowerPhysicsTiming, PathRequest, SetPathToError,
 };
 use crate::entity::{Entity, EntityId, EntityPosition, GenericEntity};
+use crate::events::entity_attack::EntityAttackEvent;
+use crate::server::MinecraftServer;
 use crate::world::{World, WorldSnapshot};
 use spinel_registry::EntityType;
 use std::ops::{Deref, DerefMut};
+use std::sync::Arc;
 use uuid::Uuid;
+
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+pub enum EntityCreatureAttackError {
+    #[error("entity creature is not assigned to a world")]
+    EntityHasNoWorld,
+
+    #[error("entity creature world does not have an event dispatcher")]
+    EventDispatcherUnavailable,
+
+    #[error("entity creature world is no longer available")]
+    WorldUnavailable,
+
+    #[error("entity creature main-hand animation could not be sent: {message}")]
+    MainHandAnimationDispatchFailed { message: String },
+}
 
 pub struct EntityCreature {
     entity: GenericEntity,
     ai_groups: Vec<EntityAiGroup>,
     navigator: Navigator,
     target: Option<EntityId>,
-    pending_path_request: Option<PathRequest>,
-    last_path_error: Option<SetPathToError>,
     pending_ai_actions: Vec<CreatureAiAction>,
+    event_dispatcher: Option<usize>,
+    pathfinding_world: Option<Arc<WorldSnapshot>>,
     removal_animation_delay_millis: i32,
 }
 
 impl EntityCreature {
     pub fn new(entity_type: EntityType) -> Self {
+        let mut entity = GenericEntity::new(entity_type);
+        entity.heal();
         Self {
-            entity: GenericEntity::new(entity_type),
+            entity,
             ai_groups: Vec::new(),
             navigator: Navigator::default(),
             target: None,
-            pending_path_request: None,
-            last_path_error: None,
             pending_ai_actions: Vec::new(),
+            event_dispatcher: None,
+            pathfinding_world: None,
             removal_animation_delay_millis: 1000,
         }
     }
 
-    pub const fn entity(&self) -> &GenericEntity {
+    pub const fn get_entity(&self) -> &GenericEntity {
         &self.entity
     }
 
-    pub fn entity_mut(&mut self) -> &mut GenericEntity {
+    pub fn get_entity_mut(&mut self) -> &mut GenericEntity {
         &mut self.entity
     }
 
-    pub fn entity_meta_mut(&mut self) -> EntityMeta<'_> {
-        self.entity.entity_meta_mut()
+    pub fn get_entity_meta_mut(&mut self) -> EntityMetaCast<'_> {
+        self.entity.get_entity_meta_mut()
     }
 
-    pub const fn navigator(&self) -> &Navigator {
+    pub const fn get_navigator(&self) -> &Navigator {
         &self.navigator
     }
 
-    pub fn navigator_mut(&mut self) -> &mut Navigator {
+    pub fn get_navigator_mut(&mut self) -> &mut Navigator {
         &mut self.navigator
     }
 
-    pub const fn last_path_error(&self) -> Option<SetPathToError> {
-        self.last_path_error
-    }
-
-    pub fn take_last_path_error(&mut self) -> Option<SetPathToError> {
-        self.last_path_error.take()
-    }
-
-    pub fn ai_groups(&self) -> &[EntityAiGroup] {
+    pub fn get_ai_groups(&self) -> &[EntityAiGroup] {
         &self.ai_groups
     }
 
-    pub fn ai_groups_mut(&mut self) -> &mut Vec<EntityAiGroup> {
+    pub fn get_ai_groups_mut(&mut self) -> &mut Vec<EntityAiGroup> {
         &mut self.ai_groups
     }
 
@@ -74,7 +86,7 @@ impl EntityCreature {
         self.ai_groups.push(group);
     }
 
-    pub const fn target(&self) -> Option<EntityId> {
+    pub const fn get_target(&self) -> Option<EntityId> {
         self.target
     }
 
@@ -82,7 +94,7 @@ impl EntityCreature {
         self.target = target;
     }
 
-    pub const fn removal_animation_delay_millis(&self) -> i32 {
+    pub const fn get_removal_animation_delay_millis(&self) -> i32 {
         self.removal_animation_delay_millis
     }
 
@@ -105,12 +117,46 @@ impl EntityCreature {
         true
     }
 
-    pub fn attack(&mut self, target: &Entity) {
-        self.queue_attack(target.entity_id(), false);
+    pub fn attack(&mut self, target: &Entity) -> Result<(), EntityCreatureAttackError> {
+        self.dispatch_attack(target)
     }
 
-    pub fn attack_with_swing(&mut self, target: &Entity) {
-        self.queue_attack(target.entity_id(), true);
+    pub fn attack_with_swing(&mut self, target: &Entity) -> Result<(), EntityCreatureAttackError> {
+        self.dispatch_main_hand_animation()?;
+        self.dispatch_attack(target)
+    }
+
+    fn dispatch_attack(&self, target: &Entity) -> Result<(), EntityCreatureAttackError> {
+        if self.entity.get_world().is_none() {
+            return Err(EntityCreatureAttackError::EntityHasNoWorld);
+        }
+        let Some(event_dispatcher) = self.event_dispatcher else {
+            return Err(EntityCreatureAttackError::EventDispatcherUnavailable);
+        };
+        let server = unsafe { &mut *(event_dispatcher as *mut MinecraftServer) };
+        EntityAttackEvent::new(self.get_entity_id(), target.get_entity_id()).dispatch(server);
+        Ok(())
+    }
+
+    fn dispatch_main_hand_animation(&self) -> Result<(), EntityCreatureAttackError> {
+        let Some(world) = self.entity.get_world() else {
+            return Err(EntityCreatureAttackError::EntityHasNoWorld);
+        };
+        let Some(event_dispatcher) = self.event_dispatcher else {
+            return Err(EntityCreatureAttackError::EventDispatcherUnavailable);
+        };
+        let server = unsafe { &mut *(event_dispatcher as *mut MinecraftServer) };
+        let Some(world) = server.world_manager.world_mut(world) else {
+            return Err(EntityCreatureAttackError::WorldUnavailable);
+        };
+        world
+            .swing_generic_entity_main_hand(self.get_entity_id())
+            .map_err(
+                |error| EntityCreatureAttackError::MainHandAnimationDispatchFailed {
+                    message: error.to_string(),
+                },
+            )?;
+        Ok(())
     }
 
     pub(crate) fn attack_entity_with_swing(&mut self, target: EntityId) {
@@ -119,7 +165,7 @@ impl EntityCreature {
 
     fn queue_attack(&mut self, target: EntityId, should_swing_main_hand: bool) {
         self.pending_ai_actions.push(CreatureAiAction::Attack {
-            source: self.entity_id(),
+            source: self.get_entity_id(),
             target,
             should_swing_main_hand,
         });
@@ -133,7 +179,7 @@ impl EntityCreature {
         spread: f64,
     ) {
         self.pending_ai_actions.push(CreatureAiAction::Shoot {
-            shooter: self.entity_id(),
+            shooter: self.get_entity_id(),
             projectile,
             target,
             power,
@@ -146,30 +192,28 @@ impl EntityCreature {
     }
 
     pub fn set_path_to(&mut self, request: PathRequest) -> Result<bool, SetPathToError> {
-        self.last_path_error = None;
-        if request.destination().is_none() {
-            self.pending_path_request = None;
+        if request.get_destination().is_none() {
             self.navigator.reset();
             return Ok(false);
         }
-        if self.entity.world().is_none() {
+        if self.entity.get_world().is_none() {
             return Err(SetPathToError::EntityHasNoWorld);
         }
-        self.pending_path_request = Some(request);
-        Ok(true)
+        let Some(world) = self.pathfinding_world.clone() else {
+            return Err(SetPathToError::WorldSnapshotUnavailable);
+        };
+        self.resolve_path_request(&world, request)
     }
-
     pub(crate) fn set_path_to_in_world(
         &mut self,
         world: &WorldSnapshot,
         request: PathRequest,
     ) -> Result<bool, SetPathToError> {
-        self.last_path_error = None;
-        if request.destination().is_none() {
+        if request.get_destination().is_none() {
             self.navigator.reset();
             return Ok(false);
         }
-        if self.entity.world().is_none() {
+        if self.entity.get_world().is_none() {
             return Err(SetPathToError::EntityHasNoWorld);
         }
         self.resolve_path_request(world, request)
@@ -180,8 +224,8 @@ impl EntityCreature {
         world: &WorldSnapshot,
         request: PathRequest,
     ) -> Result<bool, SetPathToError> {
-        let start = self.entity.position();
-        let bounding_box = self.entity.bounding_box();
+        let start = self.entity.get_position();
+        let bounding_box = self.entity.get_bounding_box();
         let is_on_ground = self.entity.is_on_ground();
         self.navigator
             .set_path_to(world, start, bounding_box, is_on_ground, request)
@@ -209,15 +253,23 @@ impl EntityCreature {
         self.entity.set_world(world);
     }
 
+    pub(crate) fn set_event_dispatcher(&mut self, event_dispatcher: Option<usize>) {
+        self.event_dispatcher = event_dispatcher;
+    }
+
+    pub(crate) fn set_pathfinding_world(&mut self, world: Arc<WorldSnapshot>) {
+        self.pathfinding_world = Some(world);
+    }
+
     pub(crate) fn tick_before_movement(&mut self, world: &WorldSnapshot, time: u64) {
-        if self.navigator.physics_timing() != NodeFollowerPhysicsTiming::BeforePhysics {
+        if self.navigator.get_physics_timing() != NodeFollowerPhysicsTiming::BeforePhysics {
             return;
         }
         self.tick_navigation(world, time);
     }
 
     pub(crate) fn tick_after_movement(&mut self, world: &WorldSnapshot, time: u64) {
-        if self.navigator.physics_timing() == NodeFollowerPhysicsTiming::AfterPhysics {
+        if self.navigator.get_physics_timing() == NodeFollowerPhysicsTiming::AfterPhysics {
             self.tick_navigation(world, time);
         }
         self.entity.tick();
@@ -230,18 +282,8 @@ impl EntityCreature {
 
     fn tick_navigation(&mut self, world: &WorldSnapshot, time: u64) {
         self.ai_tick(world, time);
-        self.resolve_pending_path_request(world);
         let entity_is_dead = self.entity.is_dead();
         self.navigator.tick(&mut self.entity, world, entity_is_dead);
-    }
-
-    pub(crate) fn resolve_pending_path_request(&mut self, world: &WorldSnapshot) {
-        let Some(request) = self.pending_path_request.take() else {
-            return;
-        };
-        if let Err(path_error) = self.resolve_path_request(world, request) {
-            self.last_path_error = Some(path_error);
-        }
     }
 }
 

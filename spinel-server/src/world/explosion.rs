@@ -121,11 +121,11 @@ impl Explosion {
     pub fn packet(&self) -> ExplosionPacket {
         ExplosionPacket {
             center: Vector3d {
-                x: self.center.x(),
-                y: self.center.y(),
-                z: self.center.z(),
+                x: self.center.get_x(),
+                y: self.center.get_y(),
+                z: self.center.get_z(),
             },
-            radius: 0.0,
+           radius: 0.0,
             block_count: 0,
             player_knockback: Some(Vector3d {
                 x: 0.0,

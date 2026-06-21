@@ -28,10 +28,10 @@ use uuid::Uuid;
 fn manual_viewer_add_requires_an_active_entity_and_rejects_self_view() {
     let mut world = World::new(Identifier::minecraft("overworld"));
     let inactive_entity = Entity::new(EntityType::ZOMBIE);
-    let inactive_entity_id = inactive_entity.entity_id();
+    let inactive_entity_id = inactive_entity.get_entity_id();
     let mut viewer_client = queued_client();
     let viewer = entered_player(&mut viewer_client, "Viewer");
-    let viewer_id = viewer.entity_id();
+    let viewer_id = viewer.get_entity_id();
     world.add_entity(Entity::Player(viewer));
     viewer_client.discard_queued_outbound_packets();
 
@@ -49,16 +49,16 @@ fn manual_viewer_add_and_remove_match_minestom_packets_and_no_op_edges() {
     let mut world = World::new(Identifier::minecraft("overworld"));
     let mut viewer_client = queued_client();
     let viewer = entered_player(&mut viewer_client, "Viewer");
-    let viewer_id = viewer.entity_id();
+    let viewer_id = viewer.get_entity_id();
     let mut holder = Entity::new(EntityType::PIG);
-    holder.view_mut().set_auto_viewable(false);
-    let holder_id = holder.entity_id();
+    holder.get_view_mut().set_auto_viewable(false);
+    let holder_id = holder.get_entity_id();
     let mut leashed = Entity::new(EntityType::COW);
-    leashed.view_mut().set_auto_viewable(false);
-    let leashed_id = leashed.entity_id();
+    leashed.get_view_mut().set_auto_viewable(false);
+    let leashed_id = leashed.get_entity_id();
     let mut passenger = Entity::new(EntityType::ZOMBIE);
-    passenger.view_mut().set_auto_viewable(false);
-    let passenger_id = passenger.entity_id();
+    passenger.get_view_mut().set_auto_viewable(false);
+    let passenger_id = passenger.get_entity_id();
     world.add_entity(Entity::Player(viewer));
     world.add_entity(holder);
     world.add_entity(leashed);
@@ -96,19 +96,89 @@ fn manual_viewer_add_and_remove_match_minestom_packets_and_no_op_edges() {
         viewer_client.queued_outbound_packet_ids(),
         vec![AttachEntityPacket::get_id(), RemoveEntitiesPacket::get_id()]
     );
-    assert!(
-        !world
-            .entity_by_id(holder_id)
-            .unwrap()
-            .view()
-            .is_viewer(viewer_id)
-    );
+    assert!(!world.get_entity(holder_id).unwrap().get_view().is_viewer(viewer_id));
     assert!(
         world
-            .entity_by_id(passenger_id)
+            .get_entity(passenger_id)
             .unwrap()
-            .view()
+            .get_view()
             .is_viewer(viewer_id)
+    );
+}
+
+#[test]
+fn viewable_rule_update_refreshes_automatic_visibility_immediately() {
+    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut viewer_client = queued_client();
+    let viewer = entered_player(&mut viewer_client, "Viewer");
+    let viewer_id = viewer.get_entity_id();
+    let target = Entity::new(EntityType::ZOMBIE);
+    let target_id = target.get_entity_id();
+
+    world.add_entity(target);
+    world.add_entity(Entity::Player(viewer));
+    world.process_pending_entity_visibility_refreshes().unwrap();
+    assert!(world.get_entity(target_id).unwrap().get_view().is_viewer(viewer_id));
+    viewer_client.discard_queued_outbound_packets();
+
+    assert!(
+        world
+            .update_entity_viewable_rule(target_id, |_| false)
+            .unwrap()
+    );
+
+    assert!(!world.get_entity(target_id).unwrap().get_view().is_viewer(viewer_id));
+    assert_eq!(
+        viewer_client.queued_outbound_packet_ids(),
+        vec![RemoveEntitiesPacket::get_id()]
+    );
+    viewer_client.discard_queued_outbound_packets();
+
+    assert!(world.clear_entity_viewable_rule(target_id).unwrap());
+
+    assert!(world.get_entity(target_id).unwrap().get_view().is_viewer(viewer_id));
+    assert!(
+        viewer_client
+            .queued_outbound_packet_ids()
+            .contains(&SpawnEntityPacket::get_id())
+    );
+}
+
+#[test]
+fn viewer_rule_update_refreshes_player_automatic_visibility_immediately() {
+    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut viewer_client = queued_client();
+    let viewer = entered_player(&mut viewer_client, "Viewer");
+    let viewer_id = viewer.get_entity_id();
+    let target = Entity::new(EntityType::ZOMBIE);
+    let target_id = target.get_entity_id();
+
+    world.add_entity(target);
+    world.add_entity(Entity::Player(viewer));
+    world.process_pending_entity_visibility_refreshes().unwrap();
+    assert!(world.get_entity(target_id).unwrap().get_view().is_viewer(viewer_id));
+    viewer_client.discard_queued_outbound_packets();
+
+    assert!(
+        world
+            .update_entity_viewer_rule(viewer_id, |_| false)
+            .unwrap()
+    );
+
+    assert!(!world.get_entity(target_id).unwrap().get_view().is_viewer(viewer_id));
+    assert_eq!(
+        viewer_client.queued_outbound_packet_ids(),
+        vec![RemoveEntitiesPacket::get_id()]
+    );
+    viewer_client.discard_queued_outbound_packets();
+
+    assert!(world.clear_entity_viewer_rule(viewer_id).unwrap());
+
+    assert!(world.get_entity(target_id).unwrap().get_view().is_viewer(viewer_id));
+    assert!(
+        viewer_client
+            .queued_outbound_packet_ids()
+            .contains(&SpawnEntityPacket::get_id())
     );
 }
 
@@ -118,8 +188,8 @@ fn automatic_visibility_removes_stale_viewer_relationship_after_entity_moves_out
     let mut viewer_client = queued_client();
     let viewer = entered_player(&mut viewer_client, "Viewer");
     let target = Entity::new(EntityType::ZOMBIE);
-    let target_id = target.entity_id();
-    let viewer_id = viewer.entity_id();
+    let target_id = target.get_entity_id();
+    let viewer_id = viewer.get_entity_id();
 
     world.add_entity(target);
     world.add_entity(Entity::Player(viewer));
@@ -137,13 +207,7 @@ fn automatic_visibility_removes_stale_viewer_relationship_after_entity_moves_out
         )
         .unwrap();
 
-    assert!(
-        !world
-            .entity_by_id(target_id)
-            .unwrap()
-            .view()
-            .is_viewer(viewer_id)
-    );
+    assert!(!world.get_entity(target_id).unwrap().get_view().is_viewer(viewer_id));
     let packet_ids = viewer_client.queued_outbound_packet_ids();
     assert_eq!(packet_ids.last(), Some(&RemoveEntitiesPacket::get_id()));
     assert_eq!(
@@ -161,7 +225,7 @@ fn player_spawn_snapshot_sends_living_packets_in_minestom_order() {
     let mut viewer_client = queued_client();
     let viewer = entered_player(&mut viewer_client, "Viewer");
     let mut target = entered_player_without_client("Target");
-    target.attribute(Attribute::MAX_HEALTH);
+    target.get_attribute(Attribute::MAX_HEALTH);
     target.add_effect(TimedPotionEffect::new(1, 2, 40, 0, 0));
     target.set_velocity(Velocity(Vector3d {
         x: 0.25,
@@ -197,7 +261,7 @@ fn vanished_player_refresh_removes_player_info_before_entity_removal() {
     let mut viewer_client = queued_client();
     let viewer = entered_player(&mut viewer_client, "Viewer");
     let target = entered_player_without_client("Target");
-    let target_id = target.entity_id();
+    let target_id = target.get_entity_id();
 
     world.add_entity(Entity::Player(viewer));
     world.add_entity(Entity::Player(target));
@@ -224,7 +288,7 @@ fn skin_refresh_replays_player_to_current_viewers_only() {
     let mut far_player = entered_player(&mut far_client, "Far");
     far_player.set_position(EntityPosition::new(256.0, 64.0, 0.0, 0.0, 0.0));
     let target = entered_player_without_client("Target");
-    let target_id = target.entity_id();
+    let target_id = target.get_entity_id();
 
     world.add_entity(Entity::Player(viewer));
     world.add_entity(Entity::Player(far_player));
@@ -294,7 +358,7 @@ fn joining_player_receives_existing_generic_entity_replay_packets() {
     let mut world = World::new(Identifier::minecraft("overworld"));
     let mut target = Entity::new(EntityType::ZOMBIE);
     target.set_position(EntityPosition::new(1.0, 64.0, 1.0, 0.0, 0.0));
-    let target_id = target.entity_id();
+    let target_id = target.get_entity_id();
     world.add_entity(target);
     let mut viewer_client = queued_client();
     let viewer = entered_player(&mut viewer_client, "Viewer");
@@ -310,7 +374,7 @@ fn joining_player_receives_existing_generic_entity_replay_packets() {
         })
         .unwrap();
     let spawn_packet = SpawnEntityPacket::decode(&mut spawn_payload.as_slice()).unwrap();
-    assert_eq!(spawn_packet.entity_id, target_id.value());
+    assert_eq!(spawn_packet.entity_id, target_id.get_value());
 }
 
 #[test]
@@ -320,7 +384,7 @@ fn second_player_receives_first_player_relative_movement_packet() {
     let mut viewer_client = queued_client();
     let mut moving_player = entered_player(&mut moving_client, "Moving");
     moving_player.set_position(EntityPosition::new(0.0, 64.0, 0.0, 0.0, 0.0));
-    let moving_player_id = moving_player.entity_id();
+    let moving_player_id = moving_player.get_entity_id();
     let mut viewer = entered_player(&mut viewer_client, "Viewer");
     viewer.set_position(EntityPosition::new(2.0, 64.0, 0.0, 0.0, 0.0));
     world.add_entity(Entity::Player(moving_player));
@@ -349,7 +413,7 @@ fn second_player_receives_first_player_relative_movement_packet() {
         .unwrap();
     let movement_packet =
         EntityPositionAndRotationPacket::decode(&mut movement_payload.as_slice()).unwrap();
-    assert_eq!(movement_packet.entity_id, moving_player_id.value());
+    assert_eq!(movement_packet.entity_id, moving_player_id.get_value());
     assert_eq!(
         movement_packet.delta_x,
         EntityPositionPacket::delta(1.0, 0.0)
@@ -376,7 +440,7 @@ fn tracker_scopes_chunk_and_entity_packets_to_actual_viewers() {
 
     let mut target = Entity::new(EntityType::ZOMBIE);
     target.set_position(EntityPosition::new(1.0, 64.0, 1.0, 0.0, 0.0));
-    let target_id = target.entity_id();
+    let target_id = target.get_entity_id();
     world.add_entity(target);
     world.process_pending_entity_visibility_refreshes().unwrap();
 

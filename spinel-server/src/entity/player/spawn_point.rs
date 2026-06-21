@@ -20,7 +20,7 @@ impl PlayerSpawnPoint {
         }
     }
 
-    pub fn block_position(self) -> Position {
+    pub fn get_block_position(self) -> Position {
         Position {
             x: self.x as i32,
             y: self.y as i32,

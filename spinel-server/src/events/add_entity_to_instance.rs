@@ -18,16 +18,16 @@ impl AddEntityToInstanceEvent {
         }
     }
 
-    pub fn world(&mut self) -> &mut World {
+    pub fn get_world(&mut self) -> &mut World {
         unsafe { &mut *self.world }
     }
 
-    pub fn entity(&mut self) -> &mut Entity {
+    pub fn get_entity(&mut self) -> &mut Entity {
         unsafe { &mut *self.entity }
     }
 
-    pub fn entity_id(&self) -> EntityId {
-        unsafe { (&*self.entity).entity_id() }
+    pub fn get_entity_id(&self) -> EntityId {
+        unsafe { (&*self.entity).get_entity_id() }
     }
 
     pub const fn is_cancelled(&self) -> bool {

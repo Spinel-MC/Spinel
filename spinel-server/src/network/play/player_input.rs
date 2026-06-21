@@ -15,7 +15,7 @@ fn on_player_input(
     let Some(player) = server.world_manager.player_pointer_for_client(client) else {
         return false;
     };
-    let old_inputs = unsafe { &*player }.inputs();
+    let old_inputs = unsafe { &*player }.get_inputs();
     if server
         .refresh_player_input_in_world(
             client,

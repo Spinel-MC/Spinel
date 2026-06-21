@@ -56,22 +56,22 @@ impl ChunkLoader for DeferredTeleportChunkLoader {
 
 #[event_listener]
 fn entity_teleport_listener(event: &mut EntityTeleportEvent, server: &mut MinecraftServer) {
-    let event_entity_id = event.entity_id();
-    if event.entity().entity_id() == event_entity_id {
+    let event_entity_id = event.get_entity_id();
+    if event.get_entity().get_entity_id() == event_entity_id {
         TELEPORT_EVENT_ENTITY_ACCESSOR_MATCHED.store(true, Ordering::SeqCst);
     }
     let current_position = server
         .world_manager
         .worlds()
         .iter()
-        .find_map(|world| world.entity_by_id(event.entity_id()))
-        .map(Entity::position);
+        .find_map(|world| world.get_entity(event.get_entity_id()))
+        .map(Entity::get_position);
     TELEPORT_EVENT_OBSERVED_PREVIOUS_POSITION.store(
         current_position == *TELEPORT_EXPECTED_PREVIOUS_POSITION.lock().unwrap(),
         Ordering::SeqCst,
     );
     *TELEPORT_EVENT_STATE.lock().unwrap() = Some(TeleportEventState {
-        entity_id: event.entity_id(),
+        entity_id: event.get_entity_id(),
         teleport_position: event.teleport_position(),
         new_position: event.new_position(),
         relative_flags: event.relative_flags(),
@@ -99,7 +99,7 @@ fn world_player_teleport_dispatches_immutable_event_before_state_mutation() {
         SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 25565),
     );
     player.set_position(EntityPosition::new(1.0, 64.0, 1.0, 10.0, 20.0));
-    let entity_id = player.entity_id();
+    let entity_id = player.get_entity_id();
     server
         .world_manager
         .world_mut(world_uuid)
@@ -131,15 +131,15 @@ fn world_player_teleport_dispatches_immutable_event_before_state_mutation() {
     assert_eq!(event.relative_flags, expected_flags);
     assert!(TELEPORT_EVENT_ENTITY_ACCESSOR_MATCHED.load(Ordering::SeqCst));
     assert!(TELEPORT_EVENT_OBSERVED_PREVIOUS_POSITION.load(Ordering::SeqCst));
-    assert_eq!(teleport.position(), expected_position);
+    assert_eq!(teleport.get_position(), expected_position);
     assert_eq!(
         server
             .world_manager
             .world(world_uuid)
             .unwrap()
-            .entity_by_id(entity_id)
+            .get_entity(entity_id)
             .unwrap()
-            .position(),
+            .get_position(),
         expected_position
     );
 }
@@ -166,7 +166,7 @@ fn world_generic_entity_teleport_updates_viewers_after_event_and_state_change() 
     );
     viewer.set_client(&mut viewer_client);
     viewer.mark_entered_world();
-    let viewer_id = viewer.entity_id();
+    let viewer_id = viewer.get_entity_id();
     let mut entity = GenericEntity::new(EntityType::ZOMBIE);
     entity.set_position(previous_position);
     entity.set_velocity(Velocity(Vector3d {
@@ -174,8 +174,8 @@ fn world_generic_entity_teleport_updates_viewers_after_event_and_state_change() 
         y: 2.0,
         z: 3.0,
     }));
-    entity.view_mut().set_auto_viewable(false);
-    let entity_id = entity.entity_id();
+    entity.get_view_mut().set_auto_viewable(false);
+    let entity_id = entity.get_entity_id();
     let world = server.world_manager.world_mut(world_uuid).unwrap();
     world.add_entity(Entity::Player(viewer));
     world.add_entity(Entity::Generic(entity));
@@ -198,7 +198,7 @@ fn world_generic_entity_teleport_updates_viewers_after_event_and_state_change() 
     assert!(TELEPORT_EVENT_OBSERVED_PREVIOUS_POSITION.load(Ordering::SeqCst));
     assert!(TELEPORT_EVENT_ENTITY_ACCESSOR_MATCHED.load(Ordering::SeqCst));
     assert_eq!(
-        teleport.velocity(),
+        teleport.get_velocity(),
         Velocity(Vector3d {
             x: 1.0,
             y: 2.0,
@@ -210,10 +210,10 @@ fn world_generic_entity_teleport_updates_viewers_after_event_and_state_change() 
             .world_manager
             .world(world_uuid)
             .unwrap()
-            .entity_by_id(entity_id)
+            .get_entity(entity_id)
             .unwrap()
-            .position(),
-        teleport.position()
+            .get_position(),
+        teleport.get_position()
     );
     assert_eq!(
         viewer_client.queued_outbound_packet_ids(),
@@ -228,7 +228,7 @@ fn entity_teleport_future_applies_state_only_when_completed() {
     let destination = EntityPosition::new(8.0, 70.0, 9.0, 30.0, 40.0);
     let mut entity = GenericEntity::new(EntityType::ZOMBIE);
     entity.set_position(previous_position);
-    let entity_id = entity.entity_id();
+    let entity_id = entity.get_entity_id();
     world.add_entity(Entity::Generic(entity));
 
     let mut ticket = world
@@ -244,7 +244,7 @@ fn entity_teleport_future_applies_state_only_when_completed() {
 
     assert!(!ticket.is_completed());
     assert_eq!(
-        world.entity_by_id(entity_id).unwrap().position(),
+        world.get_entity(entity_id).unwrap().get_position(),
         previous_position
     );
 
@@ -254,11 +254,8 @@ fn entity_teleport_future_applies_state_only_when_completed() {
         .unwrap();
 
     assert!(ticket.is_completed());
-    assert_eq!(completed_teleport.position(), destination);
-    assert_eq!(
-        world.entity_by_id(entity_id).unwrap().position(),
-        destination
-    );
+    assert_eq!(completed_teleport.get_position(), destination);
+    assert_eq!(world.get_entity(entity_id).unwrap().get_position(), destination);
 }
 
 #[test]
@@ -272,7 +269,7 @@ fn entity_teleport_future_waits_for_parallel_destination_chunk_loading() {
     let destination = EntityPosition::new(32.0, 70.0, 1.0, 0.0, 0.0);
     let mut entity = GenericEntity::new(EntityType::ZOMBIE);
     entity.set_position(previous_position);
-    let entity_id = entity.entity_id();
+    let entity_id = entity.get_entity_id();
     world.add_entity(Entity::Generic(entity));
 
     let mut ticket = world
@@ -293,7 +290,7 @@ fn entity_teleport_future_waits_for_parallel_destination_chunk_loading() {
             .is_none()
     );
     assert_eq!(
-        world.entity_by_id(entity_id).unwrap().position(),
+        world.get_entity(entity_id).unwrap().get_position(),
         previous_position
     );
 
@@ -305,11 +302,8 @@ fn entity_teleport_future_waits_for_parallel_destination_chunk_loading() {
         std::thread::sleep(Duration::from_millis(1));
     };
 
-    assert_eq!(completed_teleport.position(), destination);
-    assert_eq!(
-        world.entity_by_id(entity_id).unwrap().position(),
-        destination
-    );
+    assert_eq!(completed_teleport.get_position(), destination);
+    assert_eq!(world.get_entity(entity_id).unwrap().get_position(), destination);
 }
 
 fn queued_client() -> Client {

@@ -46,22 +46,22 @@ impl WorldSnapshot {
             .entities()
             .map(|entity| {
                 EntityObservation::new(
-                    entity.entity_id(),
-                    entity.entity_type(),
-                    entity.position(),
+                    entity.get_entity_id(),
+                    entity.get_entity_type(),
+                    entity.get_position(),
                     entity.is_removed(),
                 )
             })
             .collect::<Vec<_>>();
-        let entity_ids = entities.iter().map(|entity| entity.entity_id()).collect();
+        let entity_ids = entities.iter().map(|entity| entity.get_entity_id()).collect();
         Self {
             world: world.uuid(),
             name: world.name().clone(),
-            dimension_type: world.dimension_type().clone(),
+            dimension_type: world.get_dimension_type().clone(),
             cached_dimension_type: world.cached_dimension_type().clone(),
             world_age: world.world_age(),
             time: world.time(),
-            world_border: world.world_border(),
+            world_border: world.get_world_border(),
             chunks,
             entity_ids,
             entities,
@@ -77,7 +77,7 @@ impl WorldSnapshot {
         &self.name
     }
 
-    pub fn dimension_type(&self) -> &RegistryKey<DimensionType> {
+    pub fn get_dimension_type(&self) -> &RegistryKey<DimensionType> {
         &self.dimension_type
     }
 
@@ -93,7 +93,7 @@ impl WorldSnapshot {
         self.time
     }
 
-    pub const fn world_border(&self) -> WorldBorder {
+    pub const fn get_world_border(&self) -> WorldBorder {
         self.world_border
     }
 
@@ -128,18 +128,18 @@ impl WorldSnapshot {
         &self.entities
     }
 
-    pub fn entity(&self, entity_id: EntityId) -> Option<EntityObservation> {
+    pub fn get_entity(&self, entity_id: EntityId) -> Option<EntityObservation> {
         self.entities
             .iter()
             .copied()
-            .find(|entity| entity.entity_id() == entity_id)
+            .find(|entity| entity.get_entity_id() == entity_id)
     }
 
     pub fn has_line_of_sight(&self, source: EntityId, target: EntityId) -> bool {
-        let Some(source) = self.entity(source) else {
+        let Some(source) = self.get_entity(source) else {
             return false;
         };
-        let Some(target) = self.entity(target) else {
+        let Some(target) = self.get_entity(target) else {
             return false;
         };
         let source_eye = eye_position(source);
@@ -172,9 +172,9 @@ impl WorldSnapshot {
 
 fn eye_position(entity: EntityObservation) -> Vector3d {
     Vector3d {
-        x: entity.position().x(),
-        y: entity.position().y() + entity.entity_type().eye_height(),
-        z: entity.position().z(),
+        x: entity.get_position().get_x(),
+        y: entity.get_position().get_y() + entity.get_entity_type().get_eye_height(),
+        z: entity.get_position().get_z(),
     }
 }
 
@@ -184,7 +184,7 @@ impl ChunkSnapshot {
         let entity_ids = world
             .chunk_entities(position)
             .into_iter()
-            .map(|entity| entity.entity_id())
+            .map(|entity| entity.get_entity_id())
             .collect();
         Self {
             position,

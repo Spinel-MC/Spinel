@@ -46,7 +46,7 @@ fn chunk_unload_lifecycle_listener(
     }
     assert!(world.chunk(position).is_some_and(Chunk::is_loaded));
     let forget_packet_was_queued = world.players().any(|player| {
-        player.client().is_some_and(|client| {
+        player.get_client().is_some_and(|client| {
             client
                 .queued_outbound_packet_ids()
                 .contains(&ForgetLevelChunkPacket::get_id())
@@ -257,8 +257,8 @@ fn explicit_teleport_chunks_finish_loading_before_position_sync() {
             .all(|packet_id| *packet_id == ForgetLevelChunkPacket::get_id())
     );
     let player = world.player_by_uuid(player_uuid).unwrap();
-    assert_eq!(player.position().x(), 32.0);
-    assert_eq!(player.last_sent_teleport_id(), 0);
+    assert_eq!(player.get_position().get_x(), 32.0);
+    assert_eq!(player.get_last_sent_teleport_id(), 0);
 }
 
 fn queued_client() -> Client {

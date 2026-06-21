@@ -31,12 +31,12 @@ impl TrackedEntity {
         Self {
             entity_id,
             position,
-            width: entity_type.width(),
-            height: entity_type.height(),
+            width: entity_type.get_width(),
+            height: entity_type.get_height(),
         }
     }
 
-    pub const fn entity_id(&self) -> i32 {
+    pub const fn get_entity_id(&self) -> i32 {
         self.entity_id
     }
 
@@ -66,7 +66,7 @@ impl TrackedEntity {
 
 impl ClientHitTargetTracker {
     pub fn track_entity(&mut self, entity: TrackedEntity) {
-        self.entities.insert(entity.entity_id(), entity);
+        self.entities.insert(entity.get_entity_id(), entity);
     }
 
     pub fn remove_entities(&mut self, entity_ids: impl IntoIterator<Item = i32>) {
@@ -185,7 +185,7 @@ impl ClientHitTargetTracker {
                     .bounding_box()
                     .ray_intersection(eye_position, ray)
                     .map(|intersection| EntityHitTarget {
-                        entity_id: entity.entity_id(),
+                        entity_id: entity.get_entity_id(),
                         distance_ratio: intersection.ratio,
                     })
             })

@@ -8,7 +8,7 @@ use std::io;
 impl Player {
     pub fn kick(&mut self, reason: impl Into<TextComponent>) -> io::Result<()> {
         let reason = reason.into();
-        let Some(client) = self.client_mut() else {
+        let Some(client) = self.get_client_mut() else {
             return Ok(());
         };
         let Some(server_ptr) = client.server_ptr else {
@@ -20,7 +20,7 @@ impl Player {
 
     pub fn transfer(&mut self, host: impl Into<String>, port: i32) -> io::Result<()> {
         let player = self as *mut Player;
-        let Some(client) = self.client_mut() else {
+        let Some(client) = self.get_client_mut() else {
             return Ok(());
         };
         let Some(server_ptr) = client.server_ptr else {

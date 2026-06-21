@@ -20,11 +20,11 @@ impl PlayerPosition {
         }
     }
 
-    pub(crate) fn at(&self, x: f64, y: f64, z: f64) -> Self {
+    pub(crate) fn get_at(&self, x: f64, y: f64, z: f64) -> Self {
         Self::new(x, y, z, self.yaw, self.pitch)
     }
 
-    pub(crate) fn looking_at(&self, yaw: f32, pitch: f32) -> Self {
+    pub(crate) fn get_looking_at(&self, yaw: f32, pitch: f32) -> Self {
         Self::new(self.x, self.y, self.z, yaw, pitch)
     }
 }

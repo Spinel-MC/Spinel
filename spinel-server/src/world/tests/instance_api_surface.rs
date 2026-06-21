@@ -134,8 +134,8 @@ fn world_entity_line_of_sight_matches_minestom_entity_raycast_surface() {
     let mut world = World::new(Identifier::minecraft("overworld"));
     let mut source = Entity::new(EntityType::ZOMBIE);
     let mut target = Entity::new(EntityType::ZOMBIE);
-    let source_id = source.entity_id();
-    let target_id = target.entity_id();
+    let source_id = source.get_entity_id();
+    let target_id = target.get_entity_id();
 
     source.set_position(EntityPosition::new(0.5, 64.0, 0.5, 0.0, 0.0));
     target.set_position(EntityPosition::new(0.5, 64.0, 5.5, 0.0, 0.0));
@@ -151,8 +151,8 @@ fn world_entity_line_of_sight_matches_minestom_entity_raycast_surface() {
     assert!(world.has_exact_line_of_sight(source_id, target_id, true));
     assert_eq!(
         world
-            .line_of_sight_entity(source_id, 8.0, |entity| entity.entity_id() == target_id)
-            .map(Entity::entity_id),
+            .line_of_sight_entity(source_id, 8.0, |entity| entity.get_entity_id() == target_id)
+            .map(Entity::get_entity_id),
         Some(target_id)
     );
 
@@ -167,7 +167,7 @@ fn world_entity_line_of_sight_matches_minestom_entity_raycast_surface() {
     assert!(!world.has_line_of_sight(source_id, target_id));
     assert!(
         world
-            .line_of_sight_entity(source_id, 8.0, |entity| entity.entity_id() == target_id)
+            .line_of_sight_entity(source_id, 8.0, |entity| entity.get_entity_id() == target_id)
             .is_none()
     );
 }
@@ -471,7 +471,7 @@ fn world_border_api_matches_minestom_initialize_packet_surface() {
     world.set_world_border(border).unwrap();
 
     let packet = world.create_initialize_world_border_packet();
-    assert_eq!(world.world_border(), border);
+    assert_eq!(world.get_world_border(), border);
     assert_eq!(packet.center_x, 4.0);
     assert_eq!(packet.center_z, -8.0);
     assert_eq!(packet.old_diameter, 128.0);
@@ -748,7 +748,7 @@ fn block_handler_place_destroy_and_chunk_tick_follow_minestom_owner_flow() {
         0,
         SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 25565),
     );
-    let player_id = player.entity_id();
+    let player_id = player.get_entity_id();
     world.add_entity(Entity::Player(player));
     world.load_chunk(ChunkPosition::new(0, 0)).unwrap();
 
@@ -810,7 +810,7 @@ fn block_handler_interaction_routes_through_world_owner_before_item_use() {
         0,
         SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 25565),
     );
-    let player_id = player.entity_id();
+    let player_id = player.get_entity_id();
     world.add_entity(Entity::Player(player));
     world.load_chunk(ChunkPosition::new(0, 0)).unwrap();
     world.register_block_handler(
@@ -1015,7 +1015,7 @@ fn block_entity_data_packet_is_sent_to_chunk_viewers_after_block_entity_capable_
         0,
         SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 25565),
     );
-    let player_id = player.entity_id();
+    let player_id = player.get_entity_id();
     player.set_client(&mut client);
     player.mark_entered_world();
     world.load_chunk(chunk_position).unwrap();
@@ -1073,7 +1073,7 @@ fn block_entity_data_follows_the_written_block_value_and_is_removed_on_break() {
         0,
         SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 25565),
     );
-    let player_id = player.entity_id();
+    let player_id = player.get_entity_id();
     let mut nbt = NbtCompound::new();
     nbt.insert("custom".to_string(), Nbt::Int(4));
 
@@ -1142,7 +1142,7 @@ fn block_entity_packet_uses_registry_type_and_handler_client_tag_filter() {
         0,
         SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 25565),
     );
-    let player_id = player.entity_id();
+    let player_id = player.get_entity_id();
     let mut block_entity_nbt = NbtCompound::new();
     block_entity_nbt.insert("allowed".to_string(), Nbt::String("yes".to_string()));
     block_entity_nbt.insert("server_only".to_string(), Nbt::String("no".to_string()));
@@ -1214,8 +1214,8 @@ fn place_block_sends_block_update_to_all_chunk_viewers() {
         1,
         SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 25566),
     );
-    let first_player_id = first_player.entity_id();
-    let second_player_id = second_player.entity_id();
+    let first_player_id = first_player.get_entity_id();
+    let second_player_id = second_player.get_entity_id();
     first_player.set_client(&mut first_client);
     second_player.set_client(&mut second_client);
     first_player.mark_entered_world();
@@ -1274,8 +1274,8 @@ fn break_block_sends_destroy_effect_to_chunk_viewers_except_breaker() {
         1,
         SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 25566),
     );
-    let breaker_id = breaker.entity_id();
-    let viewer_id = viewer.entity_id();
+    let breaker_id = breaker.get_entity_id();
+    let viewer_id = viewer.get_entity_id();
     breaker.set_client(&mut breaker_client);
     viewer.set_client(&mut viewer_client);
     breaker.mark_entered_world();
@@ -1331,8 +1331,8 @@ fn chunk_world_membership_and_viewer_chunk_send_match_minestom_chunk_api() {
         0,
         SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 25565),
     );
-    let player_uuid = player.uuid();
-    let player_id = player.entity_id();
+    let player_uuid = player.get_uuid();
+    let player_id = player.get_entity_id();
 
     world.load_chunk(chunk_position).unwrap();
     world.chunk(chunk_position).unwrap().world().unwrap();
@@ -1359,26 +1359,26 @@ fn chunk_unload_removes_players_and_generic_entities_in_unloaded_chunk() {
     let mut world = World::new(Identifier::minecraft("overworld"));
     let chunk_position = ChunkPosition::new(0, 0);
     let generic_entity = Entity::new(EntityType::ZOMBIE);
-    let generic_entity_id = generic_entity.entity_id();
+    let generic_entity_id = generic_entity.get_entity_id();
     let player = Player::new(
         Uuid::nil(),
         "ChunkPlayer".to_string(),
         0,
         SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 25565),
     );
-    let player_uuid = player.uuid();
+    let player_uuid = player.get_uuid();
 
     world.load_chunk(chunk_position).unwrap();
     world.add_entity(generic_entity);
     world.add_entity(Entity::Player(player));
 
-    assert!(world.entity_by_id(generic_entity_id).is_some());
+    assert!(world.get_entity(generic_entity_id).is_some());
     assert!(world.player_by_uuid(player_uuid).is_some());
     assert_eq!(world.chunk_entities(chunk_position).len(), 2);
 
     world.unload_chunk(chunk_position).unwrap();
 
-    assert!(world.entity_by_id(generic_entity_id).is_none());
+    assert!(world.get_entity(generic_entity_id).is_none());
     assert!(world.player_by_uuid(player_uuid).is_none());
     assert!(world.chunk_entities(chunk_position).is_empty());
 }
@@ -1465,7 +1465,7 @@ fn world_manager_resolves_entity_world_handle_through_world_collection() {
         .world_manager
         .create_world(Identifier::minecraft("overworld"));
     let entity = Entity::new(spinel_registry::EntityType::ZOMBIE);
-    let entity_id = entity.entity_id();
+    let entity_id = entity.get_entity_id();
     server.world_manager.add_entity(world_uuid, entity);
     let server_ptr = &mut server as *mut MinecraftServer as usize;
 
@@ -1563,7 +1563,7 @@ fn generic_entity_set_instance_moves_between_worlds_after_target_chunk_load() {
     let first_world = worlds.create_world(Identifier::minecraft("first"));
     let second_world = worlds.create_world(Identifier::minecraft("second"));
     let entity = Entity::new(EntityType::ZOMBIE);
-    let entity_id = entity.entity_id();
+    let entity_id = entity.get_entity_id();
     let target_position = EntityPosition::new(32.0, 70.0, -16.0, 90.0, 45.0);
 
     worlds.add_entity(first_world, entity);
@@ -1575,15 +1575,15 @@ fn generic_entity_set_instance_moves_between_worlds_after_target_chunk_load() {
         worlds
             .world(first_world)
             .unwrap()
-            .entity_by_id(entity_id)
+            .get_entity(entity_id)
             .is_none()
     );
     assert_eq!(
         worlds
             .world(second_world)
             .unwrap()
-            .entity_by_id(entity_id)
-            .map(Entity::position),
+            .get_entity(entity_id)
+            .map(Entity::get_position),
         Some(target_position)
     );
     assert!(
@@ -1600,7 +1600,7 @@ fn generic_entity_set_instance_point_and_default_position_match_minestom_overloa
     let second_world = worlds.create_world(Identifier::minecraft("second"));
     let third_world = worlds.create_world(Identifier::minecraft("third"));
     let mut entity = Entity::new(EntityType::ZOMBIE);
-    let entity_id = entity.entity_id();
+    let entity_id = entity.get_entity_id();
     entity.set_position(EntityPosition::new(1.0, 64.0, 1.0, 15.0, 30.0));
 
     worlds.add_entity(first_world, entity);
@@ -1612,14 +1612,14 @@ fn generic_entity_set_instance_point_and_default_position_match_minestom_overloa
     let entity = worlds
         .world(third_world)
         .unwrap()
-        .entity_by_id(entity_id)
+        .get_entity(entity_id)
         .unwrap();
 
-    assert_eq!(entity.position().x(), 5.0);
-    assert_eq!(entity.position().y(), 66.0);
-    assert_eq!(entity.position().z(), 7.0);
-    assert_eq!(entity.position().yaw(), 15.0);
-    assert_eq!(entity.position().pitch(), 30.0);
+    assert_eq!(entity.get_position().get_x(), 5.0);
+    assert_eq!(entity.get_position().get_y(), 66.0);
+    assert_eq!(entity.get_position().get_z(), 7.0);
+    assert_eq!(entity.get_position().get_yaw(), 15.0);
+    assert_eq!(entity.get_position().get_pitch(), 30.0);
 }
 
 #[test]
@@ -1642,7 +1642,7 @@ fn player_set_instance_rejects_same_world_and_completes_on_next_manager_tick() {
         0,
         SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 25565),
     );
-    let player_uuid = player.uuid();
+    let player_uuid = player.get_uuid();
     server
         .world_manager
         .add_entity(first_world, Entity::Player(player));
@@ -1690,7 +1690,7 @@ fn player_set_instance_rejects_same_world_and_completes_on_next_manager_tick() {
         server.world_manager.pending_player_world_transition_count(),
         0
     );
-    assert_eq!(player.position().x(), 16.0);
+    assert_eq!(player.get_position().get_x(), 16.0);
     assert_eq!(player.queued_chunk_count(), 9);
 }
 
@@ -1709,7 +1709,7 @@ fn inactive_player_set_instance_default_uses_respawn_point() {
     client.state = ConnectionState::Play;
     client.enable_outbound_packet_queue();
     let mut player = Player::new(Uuid::new_v4(), "Inactive".to_string(), 0, client.addr);
-    let player_uuid = player.uuid();
+    let player_uuid = player.get_uuid();
     player.set_client(&mut client);
     player.set_respawn_point(PlayerSpawnPoint::new(32.0, 70.0, -16.0, 45.0, 20.0));
 
@@ -1735,11 +1735,11 @@ fn inactive_player_set_instance_default_uses_respawn_point() {
             .world_manager
             .player_world_transition_is_complete(ticket)
     );
-    assert_eq!(player.position().x(), 32.0);
-    assert_eq!(player.position().y(), 70.0);
-    assert_eq!(player.position().z(), -16.0);
-    assert_eq!(player.position().yaw(), 45.0);
-    assert_eq!(player.position().pitch(), 20.0);
+    assert_eq!(player.get_position().get_x(), 32.0);
+    assert_eq!(player.get_position().get_y(), 70.0);
+    assert_eq!(player.get_position().get_z(), -16.0);
+    assert_eq!(player.get_position().get_yaw(), 45.0);
+    assert_eq!(player.get_position().get_pitch(), 20.0);
     assert!(server.world_manager.inactive_player(player_uuid).is_none());
 
     let packet_ids = client.queued_outbound_packet_ids();
@@ -1791,7 +1791,7 @@ fn player_set_instance_future_completes_after_spawn_packets_and_viewer_refresh()
         2,
         new_viewer_client.addr,
     );
-    let moving_player_uuid = moving_player.uuid();
+    let moving_player_uuid = moving_player.get_uuid();
     moving_player.set_client(&mut moving_client);
     old_viewer.set_client(&mut old_viewer_client);
     new_viewer.set_client(&mut new_viewer_client);
@@ -1898,7 +1898,7 @@ fn same_dimension_player_set_instance_does_not_send_respawn_packet() {
     client.state = ConnectionState::Play;
     client.enable_outbound_packet_queue();
     let mut player = Player::new(Uuid::new_v4(), "Moving".to_string(), 0, client.addr);
-    let player_uuid = player.uuid();
+    let player_uuid = player.get_uuid();
     player.set_client(&mut client);
     player.mark_entered_world();
     server
@@ -2049,7 +2049,7 @@ fn linked_shared_world_same_chunk_player_transition_skips_chunk_refresh() {
         0,
         SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 25565),
     );
-    let player_uuid = player.uuid();
+    let player_uuid = player.get_uuid();
 
     server
         .world_manager
@@ -2090,7 +2090,7 @@ fn world_snapshot_preserves_instance_chunk_entity_and_tag_state_after_mutation()
     let chunk_position = ChunkPosition::new(0, 0);
     let block_position = BlockPosition::new(1, 64, 1);
     let entity = Entity::new(EntityType::ZOMBIE);
-    let entity_id = entity.entity_id();
+    let entity_id = entity.get_entity_id();
 
     world.set_tag(&world_tag, Some(5));
     world.load_chunk(chunk_position).unwrap();
@@ -2113,7 +2113,7 @@ fn world_snapshot_preserves_instance_chunk_entity_and_tag_state_after_mutation()
     let chunk_snapshot = snapshot.chunk(chunk_position).unwrap();
     assert_eq!(snapshot.world(), world.uuid());
     assert_eq!(snapshot.name(), world.name());
-    assert_eq!(snapshot.dimension_type(), world.dimension_type());
+    assert_eq!(snapshot.get_dimension_type(), world.get_dimension_type());
     assert_eq!(snapshot.get_tag(&world_tag), Some(5));
     assert_eq!(chunk_snapshot.get_tag(&chunk_tag), Some(8));
     assert_eq!(chunk_snapshot.block(block_position), Block::STONE);

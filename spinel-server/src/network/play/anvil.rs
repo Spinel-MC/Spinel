@@ -15,7 +15,7 @@ fn on_rename_item(
         return false;
     };
     let player = unsafe { &mut *player };
-    let Some(inventory) = player.opened_inventory() else {
+    let Some(inventory) = player.get_opened_inventory() else {
         return false;
     };
     if inventory.inventory_type() != InventoryType::Anvil {

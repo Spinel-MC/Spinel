@@ -48,7 +48,7 @@ impl GoalSelector for RandomLookAroundGoal {
     ) -> bool {
         let should_look =
             self.chance_per_tick > 0 && rand::rng().random_range(0..self.chance_per_tick) == 0;
-        should_look && creature.navigator().path_position().is_none()
+        should_look && creature.get_navigator().get_path_position().is_none()
     }
 
     fn start(
@@ -75,11 +75,11 @@ impl GoalSelector for RandomLookAroundGoal {
         let horizontal_distance = direction_x.hypot(direction_z);
         let yaw = (-direction_x.atan2(direction_z).to_degrees()) as f32;
         let pitch = (-direction_y.atan2(horizontal_distance).to_degrees()) as f32;
-        let position = creature.position();
+        let position = creature.get_position();
         creature.set_position(EntityPosition::new(
-            position.x(),
-            position.y(),
-            position.z(),
+            position.get_x(),
+            position.get_y(),
+            position.get_z(),
             yaw,
             pitch,
         ));

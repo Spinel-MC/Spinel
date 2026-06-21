@@ -229,7 +229,7 @@ fn attempt_block_break(
     server: &mut MinecraftServer,
     client: &Client,
 ) -> bool {
-    let player_id = unsafe { &*player }.entity_id();
+    let player_id = unsafe { &*player }.get_entity_id();
     let block_was_broken = server
         .break_block_in_world(client, player_id, block_position, block_face, true)
         .unwrap_or(false);
@@ -251,11 +251,11 @@ fn correct_player_after_failed_digging(
         return;
     }
     let player = unsafe { &*player };
-    let position = player.position();
+    let position = player.get_position();
     let block_below_player = BlockPosition::new(
-        position.x().floor() as i32,
-        position.y().floor() as i32 - 1,
-        position.z().floor() as i32,
+        position.get_x().floor() as i32,
+        position.get_y().floor() as i32 - 1,
+        position.get_z().floor() as i32,
     );
     if block_below_player != block_position {
         return;
@@ -267,7 +267,7 @@ fn correct_player_after_failed_digging(
         return;
     };
     let _ = world.teleport_player(
-        player.uuid(),
+        player.get_uuid(),
         position,
         None,
         TeleportFlags::absolute(),
@@ -335,11 +335,11 @@ fn player_is_in_water(
     server: &mut MinecraftServer,
     client: &Client,
 ) -> bool {
-    let player_position = player.position();
+    let player_position = player.get_position();
     let eye_position = BlockPosition::new(
-        player_position.x().floor() as i32,
-        (player_position.y() + player.eye_height()).floor() as i32,
-        player_position.z().floor() as i32,
+        player_position.get_x().floor() as i32,
+        (player_position.get_y() + player.get_eye_height()).floor() as i32,
+        player_position.get_z().floor() as i32,
     );
     server
         .loaded_block_in_world(client, eye_position)
@@ -353,8 +353,8 @@ pub(crate) fn should_prevent_breaking(
     registries: &Registries,
 ) -> bool {
     let block_state = block_state.into();
-    let main_hand_item = player.item_in_hand(crate::entity::PlayerHand::Main);
-    match player.game_mode() {
+    let main_hand_item = player.g(crate::entity::PlayerHand::Main);
+    match player.get_game_mode() {
         GameMode::Spectator => true,
         GameMode::Adventure => {
             let can_break_block = main_hand_item

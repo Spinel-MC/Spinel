@@ -15,11 +15,14 @@ use spinel_core::network::clientbound::play::forget_level_chunk::ForgetLevelChun
 use spinel_core::network::clientbound::play::light_update::LightUpdatePacket;
 use spinel_core::network::clientbound::play::remove_entities::RemoveEntitiesPacket;
 use spinel_core::network::clientbound::play::set_chunk_cache_center::SetChunkCacheCenterPacket;
+use spinel_core::network::clientbound::play::set_player_inventory::SetPlayerInventoryPacket;
 use spinel_core::network::clientbound::play::sync_player_pos::SyncPlayerPositionPacket;
 use spinel_macros::event_listener;
 use spinel_network::types::Identifier;
 use spinel_network::{ConnectionState, DataType, VarIntWrapper};
 use spinel_registry::EntityType;
+use spinel_registry::ItemStack;
+use spinel_registry::Material;
 use spinel_registry::Registries;
 use spinel_registry::dimension_type::DimensionType;
 use std::io::{self, Cursor, Error, ErrorKind, Read};
@@ -46,21 +49,21 @@ fn player_move_test_listener(event: &mut PlayerMoveEvent, _server: &mut Minecraf
         PLAYER_MOVE_TEST_VIEW => {
             let packet_position = event.new_position();
             event.set_new_position(EntityPosition::new(
-                packet_position.x(),
-                packet_position.y(),
-                packet_position.z(),
+                packet_position.get_x(),
+                packet_position.get_y(),
+                packet_position.get_z(),
                 90.0,
-                45.0,
+               45.0,
             ));
         }
         PLAYER_MOVE_TEST_COORDINATES => {
             let packet_position = event.new_position();
             event.set_new_position(EntityPosition::new(
-                packet_position.x() + 1.0,
-                packet_position.y(),
-                packet_position.z(),
-                packet_position.yaw(),
-                packet_position.pitch(),
+                packet_position.get_x() + 1.0,
+                packet_position.get_y(),
+                packet_position.get_z(),
+                packet_position.get_yaw(),
+                packet_position.get_pitch(),
             ));
         }
         PLAYER_MOVE_TEST_TELEPORT => event
@@ -190,9 +193,32 @@ fn attach_server_to_client(server: &mut MinecraftServer, client: &mut Client) {
 }
 
 fn player_position(world: &World, client: &Client) -> EntityPosition {
-    world.player_by_addr(&client.addr).unwrap().position()
+    world.player_by_addr(&client.addr).unwrap().get_position()
 }
 
+#[test]
+fn configuration_player_inventory_changes_wait_for_play_login() {
+    let registries = Registries::new_vanilla();
+    let (mut client, mut peer_stream) = test_client_pair();
+    client.state = ConnectionState::Configuration;
+    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut player = Player::new(Uuid::nil(), "Player".to_string(), 0, client.addr);
+    player.set_client(&mut client);
+    assert!(
+        player
+            .get_inventory()
+            .add_item_stack(ItemStack::of(Material::DIAMOND_PICKAXE))
+    );
+    world.add_entity(Entity::Player(player));
+
+    world.tick_with_registries(&registries);
+
+    let packet_ids = read_available_packet_frames(&mut peer_stream)
+        .into_iter()
+        .map(|(packet_id, _)| packet_id)
+        .collect::<Vec<_>>();
+    assert!(!packet_ids.contains(&SetPlayerInventoryPacket::get_id()));
+}
 #[test]
 fn optional_chunk_load_respects_auto_chunk_loading_like_minestom() {
     let mut world = World::new(Identifier::minecraft("overworld"));
@@ -286,8 +312,8 @@ fn measure_fast_movement_load_vs_throttled_send_cost() {
     let tick_elapsed = tick_start.elapsed();
     let player = world.player_by_addr(&client.addr).unwrap();
     let queued_after_tick = player.queued_chunk_count();
-    let chunk_batch_lead = player.chunk_batch_lead();
-    let target_chunks_per_tick = player.target_chunks_per_tick();
+    let chunk_batch_lead = player.get_chunk_batch_lead();
+    let target_chunks_per_tick = player.get_target_chunks_per_tick();
     drop(world);
     drop(client);
     let drained_bytes = drain_thread.join().unwrap();
@@ -360,8 +386,8 @@ fn measure_fast_client_movement_chunk_generation_per_second() {
     let loaded_chunks = world.chunks().count();
     let player = world.player_by_addr(&client.addr).unwrap();
     let queued_chunks = player.queued_chunk_count();
-    let chunk_batch_lead = player.chunk_batch_lead();
-    let target_chunks_per_tick = player.target_chunks_per_tick();
+    let chunk_batch_lead = player.get_chunk_batch_lead();
+    let target_chunks_per_tick = player.get_target_chunks_per_tick();
     drop(world);
     drop(client);
     let drained_bytes = drain_thread.join().unwrap();
@@ -405,7 +431,7 @@ fn movement_is_suppressed_while_teleport_confirmation_is_pending() {
     world
         .player_by_addr_mut(&client.addr)
         .unwrap()
-        .next_teleport_id();
+        .get_next_teleport_id();
     world
         .move_player(&mut client, 1.0, 64.0, 0.0, true, &registries)
         .unwrap();
@@ -415,7 +441,7 @@ fn movement_is_suppressed_while_teleport_confirmation_is_pending() {
         .unwrap();
     let mut trailing_packet_byte = [0u8; 1];
 
-    assert_eq!(player_position(&world, &client).x(), 0.0);
+    assert_eq!(player_position(&world, &client).get_x(), 0.0);
     assert!(peer_stream.read(&mut trailing_packet_byte).is_err());
 }
 
@@ -434,11 +460,11 @@ fn movement_into_unloaded_destination_chunk_teleports_player_back() {
     let (packet_id, _) = read_packet_frame(&mut peer_stream);
 
     assert_eq!(packet_id, SyncPlayerPositionPacket::get_id());
-    assert_eq!(player_position(&world, &client).x(), 0.0);
+    assert_eq!(player_position(&world, &client).get_x(), 0.0);
 }
 
 #[test]
-fn incremental_walking_and_sprinting_cross_east_chunk_borders_without_correction() {
+fn incremental_walking_andsprinting_cross_east_chunk_borders_without_correction() {
     let (mut client, _peer_stream) = test_client_pair();
     client.enable_outbound_packet_queue();
     let mut world = world_with_entered_player(&mut client);
@@ -461,10 +487,10 @@ fn incremental_walking_and_sprinting_cross_east_chunk_borders_without_correction
         .move_player(&mut client, 32.15, 64.0, 0.0, true, &registries)
         .unwrap();
 
-    assert_eq!(player_position(&world, &client).x(), 32.15);
+    assert_eq!(player_position(&world, &client).get_x(), 32.15);
     assert!(
         !client
-            .queued_outbound_packet_ids()
+           .queued_outbound_packet_ids()
             .contains(&SyncPlayerPositionPacket::get_id())
     );
 }
@@ -514,10 +540,10 @@ fn chunk_unload_and_entity_removal_packets_are_scoped_to_actual_viewers() {
     viewer.mark_entered_world();
     non_viewer.mark_entered_world();
     viewer.mark_chunk_sent_to_client(PlayerChunk::new(2, 0));
-    let viewer_id = viewer.entity_id();
+    let viewer_id = viewer.get_entity_id();
     let mut entity = Entity::new(EntityType::ZOMBIE);
     entity.set_position(EntityPosition::new(32.0, 64.0, 0.0, 0.0, 0.0));
-    entity.view_mut().manual_add(viewer_id);
+    entity.get_view_mut().manual_add(viewer_id);
     world.load_chunk(chunk_position).unwrap();
     world.add_entity(entity);
     world.add_entity(Entity::Player(viewer));
@@ -549,11 +575,11 @@ fn cancelled_player_move_event_sends_correction_packet() {
     let (packet_id, _) = read_packet_frame(&mut peer_stream);
 
     assert_eq!(packet_id, SyncPlayerPositionPacket::get_id());
-    assert_eq!(player_position(&world, &client).x(), 0.0);
+    assert_eq!(player_position(&world, &client).get_x(), 0.0);
 }
 
 #[test]
-fn player_move_event_mutated_yaw_and_pitch_update_player_view() {
+fn player_move_event_mutatd_yaw_and_pitch_update_player_view() {
     let _scope = player_move_behavior_scope(PLAYER_MOVE_TEST_VIEW);
     let (mut client, mut peer_stream) = test_client_pair();
     let mut server = MinecraftServer::new();
@@ -571,9 +597,9 @@ fn player_move_event_mutated_yaw_and_pitch_update_player_view() {
     let mut trailing_packet_byte = [0u8; 1];
     let position = player_position(&world, &client);
 
-    assert_eq!(position.x(), 1.0);
-    assert_eq!(position.yaw(), 90.0);
-    assert_eq!(position.pitch(), 45.0);
+    assert_eq!(position.get_x(), 1.0);
+    assert_eq!(position.get_yaw(), 90.0);
+    assert_eq!(position.get_pitch(), 45.0);
     assert!(peer_stream.read(&mut trailing_packet_byte).is_err());
 }
 
@@ -697,11 +723,11 @@ fn rapid_forward_reverse_stop_loads_and_lights_the_standing_chunk() {
             world
                 .player_by_addr(&client.addr)
                 .unwrap()
-                .chunk_batch_lead()
+                .get_chunk_batch_lead()
         );
         if world
             .player_by_addr(&client.addr)
-            .is_some_and(|player| player.chunk_batch_lead() > 0)
+            .is_some_and(|player| player.get_chunk_batch_lead() > 0)
         {
             world
                 .player_by_addr_mut(&client.addr)
@@ -731,7 +757,7 @@ fn rapid_forward_reverse_stop_loads_and_lights_the_standing_chunk() {
     while Instant::now() < completion_deadline {
         if world
             .player_by_addr(&client.addr)
-            .is_some_and(|player| player.chunk_batch_lead() > 0)
+            .is_some_and(|player| player.get_chunk_batch_lead() > 0)
         {
             world
                 .player_by_addr_mut(&client.addr)
@@ -806,7 +832,7 @@ fn rapid_forward_reverse_stop_loads_and_lights_the_standing_chunk() {
             !light_data.sky_light_mask.is_empty() && !light_data.sky_light_arrays.is_empty()
         });
 
-    assert_eq!(player_position(&world, &client).x(), 160.0);
+    assert_eq!(player_position(&world, &client).get_x(), 160.0);
     assert!(
         final_cache_center == Some(destination_chunk) && destination_has_skylight,
         "standing_chunk={destination_chunk:?} final_cache_center={final_cache_center:?} destination_light_data={destination_light_data:?} destination_light_update={destination_light_update:?}"
@@ -829,11 +855,11 @@ fn player_move_event_mutated_coordinates_teleport_player_to_event_position() {
     let (packet_id, _) = read_packet_frame(&mut peer_stream);
 
     assert_eq!(packet_id, SyncPlayerPositionPacket::get_id());
-    assert_eq!(player_position(&world, &client).x(), 2.0);
+    assert_eq!(player_position(&world, &client).get_x(), 2.0);
 }
 
 #[test]
-fn player_move_event_triggered_teleport_stops_original_movement() {
+fn player_move_event_triggred_teleport_stops_original_movement() {
     let _scope = player_move_behavior_scope(PLAYER_MOVE_TEST_TELEPORT);
     let (mut client, mut peer_stream) = test_client_pair();
     let mut server = MinecraftServer::new();
@@ -850,7 +876,7 @@ fn player_move_event_triggered_teleport_stops_original_movement() {
         .unwrap();
     let mut trailing_packet_byte = [0u8; 1];
 
-    assert_eq!(player_position(&world, &client).x(), 8.0);
+    assert_eq!(player_position(&world, &client).get_x(), 8.0);
     assert!(peer_stream.read(&mut trailing_packet_byte).is_err());
 }
 
@@ -1205,7 +1231,7 @@ fn chunk_viewer_membership_matches_minestom_no_op_edges() {
 
     assert!(chunk.add_viewer(viewer));
     assert!(!chunk.add_viewer(viewer));
-    assert_eq!(chunk.viewers().collect::<Vec<_>>(), vec![viewer.value()]);
+    assert_eq!(chunk.viewers().collect::<Vec<_>>(), vec![viewer.get_value()]);
     assert!(chunk.remove_viewer(viewer));
     assert!(!chunk.remove_viewer(viewer));
     assert!(chunk.viewers().next().is_none());
@@ -1278,7 +1304,7 @@ fn added_entities_record_their_current_world_membership() {
 
     world.add_entity(entity);
 
-    assert_eq!(world.entities().next().unwrap().world(), Some(world_uuid));
+    assert_eq!(world.entities().next().unwrap().get_world(), Some(world_uuid));
 }
 
 #[test]
@@ -1294,7 +1320,7 @@ fn world_dimension_registration_and_void_api_match_minestom_instance_surface() {
     );
 
     assert!(!world.is_registered());
-    assert_eq!(world.dimension_type(), &dimension_type);
+    assert_eq!(world.get_dimension_type(), &dimension_type);
     assert_eq!(world.cached_dimension_type().min_y, -32);
     assert_eq!(world.dimension_name(), &Identifier::minecraft("the_nether"));
     assert!(world.is_in_void(EntityPosition::new(0.0, -97.0, 0.0, 0.0, 0.0)));
@@ -1305,28 +1331,28 @@ fn world_dimension_registration_and_void_api_match_minestom_instance_surface() {
 fn world_entity_and_player_lookup_api_matches_minestom_instance_surface() {
     let mut world = World::new(Identifier::minecraft("overworld"));
     let generic_entity = Entity::new(EntityType::ZOMBIE);
-    let generic_entity_id = generic_entity.entity_id();
-    let generic_entity_uuid = generic_entity.uuid();
+    let generic_entity_id = generic_entity.get_entity_id();
+    let generic_entity_uuid = generic_entity.get_uuid();
     let player_socket = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 25565);
     let player = Player::new(Uuid::nil(), "Player".to_string(), 0, player_socket);
-    let player_id = player.entity_id();
-    let player_uuid = player.uuid();
+    let player_id = player.get_entity_id();
+    let player_uuid = player.get_uuid();
 
     world.add_entity(generic_entity);
     world.add_entity(Entity::Player(player));
 
     assert_eq!(world.entities().count(), 2);
     assert_eq!(
-        world.entity_by_id(generic_entity_id).map(Entity::uuid),
+        world.get_entity(generic_entity_id).map(Entity::get_uuid),
         Some(generic_entity_uuid)
     );
     assert_eq!(
-        world.entity_by_uuid(player_uuid).map(Entity::entity_id),
+        world.entity_by_uuid(player_uuid).map(Entity::get_entity_id),
         Some(player_id)
     );
     assert_eq!(world.players().count(), 1);
     assert_eq!(
-        world.player_by_uuid(player_uuid).map(Player::entity_id),
+        world.player_by_uuid(player_uuid).map(Player::get_entity_id),
         Some(player_id)
     );
 }

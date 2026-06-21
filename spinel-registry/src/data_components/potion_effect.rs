@@ -47,7 +47,7 @@ impl CustomPotionEffect {
     }
 
     #[must_use]
-    pub const fn settings(&self) -> &PotionEffectSettings {
+    pub const fn get_settings(&self) -> &PotionEffectSettings {
         &self.settings
     }
 }

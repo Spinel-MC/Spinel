@@ -24,7 +24,7 @@ fn living_event_surface_matches_minestom_cancellation_shape() {
     let living_entity_id = EntityId::from_raw(1);
     let item_entity_id = EntityId::from_raw(2);
     let mut entity = Entity::Generic(GenericEntity::new(EntityType::ZOMBIE));
-    let entity_id = entity.entity_id();
+    let entity_id = entity.get_entity_id();
     let entity = &mut entity as *mut Entity;
     let mut set_fire = EntitySetFireEvent::new(entity, 20);
     set_fire.set_fire_ticks(-5);
@@ -46,18 +46,18 @@ fn living_event_surface_matches_minestom_cancellation_shape() {
     let mut pickup = PickupItemEvent::new(living_entity_id, item_entity_id);
     pickup.set_cancelled(true);
 
-    assert_eq!(set_fire.entity_id(), entity_id);
-    assert_eq!(set_fire.fire_ticks(), 0);
+    assert_eq!(set_fire.get_entity_id(), entity_id);
+    assert_eq!(set_fire.get_fire_ticks(), 0);
     assert!(set_fire.is_cancelled());
     assert!(extinguish.is_natural());
     assert!(extinguish.is_cancelled());
     assert_eq!(damage.damage_source(), "generic");
-    assert_eq!(damage.damage().amount(), -10.0);
+    assert_eq!(damage.damage().get_amount(), -10.0);
     assert!(damage.should_animate());
     assert!(damage.is_cancelled());
-    assert_eq!(death.entity_id(), entity_id);
-    assert_eq!(pickup.living_entity_id().value(), 1);
-    assert_eq!(pickup.item_entity_id().value(), 2);
+    assert_eq!(death.get_entity_id(), entity_id);
+    assert_eq!(pickup.living_entity_id().get_value(), 1);
+    assert_eq!(pickup.item_entity_id().get_value(), 2);
     assert!(pickup.is_cancelled());
 }
 
@@ -94,7 +94,7 @@ fn player_connection_events_expose_minestom_mutation_and_cancellation_surface() 
     assert!(inbound.is_cancelled());
     assert_eq!(outbound.payload_size(), 3);
     assert!(outbound.is_cancelled());
-    assert_eq!(skin_init.skin(), Some(&skin));
+    assert_eq!(skin_init.get_skin(), Some(&skin));
 }
 
 #[test]

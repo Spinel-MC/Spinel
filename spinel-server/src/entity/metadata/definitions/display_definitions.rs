@@ -23,8 +23,8 @@ macro_rules! flag_definition {
 
 pub mod interaction {
     use super::*;
-    value_definition!(width, 8, MetadataValue::Float(1.0));
-    value_definition!(height, 9, MetadataValue::Float(1.0));
+    value_definition!(get_width, 8, MetadataValue::Float(1.0));
+    value_definition!(get_height, 9, MetadataValue::Float(1.0));
     value_definition!(responsive, 10, MetadataValue::Boolean(false));
 }
 
@@ -32,7 +32,7 @@ pub mod display {
     use super::*;
     value_definition!(interpolation_delay, 8, MetadataValue::VarInt(0));
     value_definition!(
-        transformation_interpolation_duration,
+        get_transformation_interpolation_duration,
         9,
         MetadataValue::VarInt(0)
     );
@@ -42,7 +42,7 @@ pub mod display {
         MetadataValue::VarInt(0)
     );
     value_definition!(
-        translation,
+        get_translation,
         11,
         MetadataValue::Vector3f(Vector3f {
             x: 0.0,
@@ -51,7 +51,7 @@ pub mod display {
         })
     );
     value_definition!(
-        scale,
+        get_scale,
         12,
         MetadataValue::Vector3f(Vector3f {
             x: 1.0,
@@ -80,13 +80,13 @@ pub mod display {
         })
     );
     value_definition!(billboard_constraints, 15, MetadataValue::Byte(0));
-    value_definition!(brightness_override, 16, MetadataValue::VarInt(-1));
-    value_definition!(view_range, 17, MetadataValue::Float(1.0));
-    value_definition!(shadow_radius, 18, MetadataValue::Float(0.0));
-    value_definition!(shadow_strength, 19, MetadataValue::Float(1.0));
-    value_definition!(width, 20, MetadataValue::Float(0.0));
-    value_definition!(height, 21, MetadataValue::Float(0.0));
-    value_definition!(glow_color_override, 22, MetadataValue::VarInt(-1));
+    value_definition!(get_brightness_override, 16, MetadataValue::VarInt(-1));
+    value_definition!(get_view_range, 17, MetadataValue::Float(1.0));
+    value_definition!(get_shadow_radius, 18, MetadataValue::Float(0.0));
+    value_definition!(get_shadow_strength, 19, MetadataValue::Float(1.0));
+    value_definition!(get_width, 20, MetadataValue::Float(0.0));
+    value_definition!(get_height, 21, MetadataValue::Float(0.0));
+    value_definition!(get_glow_color_override, 22, MetadataValue::VarInt(-1));
 }
 
 pub mod block_display {
@@ -106,10 +106,10 @@ pub mod item_display {
 
 pub mod text_display {
     use super::*;
-    value_definition!(text, 23, MetadataValue::Text(TextComponent::empty()));
-    value_definition!(line_width, 24, MetadataValue::VarInt(200));
-    value_definition!(background_color, 25, MetadataValue::VarInt(0x40000000));
-    value_definition!(text_opacity, 26, MetadataValue::Byte(-1));
+    value_definition!(get_text, 23, MetadataValue::Text(TextComponent::empty()));
+    value_definition!(get_line_width, 24, MetadataValue::VarInt(200));
+    value_definition!(get_background_color, 25, MetadataValue::VarInt(0x40000000));
+    value_definition!(get_text_opacity, 26, MetadataValue::Byte(-1));
     value_definition!(flags, 27, MetadataValue::Byte(0));
     flag_definition!(has_shadow, 27, 0x01);
     flag_definition!(is_see_through, 27, 0x02);
@@ -117,7 +117,7 @@ pub mod text_display {
     flag_definition!(is_left_aligned, 27, 0x08);
     flag_definition!(is_right_aligned, 27, 0x10);
 
-    pub fn alignment() -> MetadataByteMaskDefinition {
+    pub fn get_alignment() -> MetadataByteMaskDefinition {
         MetadataByteMaskDefinition::new(27, 0x18, 3, 0)
     }
 }

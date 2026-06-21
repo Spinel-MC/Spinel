@@ -24,12 +24,12 @@ impl LivingAttributes {
             .default_attributes()
             .iter()
             .map(|default_attribute| {
-                let attribute = default_attribute.attribute();
+                let attribute = default_attribute.get_attribute();
                 (
                     attribute.protocol_id(),
                     EntityAttributeState::with_base_value(
                         attribute,
-                        default_attribute.base_value(),
+                        default_attribute.get_base_value(),
                     ),
                 )
             })
@@ -37,20 +37,20 @@ impl LivingAttributes {
         Self { instances }
     }
 
-    pub fn attribute(&mut self, attribute: Attribute) -> &mut EntityAttributeState {
+    pub fn get_attribute(&mut self, attribute: Attribute) -> &mut EntityAttributeState {
         self.instances
             .entry(attribute.protocol_id())
             .or_insert_with(|| EntityAttributeState::new(attribute))
     }
 
-    pub fn attributes(&self) -> Vec<&EntityAttributeState> {
+    pub fn get_attributes(&self) -> Vec<&EntityAttributeState> {
         self.instances.values().collect()
     }
 
-    pub fn attribute_value(&self, attribute: Attribute) -> f64 {
+    pub fn get_attribute_value(&self, attribute: Attribute) -> f64 {
         self.instances
             .get(&attribute.protocol_id())
-            .map(EntityAttributeState::value)
+            .map(EntityAttributeState::get_value)
             .unwrap_or_else(|| attribute.default_value())
     }
 
@@ -64,13 +64,13 @@ impl LivingAttributes {
         self.add_equipment_attributes(current_item_stack, equipment_slot);
     }
 
-    pub fn packet(&self, entity_id: i32) -> UpdateAttributesPacket {
+    pub fn get_packet(&self, entity_id: i32) -> UpdateAttributesPacket {
         UpdateAttributesPacket {
             entity_id,
             attributes: self
                 .instances
                 .values()
-                .filter(|attribute| attribute.attribute().is_syncable())
+                .filter(|attribute| attribute.get_attribute().is_syncable())
                 .map(EntityAttributeState::packet_attribute)
                 .collect(),
         }
@@ -89,19 +89,19 @@ impl LivingAttributes {
             return;
         };
         attribute_list
-            .modifiers()
+            .get_modifiers()
             .iter()
             .filter(|modifier| {
                 modifier
                     .slot()
-                    .contains_slot_name(equipment_slot.nbt_name())
+                    .contains_slot_name(equipment_slot.get_nbt_name())
             })
             .filter_map(|modifier| {
                 Attribute::from_identifier(modifier.attribute_type())
                     .map(|attribute| (attribute, modifier.id()))
             })
             .for_each(|(attribute, modifier_id)| {
-                self.attribute(attribute).remove_modifier(modifier_id);
+                self.get_attribute(attribute).remove_modifier(modifier_id);
             });
     }
 
@@ -110,12 +110,12 @@ impl LivingAttributes {
             return;
         };
         attribute_list
-            .modifiers()
+            .get_modifiers()
             .iter()
             .filter(|modifier| {
                 modifier
                     .slot()
-                    .contains_slot_name(equipment_slot.nbt_name())
+                    .contains_slot_name(equipment_slot.get_nbt_name())
             })
             .filter_map(|modifier| {
                 Attribute::from_identifier(modifier.attribute_type()).map(|attribute| {
@@ -123,14 +123,14 @@ impl LivingAttributes {
                         attribute,
                         EntityAttributeModifier {
                             modifier_id: modifier.id().clone(),
-                            amount: modifier.amount(),
+                            amount: modifier.get_amount(),
                             operation: modifier.operation().protocol_id(),
                         },
                     )
                 })
             })
             .for_each(|(attribute, modifier)| {
-                self.attribute(attribute).add_modifier(modifier);
+                self.get_attribute(attribute).add_modifier(modifier);
             });
     }
 }
@@ -152,15 +152,15 @@ impl EntityAttributeState {
         }
     }
 
-    pub const fn attribute(&self) -> Attribute {
+    pub const fn get_attribute(&self) -> Attribute {
         self.attribute
     }
 
-    pub const fn attribute_id(&self) -> i32 {
+    pub const fn get_attribute_id(&self) -> i32 {
         self.attribute.protocol_id()
     }
 
-    pub const fn base_value(&self) -> f64 {
+    pub const fn get_base_value(&self) -> f64 {
         self.base_value
     }
 
@@ -177,11 +177,11 @@ impl EntityAttributeState {
         self.modifiers.remove(&modifier_id.to_string())
     }
 
-    pub fn modifiers(&self) -> Vec<&EntityAttributeModifier> {
+    pub fn get_modifiers(&self) -> Vec<&EntityAttributeModifier> {
         self.modifiers.values().collect()
     }
 
-    pub fn value(&self) -> f64 {
+    pub fn get_value(&self) -> f64 {
         let add_value_total = self
             .modifiers
             .values()

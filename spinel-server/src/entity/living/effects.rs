@@ -28,19 +28,19 @@ impl TimedPotionEffect {
         }
     }
 
-    pub const fn effect_id(&self) -> i32 {
+    pub const fn get_effect_id(&self) -> i32 {
         self.effect_id
     }
 
-    pub const fn amplifier(&self) -> i32 {
+    pub const fn get_amplifier(&self) -> i32 {
         self.amplifier
     }
 
-    pub const fn duration_ticks(&self) -> i32 {
+    pub const fn get_duration_ticks(&self) -> i32 {
         self.duration_ticks
     }
 
-    pub const fn flags(&self) -> i8 {
+    pub const fn get_flags(&self) -> i8 {
         self.flags
     }
 
@@ -53,9 +53,9 @@ impl TimedPotionEffect {
             && tick.saturating_sub(self.start_tick) >= self.duration_ticks as u64
     }
 
-    pub fn packet(&self, entity_id: EntityId) -> EntityEffectPacket {
+    pub fn get_packet(&self, entity_id: EntityId) -> EntityEffectPacket {
         EntityEffectPacket {
-            entity_id: entity_id.value(),
+            entity_id: entity_id.get_value(),
             effect_id: self.effect_id,
             amplifier: self.amplifier,
             duration_ticks: self.duration_ticks,
@@ -65,7 +65,7 @@ impl TimedPotionEffect {
 
     pub fn remove_packet(&self, entity_id: EntityId) -> RemoveEntityEffectPacket {
         RemoveEntityEffectPacket {
-            entity_id: entity_id.value(),
+            entity_id: entity_id.get_value(),
             effect_id: self.effect_id,
         }
     }

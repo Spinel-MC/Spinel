@@ -8,20 +8,20 @@ pub struct VexMeta<'entity> {
 
 impl<'entity> VexMeta<'entity> {
     pub(crate) fn from_entity_meta(entity_meta: EntityMeta<'entity>) -> Option<Self> {
-        (entity_meta.entity().entity_type() == EntityType::VEX).then(|| Self {
+        (entity_meta.get_entity().get_entity_type() == EntityType::VEX).then(|| Self {
             monster_meta: MonsterMeta::from_entity_meta(entity_meta),
         })
     }
 
     pub fn is_attacking(&self) -> bool {
-        self.entity()
-            .metadata()
+        self.get_entity()
+            .get_metadata()
             .flag(&definitions::vex::is_attacking())
     }
 
     pub fn set_attacking(&mut self, is_attacking: bool) {
-        self.entity_mut()
-            .metadata_mut()
+        self.get_entity_mut()
+            .get_metadata_mut()
             .set_flag(&definitions::vex::is_attacking(), is_attacking);
     }
 }

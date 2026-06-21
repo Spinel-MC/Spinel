@@ -25,23 +25,23 @@ impl PlayerEntityInteractEvent {
         }
     }
 
-    pub fn player(&mut self) -> &mut Player {
+    pub fn get_player(&mut self) -> &mut Player {
         unsafe { &mut *self.player }
     }
 
-    pub fn target_id(&self) -> EntityId {
-        unsafe { (&*self.target).entity_id() }
+    pub fn get_target_id(&self) -> EntityId {
+        unsafe { (&*self.target).get_entity_id() }
     }
 
-    pub fn target(&mut self) -> &mut Entity {
+    pub fn get_target(&mut self) -> &mut Entity {
         unsafe { &mut *self.target }
     }
 
-    pub fn hand(&self) -> PlayerHand {
+    pub fn get_hand(&self) -> PlayerHand {
         self.hand
     }
 
-    pub fn interact_position(&self) -> (f32, f32, f32) {
+    pub fn get_interact_position(&self) -> (f32, f32, f32) {
         self.interact_position
     }
 }

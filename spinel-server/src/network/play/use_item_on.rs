@@ -35,7 +35,7 @@ fn on_use_item_on(
         let handler_allows_item_use = server
             .interact_block_handler_in_world(
                 client,
-                player.entity_id(),
+                player.get_entity_id(),
                 event_input.hand,
                 event_input.block_position,
                 event_input.block_face,
@@ -100,8 +100,8 @@ fn place_block(
     client: &mut Client,
 ) -> bool {
     let player = unsafe { &mut *player };
-    let mut can_place_block = player.game_mode() != GameMode::Spectator;
-    if player.game_mode() == GameMode::Adventure {
+    let mut can_place_block = player.get_game_mode() != GameMode::Spectator;
+    if player.get_game_mode() == GameMode::Adventure {
         can_place_block = player
             .item_in_hand(hand)
             .get_or(CAN_PLACE_ON, BlockPredicates::default())
@@ -143,7 +143,7 @@ fn place_block(
     if let Some(collision_entity) =
         server.block_placement_collision_entity(client, placement_position)
     {
-        if collision_entity != player.entity_id() {
+        if collision_entity != player.get_entity_id() {
             return refresh_inventory_and_chunk(player, placement_position, server, client);
         }
         return true;
@@ -159,7 +159,7 @@ fn place_block(
         cursor_position,
         hand,
     );
-    event.consume_block(player.game_mode() != GameMode::Creative);
+    event.consume_block(player.get_game_mode() != GameMode::Creative);
     event.set_do_block_updates(should_do_block_updates);
     event.dispatch(server, client);
     if event.is_cancelled() {
@@ -179,19 +179,15 @@ fn place_block(
         world_uuid,
         placement_position,
     )
-    .player_placement(player.entity_id(), hand, block_face, cursor_position);
+    .player_placement(player.get_entity_id(), hand, block_face, cursor_position);
     let block_was_set = server
         .place_block_in_world(client, placement, event.should_do_block_updates())
         .unwrap_or(false);
     if !block_was_set {
         return refresh_inventory_and_chunk(player, placement_position, server, client);
     }
-    if event.does_consume_block() {
-        let consumed_item = player.item_in_hand(hand).consume(1);
-        player.set_item_in_hand(hand, consumed_item);
-        let _ = player.sync_inventory(client);
-    } else {
-        let _ = player.sync_inventory(client);
+    if !synchronize_placed_block_inventory(player, hand, event.does_consume_block(), client) {
+        return false;
     }
     let block_change_is_acknowledged = AcknowledgeBlockChangePacket { sequence }
         .dispatch(client)
@@ -199,6 +195,18 @@ fn place_block(
     block_change_is_acknowledged
 }
 
+pub(crate) fn synchronize_placed_block_inventory(
+    player: &mut crate::entity::Player,
+    hand: PlayerHand,
+    does_consume_block: bool,
+    client: &mut Client,
+) -> bool {
+    if does_consume_block {
+        let consumed_item = player.g(hand).consume(1);
+        return player.set_item_in_hand(hand, consumed_item);
+    }
+    player.g(client).is_ok()
+}
 fn placement_position(
     position: BlockPosition,
     block_face: BlockFace,
@@ -262,7 +270,7 @@ fn refresh_inventory_and_chunk(
     server: &mut MinecraftServer,
     client: &mut Client,
 ) -> bool {
-    let inventory_is_refreshed = player.sync_inventory(client).is_ok();
+    let inventory_is_refreshed = player.g(client).is_ok();
     let chunk_is_refreshed = server.refresh_chunk_in_world(client, position);
     inventory_is_refreshed && chunk_is_refreshed
 }

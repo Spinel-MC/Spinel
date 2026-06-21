@@ -19,7 +19,7 @@ static LIVING_EQUIPMENT_TEST_ENTITY: Mutex<Option<EntityId>> = Mutex::new(None);
 
 #[event_listener]
 fn living_equipment_listener(event: &mut EntityEquipEvent, _server: &mut MinecraftServer) {
-    if *LIVING_EQUIPMENT_TEST_ENTITY.lock().unwrap() != Some(event.entity_id()) {
+    if *LIVING_EQUIPMENT_TEST_ENTITY.lock().unwrap() != Some(event.get_entity_id()) {
         return;
     }
     event.set_equipped_item(ItemStack::of(Material::DIAMOND));
@@ -44,8 +44,8 @@ fn world_set_entity_equipment_applies_event_mutation_and_sends_equipment_then_at
     viewer.mark_entered_world();
     let mut entity = GenericEntity::new(EntityType::ZOMBIE);
     entity.set_position(EntityPosition::new(1.0, 64.0, 1.0, 0.0, 0.0));
-    let entity_id = entity.entity_id();
-    entity.view_mut().manual_add(viewer.entity_id());
+    let entity_id = entity.get_entity_id();
+    entity.get_view_mut().manual_add(viewer.get_entity_id());
     let world = server.world_manager.world_mut(world_uuid).unwrap();
     world.add_entity(Entity::Generic(entity));
     world.add_entity(Entity::Player(viewer));
@@ -66,13 +66,13 @@ fn world_set_entity_equipment_applies_event_mutation_and_sends_equipment_then_at
 
     assert_eq!(
         world
-            .entity_by_id(entity_id)
+            .get_entity(entity_id)
             .and_then(|entity| match entity {
                 Entity::Generic(entity) => Some(entity),
                 _ => None,
             })
             .unwrap()
-            .equipment(EquipmentSlot::MainHand),
+            .get_equipment(EquipmentSlot::MainHand),
         &ItemStack::of(Material::DIAMOND)
     );
     assert_eq!(
@@ -110,10 +110,10 @@ fn world_set_player_held_slot_updates_self_attributes_and_viewer_equipment() {
     player.mark_entered_world();
     viewer.mark_entered_world();
     player
-        .inventory()
+        .get_inventory()
         .set_item_stack(1, ItemStack::of(Material::DIAMOND_PICKAXE));
-    let player_id = player.entity_id();
-    player.view_mut().automatic_add(viewer.entity_id());
+    let player_id = player.get_entity_id();
+    player.get_view_mut().automatic_add(viewer.get_entity_id());
 
     let world = server.world_manager.world_mut(world_uuid).unwrap();
     world.add_entity(Entity::Player(player));
@@ -136,10 +136,10 @@ fn world_set_player_held_slot_updates_self_attributes_and_viewer_equipment() {
             .world_manager
             .world(world_uuid)
             .unwrap()
-            .entity_by_id(player_id)
+            .get_entity(player_id)
             .and_then(|entity| match entity {
                 Entity::Player(player) =>
-                    Some(player.attribute_value(spinel_registry::Attribute::ATTACK_SPEED)),
+                    Some(player.get_attribute_value(spinel_registry::Attribute::ATTACK_SPEED)),
                 _ => None,
             })
             .unwrap(),

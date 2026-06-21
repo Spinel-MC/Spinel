@@ -19,9 +19,9 @@ fn item_merge_test_listener(event: &mut EntityItemMergeEvent, _server: &mut Mine
     if ITEM_MERGE_TEST_SOURCE.lock().unwrap().is_none() {
         return;
     }
-    let entity_id = event.entity_id();
+    let entity_id = event.get_entity_id();
     let merged_entity_id = event.merged_entity_id();
-    let event_entity_id = event.entity().entity_id();
+    let event_entity_id = event.get_entity().get_entity_id();
     let event_merged_entity_id = event.merged_entity().entity_id();
     if event_entity_id == entity_id && event_merged_entity_id == merged_entity_id {
         ITEM_MERGE_EVENT_ENTITY_ACCESSOR_MATCHED.store(true, Ordering::SeqCst);
@@ -44,7 +44,7 @@ fn item_entities_merge_similar_stacks_and_reject_overfilled_results() {
     world.tick_with_registries(&Registries::new_vanilla());
 
     assert_eq!(item_amount(&world, source_id), Some(11));
-    assert!(world.entity_by_id(merged_id).is_none());
+    assert!(world.get_entity(merged_id).is_none());
     assert_eq!(item_amount(&world, overfilled_source_id), Some(40));
     assert_eq!(item_amount(&world, overfilled_merged_id), Some(30));
 }
@@ -84,26 +84,25 @@ fn item_merge_event_can_cancel_and_mutate_the_result() {
     world.tick_with_registries(&Registries::new_vanilla());
 
     assert_eq!(item_amount(world, source_id), Some(7));
-    assert!(world.entity_by_id(merged_id).is_none());
+    assert!(world.get_entity(merged_id).is_none());
     assert!(ITEM_MERGE_EVENT_ENTITY_ACCESSOR_MATCHED.load(Ordering::SeqCst));
     reset_item_merge_test_state();
 }
 
 fn add_item(world: &mut World, material: Material, amount: i32, x: f64) -> EntityId {
     let mut item_entity = ItemEntity::new(ItemStack::of(material).with_amount(amount));
-    item_entity.spawn(EntityPosition::new(x, 64.0, 0.0, 0.0, 0.0));
-    let entity_id = item_entity.entity_id();
+    item_entity.spawn();
+    item_entity.set_position(EntityPosition::new(x, 64.0, 0.0, 0.0, 0.0));
+    let entity_id = item_entity.get_entity_id();
     world.add_entity(Entity::Item(item_entity));
     entity_id
 }
 
 fn item_amount(world: &World, entity_id: EntityId) -> Option<i32> {
-    world
-        .entity_by_id(entity_id)
-        .and_then(|entity| match entity {
-            Entity::Item(item_entity) => Some(item_entity.item_stack().amount()),
-            _ => None,
-        })
+    world.get_entity(entity_id).and_then(|entity| match entity {
+        Entity::Item(item_entity) => Some(item_entity.get_item_stack().amount()),
+        _ => None,
+    })
 }
 
 fn reset_item_merge_test_state() {
