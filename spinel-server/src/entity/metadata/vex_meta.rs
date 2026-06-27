@@ -16,7 +16,7 @@ impl<'entity> VexMeta<'entity> {
     pub fn is_attacking(&self) -> bool {
         self.get_entity()
             .get_metadata()
-            .flag(&definitions::vex::is_attacking())
+            .get_flag(&definitions::vex::is_attacking())
     }
 
     pub fn set_attacking(&mut self, is_attacking: bool) {

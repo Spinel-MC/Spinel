@@ -200,7 +200,12 @@ impl NodeGenerator for FlyingNodeGenerator {
         flying_neighbors(current.get_position(), bounding_box, 0.5)
             .into_iter()
             .filter(|neighbor| {
-                self.can_move_towards(world, current.get_position(), neighbor.position, bounding_box)
+                self.can_move_towards(
+                    world,
+                    current.get_position(),
+                    neighbor.position,
+                    bounding_box,
+                )
             })
             .map(|neighbor| {
                 let mut candidate_node = PathNode::new(
@@ -243,7 +248,12 @@ impl NodeGenerator for WaterNodeGenerator {
         water_neighbors(world, current.get_position(), bounding_box)
             .into_iter()
             .filter(|neighbor| {
-                self.can_move_towards(world, current.get_position(), neighbor.position, bounding_box)
+                self.can_move_towards(
+                    world,
+                    current.get_position(),
+                    neighbor.position,
+                    bounding_box,
+                )
             })
             .map(|neighbor| {
                 let mut candidate_node = PathNode::new(
@@ -480,7 +490,7 @@ fn create_ground_jump_node(
         return None;
     }
     let candidate_coordinates = block_coordinates(candidate);
-    let current_coordinates = current.block_coordinates();
+    let current_coordinates = current.get_block_coordinates();
     if candidate_coordinates.0 != current_coordinates.0
         && candidate_coordinates.2 != current_coordinates.2
     {

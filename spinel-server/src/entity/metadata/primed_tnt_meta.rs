@@ -9,7 +9,8 @@ pub struct PrimedTntMeta<'entity> {
 
 impl<'entity> PrimedTntMeta<'entity> {
     pub(crate) fn from_entity_meta(entity_meta: EntityMeta<'entity>) -> Option<Self> {
-        (entity_meta.get_entity().get_entity_type() == EntityType::TNT).then_some(Self { entity_meta })
+        (entity_meta.get_entity().get_entity_type() == EntityType::TNT)
+            .then_some(Self { entity_meta })
     }
 
     pub fn get_fuse_time(&self) -> i32 {

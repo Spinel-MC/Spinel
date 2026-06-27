@@ -1,13 +1,14 @@
 use super::super::generic_entity::{EntityAerodynamics, EntityPosition, GenericEntity};
 use crate::entity::TimedPotionEffect;
 use crate::entity::metadata::definitions;
-use crate::entity::{EntityPose, EntityId, EquipmentSlot};
+use crate::entity::{EntityId, EntityPose, EquipmentSlot};
 use crate::world::ChunkPosition;
 use spinel_core::network::clientbound::play::entity_animation::EntityAnimation;
 use spinel_core::network::clientbound::play::update_attributes::EntityAttributeModifier;
 use spinel_nbt::{Tag, TagReadable, TagWritable};
 use spinel_network::types::entity_metadata::MetadataValue;
 use spinel_network::types::{Identifier, Vector3d};
+use spinel_registry::MobEffect;
 use spinel_registry::{
     Attribute, DataComponentType, EntityBoundingBox, EntityType, ItemStack, Material,
 };
@@ -19,10 +20,16 @@ fn generic_entity_owns_minestom_entity_identity_and_type() {
 
     assert!(entity.get_entity_id().get_value() > 0);
     assert_eq!(entity.get_entity_type(), EntityType::ZOMBIE);
-    assert_eq!(entity.get_bounding_box(), EntityType::ZOMBIE.get_bounding_box());
+    assert_eq!(
+        entity.get_bounding_box(),
+        EntityType::ZOMBIE.get_bounding_box()
+    );
     assert_eq!(entity.get_identity().get_uuid(), entity.get_uuid());
     assert_eq!(entity.get_pointers().get_uuid(), entity.get_uuid());
-    assert_eq!(entity.get_pointers().get_entity_id(), entity.get_entity_id());
+    assert_eq!(
+        entity.get_pointers().get_entity_id(),
+        entity.get_entity_id()
+    );
     assert_eq!(entity.get_pointers().get_identity(), entity.get_identity());
 }
 
@@ -62,15 +69,15 @@ fn generic_living_entities_use_extracted_vanilla_base_attributes() {
 fn generic_entity_switch_type_preserves_bounding_box_like_minestom() {
     let mut entity = GenericEntity::new(EntityType::ZOMBIE);
     let original_bounding_box = entity.get_bounding_box();
-    let original_aerodynamics = entity.aerodynamics();
+    let original_aerodynamics = entity.get_aerodynamics();
 
     entity.switch_entity_type(EntityType::ARROW);
 
     assert_eq!(entity.get_entity_type(), EntityType::ARROW);
     assert_eq!(entity.get_bounding_box(), original_bounding_box);
-    assert_ne!(entity.aerodynamics(), original_aerodynamics);
+    assert_ne!(entity.get_aerodynamics(), original_aerodynamics);
     assert_eq!(
-        entity.aerodynamics(),
+        entity.get_aerodynamics(),
         EntityAerodynamics::from_entity_type(EntityType::ARROW)
     );
     assert!(entity.has_entity_collision());
@@ -93,16 +100,19 @@ fn generic_entity_bounding_box_distance_and_position_api_match_minestom_shape() 
     entity.set_view(180.0, 60.0, 120.0);
     other_entity.set_position(EntityPosition::new(4.0, 9.0, 7.0, 0.0, 0.0));
 
-    assert_eq!(entity.get_bounding_box(), EntityBoundingBox::new(1.0, 2.0, 3.0));
     assert_eq!(
-        entity.previous_position(),
+        entity.get_bounding_box(),
+        EntityBoundingBox::new(1.0, 2.0, 3.0)
+    );
+    assert_eq!(
+        entity.get_previous_position(),
         EntityPosition::new(4.0, 6.0, 3.0, 90.0, 30.0)
     );
     assert_eq!(entity.get_position().get_yaw(), 180.0);
     assert_eq!(entity.get_position().get_pitch(), 60.0);
-    assert_eq!(entity.head_rotation(), 120.0);
-    assert_eq!(entity.distance_squared_to_entity(&other_entity), 25.0);
-    assert_eq!(entity.distance_to_entity(&other_entity), 5.0);
+    assert_eq!(entity.get_head_rotation(), 120.0);
+    assert_eq!(entity.get_distance_squared_to_entity(&other_entity), 25.0);
+    assert_eq!(entity.get_distance_to_entity(&other_entity), 5.0);
 }
 
 #[test]
@@ -114,15 +124,15 @@ fn generic_entity_look_at_and_chunk_api_match_minestom_shape() {
     target.set_position(EntityPosition::new(-17.0, 64.0, 47.0, 0.0, 0.0));
     entity.look_at_entity(&target);
 
-    assert_eq!(entity.chunk(), ChunkPosition::new(-2, 1));
+    assert_eq!(entity.get_chunk(), ChunkPosition::new(-2, 1));
     assert_eq!(entity.get_position().get_yaw(), 0.0);
     assert_eq!(entity.get_position().get_pitch(), -0.0);
-    assert_eq!(entity.head_rotation(), 0.0);
+    assert_eq!(entity.get_head_rotation(), 0.0);
 
     entity.look_at_position(EntityPosition::new(-1.0, 64.0, 31.0, 0.0, 0.0));
 
     assert_eq!(entity.get_position().get_yaw(), -90.0);
-    assert_eq!(entity.head_rotation(), -90.0);
+    assert_eq!(entity.get_head_rotation(), -90.0);
 }
 
 #[test]
@@ -173,8 +183,8 @@ fn generic_entity_passenger_leash_and_status_api_match_minestom_shape() {
     assert!(entity.remove_passenger(passenger_id));
     assert!(!entity.has_passenger());
 
-    let status_packet = entity.status_packet(3);
-    let triggered_status_packet = entity.trigger_status(3);
+    let status_packet = entity.get_status_packet(3);
+    let triggered_status_packet = entity.get_trigger_status(3);
     assert_eq!(status_packet.entity_id, entity.get_entity_id().get_value());
     assert_eq!(status_packet.status, 3);
     assert_eq!(triggered_status_packet.entity_id, status_packet.entity_id);
@@ -287,19 +297,46 @@ fn generic_living_attributes_effects_animation_and_bed_api_match_minestom_surfac
     );
     assert_eq!(entity.get_attribute_value(4, 4.0), 4.0);
 
-    let effect_packet = entity.add_effect(TimedPotionEffect::new(1, 2, 2, 6, entity.ticks()));
-    assert_eq!(effect_packet.effect_id, 1);
-    assert!(entity.has_effect(1));
-    assert_eq!(entity.effect_level(1), Some(2));
-    assert_eq!(entity.active_effects().len(), 1);
+    let effect_packet = entity.add_effect(TimedPotionEffect::new(
+        MobEffect::SPEED,
+        0,
+        2,
+        2,
+        6,
+        entity.ticks(),
+    ));
+    assert_eq!(effect_packet.effect_id, 0);
+    assert!(entity.has_effect(&MobEffect::SPEED));
+    assert_eq!(entity.get_effect_level(&MobEffect::SPEED), Some(2));
+    assert_eq!(entity.get_active_effects().len(), 1);
     entity.tick();
-    assert!(entity.has_effect(1));
+    assert!(entity.has_effect(&MobEffect::SPEED));
     entity.tick();
-    assert!(!entity.has_effect(1));
+    assert!(!entity.has_effect(&MobEffect::SPEED));
 
-    entity.add_effect(TimedPotionEffect::new(2, 0, 20, 0, entity.ticks()));
-    assert_eq!(entity.remove_effect(2).unwrap().effect_id, 2);
-    entity.add_effect(TimedPotionEffect::new(3, 0, 20, 0, entity.ticks()));
+    entity.add_effect(TimedPotionEffect::new(
+        MobEffect::SLOWNESS,
+        1,
+        0,
+        20,
+        0,
+        entity.ticks(),
+    ));
+    assert_eq!(
+        entity
+            .remove_effect(&MobEffect::SLOWNESS)
+            .unwrap()
+            .effect_id,
+        2
+    );
+    entity.add_effect(TimedPotionEffect::new(
+        MobEffect::HASTE,
+        2,
+        0,
+        20,
+        0,
+        entity.ticks(),
+    ));
     assert_eq!(entity.clear_effects().len(), 1);
 
     assert_eq!(
@@ -329,16 +366,16 @@ fn generic_living_motion_team_and_collision_api_match_minestom_surface() {
     assert!(!entity.get_living_metadata().get_entries().is_empty());
 
     entity.set_aerodynamics(aerodynamics);
-    assert_eq!(entity.aerodynamics(), aerodynamics);
+    assert_eq!(entity.get_aerodynamics(), aerodynamics);
     entity.increment_gravity_tick_count();
-    assert_eq!(entity.gravity_tick_count(), 1);
+    assert_eq!(entity.get_gravity_tick_count(), 1);
     entity.reset_gravity_tick_count();
-    assert_eq!(entity.gravity_tick_count(), 0);
+    assert_eq!(entity.get_gravity_tick_count(), 0);
 
     entity.set_synchronization_ticks(5);
-    assert_eq!(entity.synchronization_ticks(), 5);
+    assert_eq!(entity.get_synchronization_ticks(), 5);
     entity.synchronize_next_tick();
-    assert_eq!(entity.synchronization_ticks(), 5);
+    assert_eq!(entity.get_synchronization_ticks(), 5);
 
     assert!(entity.has_entity_collision());
     entity.set_entity_collision(false);
@@ -363,7 +400,7 @@ fn generic_living_motion_team_and_collision_api_match_minestom_surface() {
             z: 0.3
         }
     );
-    assert!(entity.intersects_box_at(
+    assert!(entity.get_intersects_box_at(
         Vector3d {
             x: 0.0,
             y: 0.0,
@@ -371,7 +408,7 @@ fn generic_living_motion_team_and_collision_api_match_minestom_surface() {
         },
         EntityBoundingBox::new(0.6, 1.95, 0.6),
     ));
-    assert!(!entity.intersects_box_at(
+    assert!(!entity.get_intersects_box_at(
         Vector3d {
             x: 4.0,
             y: 0.0,
@@ -379,7 +416,7 @@ fn generic_living_motion_team_and_collision_api_match_minestom_surface() {
         },
         EntityBoundingBox::new(0.6, 1.95, 0.6),
     ));
-    assert!(entity.intersects_box_swept(
+    assert!(entity.get_intersects_box_swept(
         Vector3d {
             x: -1.0,
             y: 0.0,
@@ -507,7 +544,10 @@ fn generic_entity_builds_spawn_and_metadata_packets_from_owned_state() {
     assert_eq!(spawn_packet.entity_id, entity.get_entity_id().get_value());
     assert_eq!(spawn_packet.entity_type, EntityType::ZOMBIE.id());
     assert_eq!(spawn_packet.x, 1.0);
-    assert_eq!(metadata_packet.entity_id, entity.get_entity_id().get_value());
+    assert_eq!(
+        metadata_packet.entity_id,
+        entity.get_entity_id().get_value()
+    );
     assert_eq!(metadata_packet.entries.0.len(), 1);
     assert!(entity.get_dirty_metadata_packet().is_none());
 }
@@ -517,7 +557,9 @@ fn generic_entity_metadata_defaults_are_not_redundantly_sent() {
     let mut entity = GenericEntity::new(EntityType::ZOMBIE);
 
     assert_eq!(
-        entity.get_metadata().get_value(&definitions::get_air_ticks()),
+        entity
+            .get_metadata()
+            .get_value(&definitions::get_air_ticks()),
         definitions::get_air_ticks().get_default_value().clone()
     );
     assert!(entity.get_metadata_packet().entries.0.is_empty());
@@ -536,9 +578,12 @@ fn generic_entity_builds_minestom_equipment_packet_from_owned_equipment() {
         ItemStack::of(Material::DIAMOND_HELMET),
     );
 
-    let equipment_packet = entity.equipment_packet();
+    let equipment_packet = entity.get_equipment_packet();
 
-    assert_eq!(equipment_packet.entity_id, entity.get_entity_id().get_value());
+    assert_eq!(
+        equipment_packet.entity_id,
+        entity.get_entity_id().get_value()
+    );
     assert_eq!(equipment_packet.equipment.0.len(), 7);
     assert_eq!(
         equipment_packet.equipment.0[0]
@@ -572,12 +617,21 @@ fn generic_entity_builds_velocity_head_look_and_teleport_packets_from_owned_stat
     let head_look_packet = entity.get_head_look_packet();
     let teleport_packet = entity.teleport_packet();
 
-    assert_eq!(velocity_packet.entity_id, entity.get_entity_id().get_value());
+    assert_eq!(
+        velocity_packet.entity_id,
+        entity.get_entity_id().get_value()
+    );
     assert_eq!(velocity_packet.velocity.0.x, 0.0125);
     assert_eq!(velocity_packet.velocity.0.z, -0.0125);
-    assert_eq!(head_look_packet.entity_id, entity.get_entity_id().get_value());
+    assert_eq!(
+        head_look_packet.entity_id,
+        entity.get_entity_id().get_value()
+    );
     assert_eq!(head_look_packet.head_yaw.0, 30.0);
-    assert_eq!(teleport_packet.entity_id, entity.get_entity_id().get_value());
+    assert_eq!(
+        teleport_packet.entity_id,
+        entity.get_entity_id().get_value()
+    );
     assert_eq!(teleport_packet.position, entity.get_position().as_vector());
     assert_eq!(teleport_packet.delta.x, 0.0125);
     assert_eq!(teleport_packet.delta.z, -0.0125);
@@ -589,10 +643,10 @@ fn generic_entity_builds_minestom_relative_movement_packets_from_previous_positi
     let previous_position = EntityPosition::new(1.0, 2.0, 3.0, 0.0, 0.0);
     entity.set_position(EntityPosition::new(1.5, 2.0, 2.5, 90.0, 45.0));
 
-    let position_packet = entity.position_delta_packet(previous_position, true);
+    let position_packet = entity.get_position_delta_packet(previous_position, true);
     let position_and_rotation_packet =
-        entity.position_and_rotation_delta_packet(previous_position, false);
-    let rotation_packet = entity.rotation_packet(true);
+        entity.get_position_and_rotation_delta_packet(previous_position, false);
+    let rotation_packet = entity.get_rotation_packet(true);
 
     assert_eq!(position_packet.delta_x, 2048);
     assert_eq!(position_packet.delta_z, -2048);

@@ -82,7 +82,9 @@ impl GoalSelector for MeleeAttackGoal {
             self.should_stop = true;
             return;
         };
-        let distance_squared = creature.get_position().get_distance_squared(target.get_position());
+        let distance_squared = creature
+            .get_position()
+            .get_distance_squared(target.get_position());
         if distance_squared <= self.range_squared {
             creature.look_at_position(target.get_position());
             if cooldown_is_ready(time, self.last_hit_tick, self.delay_ticks) {

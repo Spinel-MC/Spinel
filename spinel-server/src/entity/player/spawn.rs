@@ -46,7 +46,7 @@ impl Player {
         time_packet: SetTimePacket,
         weather: Weather,
     ) -> io::Result<()> {
-        self.position = PlayerPosition::from(self.respawn_point());
+        self.position = PlayerPosition::from(self.get_respawn_point());
         self.loaded_chunk = PlayerChunk::from_position(self.position);
         self.chunks_loaded_by_client = self.loaded_chunk;
         self.initialize_chunk_update_history();
@@ -86,7 +86,7 @@ impl Player {
         time_packet: SetTimePacket,
         weather: Weather,
     ) -> io::Result<()> {
-        self.position = PlayerPosition::from(self.respawn_point());
+        self.position = PlayerPosition::from(self.get_respawn_point());
         self.loaded_chunk = PlayerChunk::from_position(self.position);
         self.chunks_loaded_by_client = self.loaded_chunk;
         self.initialize_chunk_update_history();
@@ -297,12 +297,12 @@ impl Player {
             self.reset_chunk_queue();
         }
         self.loaded_chunk
-            .surrounding(self.effective_chunk_view_distance(world_view_distance))
+            .surrounding(self.get_effective_chunk_view_distance(world_view_distance))
     }
 
     pub(crate) fn spawn_chunks(&self, world_view_distance: i32) -> Vec<PlayerChunk> {
-        PlayerChunk::from_position(PlayerPosition::from(self.respawn_point()))
-            .surrounding(self.effective_chunk_view_distance(world_view_distance))
+        PlayerChunk::from_position(PlayerPosition::from(self.get_respawn_point()))
+            .surrounding(self.get_effective_chunk_view_distance(world_view_distance))
     }
 
     pub(crate) fn get_chunk_transition(
@@ -315,7 +315,7 @@ impl Player {
         let position = self.position.at(x, y, z);
         self.chunks_loaded_by_client.transition_to(
             PlayerChunk::from_position(position),
-            self.effective_chunk_view_distance(world_view_distance),
+            self.get_effective_chunk_view_distance(world_view_distance),
         )
     }
 
@@ -349,7 +349,7 @@ impl Player {
     ) -> bool {
         chunk.is_within_view_distance(
             self.chunks_loaded_by_client,
-            self.effective_chunk_view_distance(world_view_distance),
+            self.get_effective_chunk_view_distance(world_view_distance),
         )
     }
 
@@ -444,7 +444,7 @@ impl Player {
         SetDefaultSpawnPositionPacket::new(
             GlobalPos {
                 dimension: world_name,
-                position: self.respawn_point().block_position(),
+                position: self.get_respawn_point().get_block_position(),
             },
             self.position.yaw,
             self.position.pitch,

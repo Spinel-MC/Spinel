@@ -6,7 +6,7 @@ use std::{
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Identifier {
     pub namespace: Cow<'static, str>,
     pub path: Cow<'static, str>,

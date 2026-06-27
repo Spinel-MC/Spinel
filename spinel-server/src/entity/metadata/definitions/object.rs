@@ -36,7 +36,11 @@ pub mod area_effect_cloud {
     use super::*;
     value_definition!(get_radius, 8, MetadataValue::Float(0.5));
     value_definition!(waiting, 9, MetadataValue::Boolean(false));
-    value_definition!(get_particle, 10, MetadataValue::Particle(Particle::effect()));
+    value_definition!(
+        get_particle,
+        10,
+        MetadataValue::Particle(Particle::effect())
+    );
 }
 
 pub mod fishing_hook {
@@ -61,7 +65,11 @@ pub mod boat {
 
 pub mod abstract_minecart {
     use super::*;
-    value_definition!(get_custom_block_state, 11, MetadataValue::OptionalBlockState(0));
+    value_definition!(
+        get_custom_block_state,
+        11,
+        MetadataValue::OptionalBlockState(0)
+    );
     value_definition!(custom_block_y_position, 12, MetadataValue::VarInt(6));
 }
 
@@ -73,7 +81,11 @@ pub mod furnace_minecart {
 pub mod command_block_minecart {
     use super::*;
     value_definition!(get_command, 13, MetadataValue::String(String::new()));
-    value_definition!(get_last_output, 14, MetadataValue::Text(TextComponent::empty()));
+    value_definition!(
+        get_last_output,
+        14,
+        MetadataValue::Text(TextComponent::empty())
+    );
 }
 
 pub mod end_crystal {

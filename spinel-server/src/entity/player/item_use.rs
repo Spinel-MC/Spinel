@@ -13,11 +13,12 @@ use spinel_core::network::clientbound::play::entity_sound_effect::{
 use spinel_network::types::sound::SoundEvent;
 use spinel_network::types::{TeleportFlags, Vector3d};
 use spinel_registry::data_components::vanilla_components::{
-    BLOCKS_ATTACKS, CONSUMABLE, EQUIPPABLE, FOOD, INSTRUMENT, USE_REMAINDER,
+    BLOCKS_ATTACKS, CONSUMABLE, EQUIPPABLE, FOOD, INSTRUMENT, POTION_CONTENTS,
+    SUSPICIOUS_STEW_EFFECTS, USE_REMAINDER,
 };
 use spinel_registry::{
-    ConsumeEffect, CustomPotionEffect, Identifier, ItemAnimation, ItemStack, Material,
-    RegistryTagReference,
+    ConsumeEffect, CustomPotionEffect, Identifier, ItemAnimation, ItemStack, Material, MobEffect,
+    RegistryKey, RegistryTagReference, SuspiciousStewEffect,
 };
 use std::io;
 
@@ -29,6 +30,8 @@ const TRIDENT_USE_DURATION_TICKS: u64 = 72_000;
 const SPYGLASS_USE_DURATION_TICKS: u64 = 1_200;
 const BRUSH_USE_DURATION_TICKS: u64 = 200;
 const BUNDLE_USE_DURATION_TICKS: u64 = 200;
+const VISIBLE_NON_AMBIENT_POTION_EFFECT_FLAGS: i8 =
+    TimedPotionEffect::PARTICLES_FLAG | TimedPotionEffect::ICON_FLAG;
 
 pub(crate) struct PlayerItemUseCompletion {
     pub(crate) entity_id: i32,
@@ -51,7 +54,7 @@ impl Player {
 
     pub fn is_eating(&self) -> bool {
         self.item_use_hand
-            .is_some_and(|hand| player_hand_item_is_food(self.item_in_hand(hand)))
+            .is_some_and(|hand| player_hand_item_is_food(self.get_item_in_hand(hand)))
     }
 
     pub fn get_item_use_hand(&self) -> Option<PlayerHand> {
@@ -109,7 +112,7 @@ impl Player {
         if !self.use_item_with_cooldown(hand, current_tick, client)? {
             return Ok(false);
         }
-        let item_stack = self.item_in_hand(hand);
+        let item_stack = self.get_item_in_hand(hand);
         let item_use_state = item_use_state(&item_stack, &server.registries);
         let is_using_main_hand_while_off_hand_was_requested =
             self.item_use_hand == Some(PlayerHand::Main) && hand == PlayerHand::Off;
@@ -171,7 +174,7 @@ impl Player {
         if !self.set_item_in_hand(hand, currently_equipped_item) {
             return Ok(false);
         }
-        self.sync_slot(equipment_slot.armor_slot(), client)?;
+        self.sync_slot(equipment_slot.get_armor_slot(), client)?;
         self.sync_slot(self.inventory_slot_for_hand(hand), client)?;
         if hand == PlayerHand::Main {
             self.sync_main_hand_attributes(client)?;
@@ -194,7 +197,7 @@ impl Player {
         let Some(hand) = self.item_use_hand else {
             return true;
         };
-        let item_stack = self.item_in_hand(hand);
+        let item_stack = self.get_item_in_hand(hand);
         let mut cancel_item_use_event = PlayerCancelItemUseEvent::new(
             self as *mut Player,
             hand,
@@ -219,7 +222,7 @@ impl Player {
         if self.get_current_item_use_time() < self.item_use_time {
             return None;
         }
-        let item_stack = self.item_in_hand(hand);
+        let item_stack = self.get_item_in_hand(hand);
         let duration = self.get_current_item_use_time();
         self.refresh_active_hand(false, self.item_use_hand == Some(PlayerHand::Off), false);
         self.clear_item_use();
@@ -257,6 +260,8 @@ impl Player {
         let Some(consumable) = item_stack.get(CONSUMABLE) else {
             return Ok(());
         };
+        self.apply_consumed_item_potion_contents(&item_stack, server, client)?;
+        self.apply_consumed_suspicious_stew_effects(&item_stack, server, client)?;
         self.apply_consumable_effects(consumable.effects(), server, client)?;
         self.increment_statistic_value(
             format!("minecraft:used:{}", item_stack.material().key()),
@@ -290,7 +295,7 @@ impl Player {
             ConsumeEffect::ApplyEffects {
                 effects,
                 probability,
-            } => self.apply_consumable_potion_effects(effects, *probability, server, client),
+            } => self.apply_custom_potion_effects(effects, *probability, server, client),
             ConsumeEffect::RemoveEffects { effects } => {
                 self.remove_consumable_potion_effects(effects, server, client)
             }
@@ -302,7 +307,55 @@ impl Player {
         }
     }
 
-    fn apply_consumable_potion_effects(
+    fn apply_consumed_item_potion_contents(
+        &mut self,
+        item_stack: &ItemStack,
+        server: &MinecraftServer,
+        client: &mut Client,
+    ) -> io::Result<()> {
+        let Some(potion_contents) = item_stack.get(POTION_CONTENTS) else {
+            return Ok(());
+        };
+        self.apply_custom_potion_effects(potion_contents.custom_effects(), 1.0, server, client)
+    }
+
+    fn apply_consumed_suspicious_stew_effects(
+        &mut self,
+        item_stack: &ItemStack,
+        server: &MinecraftServer,
+        client: &mut Client,
+    ) -> io::Result<()> {
+        let Some(suspicious_stew_effects) = item_stack.get(SUSPICIOUS_STEW_EFFECTS) else {
+            return Ok(());
+        };
+        suspicious_stew_effects
+            .effects()
+            .iter()
+            .try_for_each(|effect| self.apply_suspicious_stew_effect(effect, server, client))
+    }
+
+    fn apply_suspicious_stew_effect(
+        &mut self,
+        effect: &SuspiciousStewEffect,
+        server: &MinecraftServer,
+        client: &mut Client,
+    ) -> io::Result<()> {
+        let effect_key = RegistryKey::new(effect.effect_id().clone());
+        let Some(protocol_id) = server.registries.mob_effect_id(&effect_key) else {
+            return Ok(());
+        };
+        let packet = self.add_effect(TimedPotionEffect::new(
+            effect_key,
+            protocol_id,
+            0,
+            effect.duration_ticks(),
+            VISIBLE_NON_AMBIENT_POTION_EFFECT_FLAGS,
+            self.alive_ticks,
+        ));
+        packet.dispatch(client)
+    }
+
+    fn apply_custom_potion_effects(
         &mut self,
         effects: &[CustomPotionEffect],
         probability: f32,
@@ -316,15 +369,14 @@ impl Player {
             return Ok(());
         }
         effects.iter().try_for_each(|effect| {
-            let Some(effect_id) = server
-                .registries
-                .dynamic_registry_id(&spinel_registry::MOB_EFFECT_REGISTRY, effect.effect_id())
-            else {
+            let effect_key = RegistryKey::new(effect.effect_id().clone());
+            let Some(protocol_id) = server.registries.mob_effect_id(&effect_key) else {
                 return Ok(());
             };
             let settings = effect.get_settings();
             let packet = self.add_effect(TimedPotionEffect::new(
-                effect_id,
+                effect_key,
+                protocol_id,
                 settings.amplifier(),
                 settings.duration(),
                 potion_effect_flags(settings),
@@ -340,20 +392,22 @@ impl Player {
         server: &MinecraftServer,
         client: &mut Client,
     ) -> io::Result<()> {
-        let removable_effect_ids = self
+        let removable_effect_keys = self
             .get_active_effects()
             .into_iter()
             .filter_map(|effect| {
-                effect_reference_contains(effects, effect.get_effect_id(), server)
-                    .then_some(effect.get_effect_id())
+                effect_reference_contains(effects, effect.get_effect_key(), server)
+                    .then_some(effect.get_effect_key().clone())
             })
             .collect::<Vec<_>>();
-        removable_effect_ids.into_iter().try_for_each(|effect_id| {
-            let Some(packet) = self.remove_effect(effect_id) else {
-                return Ok(());
-            };
-            packet.dispatch(client)
-        })
+        removable_effect_keys
+            .into_iter()
+            .try_for_each(|effect_key| {
+                let Some(packet) = self.remove_effect(&effect_key) else {
+                    return Ok(());
+                };
+                packet.dispatch(client)
+            })
     }
 
     fn clear_consumable_potion_effects(&mut self, client: &mut Client) -> io::Result<()> {
@@ -405,21 +459,22 @@ impl Player {
 
 fn effect_reference_contains(
     reference: &RegistryTagReference,
-    effect_id: i32,
+    effect_key: &RegistryKey<MobEffect>,
     server: &MinecraftServer,
 ) -> bool {
     match reference {
         RegistryTagReference::Backed(tag_name) => server
             .registries
-            .mob_effect_tag_contains(tag_name, effect_id),
-        RegistryTagReference::Direct(effect_names) => server
-            .registries
-            .mob_effect_key(effect_id)
-            .is_some_and(|effect_key| {
-                effect_names
-                    .iter()
-                    .any(|effect_name| effect_name == effect_key)
+            .mob_effect_id(effect_key)
+            .is_some_and(|effect_id| {
+                server
+                    .registries
+                    .mob_effect_tag_contains(tag_name, effect_id)
             }),
+        RegistryTagReference::Direct(effect_names) => {
+            let key = effect_key.key();
+            effect_names.iter().any(|effect_name| effect_name == key)
+        }
         RegistryTagReference::Empty => false,
     }
 }

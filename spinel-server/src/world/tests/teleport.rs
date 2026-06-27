@@ -255,7 +255,10 @@ fn entity_teleport_future_applies_state_only_when_completed() {
 
     assert!(ticket.is_completed());
     assert_eq!(completed_teleport.get_position(), destination);
-    assert_eq!(world.get_entity(entity_id).unwrap().get_position(), destination);
+    assert_eq!(
+        world.get_entity(entity_id).unwrap().get_position(),
+        destination
+    );
 }
 
 #[test]
@@ -303,7 +306,10 @@ fn entity_teleport_future_waits_for_parallel_destination_chunk_loading() {
     };
 
     assert_eq!(completed_teleport.get_position(), destination);
-    assert_eq!(world.get_entity(entity_id).unwrap().get_position(), destination);
+    assert_eq!(
+        world.get_entity(entity_id).unwrap().get_position(),
+        destination
+    );
 }
 
 fn queued_client() -> Client {

@@ -10,9 +10,11 @@ pub struct CommandBlockMinecartMeta<'entity> {
 
 impl<'entity> CommandBlockMinecartMeta<'entity> {
     pub(crate) fn from_entity_meta(entity_meta: EntityMeta<'entity>) -> Option<Self> {
-        (entity_meta.get_entity().get_entity_type() == EntityType::COMMAND_BLOCK_MINECART).then(|| Self {
-            abstract_minecart_meta: AbstractMinecartMeta::from_entity_meta(entity_meta),
-        })
+        (entity_meta.get_entity().get_entity_type() == EntityType::COMMAND_BLOCK_MINECART).then(
+            || Self {
+                abstract_minecart_meta: AbstractMinecartMeta::from_entity_meta(entity_meta),
+            },
+        )
     }
 
     pub fn get_command(&self) -> String {

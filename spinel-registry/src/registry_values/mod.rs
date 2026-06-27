@@ -7,6 +7,7 @@ pub mod cow_variant;
 pub mod damage_type;
 pub mod dialog;
 pub mod enchantment;
+pub mod enchantment_effect;
 pub mod frog_variant;
 pub mod instrument;
 pub mod jukebox_song;

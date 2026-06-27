@@ -9,11 +9,16 @@ pub struct AttributeList {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct AttributeModifierEntry {
-    attribute_type: Identifier,
+pub struct AttributeModifier {
     id: Identifier,
     amount: f64,
     operation: AttributeOperation,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct AttributeModifierEntry {
+    attribute_type: Identifier,
+    modifier: AttributeModifier,
     slot: EquipmentSlotGroup,
     display: AttributeModifierDisplay,
 }
@@ -66,43 +71,46 @@ impl AttributeList {
 
     #[must_use]
     pub fn remove(&self, modifier: &AttributeModifierEntry) -> Self {
-        let modifiers = self
-            .modifiers
+        let mut modifiers = self.modifiers.clone();
+        let Some(modifier_index) = modifiers
             .iter()
-            .filter(|existing_modifier| *existing_modifier != modifier)
-            .cloned()
-            .collect();
+            .position(|existing_modifier| existing_modifier == modifier)
+        else {
+            return Self { modifiers };
+        };
+        modifiers.remove(modifier_index);
         Self { modifiers }
+    }
+
+    #[must_use]
+    pub fn from_modifier(modifier: AttributeModifierEntry) -> Self {
+        Self {
+            modifiers: vec![modifier],
+        }
     }
 }
 
-impl AttributeModifierEntry {
+impl AttributeModifier {
     #[must_use]
-    pub const fn new(
-        attribute_type: Identifier,
-        id: Identifier,
-        amount: f64,
-        operation: AttributeOperation,
-        slot: EquipmentSlotGroup,
-        display: AttributeModifierDisplay,
-    ) -> Self {
+    pub const fn new(id: Identifier, amount: f64, operation: AttributeOperation) -> Self {
         Self {
-            attribute_type,
             id,
             amount,
             operation,
-            slot,
-            display,
         }
     }
 
-    #[must_use]
-    pub const fn attribute_type(&self) -> &Identifier {
-        &self.attribute_type
+    pub fn from(
+        id: impl AsRef<str>,
+        amount: f64,
+        operation: AttributeOperation,
+    ) -> Result<Self, String> {
+        id.as_ref()
+            .parse()
+            .map(|id| Self::new(id, amount, operation))
     }
-
     #[must_use]
-    pub const fn id(&self) -> &Identifier {
+    pub const fn get_id(&self) -> &Identifier {
         &self.id
     }
 
@@ -112,17 +120,59 @@ impl AttributeModifierEntry {
     }
 
     #[must_use]
-    pub const fn operation(&self) -> AttributeOperation {
+    pub const fn get_operation(&self) -> AttributeOperation {
         self.operation
+    }
+}
+
+impl AttributeModifierEntry {
+    #[must_use]
+    pub const fn new(
+        attribute_type: Identifier,
+        modifier: AttributeModifier,
+        slot: EquipmentSlotGroup,
+        display: AttributeModifierDisplay,
+    ) -> Self {
+        Self {
+            attribute_type,
+            modifier,
+            slot,
+            display,
+        }
     }
 
     #[must_use]
-    pub const fn slot(&self) -> EquipmentSlotGroup {
+    pub const fn get_attribute_type(&self) -> &Identifier {
+        &self.attribute_type
+    }
+
+    #[must_use]
+    pub const fn get_modifier(&self) -> &AttributeModifier {
+        &self.modifier
+    }
+
+    #[must_use]
+    pub const fn get_id(&self) -> &Identifier {
+        self.modifier.get_id()
+    }
+
+    #[must_use]
+    pub const fn get_amount(&self) -> f64 {
+        self.modifier.get_amount()
+    }
+
+    #[must_use]
+    pub const fn get_operation(&self) -> AttributeOperation {
+        self.modifier.get_operation()
+    }
+
+    #[must_use]
+    pub const fn get_slot(&self) -> EquipmentSlotGroup {
         self.slot
     }
 
     #[must_use]
-    pub const fn display(&self) -> &AttributeModifierDisplay {
+    pub const fn get_display(&self) -> &AttributeModifierDisplay {
         &self.display
     }
 }
@@ -152,6 +202,16 @@ impl AttributeOperation {
             "add_value" => Some(Self::AddValue),
             "add_multiplied_base" => Some(Self::AddMultipliedBase),
             "add_multiplied_total" => Some(Self::AddMultipliedTotal),
+            _ => None,
+        }
+    }
+
+    #[must_use]
+    pub const fn from_protocol_id(protocol_id: i32) -> Option<Self> {
+        match protocol_id {
+            0 => Some(Self::AddValue),
+            1 => Some(Self::AddMultipliedBase),
+            2 => Some(Self::AddMultipliedTotal),
             _ => None,
         }
     }
@@ -254,11 +314,11 @@ impl AttributeModifierEntry {
             "type".to_string(),
             Nbt::String(self.attribute_type.to_string()),
         );
-        compound.insert("id".to_string(), Nbt::String(self.id.to_string()));
-        compound.insert("amount".to_string(), Nbt::Double(self.amount));
+        compound.insert("id".to_string(), Nbt::String(self.get_id().to_string()));
+        compound.insert("amount".to_string(), Nbt::Double(self.get_amount()));
         compound.insert(
             "operation".to_string(),
-            Nbt::String(self.operation.nbt_name().to_string()),
+            Nbt::String(self.get_operation().nbt_name().to_string()),
         );
         if self.slot != EquipmentSlotGroup::Any {
             compound.insert(
@@ -290,9 +350,11 @@ impl AttributeModifierEntry {
         };
         Some(Self {
             attribute_type: string_field(compound, "type")?.parse().ok()?,
-            id: string_field(compound, "id")?.parse().ok()?,
-            amount: f64_field(compound, "amount")?,
-            operation: AttributeOperation::from_nbt_name(&string_field(compound, "operation")?)?,
+            modifier: AttributeModifier::new(
+                string_field(compound, "id")?.parse().ok()?,
+                f64_field(compound, "amount")?,
+                AttributeOperation::from_nbt_name(&string_field(compound, "operation")?)?,
+            ),
             slot,
             display: AttributeModifierDisplay::from_nbt(compound.get("display"))?,
         })

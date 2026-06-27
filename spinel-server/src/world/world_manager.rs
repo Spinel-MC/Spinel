@@ -588,7 +588,7 @@ impl WorldManager {
             return Some(position);
         }
         self.inactive_player(player_uuid).map(|player| {
-            let respawn_point = player.respawn_point();
+            let respawn_point = player.get_respawn_point();
             EntityPosition::new(
                 respawn_point.x,
                 respawn_point.y,
@@ -641,7 +641,7 @@ impl WorldManager {
             (position.get_x().floor() as i32).div_euclid(16),
             (position.get_z().floor() as i32).div_euclid(16),
         );
-        Ok(center.surrounding(player.effective_chunk_view_distance(target_view_distance)))
+        Ok(center.surrounding(player.get_effective_chunk_view_distance(target_view_distance)))
     }
 
     fn entity_position(&self, entity_id: EntityId) -> Option<EntityPosition> {

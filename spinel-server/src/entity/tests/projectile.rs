@@ -12,7 +12,7 @@ fn projectile_owner_preserves_shooter_and_disables_base_physics() {
 
     assert_eq!(projectile.get_shooter(), Some(shooter));
     assert!(!projectile.has_physics());
-    assert!(!projectile.was_stuck());
+    assert!(!projectile.get_was_stuck());
 }
 
 #[test]
@@ -209,7 +209,10 @@ fn fireballs_wind_charges_and_firework_metadata_owners_match_minestom() {
             .as_firework_rocket()
             .expect("firework rocket entity must expose FireworkRocketMeta");
         assert_eq!(firework_meta.get_firework_info(), ItemStack::air());
-        assert_eq!(firework_meta.get_shooter_entity_id(), Some(shooter.get_value()));
+        assert_eq!(
+            firework_meta.get_shooter_entity_id(),
+            Some(shooter.get_value())
+        );
         assert!(!firework_meta.is_shot_at_angle());
         firework_meta.set_firework_info(firework_rocket.clone());
         firework_meta.set_shot_at_angle(true);

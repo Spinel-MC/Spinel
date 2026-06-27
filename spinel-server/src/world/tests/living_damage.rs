@@ -81,10 +81,16 @@ fn world_damage_entity_applies_minestom_event_mutation_and_last_damage_order() {
         .get_entity(entity_id)
         .unwrap();
     assert_eq!(
-        shared_entity.get_last_damage_source().unwrap().damage_type(),
+        shared_entity
+            .get_last_damage_source()
+            .unwrap()
+            .damage_type(),
         &DamageType::GENERIC
     );
-    assert_eq!(shared_entity.get_last_damage_source().unwrap().get_amount(), 3.0);
+    assert_eq!(
+        shared_entity.get_last_damage_source().unwrap().get_amount(),
+        3.0
+    );
     assert!(LIVING_DAMAGE_EVENT_ENTITY_ACCESSOR_MATCHED.load(Ordering::SeqCst));
     reset_living_damage_test_state();
 }

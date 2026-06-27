@@ -13,4 +13,8 @@ fn remove_entity_effect_packet_matches_minestom_var_int_shape() {
 
     assert_eq!(RemoveEntityEffectPacket::get_id(), 0x4c);
     assert_eq!(payload, vec![7, 1]);
+
+    let decoded_packet = RemoveEntityEffectPacket::decode(&mut payload.as_slice()).unwrap();
+    assert_eq!(decoded_packet.entity_id, packet.entity_id);
+    assert_eq!(decoded_packet.effect_id, packet.effect_id);
 }

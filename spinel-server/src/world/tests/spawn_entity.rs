@@ -28,7 +28,10 @@ fn world_spawn_entity_delegates_summon_nbt_to_the_entity_owner() {
         entity.get_position(),
         EntityPosition::new(4.5, 72.0, 6.5, 45.0, 10.0)
     );
-    assert_eq!(entity.get_custom_name().unwrap().to_plain_string(), "Spawned");
+    assert_eq!(
+        entity.get_custom_name().unwrap().to_plain_string(),
+        "Spawned"
+    );
     assert!(entity.is_glowing());
     assert!(
         entity

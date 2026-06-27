@@ -75,7 +75,8 @@ impl<'entity> LivingEntityMeta<'entity> {
     }
 
     pub fn set_bee_stinger_count(&mut self, bee_stinger_count: i32) {
-        self.get_entity_mut().set_bee_stinger_count(bee_stinger_count);
+        self.get_entity_mut()
+            .set_bee_stinger_count(bee_stinger_count);
     }
 
     pub fn get_bed_in_which_sleeping_position(&self) -> Option<Position> {

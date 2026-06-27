@@ -9,9 +9,9 @@ use crate::entity::physics::{
     simulate_movement,
 };
 use crate::entity::{
-    Damage, EntityAttributeState, EntityCollisionRules, EntityEventNode, EntityId, EntityIdentity, EntityPose,
-    EntityLeash, EntityPointers, EntitySnapshot, EntitySynchronization, EntityTeleport, EntityTeleportRequest, EntityView,
-    EquipmentSlot, LivingState, PlayerHand, TimedPotionEffect,
+    Damage, EntityAttributeState, EntityCollisionRules, EntityEventNode, EntityId, EntityIdentity,
+    EntityLeash, EntityPointers, EntityPose, EntitySnapshot, EntitySynchronization, EntityTeleport,
+    EntityTeleportRequest, EntityView, EquipmentSlot, LivingState, PlayerHand, TimedPotionEffect,
 };
 use crate::network::client::instance::Client;
 use crate::scheduler::{ContextScheduler, Task, TaskSchedule};
@@ -44,7 +44,8 @@ use spinel_network::types::{
 };
 use spinel_registry::{
     Attribute, BlockFaceDirection, BlockState, DataComponentMap, DataComponentType,
-    DataComponentValue, EntityBoundingBox, EntityType, ItemStack, VillagerType,
+    DataComponentValue, EntityBoundingBox, EntityType, ItemStack, MobEffect, RegistryKey,
+    VillagerType,
 };
 use spinel_utils::color::DyeColor;
 use spinel_utils::component::events::{HoverEntity, HoverEvent};
@@ -261,41 +262,44 @@ impl GenericEntity {
         if component.id() == spinel_registry::data_components::vanilla_components::CAT_COLLAR.id()
             && self.entity_type == EntityType::CAT
         {
-            return T::from_component_nbt(&self.cat_collar_color().to_component_nbt());
+            return T::from_component_nbt(&self.get_cat_collar_color().to_component_nbt());
         }
         if component.id() == spinel_registry::data_components::vanilla_components::WOLF_COLLAR.id()
             && self.entity_type == EntityType::WOLF
         {
-            return T::from_component_nbt(&self.wolf_collar_color().to_component_nbt());
+            return T::from_component_nbt(&self.get_wolf_collar_color().to_component_nbt());
         }
         if component.id()
             == spinel_registry::data_components::vanilla_components::SHULKER_COLOR.id()
             && self.entity_type == EntityType::SHULKER
         {
-            return T::from_component_nbt(&self.shulker_color().to_component_nbt());
+            return T::from_component_nbt(&self.get_shulker_color().to_component_nbt());
         }
         if component.id() == spinel_registry::data_components::vanilla_components::FOX_VARIANT.id()
             && self.entity_type == EntityType::FOX
         {
-            return T::from_component_nbt(&self.fox_variant().to_component_nbt());
+            return T::from_component_nbt(&self.get_fox_variant().to_component_nbt());
         }
         if component.id() == spinel_registry::data_components::vanilla_components::SALMON_SIZE.id()
             && self.entity_type == EntityType::SALMON
         {
-            return T::from_component_nbt(&self.salmon_size().to_component_nbt());
+            return T::from_component_nbt(&self.get_salmon_size().to_component_nbt());
         }
         if component.id()
             == spinel_registry::data_components::vanilla_components::PARROT_VARIANT.id()
             && self.entity_type == EntityType::PARROT
         {
-            return T::from_component_nbt(&self.parrot_color().to_component_nbt());
+            return T::from_component_nbt(&self.get_parrot_color().to_component_nbt());
         }
         if component.id()
             == spinel_registry::data_components::vanilla_components::TROPICAL_FISH_PATTERN.id()
             && self.entity_type == EntityType::TROPICAL_FISH
         {
             return T::from_component_nbt(
-                &self.tropical_fish_variant().pattern().to_component_nbt(),
+                &self
+                    .get_tropical_fish_variant()
+                    .get_pattern()
+                    .to_component_nbt(),
             );
         }
         if component.id()
@@ -303,7 +307,10 @@ impl GenericEntity {
             && self.entity_type == EntityType::TROPICAL_FISH
         {
             return T::from_component_nbt(
-                &self.tropical_fish_variant().base_color().to_component_nbt(),
+                &self
+                    .get_tropical_fish_variant()
+                    .get_base_color()
+                    .to_component_nbt(),
             );
         }
         if component.id()
@@ -313,7 +320,7 @@ impl GenericEntity {
         {
             return T::from_component_nbt(
                 &self
-                    .tropical_fish_variant()
+                    .get_tropical_fish_variant()
                     .get_pattern_color()
                     .to_component_nbt(),
             );
@@ -322,32 +329,32 @@ impl GenericEntity {
             == spinel_registry::data_components::vanilla_components::MOOSHROOM_VARIANT.id()
             && self.entity_type == EntityType::MOOSHROOM
         {
-            return T::from_component_nbt(&self.mooshroom_variant().to_component_nbt());
+            return T::from_component_nbt(&self.get_mooshroom_variant().to_component_nbt());
         }
         if component.id()
             == spinel_registry::data_components::vanilla_components::RABBIT_VARIANT.id()
             && self.entity_type == EntityType::RABBIT
         {
-            return T::from_component_nbt(&self.rabbit_variant().to_component_nbt());
+            return T::from_component_nbt(&self.get_rabbit_variant().to_component_nbt());
         }
         if component.id()
             == spinel_registry::data_components::vanilla_components::HORSE_VARIANT.id()
             && self.entity_type == EntityType::HORSE
         {
-            return T::from_component_nbt(&self.horse_variant().color().to_component_nbt());
+            return T::from_component_nbt(&self.get_horse_variant().get_color().to_component_nbt());
         }
         if component.id()
             == spinel_registry::data_components::vanilla_components::LLAMA_VARIANT.id()
             && (self.entity_type == EntityType::LLAMA
                 || self.entity_type == EntityType::TRADER_LLAMA)
         {
-            return T::from_component_nbt(&self.llama_variant().to_component_nbt());
+            return T::from_component_nbt(&self.get_llama_variant().to_component_nbt());
         }
         if component.id()
             == spinel_registry::data_components::vanilla_components::AXOLOTL_VARIANT.id()
             && self.entity_type == EntityType::AXOLOTL
         {
-            return T::from_component_nbt(&self.axolotl_variant().to_component_nbt());
+            return T::from_component_nbt(&self.get_axolotl_variant().to_component_nbt());
         }
         self.data_components.get_component(component)
     }
@@ -430,7 +437,7 @@ impl GenericEntity {
             else {
                 return;
             };
-            let variant = self.tropical_fish_variant().with_pattern(pattern);
+            let variant = self.get_tropical_fish_variant().with_pattern(pattern);
             self.set_tropical_fish_variant(variant);
             return;
         }
@@ -441,7 +448,7 @@ impl GenericEntity {
             let Some(color) = DyeColor::from_component_nbt(&value.to_component_nbt()) else {
                 return;
             };
-            let variant = self.tropical_fish_variant().with_base_color(color);
+            let variant = self.get_tropical_fish_variant().with_base_color(color);
             self.set_tropical_fish_variant(variant);
             return;
         }
@@ -453,7 +460,7 @@ impl GenericEntity {
             let Some(color) = DyeColor::from_component_nbt(&value.to_component_nbt()) else {
                 return;
             };
-            let variant = self.tropical_fish_variant().with_pattern_color(color);
+            let variant = self.get_tropical_fish_variant().with_pattern_color(color);
             self.set_tropical_fish_variant(variant);
             return;
         }
@@ -487,7 +494,7 @@ impl GenericEntity {
             else {
                 return;
             };
-            let variant = self.horse_variant().with_color(color);
+            let variant = self.get_horse_variant().with_color(color);
             self.set_horse_variant(variant);
             return;
         }
@@ -616,9 +623,13 @@ impl GenericEntity {
         let position = request.get_position();
         let velocity = request.get_velocity();
         let flags = request.get_flags();
-        self.teleport_with_velocity_chunks_and_flags(position, velocity, request.into_chunks(), flags)
+        self.teleport_with_velocity_chunks_and_flags(
+            position,
+            velocity,
+            request.into_chunks(),
+            flags,
+        )
     }
-
 
     pub fn teleport_with_velocity_chunks_and_flags(
         &mut self,
@@ -680,11 +691,11 @@ impl GenericEntity {
     }
 
     pub fn get_distance_to_position(&self, position: EntityPosition) -> f64 {
-        self.distance_squared_to_position(position).sqrt()
+        self.get_distance_squared_to_position(position).sqrt()
     }
 
     pub fn get_distance_to_entity(&self, entity: &GenericEntity) -> f64 {
-        self.distance_to_position(entity.position())
+        self.get_distance_to_position(entity.get_position())
     }
 
     pub fn get_distance_squared_to_position(&self, position: EntityPosition) -> f64 {
@@ -692,7 +703,7 @@ impl GenericEntity {
     }
 
     pub fn get_distance_squared_to_entity(&self, entity: &GenericEntity) -> f64 {
-        self.distance_squared_to_position(entity.position())
+        self.get_distance_squared_to_position(entity.get_position())
     }
 
     pub const fn get_velocity(&self) -> Velocity {
@@ -780,7 +791,7 @@ impl GenericEntity {
     pub(crate) fn get_attach_entity_packet(
         &self,
     ) -> spinel_core::network::clientbound::play::attach_entity::AttachEntityPacket {
-        self.leash.packet(self.entity_id)
+        self.leash.get_packet(self.entity_id)
     }
 
     pub fn get_status_packet(&self, status: i8) -> EntityStatusPacket {
@@ -791,7 +802,7 @@ impl GenericEntity {
     }
 
     pub fn is_on_fire(&self) -> bool {
-        self.metadata.flag(&definitions::is_on_fire())
+        self.metadata.get_flag(&definitions::is_on_fire())
     }
 
     pub fn set_on_fire(&mut self, on_fire: bool) {
@@ -799,7 +810,7 @@ impl GenericEntity {
     }
 
     pub fn is_sneaking(&self) -> bool {
-        self.metadata.flag(&definitions::is_crouching())
+        self.metadata.get_flag(&definitions::is_crouching())
     }
 
     pub fn set_sneaking(&mut self, sneaking: bool) {
@@ -808,7 +819,7 @@ impl GenericEntity {
     }
 
     pub fn is_sprinting(&self) -> bool {
-        self.metadata.flag(&definitions::is_sprinting())
+        self.metadata.get_flag(&definitions::is_sprinting())
     }
 
     pub fn set_sprinting(&mut self, sprinting: bool) {
@@ -817,7 +828,7 @@ impl GenericEntity {
     }
 
     pub fn is_swimming(&self) -> bool {
-        self.metadata.flag(&definitions::is_swimming())
+        self.metadata.get_flag(&definitions::is_swimming())
     }
 
     pub fn set_swimming(&mut self, swimming: bool) {
@@ -826,7 +837,7 @@ impl GenericEntity {
     }
 
     pub fn is_invisible(&self) -> bool {
-        self.metadata.flag(&definitions::is_invisible())
+        self.metadata.get_flag(&definitions::is_invisible())
     }
 
     pub fn set_invisible(&mut self, invisible: bool) {
@@ -835,7 +846,7 @@ impl GenericEntity {
     }
 
     pub fn is_glowing(&self) -> bool {
-        self.metadata.flag(&definitions::has_glowing_effect())
+        self.metadata.get_flag(&definitions::has_glowing_effect())
     }
 
     pub fn set_glowing(&mut self, glowing: bool) {
@@ -851,13 +862,15 @@ impl GenericEntity {
     }
 
     pub fn set_air_ticks(&mut self, air_ticks: i32) {
-        self.metadata
-            .set(&definitions::get_air_ticks(), MetadataValue::VarInt(air_ticks));
+        self.metadata.set(
+            &definitions::get_air_ticks(),
+            MetadataValue::VarInt(air_ticks),
+        );
     }
 
     pub fn is_hand_active(&self) -> bool {
         self.metadata
-            .flag(&definitions::living_entity::is_hand_active())
+            .get_flag(&definitions::living_entity::is_hand_active())
     }
 
     pub fn set_hand_active(&mut self, hand_active: bool) {
@@ -868,7 +881,7 @@ impl GenericEntity {
     pub fn get_active_hand(&self) -> PlayerHand {
         if self
             .metadata
-            .flag(&definitions::living_entity::get_active_hand())
+            .get_flag(&definitions::living_entity::get_active_hand())
         {
             return PlayerHand::Off;
         }
@@ -884,7 +897,7 @@ impl GenericEntity {
 
     pub fn is_in_riptide_spin_attack(&self) -> bool {
         self.metadata
-            .flag(&definitions::living_entity::is_riptide_spin_attack())
+            .get_flag(&definitions::living_entity::is_riptide_spin_attack())
     }
 
     pub fn set_in_riptide_spin_attack(&mut self, in_riptide_spin_attack: bool) {
@@ -930,14 +943,18 @@ impl GenericEntity {
 
     pub fn get_pose(&self) -> EntityPose {
         match self.metadata.get_value(&definitions::get_pose()) {
-            MetadataValue::Pose(pose) => EntityPose::from_protocol_id(pose).unwrap_or(EntityPose::Standing),
+            MetadataValue::Pose(pose) => {
+                EntityPose::from_protocol_id(pose).unwrap_or(EntityPose::Standing)
+            }
             _ => EntityPose::Standing,
         }
     }
 
     pub fn set_pose(&mut self, pose: EntityPose) {
-        self.metadata
-            .set(&definitions::get_pose(), MetadataValue::Pose(pose.get_protocol_id()));
+        self.metadata.set(
+            &definitions::get_pose(),
+            MetadataValue::Pose(pose.get_protocol_id()),
+        );
         self.event_node.dispatch("EntityPoseEvent", self.entity_id);
     }
 
@@ -1044,7 +1061,7 @@ impl GenericEntity {
     }
 
     pub fn is_no_ai(&self) -> bool {
-        self.metadata.flag(&definitions::mob::no_ai())
+        self.metadata.get_flag(&definitions::mob::no_ai())
     }
 
     pub fn set_no_ai(&mut self, no_ai: bool) {
@@ -1052,7 +1069,7 @@ impl GenericEntity {
     }
 
     pub fn is_left_handed(&self) -> bool {
-        self.metadata.flag(&definitions::mob::is_left_handed())
+        self.metadata.get_flag(&definitions::mob::is_left_handed())
     }
 
     pub fn set_left_handed(&mut self, left_handed: bool) {
@@ -1061,7 +1078,7 @@ impl GenericEntity {
     }
 
     pub fn is_aggressive(&self) -> bool {
-        self.metadata.flag(&definitions::mob::is_aggressive())
+        self.metadata.get_flag(&definitions::mob::is_aggressive())
     }
 
     pub fn set_aggressive(&mut self, aggressive: bool) {
@@ -1070,7 +1087,10 @@ impl GenericEntity {
     }
 
     pub fn is_baby(&self) -> bool {
-        match self.metadata.get_value(&definitions::ageable_mob::is_baby()) {
+        match self
+            .metadata
+            .get_value(&definitions::ageable_mob::is_baby())
+        {
             MetadataValue::Boolean(baby) => baby,
             _ => false,
         }
@@ -1099,7 +1119,7 @@ impl GenericEntity {
     }
 
     pub fn is_hanging_bat(&self) -> bool {
-        self.metadata.flag(&definitions::bat::is_hanging())
+        self.metadata.get_flag(&definitions::bat::is_hanging())
     }
 
     pub fn set_hanging_bat(&mut self, is_hanging: bool) {
@@ -1122,7 +1142,10 @@ impl GenericEntity {
     }
 
     pub fn get_allay_can_duplicate(&self) -> bool {
-        match self.metadata.get_value(&definitions::allay::can_duplicate()) {
+        match self
+            .metadata
+            .get_value(&definitions::allay::can_duplicate())
+        {
             MetadataValue::Boolean(can_duplicate) => can_duplicate,
             _ => true,
         }
@@ -1200,7 +1223,10 @@ impl GenericEntity {
     }
 
     pub fn get_dolphin_moisture_level(&self) -> i32 {
-        match self.metadata.get_value(&definitions::dolphin::get_moisture_level()) {
+        match self
+            .metadata
+            .get_value(&definitions::dolphin::get_moisture_level())
+        {
             MetadataValue::VarInt(moisture_level) => moisture_level,
             _ => 2400,
         }
@@ -1214,7 +1240,10 @@ impl GenericEntity {
     }
 
     pub fn get_axolotl_variant(&self) -> AxolotlVariant {
-        match self.metadata.get_value(&definitions::axolotl::get_variant()) {
+        match self
+            .metadata
+            .get_value(&definitions::axolotl::get_variant())
+        {
             MetadataValue::VarInt(variant_id) => {
                 AxolotlVariant::from_protocol_id(variant_id).unwrap_or_default()
             }
@@ -1247,7 +1276,10 @@ impl GenericEntity {
     }
 
     pub fn is_from_bucket_axolotl(&self) -> bool {
-        match self.metadata.get_value(&definitions::axolotl::is_from_bucket()) {
+        match self
+            .metadata
+            .get_value(&definitions::axolotl::is_from_bucket())
+        {
             MetadataValue::Boolean(is_from_bucket) => is_from_bucket,
             _ => false,
         }
@@ -1278,7 +1310,10 @@ impl GenericEntity {
     }
 
     pub fn get_pufferfish_state(&self) -> PufferfishState {
-        match self.metadata.get_value(&definitions::puffer_fish::puff_state()) {
+        match self
+            .metadata
+            .get_value(&definitions::puffer_fish::puff_state())
+        {
             MetadataValue::VarInt(state) => {
                 PufferfishState::from_protocol_id(state).unwrap_or_default()
             }
@@ -1310,7 +1345,10 @@ impl GenericEntity {
     }
 
     pub fn get_tropical_fish_variant(&self) -> TropicalFishVariant {
-        match self.metadata.get_value(&definitions::tropical_fish::get_variant()) {
+        match self
+            .metadata
+            .get_value(&definitions::tropical_fish::get_variant())
+        {
             MetadataValue::VarInt(variant) => {
                 TropicalFishVariant::from_packed_id(variant).unwrap_or_default()
             }
@@ -1354,7 +1392,10 @@ impl GenericEntity {
     }
 
     pub fn get_goat_has_right_horn(&self) -> bool {
-        match self.metadata.get_value(&definitions::goat::has_right_horn()) {
+        match self
+            .metadata
+            .get_value(&definitions::goat::has_right_horn())
+        {
             MetadataValue::Boolean(has_right_horn) => has_right_horn,
             _ => true,
         }
@@ -1382,7 +1423,8 @@ impl GenericEntity {
     }
 
     pub fn is_tamed_horse(&self) -> bool {
-        self.metadata.flag(&definitions::abstract_horse::is_tame())
+        self.metadata
+            .get_flag(&definitions::abstract_horse::is_tame())
     }
 
     pub fn set_tamed_horse(&mut self, is_tamed: bool) {
@@ -1391,7 +1433,8 @@ impl GenericEntity {
     }
 
     pub fn get_horse_has_bred(&self) -> bool {
-        self.metadata.flag(&definitions::abstract_horse::has_bred())
+        self.metadata
+            .get_flag(&definitions::abstract_horse::has_bred())
     }
 
     pub fn set_horse_has_bred(&mut self, has_bred: bool) {
@@ -1401,7 +1444,7 @@ impl GenericEntity {
 
     pub fn is_eating_horse(&self) -> bool {
         self.metadata
-            .flag(&definitions::abstract_horse::is_eating())
+            .get_flag(&definitions::abstract_horse::is_eating())
     }
 
     pub fn set_eating_horse(&mut self, is_eating: bool) {
@@ -1411,7 +1454,7 @@ impl GenericEntity {
 
     pub fn is_rearing_horse(&self) -> bool {
         self.metadata
-            .flag(&definitions::abstract_horse::is_rearing())
+            .get_flag(&definitions::abstract_horse::is_rearing())
     }
 
     pub fn set_rearing_horse(&mut self, is_rearing: bool) {
@@ -1421,7 +1464,7 @@ impl GenericEntity {
 
     pub fn is_horse_mouth_open(&self) -> bool {
         self.metadata
-            .flag(&definitions::abstract_horse::is_mouth_open())
+            .get_flag(&definitions::abstract_horse::is_mouth_open())
     }
 
     pub fn set_horse_mouth_open(&mut self, is_mouth_open: bool) {
@@ -1508,7 +1551,10 @@ impl GenericEntity {
     }
 
     pub fn get_llama_carpet_color(&self) -> i32 {
-        match self.metadata.get_value(&definitions::llama::get_carpet_color()) {
+        match self
+            .metadata
+            .get_value(&definitions::llama::get_carpet_color())
+        {
             MetadataValue::VarInt(color) => color,
             _ => -1,
         }
@@ -1554,7 +1600,7 @@ impl GenericEntity {
     }
 
     pub fn is_sitting_fox(&self) -> bool {
-        self.metadata.flag(&definitions::fox::is_sitting())
+        self.metadata.get_flag(&definitions::fox::is_sitting())
     }
 
     pub fn set_sitting_fox(&mut self, is_sitting: bool) {
@@ -1563,7 +1609,7 @@ impl GenericEntity {
     }
 
     pub fn is_sneaking_fox(&self) -> bool {
-        self.metadata.flag(&definitions::fox::is_crouching())
+        self.metadata.get_flag(&definitions::fox::is_crouching())
     }
 
     pub fn set_sneaking_fox(&mut self, is_sneaking: bool) {
@@ -1572,7 +1618,7 @@ impl GenericEntity {
     }
 
     pub fn is_interested_fox(&self) -> bool {
-        self.metadata.flag(&definitions::fox::is_interested())
+        self.metadata.get_flag(&definitions::fox::is_interested())
     }
 
     pub fn set_interested_fox(&mut self, is_interested: bool) {
@@ -1581,7 +1627,7 @@ impl GenericEntity {
     }
 
     pub fn is_pouncing_fox(&self) -> bool {
-        self.metadata.flag(&definitions::fox::is_pouncing())
+        self.metadata.get_flag(&definitions::fox::is_pouncing())
     }
 
     pub fn set_pouncing_fox(&mut self, is_pouncing: bool) {
@@ -1590,7 +1636,7 @@ impl GenericEntity {
     }
 
     pub fn is_sleeping_fox(&self) -> bool {
-        self.metadata.flag(&definitions::fox::is_sleeping())
+        self.metadata.get_flag(&definitions::fox::is_sleeping())
     }
 
     pub fn set_sleeping_fox(&mut self, is_sleeping: bool) {
@@ -1599,7 +1645,7 @@ impl GenericEntity {
     }
 
     pub fn is_faceplanted_fox(&self) -> bool {
-        self.metadata.flag(&definitions::fox::is_faceplanted())
+        self.metadata.get_flag(&definitions::fox::is_faceplanted())
     }
 
     pub fn set_faceplanted_fox(&mut self, is_faceplanted: bool) {
@@ -1608,7 +1654,7 @@ impl GenericEntity {
     }
 
     pub fn is_defending_fox(&self) -> bool {
-        self.metadata.flag(&definitions::fox::is_defending())
+        self.metadata.get_flag(&definitions::fox::is_defending())
     }
 
     pub fn set_defending_fox(&mut self, is_defending: bool) {
@@ -1631,7 +1677,10 @@ impl GenericEntity {
     }
 
     pub fn get_fox_second_uuid(&self) -> Option<Uuid> {
-        match self.metadata.get_value(&definitions::fox::get_second_uuid()) {
+        match self
+            .metadata
+            .get_value(&definitions::fox::get_second_uuid())
+        {
             MetadataValue::OptionalLivingEntityReference(uuid) => uuid,
             _ => None,
         }
@@ -1659,7 +1708,10 @@ impl GenericEntity {
     }
 
     pub fn get_panda_breed_timer(&self) -> i32 {
-        match self.metadata.get_value(&definitions::panda::get_breed_timer()) {
+        match self
+            .metadata
+            .get_value(&definitions::panda::get_breed_timer())
+        {
             MetadataValue::VarInt(timer) => timer,
             _ => 0,
         }
@@ -1673,7 +1725,10 @@ impl GenericEntity {
     }
 
     pub fn get_panda_sneeze_timer(&self) -> i32 {
-        match self.metadata.get_value(&definitions::panda::get_sneeze_timer()) {
+        match self
+            .metadata
+            .get_value(&definitions::panda::get_sneeze_timer())
+        {
             MetadataValue::VarInt(timer) => timer,
             _ => 0,
         }
@@ -1687,7 +1742,10 @@ impl GenericEntity {
     }
 
     pub fn get_panda_eat_timer(&self) -> i32 {
-        match self.metadata.get_value(&definitions::panda::get_eat_timer()) {
+        match self
+            .metadata
+            .get_value(&definitions::panda::get_eat_timer())
+        {
             MetadataValue::VarInt(timer) => timer,
             _ => 0,
         }
@@ -1701,7 +1759,10 @@ impl GenericEntity {
     }
 
     pub fn get_panda_main_gene(&self) -> PandaGene {
-        match self.metadata.get_value(&definitions::panda::get_main_gene()) {
+        match self
+            .metadata
+            .get_value(&definitions::panda::get_main_gene())
+        {
             MetadataValue::Byte(gene_id) => {
                 PandaGene::from_protocol_id(gene_id as i32).unwrap_or_default()
             }
@@ -1717,7 +1778,10 @@ impl GenericEntity {
     }
 
     pub fn get_panda_hidden_gene(&self) -> PandaGene {
-        match self.metadata.get_value(&definitions::panda::get_hidden_gene()) {
+        match self
+            .metadata
+            .get_value(&definitions::panda::get_hidden_gene())
+        {
             MetadataValue::Byte(gene_id) => {
                 PandaGene::from_protocol_id(gene_id as i32).unwrap_or_default()
             }
@@ -1733,7 +1797,7 @@ impl GenericEntity {
     }
 
     pub fn is_sneezing_panda(&self) -> bool {
-        self.metadata.flag(&definitions::panda::is_sneezing())
+        self.metadata.get_flag(&definitions::panda::is_sneezing())
     }
 
     pub fn set_sneezing_panda(&mut self, is_sneezing: bool) {
@@ -1742,7 +1806,7 @@ impl GenericEntity {
     }
 
     pub fn is_rolling_panda(&self) -> bool {
-        self.metadata.flag(&definitions::panda::is_rolling())
+        self.metadata.get_flag(&definitions::panda::is_rolling())
     }
 
     pub fn set_rolling_panda(&mut self, is_rolling: bool) {
@@ -1751,7 +1815,7 @@ impl GenericEntity {
     }
 
     pub fn is_sitting_panda(&self) -> bool {
-        self.metadata.flag(&definitions::panda::is_sitting())
+        self.metadata.get_flag(&definitions::panda::is_sitting())
     }
 
     pub fn set_sitting_panda(&mut self, is_sitting: bool) {
@@ -1760,7 +1824,7 @@ impl GenericEntity {
     }
 
     pub fn is_on_back_panda(&self) -> bool {
-        self.metadata.flag(&definitions::panda::is_on_back())
+        self.metadata.get_flag(&definitions::panda::is_on_back())
     }
 
     pub fn set_on_back_panda(&mut self, is_on_back: bool) {
@@ -1785,7 +1849,10 @@ impl GenericEntity {
     }
 
     pub fn get_mooshroom_variant(&self) -> MooshroomVariant {
-        match self.metadata.get_value(&definitions::mooshroom::get_variant()) {
+        match self
+            .metadata
+            .get_value(&definitions::mooshroom::get_variant())
+        {
             MetadataValue::VarInt(variant_id) => {
                 MooshroomVariant::from_protocol_id(variant_id).unwrap_or_default()
             }
@@ -1831,7 +1898,10 @@ impl GenericEntity {
     }
 
     pub fn is_laying_egg_turtle(&self) -> bool {
-        match self.metadata.get_value(&definitions::turtle::is_laying_egg()) {
+        match self
+            .metadata
+            .get_value(&definitions::turtle::is_laying_egg())
+        {
             MetadataValue::Boolean(is_laying_egg) => is_laying_egg,
             _ => false,
         }
@@ -1879,7 +1949,10 @@ impl GenericEntity {
     }
 
     pub fn get_strider_boost_time(&self) -> i32 {
-        match self.metadata.get_value(&definitions::strider::fungus_boost()) {
+        match self
+            .metadata
+            .get_value(&definitions::strider::fungus_boost())
+        {
             MetadataValue::VarInt(boost_time) => boost_time,
             _ => 0,
         }
@@ -1908,7 +1981,7 @@ impl GenericEntity {
 
     pub fn is_sitting_tameable_animal(&self) -> bool {
         self.metadata
-            .flag(&definitions::tameable_animal::is_sitting())
+            .get_flag(&definitions::tameable_animal::is_sitting())
     }
 
     pub fn set_sitting_tameable_animal(&mut self, is_sitting: bool) {
@@ -1918,7 +1991,7 @@ impl GenericEntity {
 
     pub fn is_tamed_animal(&self) -> bool {
         self.metadata
-            .flag(&definitions::tameable_animal::is_tamed())
+            .get_flag(&definitions::tameable_animal::is_tamed())
     }
 
     pub fn set_tamed_animal(&mut self, is_tamed: bool) {
@@ -1927,7 +2000,10 @@ impl GenericEntity {
     }
 
     pub fn get_tameable_animal_owner(&self) -> Option<Uuid> {
-        match self.metadata.get_value(&definitions::tameable_animal::get_owner()) {
+        match self
+            .metadata
+            .get_value(&definitions::tameable_animal::get_owner())
+        {
             MetadataValue::OptionalLivingEntityReference(owner) => owner,
             _ => None,
         }
@@ -2020,7 +2096,10 @@ impl GenericEntity {
     }
 
     pub fn get_cat_collar_color(&self) -> DyeColor {
-        match self.metadata.get_value(&definitions::cat::get_collar_color()) {
+        match self
+            .metadata
+            .get_value(&definitions::cat::get_collar_color())
+        {
             MetadataValue::VarInt(color_id) => DyeColor::ALL
                 .get(color_id as usize)
                 .copied()
@@ -2055,7 +2134,10 @@ impl GenericEntity {
     }
 
     pub fn get_wolf_collar_color(&self) -> DyeColor {
-        match self.metadata.get_value(&definitions::wolf::get_collar_color()) {
+        match self
+            .metadata
+            .get_value(&definitions::wolf::get_collar_color())
+        {
             MetadataValue::VarInt(color_id) => DyeColor::ALL
                 .get(color_id as usize)
                 .copied()
@@ -2076,7 +2158,10 @@ impl GenericEntity {
     }
 
     pub fn get_wolf_anger_time(&self) -> i64 {
-        match self.metadata.get_value(&definitions::wolf::get_anger_time()) {
+        match self
+            .metadata
+            .get_value(&definitions::wolf::get_anger_time())
+        {
             MetadataValue::Long(anger_time) => anger_time,
             _ => -1,
         }
@@ -2090,7 +2175,7 @@ impl GenericEntity {
     }
 
     pub fn get_sheep_color(&self) -> DyeColor {
-        let color_id = self.metadata.byte(&definitions::sheep::color_id());
+        let color_id = self.metadata.get_byte(&definitions::sheep::color_id());
         DyeColor::ALL
             .get(color_id as usize)
             .copied()
@@ -2107,7 +2192,7 @@ impl GenericEntity {
     }
 
     pub fn is_sheared_sheep(&self) -> bool {
-        self.metadata.flag(&definitions::sheep::is_sheared())
+        self.metadata.get_flag(&definitions::sheep::is_sheared())
     }
 
     pub fn set_sheared_sheep(&mut self, is_sheared: bool) {
@@ -2116,7 +2201,7 @@ impl GenericEntity {
     }
 
     pub fn is_blaze_on_fire(&self) -> bool {
-        self.metadata.flag(&definitions::blaze::is_on_fire())
+        self.metadata.get_flag(&definitions::blaze::is_on_fire())
     }
 
     pub fn set_blaze_on_fire(&mut self, is_on_fire: bool) {
@@ -2246,7 +2331,10 @@ impl GenericEntity {
     }
 
     pub fn get_creaking_home_position(&self) -> Option<Position> {
-        match self.metadata.get_value(&definitions::creaking::home_position()) {
+        match self
+            .metadata
+            .get_value(&definitions::creaking::home_position())
+        {
             MetadataValue::OptionalPosition(position) => position,
             _ => None,
         }
@@ -2302,14 +2390,20 @@ impl GenericEntity {
     }
 
     pub fn is_screaming_enderman(&self) -> bool {
-        match self.metadata.get_value(&definitions::enderman::is_screaming()) {
+        match self
+            .metadata
+            .get_value(&definitions::enderman::is_screaming())
+        {
             MetadataValue::Boolean(is_screaming) => is_screaming,
             _ => false,
         }
     }
 
     pub fn get_enderman_carried_block(&self) -> Option<BlockState> {
-        match self.metadata.get_value(&definitions::enderman::get_carried_block()) {
+        match self
+            .metadata
+            .get_value(&definitions::enderman::get_carried_block())
+        {
             MetadataValue::OptionalBlockState(0) => None,
             MetadataValue::OptionalBlockState(block_state_id) => {
                 BlockState::from_state_id(block_state_id)
@@ -2333,7 +2427,10 @@ impl GenericEntity {
     }
 
     pub fn is_staring_enderman(&self) -> bool {
-        match self.metadata.get_value(&definitions::enderman::is_staring()) {
+        match self
+            .metadata
+            .get_value(&definitions::enderman::is_staring())
+        {
             MetadataValue::Boolean(is_staring) => is_staring,
             _ => false,
         }
@@ -2354,8 +2451,10 @@ impl GenericEntity {
     }
 
     pub fn set_phantom_size(&mut self, size: i32) {
-        self.metadata
-            .set(&definitions::phantom::get_size(), MetadataValue::VarInt(size));
+        self.metadata.set(
+            &definitions::phantom::get_size(),
+            MetadataValue::VarInt(size),
+        );
     }
 
     pub(crate) fn get_guardian_target_entity_id(&self) -> i32 {
@@ -2376,7 +2475,10 @@ impl GenericEntity {
     }
 
     pub fn get_raider_is_celebrating(&self) -> bool {
-        match self.metadata.get_value(&definitions::raider::is_celebrating()) {
+        match self
+            .metadata
+            .get_value(&definitions::raider::is_celebrating())
+        {
             MetadataValue::Boolean(is_celebrating) => is_celebrating,
             _ => false,
         }
@@ -2390,7 +2492,10 @@ impl GenericEntity {
     }
 
     pub fn get_pillager_is_charging_crossbow(&self) -> bool {
-        match self.metadata.get_value(&definitions::pillager::is_charging()) {
+        match self
+            .metadata
+            .get_value(&definitions::pillager::is_charging())
+        {
             MetadataValue::Boolean(is_charging) => is_charging,
             _ => false,
         }
@@ -2421,7 +2526,7 @@ impl GenericEntity {
     }
 
     pub fn is_climbing_spider(&self) -> bool {
-        self.metadata.flag(&definitions::spider::is_climbing())
+        self.metadata.get_flag(&definitions::spider::is_climbing())
     }
 
     pub fn set_climbing_spider(&mut self, is_climbing: bool) {
@@ -2430,7 +2535,10 @@ impl GenericEntity {
     }
 
     pub fn get_warden_anger_level(&self) -> i32 {
-        match self.metadata.get_value(&definitions::warden::get_anger_level()) {
+        match self
+            .metadata
+            .get_value(&definitions::warden::get_anger_level())
+        {
             MetadataValue::VarInt(anger_level) => anger_level,
             _ => 0,
         }
@@ -2589,9 +2697,9 @@ impl GenericEntity {
 
     fn villager_variant_component(&self) -> Option<VillagerType> {
         match self.entity_type {
-            EntityType::VILLAGER => Some(self.villager_data().villager_type().clone()),
+            EntityType::VILLAGER => Some(self.get_villager_data().get_villager_type().clone()),
             EntityType::ZOMBIE_VILLAGER => {
-                Some(self.zombie_villager_data().villager_type().clone())
+                Some(self.get_zombie_villager_data().get_villager_type().clone())
             }
             _ => None,
         }
@@ -2600,10 +2708,12 @@ impl GenericEntity {
     fn set_villager_variant_component(&mut self, villager_type: VillagerType) {
         match self.entity_type {
             EntityType::VILLAGER => {
-                self.set_villager_data(self.villager_data().with_type(villager_type));
+                self.set_villager_data(self.get_villager_data().with_type(villager_type));
             }
             EntityType::ZOMBIE_VILLAGER => {
-                self.set_zombie_villager_data(self.zombie_villager_data().with_type(villager_type));
+                self.set_zombie_villager_data(
+                    self.get_zombie_villager_data().with_type(villager_type),
+                );
             }
             _ => {}
         }
@@ -2659,7 +2769,7 @@ impl GenericEntity {
 
     pub fn is_player_created_iron_golem(&self) -> bool {
         self.metadata
-            .flag(&definitions::iron_golem::is_player_created())
+            .get_flag(&definitions::iron_golem::is_player_created())
     }
 
     pub fn set_player_created_iron_golem(&mut self, is_player_created: bool) {
@@ -2671,7 +2781,7 @@ impl GenericEntity {
 
     pub fn get_snow_golem_has_pumpkin_hat(&self) -> bool {
         self.metadata
-            .flag(&definitions::snow_golem::has_pumpkin_hat())
+            .get_flag(&definitions::snow_golem::has_pumpkin_hat())
     }
 
     pub fn set_snow_golem_has_pumpkin_hat(&mut self, has_pumpkin_hat: bool) {
@@ -2699,7 +2809,10 @@ impl GenericEntity {
     }
 
     pub fn get_copper_golem_state(&self) -> CopperGolemState {
-        match self.metadata.get_value(&definitions::copper_golem::get_state()) {
+        match self
+            .metadata
+            .get_value(&definitions::copper_golem::get_state())
+        {
             MetadataValue::CopperGolemState(state_id) => {
                 CopperGolemState::from_protocol_id(state_id).unwrap_or_default()
             }
@@ -2715,14 +2828,20 @@ impl GenericEntity {
     }
 
     pub fn get_shulker_shield_height(&self) -> i8 {
-        match self.metadata.get_value(&definitions::shulker::get_shield_height()) {
+        match self
+            .metadata
+            .get_value(&definitions::shulker::get_shield_height())
+        {
             MetadataValue::Byte(shield_height) => shield_height,
             _ => 0,
         }
     }
 
     pub fn get_shulker_attach_face(&self) -> BlockFaceDirection {
-        match self.metadata.get_value(&definitions::shulker::get_attach_face()) {
+        match self
+            .metadata
+            .get_value(&definitions::shulker::get_attach_face())
+        {
             MetadataValue::Direction(direction_id) => {
                 BlockFaceDirection::from_protocol_id(direction_id)
                     .unwrap_or(BlockFaceDirection::Down)
@@ -2838,7 +2957,10 @@ impl GenericEntity {
     }
 
     pub fn get_main_hand(&self) -> MainHand {
-        match self.metadata.get_value(&definitions::avatar::get_main_hand()) {
+        match self
+            .metadata
+            .get_value(&definitions::avatar::get_main_hand())
+        {
             MetadataValue::MainHand(main_hand) => main_hand,
             _ => MainHand::Right,
         }
@@ -2852,7 +2974,8 @@ impl GenericEntity {
     }
 
     pub fn is_cape_enabled(&self) -> bool {
-        self.metadata.flag(&definitions::avatar::is_cape_enabled())
+        self.metadata
+            .get_flag(&definitions::avatar::is_cape_enabled())
     }
 
     pub fn set_cape_enabled(&mut self, cape_enabled: bool) {
@@ -2862,7 +2985,7 @@ impl GenericEntity {
 
     pub fn is_jacket_enabled(&self) -> bool {
         self.metadata
-            .flag(&definitions::avatar::is_jacket_enabled())
+            .get_flag(&definitions::avatar::is_jacket_enabled())
     }
 
     pub fn set_jacket_enabled(&mut self, jacket_enabled: bool) {
@@ -2872,7 +2995,7 @@ impl GenericEntity {
 
     pub fn is_left_sleeve_enabled(&self) -> bool {
         self.metadata
-            .flag(&definitions::avatar::is_left_sleeve_enabled())
+            .get_flag(&definitions::avatar::is_left_sleeve_enabled())
     }
 
     pub fn set_left_sleeve_enabled(&mut self, left_sleeve_enabled: bool) {
@@ -2884,7 +3007,7 @@ impl GenericEntity {
 
     pub fn is_right_sleeve_enabled(&self) -> bool {
         self.metadata
-            .flag(&definitions::avatar::is_right_sleeve_enabled())
+            .get_flag(&definitions::avatar::is_right_sleeve_enabled())
     }
 
     pub fn set_right_sleeve_enabled(&mut self, right_sleeve_enabled: bool) {
@@ -2896,7 +3019,7 @@ impl GenericEntity {
 
     pub fn is_left_leg_enabled(&self) -> bool {
         self.metadata
-            .flag(&definitions::avatar::is_left_pants_leg_enabled())
+            .get_flag(&definitions::avatar::is_left_pants_leg_enabled())
     }
 
     pub fn set_left_leg_enabled(&mut self, left_leg_enabled: bool) {
@@ -2908,7 +3031,7 @@ impl GenericEntity {
 
     pub fn is_right_leg_enabled(&self) -> bool {
         self.metadata
-            .flag(&definitions::avatar::is_right_pants_leg_enabled())
+            .get_flag(&definitions::avatar::is_right_pants_leg_enabled())
     }
 
     pub fn set_right_leg_enabled(&mut self, right_leg_enabled: bool) {
@@ -2919,7 +3042,8 @@ impl GenericEntity {
     }
 
     pub fn is_hat_enabled(&self) -> bool {
-        self.metadata.flag(&definitions::avatar::is_hat_enabled())
+        self.metadata
+            .get_flag(&definitions::avatar::is_hat_enabled())
     }
 
     pub fn set_hat_enabled(&mut self, hat_enabled: bool) {
@@ -2969,8 +3093,10 @@ impl GenericEntity {
     }
 
     pub fn set_score(&mut self, score: i32) {
-        self.metadata
-            .set(&definitions::player::get_score(), MetadataValue::VarInt(score));
+        self.metadata.set(
+            &definitions::player::get_score(),
+            MetadataValue::VarInt(score),
+        );
     }
 
     pub fn get_left_shoulder_entity_data(&self) -> Option<i32> {
@@ -3008,7 +3134,10 @@ impl GenericEntity {
     }
 
     pub fn get_profile(&self) -> ResolvableProfile {
-        match self.metadata.get_value(&definitions::mannequin::get_profile()) {
+        match self
+            .metadata
+            .get_value(&definitions::mannequin::get_profile())
+        {
             MetadataValue::ResolvableProfile(profile) => profile,
             _ => ResolvableProfile::default(),
         }
@@ -3022,7 +3151,10 @@ impl GenericEntity {
     }
 
     pub fn is_immovable(&self) -> bool {
-        match self.metadata.get_value(&definitions::mannequin::immovable()) {
+        match self
+            .metadata
+            .get_value(&definitions::mannequin::immovable())
+        {
             MetadataValue::Boolean(immovable) => immovable,
             _ => false,
         }
@@ -3036,7 +3168,10 @@ impl GenericEntity {
     }
 
     pub fn get_description(&self) -> Option<TextComponent> {
-        match self.metadata.get_value(&definitions::mannequin::get_description()) {
+        match self
+            .metadata
+            .get_value(&definitions::mannequin::get_description())
+        {
             MetadataValue::OptionalText(description) => description,
             _ => None,
         }
@@ -3111,7 +3246,10 @@ impl GenericEntity {
     }
 
     pub fn get_display_translation(&self) -> Vector3f {
-        match self.metadata.get_value(&definitions::display::get_translation()) {
+        match self
+            .metadata
+            .get_value(&definitions::display::get_translation())
+        {
             MetadataValue::Vector3f(translation) => translation,
             _ => Vector3f {
                 x: 0.0,
@@ -3147,7 +3285,10 @@ impl GenericEntity {
     }
 
     pub fn get_left_rotation(&self) -> Quaternionf {
-        match self.metadata.get_value(&definitions::display::rotation_left()) {
+        match self
+            .metadata
+            .get_value(&definitions::display::rotation_left())
+        {
             MetadataValue::Quaternionf(rotation) => rotation,
             _ => Quaternionf {
                 x: 0.0,
@@ -3166,7 +3307,10 @@ impl GenericEntity {
     }
 
     pub fn get_right_rotation(&self) -> Quaternionf {
-        match self.metadata.get_value(&definitions::display::rotation_right()) {
+        match self
+            .metadata
+            .get_value(&definitions::display::rotation_right())
+        {
             MetadataValue::Quaternionf(rotation) => rotation,
             _ => Quaternionf {
                 x: 0.0,
@@ -3231,7 +3375,7 @@ impl GenericEntity {
     }
 
     fn display_light_at_shift(&self, shift: i32) -> i32 {
-        let brightness_override = self.brightness_override();
+        let brightness_override = self.get_brightness_override();
         if brightness_override <= 0 {
             return 0;
         }
@@ -3239,7 +3383,10 @@ impl GenericEntity {
     }
 
     pub fn get_display_view_range(&self) -> f32 {
-        match self.metadata.get_value(&definitions::display::get_view_range()) {
+        match self
+            .metadata
+            .get_value(&definitions::display::get_view_range())
+        {
             MetadataValue::Float(view_range) => view_range,
             _ => 1.0,
         }
@@ -3253,7 +3400,10 @@ impl GenericEntity {
     }
 
     pub fn get_shadow_radius(&self) -> f32 {
-        match self.metadata.get_value(&definitions::display::get_shadow_radius()) {
+        match self
+            .metadata
+            .get_value(&definitions::display::get_shadow_radius())
+        {
             MetadataValue::Float(shadow_radius) => shadow_radius,
             _ => 0.0,
         }
@@ -3291,8 +3441,10 @@ impl GenericEntity {
     }
 
     pub fn set_display_width(&mut self, width: f32) {
-        self.metadata
-            .set(&definitions::display::get_width(), MetadataValue::Float(width));
+        self.metadata.set(
+            &definitions::display::get_width(),
+            MetadataValue::Float(width),
+        );
     }
 
     pub fn get_display_height(&self) -> f32 {
@@ -3329,7 +3481,7 @@ impl GenericEntity {
     pub fn get_displayed_block_state(&self) -> i32 {
         match self
             .metadata
-            .value(&definitions::block_display::displayed_block_state())
+            .get_value(&definitions::block_display::displayed_block_state())
         {
             MetadataValue::BlockState(displayed_block_state) => displayed_block_state,
             _ => 0,
@@ -3346,7 +3498,7 @@ impl GenericEntity {
     pub fn get_displayed_item(&self) -> Slot {
         match self
             .metadata
-            .value(&definitions::item_display::displayed_item())
+            .get_value(&definitions::item_display::displayed_item())
         {
             MetadataValue::Slot(displayed_item) => displayed_item,
             _ => Slot::from_item_stack(&ItemStack::air()),
@@ -3378,7 +3530,10 @@ impl GenericEntity {
     }
 
     pub fn get_display_text(&self) -> TextComponent {
-        match self.metadata.get_value(&definitions::text_display::get_text()) {
+        match self
+            .metadata
+            .get_value(&definitions::text_display::get_text())
+        {
             MetadataValue::Text(text) => text,
             _ => TextComponent::empty(),
         }
@@ -3443,7 +3598,8 @@ impl GenericEntity {
     }
 
     pub fn has_text_shadow(&self) -> bool {
-        self.metadata.flag(&definitions::text_display::has_shadow())
+        self.metadata
+            .get_flag(&definitions::text_display::has_shadow())
     }
 
     pub fn set_text_shadow(&mut self, text_shadow: bool) {
@@ -3453,7 +3609,7 @@ impl GenericEntity {
 
     pub fn is_text_see_through(&self) -> bool {
         self.metadata
-            .flag(&definitions::text_display::is_see_through())
+            .get_flag(&definitions::text_display::is_see_through())
     }
 
     pub fn set_text_see_through(&mut self, text_see_through: bool) {
@@ -3465,7 +3621,7 @@ impl GenericEntity {
 
     pub fn get_uses_default_text_background(&self) -> bool {
         self.metadata
-            .flag(&definitions::text_display::uses_default_background_color())
+            .get_flag(&definitions::text_display::uses_default_background_color())
     }
 
     pub fn set_uses_default_text_background(&mut self, uses_default_text_background: bool) {
@@ -3477,7 +3633,7 @@ impl GenericEntity {
 
     pub fn is_text_left_aligned(&self) -> bool {
         self.metadata
-            .flag(&definitions::text_display::is_left_aligned())
+            .get_flag(&definitions::text_display::is_left_aligned())
     }
 
     pub fn set_text_left_aligned(&mut self, text_left_aligned: bool) {
@@ -3489,7 +3645,7 @@ impl GenericEntity {
 
     pub fn is_text_right_aligned(&self) -> bool {
         self.metadata
-            .flag(&definitions::text_display::is_right_aligned())
+            .get_flag(&definitions::text_display::is_right_aligned())
     }
 
     pub fn set_text_right_aligned(&mut self, text_right_aligned: bool) {
@@ -3500,7 +3656,8 @@ impl GenericEntity {
     }
 
     pub fn get_text_alignment(&self) -> i8 {
-        self.metadata.byte(&definitions::text_display::get_alignment())
+        self.metadata
+            .get_byte(&definitions::text_display::get_alignment())
     }
 
     pub fn set_text_alignment(&mut self, text_alignment: i8) {
@@ -3509,7 +3666,10 @@ impl GenericEntity {
     }
 
     pub fn get_interaction_width(&self) -> f32 {
-        match self.metadata.get_value(&definitions::interaction::get_width()) {
+        match self
+            .metadata
+            .get_value(&definitions::interaction::get_width())
+        {
             MetadataValue::Float(width) => width,
             _ => 1.0,
         }
@@ -3523,7 +3683,10 @@ impl GenericEntity {
     }
 
     pub fn get_interaction_height(&self) -> f32 {
-        match self.metadata.get_value(&definitions::interaction::get_height()) {
+        match self
+            .metadata
+            .get_value(&definitions::interaction::get_height())
+        {
             MetadataValue::Float(height) => height,
             _ => 1.0,
         }
@@ -3537,7 +3700,10 @@ impl GenericEntity {
     }
 
     pub fn has_interaction_response(&self) -> bool {
-        match self.metadata.get_value(&definitions::interaction::responsive()) {
+        match self
+            .metadata
+            .get_value(&definitions::interaction::responsive())
+        {
             MetadataValue::Boolean(response) => response,
             _ => false,
         }
@@ -3670,7 +3836,10 @@ impl GenericEntity {
     }
 
     pub fn get_splash_timer(&self) -> i32 {
-        match self.metadata.get_value(&definitions::boat::get_splash_timer()) {
+        match self
+            .metadata
+            .get_value(&definitions::boat::get_splash_timer())
+        {
             MetadataValue::VarInt(splash_timer) => splash_timer,
             _ => 0,
         }
@@ -3803,7 +3972,10 @@ impl GenericEntity {
     }
 
     pub fn get_hanging_direction(&self) -> i32 {
-        match self.metadata.get_value(&definitions::hanging::get_direction()) {
+        match self
+            .metadata
+            .get_value(&definitions::hanging::get_direction())
+        {
             MetadataValue::Direction(direction) => direction,
             _ => 3,
         }
@@ -3817,19 +3989,27 @@ impl GenericEntity {
     }
 
     pub fn get_item_frame_item(&self) -> Slot {
-        match self.metadata.get_value(&definitions::item_frame::get_item()) {
+        match self
+            .metadata
+            .get_value(&definitions::item_frame::get_item())
+        {
             MetadataValue::Slot(item) => item,
             _ => Slot::from_item_stack(&ItemStack::air()),
         }
     }
 
     pub fn set_item_frame_item(&mut self, item: Slot) {
-        self.metadata
-            .set(&definitions::item_frame::get_item(), MetadataValue::Slot(item));
+        self.metadata.set(
+            &definitions::item_frame::get_item(),
+            MetadataValue::Slot(item),
+        );
     }
 
     pub fn get_item_frame_rotation(&self) -> i32 {
-        match self.metadata.get_value(&definitions::item_frame::get_rotation()) {
+        match self
+            .metadata
+            .get_value(&definitions::item_frame::get_rotation())
+        {
             MetadataValue::VarInt(rotation) => rotation,
             _ => 0,
         }
@@ -3843,7 +4023,10 @@ impl GenericEntity {
     }
 
     pub fn get_painting_variant(&self) -> i32 {
-        match self.metadata.get_value(&definitions::painting::get_variant()) {
+        match self
+            .metadata
+            .get_value(&definitions::painting::get_variant())
+        {
             MetadataValue::PaintingVariant(variant) => variant,
             _ => 24,
         }
@@ -3857,7 +4040,10 @@ impl GenericEntity {
     }
 
     pub fn get_primed_tnt_fuse_time(&self) -> i32 {
-        match self.metadata.get_value(&definitions::primed_tnt::get_fuse_time()) {
+        match self
+            .metadata
+            .get_value(&definitions::primed_tnt::get_fuse_time())
+        {
             MetadataValue::VarInt(fuse_time) => fuse_time,
             _ => 80,
         }
@@ -3871,7 +4057,10 @@ impl GenericEntity {
     }
 
     pub fn get_primed_tnt_block_state(&self) -> i32 {
-        match self.metadata.get_value(&definitions::primed_tnt::get_block_state()) {
+        match self
+            .metadata
+            .get_value(&definitions::primed_tnt::get_block_state())
+        {
             MetadataValue::BlockState(block_state) => block_state,
             _ => spinel_registry::vanilla_world_blocks::Block::TNT.state_id(),
         }
@@ -3932,7 +4121,10 @@ impl GenericEntity {
     }
 
     pub fn get_ender_dragon_phase(&self) -> i32 {
-        match self.metadata.get_value(&definitions::ender_dragon::get_phase()) {
+        match self
+            .metadata
+            .get_value(&definitions::ender_dragon::get_phase())
+        {
             MetadataValue::VarInt(phase) => phase,
             _ => 10,
         }
@@ -3946,7 +4138,8 @@ impl GenericEntity {
     }
 
     pub fn is_armor_stand_small(&self) -> bool {
-        self.metadata.flag(&definitions::armor_stand::is_small())
+        self.metadata
+            .get_flag(&definitions::armor_stand::is_small())
     }
 
     pub fn set_armor_stand_small(&mut self, small: bool) {
@@ -3955,7 +4148,8 @@ impl GenericEntity {
     }
 
     pub fn has_armor_stand_arms(&self) -> bool {
-        self.metadata.flag(&definitions::armor_stand::has_arms())
+        self.metadata
+            .get_flag(&definitions::armor_stand::has_arms())
     }
 
     pub fn set_armor_stand_arms(&mut self, has_arms: bool) {
@@ -3965,7 +4159,7 @@ impl GenericEntity {
 
     pub fn has_armor_stand_no_base_plate(&self) -> bool {
         self.metadata
-            .flag(&definitions::armor_stand::has_no_base_plate())
+            .get_flag(&definitions::armor_stand::has_no_base_plate())
     }
 
     pub fn set_armor_stand_no_base_plate(&mut self, has_no_base_plate: bool) {
@@ -3976,7 +4170,8 @@ impl GenericEntity {
     }
 
     pub fn is_armor_stand_marker(&self) -> bool {
-        self.metadata.flag(&definitions::armor_stand::is_marker())
+        self.metadata
+            .get_flag(&definitions::armor_stand::is_marker())
     }
 
     pub fn set_armor_stand_marker(&mut self, marker: bool) {
@@ -4013,7 +4208,10 @@ impl GenericEntity {
     }
 
     pub fn set_armor_stand_right_arm_rotation(&mut self, rotation: Vector3f) {
-        self.set_rotation_vector(&definitions::armor_stand::get_right_arm_rotation(), rotation);
+        self.set_rotation_vector(
+            &definitions::armor_stand::get_right_arm_rotation(),
+            rotation,
+        );
     }
 
     pub fn get_armor_stand_left_leg_rotation(&self) -> Vector3f {
@@ -4029,7 +4227,10 @@ impl GenericEntity {
     }
 
     pub fn set_armor_stand_right_leg_rotation(&mut self, rotation: Vector3f) {
-        self.set_rotation_vector(&definitions::armor_stand::get_right_leg_rotation(), rotation);
+        self.set_rotation_vector(
+            &definitions::armor_stand::get_right_leg_rotation(),
+            rotation,
+        );
     }
 
     fn rotation_vector(
@@ -4237,20 +4438,24 @@ impl GenericEntity {
         std::mem::take(&mut self.expired_effects)
     }
 
-    pub fn remove_effect(&mut self, effect_id: i32) -> Option<RemoveEntityEffectPacket> {
-        self.living.remove_effect(self.entity_id, effect_id)
+    pub fn remove_effect(
+        &mut self,
+        effect_key: &RegistryKey<MobEffect>,
+    ) -> Option<RemoveEntityEffectPacket> {
+        self.living.remove_effect(self.entity_id, effect_key)
     }
 
-    pub fn has_effect(&self, effect_id: i32) -> bool {
-        self.living.has_effect(effect_id)
+    pub fn has_effect(&self, effect_key: &RegistryKey<MobEffect>) -> bool {
+        self.living.has_effect(effect_key)
     }
 
-    pub fn get_effect(&self, effect_id: i32) -> Option<&TimedPotionEffect> {
-        self.living.get_effect(effect_id)
+    pub fn get_effect(&self, effect_key: &RegistryKey<MobEffect>) -> Option<&TimedPotionEffect> {
+        self.living.get_effect(effect_key)
     }
 
-    pub fn get_effect_level(&self, effect_id: i32) -> Option<i32> {
-        self.effect(effect_id).map(TimedPotionEffect::get_amplifier)
+    pub fn get_effect_level(&self, effect_key: &RegistryKey<MobEffect>) -> Option<i32> {
+        self.get_effect(effect_key)
+            .map(TimedPotionEffect::get_amplifier)
     }
 
     pub fn get_active_effects(&self) -> Vec<&TimedPotionEffect> {
@@ -4266,11 +4471,11 @@ impl GenericEntity {
     }
 
     pub fn swing_main_hand(&self) -> EntityAnimationPacket {
-        self.animation_packet(EntityAnimation::SwingMainArm)
+        self.get_animation_packet(EntityAnimation::SwingMainArm)
     }
 
     pub fn swing_off_hand(&self) -> EntityAnimationPacket {
-        self.animation_packet(EntityAnimation::SwingOffHand)
+        self.get_animation_packet(EntityAnimation::SwingOffHand)
     }
 
     pub fn swing_main_hand_from_client(&self, _from_client: bool) -> EntityAnimationPacket {
@@ -4348,7 +4553,12 @@ impl GenericEntity {
 
     pub fn take_knockback(&mut self, strength: f32, x: f64, z: f64) {
         let living_strength = if self.entity_type.should_send_attributes() {
-            strength * (1.0 - self.living.get_attribute_value(Attribute::KNOCKBACK_RESISTANCE) as f32)
+            strength
+                * (1.0
+                    - self
+                        .living
+                        .get_attribute_value(Attribute::KNOCKBACK_RESISTANCE)
+                        as f32)
         } else {
             strength
         };
@@ -4554,7 +4764,11 @@ impl GenericEntity {
         }
     }
 
-    pub fn get_intersects_box_at(&self, position: Vector3d, bounding_box: EntityBoundingBox) -> bool {
+    pub fn get_intersects_box_at(
+        &self,
+        position: Vector3d,
+        bounding_box: EntityBoundingBox,
+    ) -> bool {
         boxes_intersect(
             self.get_relative_start(),
             self.get_relative_end(),
@@ -4607,7 +4821,7 @@ impl GenericEntity {
         self.living.set_bed_position(None);
         self.metadata
             .set(&definitions::get_pose(), MetadataValue::Pose(0));
-        self.animation_packet(EntityAnimation::LeaveBed)
+        self.get_animation_packet(EntityAnimation::LeaveBed)
     }
 
     pub const fn get_bed_position(&self) -> Option<EntityPosition> {
@@ -4677,9 +4891,11 @@ impl GenericEntity {
     fn spawn_packet_data(&self) -> i32 {
         match self.entity_type.path() {
             "falling_block" => self.falling_block_state,
-            "fishing_bobber" => self.fishing_hook_owner_entity_id.map_or(0, EntityId::get_value),
+            "fishing_bobber" => self
+                .fishing_hook_owner_entity_id
+                .map_or(0, EntityId::get_value),
             "item_frame" | "glow_item_frame" | "painting" | "leash_knot" => {
-                self.hanging_direction()
+                self.get_hanging_direction()
             }
             _ => 0,
         }
@@ -4813,7 +5029,7 @@ impl GenericEntity {
             self.get_velocity_packet().dispatch(client)?;
         }
         self.get_metadata_packet().dispatch(client)?;
-        self.equipment_packet().dispatch(client)?;
+        self.get_equipment_packet().dispatch(client)?;
         self.get_head_look_packet().dispatch(client)?;
         if self.living.has_attributes() {
             self.update_attributes_packet().dispatch(client)?;
@@ -4843,12 +5059,24 @@ impl GenericEntity {
     }
 
     pub fn tick(&mut self) {
+        self.tick_before_event();
+        self.tick_after_event();
+    }
+
+    pub(crate) fn tick_before_event(&mut self) {
         if self.removed {
             return;
         }
         self.process_scheduler_tick_start();
         self.ticks += 1;
         self.process_living_tick();
+    }
+
+    pub(crate) fn tick_after_event(&mut self) {
+        if self.removed {
+            return;
+        }
+        self.process_effect_expiry();
         self.process_scheduler_tick_end();
     }
 
@@ -4857,7 +5085,7 @@ impl GenericEntity {
     }
 
     pub fn get_trigger_status(&self, status: i8) -> EntityStatusPacket {
-        self.status_packet(status)
+        self.get_status_packet(status)
     }
 
     fn process_living_tick(&mut self) {
@@ -4872,6 +5100,9 @@ impl GenericEntity {
         {
             self.remove();
         }
+    }
+
+    fn process_effect_expiry(&mut self) {
         self.expired_effects
             .extend(self.living.expire_effects_at(self.ticks));
     }
@@ -5079,3 +5310,4 @@ fn boxes_intersect(
         && first_start.z <= second_end.z
         && first_end.z >= second_start.z
 }
+

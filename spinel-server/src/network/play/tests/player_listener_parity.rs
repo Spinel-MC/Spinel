@@ -103,7 +103,7 @@ fn entity_attack_test_listener(event: &mut EntityAttackEvent, _server: &mut Mine
     LISTENER_PARITY_ATTACKS
         .lock()
         .unwrap()
-        .push((event.get_entity_id(), event.target_id()));
+        .push((event.get_entity_id(), event.get_target_id()));
 }
 
 #[event_listener]
@@ -115,9 +115,9 @@ fn player_entity_interact_test_listener(
         return;
     }
     LISTENER_PARITY_INTERACTIONS.lock().unwrap().push((
-        event.target().get_entity_id(),
-        event.hand().get_protocol_id(),
-        event.interact_position(),
+        event.get_target().get_entity_id(),
+        event.get_hand().get_protocol_id(),
+        event.get_interact_position(),
     ));
 }
 
@@ -129,16 +129,17 @@ fn player_pick_entity_test_listener(
     if !LISTENER_PARITY_ENABLED.load(Ordering::SeqCst) {
         return;
     }
-    let target_id = event.target().map(|target| target.get_entity_id());
+    let target_id = event.get_target().map(|target| target.get_entity_id());
     LISTENER_PARITY_ENTITY_PICKS
         .lock()
         .unwrap()
-        .push((target_id, event.include_data()));
+        .push((target_id, event.get_include_data()));
 }
 
 #[event_listener]
 fn player_stab_test_listener(event: &mut PlayerStabEvent, _server: &mut MinecraftServer) {
-    if LISTENER_PARITY_ENABLED.load(Ordering::SeqCst) && event.get_item_stack().has(PIERCING_WEAPON) {
+    if LISTENER_PARITY_ENABLED.load(Ordering::SeqCst) && event.get_item_stack().has(PIERCING_WEAPON)
+    {
         LISTENER_PARITY_STABS.fetch_add(1, Ordering::SeqCst);
     }
 }
@@ -151,7 +152,7 @@ fn player_spectate_test_listener(event: &mut PlayerSpectateEvent, _server: &mut 
     LISTENER_PARITY_SPECTATES
         .lock()
         .unwrap()
-        .push(event.target_id());
+        .push(event.get_target_id());
 }
 
 #[event_listener]
@@ -963,7 +964,9 @@ fn change_game_mode_listener_dispatches_request_without_mutating_player_mode() {
         .unwrap()
         .get_entity(player_id)
         .unwrap();
-    assert!(matches!(player, Entity::Player(player) if player.get_game_mode() == GameMode::Survival));
+    assert!(
+        matches!(player, Entity::Player(player) if player.get_game_mode() == GameMode::Survival)
+    );
     assert_eq!(
         LISTENER_PARITY_GAME_MODE_REQUESTS
             .lock()

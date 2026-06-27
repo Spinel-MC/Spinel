@@ -181,7 +181,9 @@ fn player_inventory_equipment_and_packet_slots_match_minestom() {
         &Material::DIAMOND_HELMET
     );
     assert_eq!(
-        inventory.get_equipment(EquipmentSlot::OffHand, 0).material(),
+        inventory
+            .get_equipment(EquipmentSlot::OffHand, 0)
+            .material(),
         &Material::DIAMOND
     );
     assert_eq!(

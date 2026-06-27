@@ -21,8 +21,10 @@ impl<'entity> ProjectileEntityMeta<'entity> {
     }
 
     pub fn as_spectral_arrow(self) -> Option<SpectralArrowMeta<'entity>> {
-        (self.projectile.get_entity_type() == EntityType::SPECTRAL_ARROW).then(|| SpectralArrowMeta {
-            abstract_arrow_meta: AbstractArrowMeta::new(self),
+        (self.projectile.get_entity_type() == EntityType::SPECTRAL_ARROW).then(|| {
+            SpectralArrowMeta {
+                abstract_arrow_meta: AbstractArrowMeta::new(self),
+            }
         })
     }
 
@@ -53,9 +55,11 @@ impl<'entity> ProjectileEntityMeta<'entity> {
     }
 
     pub fn as_small_fireball(self) -> Option<SmallFireballMeta<'entity>> {
-        (self.projectile.get_entity_type() == EntityType::SMALL_FIREBALL).then_some(SmallFireballMeta {
-            projectile_meta: self,
-        })
+        (self.projectile.get_entity_type() == EntityType::SMALL_FIREBALL).then_some(
+            SmallFireballMeta {
+                projectile_meta: self,
+            },
+        )
     }
 
     pub fn as_dragon_fireball(self) -> Option<DragonFireballMeta<'entity>> {
@@ -93,8 +97,10 @@ impl<'entity> ProjectileEntityMeta<'entity> {
     }
 
     pub fn as_thrown_ender_pearl(self) -> Option<ThrownEnderPearlMeta<'entity>> {
-        (self.projectile.get_entity_type() == EntityType::ENDER_PEARL).then(|| ThrownEnderPearlMeta {
-            thrown_item_projectile_meta: ThrownItemProjectileMeta::new(self),
+        (self.projectile.get_entity_type() == EntityType::ENDER_PEARL).then(|| {
+            ThrownEnderPearlMeta {
+                thrown_item_projectile_meta: ThrownItemProjectileMeta::new(self),
+            }
         })
     }
 
@@ -147,7 +153,7 @@ impl<'entity> AbstractArrowMeta<'entity> {
     pub fn is_critical(&self) -> bool {
         self.get_projectile()
             .get_metadata()
-            .flag(&definitions::is_critical_arrow())
+            .get_flag(&definitions::is_critical_arrow())
     }
 
     pub fn set_critical(&mut self, is_critical: bool) {
@@ -159,7 +165,7 @@ impl<'entity> AbstractArrowMeta<'entity> {
     pub fn is_no_clip(&self) -> bool {
         self.get_projectile()
             .get_metadata()
-            .flag(&definitions::has_no_clip_arrow())
+            .get_flag(&definitions::has_no_clip_arrow())
     }
 
     pub fn set_no_clip(&mut self, is_no_clip: bool) {
@@ -395,7 +401,10 @@ impl<'entity> FireworkRocketMeta<'entity> {
     }
 
     pub fn is_shot_at_angle(&self) -> bool {
-        metadata_boolean(self.get_projectile(), &definitions::firework_is_shot_at_angle())
+        metadata_boolean(
+            self.get_projectile(),
+            &definitions::firework_is_shot_at_angle(),
+        )
     }
 
     pub fn set_shot_at_angle(&mut self, is_shot_at_angle: bool) {
@@ -430,7 +439,11 @@ impl<'entity> FireballMeta<'entity> {
     }
 
     pub fn set_item(&mut self, item: ItemStack) {
-        set_metadata_item_stack(self.projectile_mut(), &definitions::fireball::get_item(), item);
+        set_metadata_item_stack(
+            self.projectile_mut(),
+            &definitions::fireball::get_item(),
+            item,
+        );
     }
 
     pub fn get_shooter(&self) -> Option<EntityId> {
@@ -462,7 +475,10 @@ pub struct SmallFireballMeta<'entity> {
 
 impl<'entity> SmallFireballMeta<'entity> {
     pub fn get_item(&self) -> ItemStack {
-        metadata_item_stack(self.get_projectile(), &definitions::smart_fireball::get_item())
+        metadata_item_stack(
+            self.get_projectile(),
+            &definitions::smart_fireball::get_item(),
+        )
     }
 
     pub fn set_item(&mut self, item: ItemStack) {
@@ -659,7 +675,10 @@ pub struct EyeOfEnderMeta<'entity> {
 
 impl<'entity> EyeOfEnderMeta<'entity> {
     pub fn get_item(&self) -> ItemStack {
-        metadata_item_stack(self.get_projectile(), &definitions::eye_of_ender::get_item())
+        metadata_item_stack(
+            self.get_projectile(),
+            &definitions::eye_of_ender::get_item(),
+        )
     }
 
     pub fn set_item(&mut self, item: ItemStack) {

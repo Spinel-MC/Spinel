@@ -21,7 +21,11 @@ impl<'entity> SlimeMeta<'entity> {
     }
 
     pub fn get_size(&self) -> i32 {
-        match self.get_entity().get_metadata().get_value(&definitions::slime::get_size()) {
+        match self
+            .get_entity()
+            .get_metadata()
+            .get_value(&definitions::slime::get_size())
+        {
             MetadataValue::VarInt(size) => size,
             _ => 1,
         }

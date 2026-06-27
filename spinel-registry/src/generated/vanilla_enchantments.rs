@@ -1,5 +1,8 @@
-use crate::{DynamicRegistry, RegistryKey};
+use crate::{DynamicRegistry, Identifier, RegistryKey};
 use crate::enchantment::Enchantment;
+use spinel_nbt::parse_snbt_compound;
+use std::collections::BTreeMap;
+const ENCHANTMENT_ENTRIES: &str = include_str!("../../assets/enchantments.json");
 impl Enchantment {
     pub const AQUA_AFFINITY: RegistryKey<Self> = RegistryKey::vanilla_static("aqua_affinity");
     pub const BANE_OF_ARTHROPODS: RegistryKey<Self> = RegistryKey::vanilla_static("bane_of_arthropods");
@@ -46,47 +49,10 @@ impl Enchantment {
     pub const WIND_BURST: RegistryKey<Self> = RegistryKey::vanilla_static("wind_burst");
 }
 pub fn register_enchantments(registry: &mut DynamicRegistry<Enchantment>) {
-    let _ = registry.register_vanilla(Enchantment::AQUA_AFFINITY, Enchantment::default());
-    let _ = registry.register_vanilla(Enchantment::BANE_OF_ARTHROPODS, Enchantment::default());
-    let _ = registry.register_vanilla(Enchantment::BINDING_CURSE, Enchantment::default());
-    let _ = registry.register_vanilla(Enchantment::BLAST_PROTECTION, Enchantment::default());
-    let _ = registry.register_vanilla(Enchantment::BREACH, Enchantment::default());
-    let _ = registry.register_vanilla(Enchantment::CHANNELING, Enchantment::default());
-    let _ = registry.register_vanilla(Enchantment::DENSITY, Enchantment::default());
-    let _ = registry.register_vanilla(Enchantment::DEPTH_STRIDER, Enchantment::default());
-    let _ = registry.register_vanilla(Enchantment::EFFICIENCY, Enchantment::default());
-    let _ = registry.register_vanilla(Enchantment::FEATHER_FALLING, Enchantment::default());
-    let _ = registry.register_vanilla(Enchantment::FIRE_ASPECT, Enchantment::default());
-    let _ = registry.register_vanilla(Enchantment::FIRE_PROTECTION, Enchantment::default());
-    let _ = registry.register_vanilla(Enchantment::FLAME, Enchantment::default());
-    let _ = registry.register_vanilla(Enchantment::FORTUNE, Enchantment::default());
-    let _ = registry.register_vanilla(Enchantment::FROST_WALKER, Enchantment::default());
-    let _ = registry.register_vanilla(Enchantment::IMPALING, Enchantment::default());
-    let _ = registry.register_vanilla(Enchantment::INFINITY, Enchantment::default());
-    let _ = registry.register_vanilla(Enchantment::KNOCKBACK, Enchantment::default());
-    let _ = registry.register_vanilla(Enchantment::LOOTING, Enchantment::default());
-    let _ = registry.register_vanilla(Enchantment::LOYALTY, Enchantment::default());
-    let _ = registry.register_vanilla(Enchantment::LUCK_OF_THE_SEA, Enchantment::default());
-    let _ = registry.register_vanilla(Enchantment::LUNGE, Enchantment::default());
-    let _ = registry.register_vanilla(Enchantment::LURE, Enchantment::default());
-    let _ = registry.register_vanilla(Enchantment::MENDING, Enchantment::default());
-    let _ = registry.register_vanilla(Enchantment::MULTISHOT, Enchantment::default());
-    let _ = registry.register_vanilla(Enchantment::PIERCING, Enchantment::default());
-    let _ = registry.register_vanilla(Enchantment::POWER, Enchantment::default());
-    let _ = registry.register_vanilla(Enchantment::PROJECTILE_PROTECTION, Enchantment::default());
-    let _ = registry.register_vanilla(Enchantment::PROTECTION, Enchantment::default());
-    let _ = registry.register_vanilla(Enchantment::PUNCH, Enchantment::default());
-    let _ = registry.register_vanilla(Enchantment::QUICK_CHARGE, Enchantment::default());
-    let _ = registry.register_vanilla(Enchantment::RESPIRATION, Enchantment::default());
-    let _ = registry.register_vanilla(Enchantment::RIPTIDE, Enchantment::default());
-    let _ = registry.register_vanilla(Enchantment::SHARPNESS, Enchantment::default());
-    let _ = registry.register_vanilla(Enchantment::SILK_TOUCH, Enchantment::default());
-    let _ = registry.register_vanilla(Enchantment::SMITE, Enchantment::default());
-    let _ = registry.register_vanilla(Enchantment::SOUL_SPEED, Enchantment::default());
-    let _ = registry.register_vanilla(Enchantment::SWEEPING_EDGE, Enchantment::default());
-    let _ = registry.register_vanilla(Enchantment::SWIFT_SNEAK, Enchantment::default());
-    let _ = registry.register_vanilla(Enchantment::THORNS, Enchantment::default());
-    let _ = registry.register_vanilla(Enchantment::UNBREAKING, Enchantment::default());
-    let _ = registry.register_vanilla(Enchantment::VANISHING_CURSE, Enchantment::default());
-    let _ = registry.register_vanilla(Enchantment::WIND_BURST, Enchantment::default());
+    let entries: BTreeMap<String, String> = serde_json::from_str(ENCHANTMENT_ENTRIES).expect("SpinelExtractor enchantments.json is malformed");
+    for (key, entry) in entries {
+        let identifier: Identifier = key.parse().expect("SpinelExtractor enchantment key is malformed");
+        let raw_nbt = parse_snbt_compound(&entry).expect("SpinelExtractor enchantment payload is malformed SNBT");
+        let _ = registry.register_vanilla(RegistryKey::new(identifier), Enchantment::raw(raw_nbt));
+    }
 }

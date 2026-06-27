@@ -39,7 +39,7 @@ fn on_player_action(
     let player = unsafe { &mut *player };
     if packet.status == PlayerActionPacket::STAB {
         if player
-            .item_in_hand(crate::entity::PlayerHand::Main)
+            .get_item_in_hand(crate::entity::PlayerHand::Main)
             .has(PIERCING_WEAPON)
         {
             PlayerStabEvent::new(player).dispatch(server, client);
@@ -353,7 +353,7 @@ pub(crate) fn should_prevent_breaking(
     registries: &Registries,
 ) -> bool {
     let block_state = block_state.into();
-    let main_hand_item = player.g(crate::entity::PlayerHand::Main);
+    let main_hand_item = player.get_item_in_hand(crate::entity::PlayerHand::Main);
     match player.get_game_mode() {
         GameMode::Spectator => true,
         GameMode::Adventure => {

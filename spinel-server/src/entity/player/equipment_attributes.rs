@@ -37,11 +37,9 @@ impl Player {
         else {
             return false;
         };
-        self.living.get_attributes_mut().update_equipment_attributes(
-            previous_item_stack,
-            current_item_stack,
-            equipment_slot,
-        );
+        self.living
+            .get_attributes_mut()
+            .update_equipment_attributes(previous_item_stack, current_item_stack, equipment_slot);
         true
     }
 
@@ -71,11 +69,13 @@ impl Player {
                 .attribute_equipment
                 .insert(equipment_slot, current_item_stack.clone())
                 .unwrap_or_else(ItemStack::air);
-            self.living.get_attributes_mut().update_equipment_attributes(
-                &previous_item_stack,
-                &current_item_stack,
-                equipment_slot,
-            );
+            self.living
+                .get_attributes_mut()
+                .update_equipment_attributes(
+                    &previous_item_stack,
+                    &current_item_stack,
+                    equipment_slot,
+                );
         });
     }
 }

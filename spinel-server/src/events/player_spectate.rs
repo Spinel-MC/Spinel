@@ -22,7 +22,7 @@ impl PlayerSpectateEvent {
         unsafe { &mut *self.player }
     }
 
-    pub fn target_id(&self) -> EntityId {
+    pub fn get_target_id(&self) -> EntityId {
         self.target_id
     }
 

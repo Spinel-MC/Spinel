@@ -182,7 +182,7 @@ fn path_node_owner_exposes_generation_mutation_points() {
     assert_eq!(node.get_cost(), 3.0);
     assert_eq!(node.get_heuristic(), 4.0);
     assert_eq!(node.get_node_type(), PathNodeType::Jump);
-    assert_eq!(node.parent_coordinates(), Some((0, 65, 0)));
+    assert_eq!(node.get_parent_coordinates(), Some((0, 65, 0)));
 }
 
 #[test]
@@ -360,7 +360,12 @@ fn navigator_preserves_active_path_until_replacement_promotes_on_tick() {
             .unwrap()
     );
     navigator.tick(&mut entity, &snapshot, false);
-    let active_goal_before_replacement = navigator.get_nodes().unwrap().last().unwrap().get_position();
+    let active_goal_before_replacement = navigator
+        .get_nodes()
+        .unwrap()
+        .last()
+        .unwrap()
+        .get_position();
 
     assert!(
         navigator
@@ -373,9 +378,19 @@ fn navigator_preserves_active_path_until_replacement_promotes_on_tick() {
             )
             .unwrap()
     );
-    let active_goal_during_replacement = navigator.get_nodes().unwrap().last().unwrap().get_position();
+    let active_goal_during_replacement = navigator
+        .get_nodes()
+        .unwrap()
+        .last()
+        .unwrap()
+        .get_position();
     navigator.tick(&mut entity, &snapshot, false);
-    let active_goal_after_replacement = navigator.get_nodes().unwrap().last().unwrap().get_position();
+    let active_goal_after_replacement = navigator
+        .get_nodes()
+        .unwrap()
+        .last()
+        .unwrap()
+        .get_position();
 
     assert_eq!(
         active_goal_during_replacement,
@@ -444,7 +459,7 @@ fn navigator_uses_replaced_node_generator_and_preserves_best_effort_state() {
             .unwrap()
             .last()
             .unwrap()
-            .block_coordinates(),
+            .get_block_coordinates(),
         (2, 65, 0)
     );
 }
@@ -668,7 +683,7 @@ fn ground_generator_emits_walk_fall_and_non_diagonal_jump_nodes() {
             .any(|node| node.get_node_type() == PathNodeType::Walk)
     );
     assert!(nodes.iter().any(|node| {
-        node.get_node_type() == PathNodeType::Walk && node.block_coordinates() == (7, 65, 7)
+        node.get_node_type() == PathNodeType::Walk && node.get_block_coordinates() == (7, 65, 7)
     }));
     assert!(
         nodes
@@ -681,10 +696,10 @@ fn ground_generator_emits_walk_fall_and_non_diagonal_jump_nodes() {
             .any(|node| node.get_node_type() == PathNodeType::Jump)
     );
     assert!(!nodes.iter().any(|node| {
-        node.get_node_type() == PathNodeType::Walk && node.block_coordinates() == (9, 65, 8)
+        node.get_node_type() == PathNodeType::Walk && node.get_block_coordinates() == (9, 65, 8)
     }));
     assert!(!nodes.iter().any(|node| {
-        node.get_node_type() == PathNodeType::Jump && node.block_coordinates() == (9, 66, 9)
+        node.get_node_type() == PathNodeType::Jump && node.get_block_coordinates() == (9, 66, 9)
     }));
     assert_eq!(
         generator.gravity_snap(
@@ -783,17 +798,17 @@ fn flying_generator_emits_minestom_neighbor_shape() {
     assert!(
         nodes
             .iter()
-            .any(|node| node.block_coordinates() == (9, 70, 9))
+            .any(|node| node.get_block_coordinates() == (9, 70, 9))
     );
     assert!(
         nodes
             .iter()
-            .any(|node| node.block_coordinates() == (8, 71, 8))
+            .any(|node| node.get_block_coordinates() == (8, 71, 8))
     );
     assert!(
         nodes
             .iter()
-            .any(|node| node.block_coordinates() == (8, 69, 8))
+            .any(|node| node.get_block_coordinates() == (8, 69, 8))
     );
 }
 
@@ -1026,7 +1041,12 @@ fn perfect_motion_collision_blocks_intermediate_state() {
         ..PerfectControlState::default()
     };
 
-    let next = simulator.tick(&snapshot, EntityType::PLAYER.get_bounding_box(), state, control);
+    let next = simulator.tick(
+        &snapshot,
+        EntityType::PLAYER.get_bounding_box(),
+        state,
+        control,
+    );
 
     assert!(next.position.get_z() < 1.0);
     assert!(next.horizontal_collision);
@@ -1318,7 +1338,7 @@ fn assert_valid_default_path(
         navigator.state()
     );
     assert!(nodes.iter().all(|node| {
-        let (block_x, block_y, block_z) = node.block_coordinates();
+        let (block_x, block_y, block_z) = node.get_block_coordinates();
         !snapshot
             .block(BlockPosition::new(block_x, block_y, block_z))
             .is_solid()
@@ -1336,7 +1356,7 @@ impl NodeGenerator for SingleBestEffortNodeGenerator {
         goal: EntityPosition,
         _bounding_box: EntityBoundingBox,
     ) -> Vec<PathNode> {
-        if current.block_coordinates() != (0, 65, 0) {
+        if current.get_block_coordinates() != (0, 65, 0) {
             return Vec::new();
         }
         let position = EntityPosition::new(2.5, 65.0, 0.5, 0.0, 0.0);
@@ -1384,8 +1404,8 @@ impl NodeGenerator for PriorityTieNodeGenerator {
         self.expanded_nodes
             .lock()
             .unwrap()
-            .push(current.block_coordinates());
-        if current.block_coordinates() != (0, 65, 0) {
+            .push(current.get_block_coordinates());
+        if current.get_block_coordinates() != (0, 65, 0) {
             return Vec::new();
         }
         vec![
@@ -1430,7 +1450,7 @@ impl NodeGenerator for FrontierBudgetNodeGenerator {
         goal: EntityPosition,
         _bounding_box: EntityBoundingBox,
     ) -> Vec<PathNode> {
-        if current.block_coordinates() != (0, 65, 0) {
+        if current.get_block_coordinates() != (0, 65, 0) {
             return Vec::new();
         }
         (-4..=4)

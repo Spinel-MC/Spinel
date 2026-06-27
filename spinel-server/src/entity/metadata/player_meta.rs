@@ -44,9 +44,10 @@ impl<'entity> PlayerMeta<'entity> {
     }
 
     pub fn set_score(&mut self, score: i32) {
-        self.get_entity_mut()
-            .get_metadata_mut()
-            .set(&definitions::player::get_score(), MetadataValue::VarInt(score));
+        self.get_entity_mut().get_metadata_mut().set(
+            &definitions::player::get_score(),
+            MetadataValue::VarInt(score),
+        );
     }
 
     pub fn get_left_shoulder_entity_data(&self) -> Option<i32> {

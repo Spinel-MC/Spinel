@@ -15,7 +15,7 @@ impl<'entity> AbstractHorseMeta<'entity> {
     pub fn is_tamed(&self) -> bool {
         self.get_entity()
             .get_metadata()
-            .flag(&definitions::abstract_horse::is_tame())
+            .get_flag(&definitions::abstract_horse::is_tame())
     }
 
     pub fn set_tamed(&mut self, is_tamed: bool) {
@@ -27,7 +27,7 @@ impl<'entity> AbstractHorseMeta<'entity> {
     pub fn has_bred(&self) -> bool {
         self.get_entity()
             .get_metadata()
-            .flag(&definitions::abstract_horse::has_bred())
+            .get_flag(&definitions::abstract_horse::has_bred())
     }
 
     pub fn set_has_bred(&mut self, has_bred: bool) {
@@ -39,7 +39,7 @@ impl<'entity> AbstractHorseMeta<'entity> {
     pub fn is_eating(&self) -> bool {
         self.get_entity()
             .get_metadata()
-            .flag(&definitions::abstract_horse::is_eating())
+            .get_flag(&definitions::abstract_horse::is_eating())
     }
 
     pub fn set_eating(&mut self, is_eating: bool) {
@@ -51,7 +51,7 @@ impl<'entity> AbstractHorseMeta<'entity> {
     pub fn is_rearing(&self) -> bool {
         self.get_entity()
             .get_metadata()
-            .flag(&definitions::abstract_horse::is_rearing())
+            .get_flag(&definitions::abstract_horse::is_rearing())
     }
 
     pub fn set_rearing(&mut self, is_rearing: bool) {
@@ -63,7 +63,7 @@ impl<'entity> AbstractHorseMeta<'entity> {
     pub fn is_mouth_open(&self) -> bool {
         self.get_entity()
             .get_metadata()
-            .flag(&definitions::abstract_horse::is_mouth_open())
+            .get_flag(&definitions::abstract_horse::is_mouth_open())
     }
 
     pub fn set_mouth_open(&mut self, is_mouth_open: bool) {

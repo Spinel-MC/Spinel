@@ -1,10 +1,13 @@
 use crate::entity::{EntityPosition, EquipmentSlot, Player, PlayerHand, TimedPotionEffect};
 use crate::network::client::instance::Client;
 use crate::server::MinecraftServer;
-use spinel_registry::data_components::vanilla_components::{CONSUMABLE, INSTRUMENT, USE_REMAINDER};
+use spinel_registry::data_components::vanilla_components::{
+    CONSUMABLE, INSTRUMENT, POTION_CONTENTS, SUSPICIOUS_STEW_EFFECTS, USE_REMAINDER,
+};
 use spinel_registry::{
     Consumable, ConsumeEffect, CustomPotionEffect, Identifier, InstrumentComponent, ItemAnimation,
-    ItemStack, Material, PotionEffectSettings, RegistryTagReference,
+    ItemStack, Material, MobEffect, PotionContents, PotionEffectSettings, RegistryTagReference,
+    SuspiciousStewEffect, SuspiciousStewEffects,
 };
 use std::net::TcpListener;
 use std::net::TcpStream;
@@ -16,21 +19,15 @@ fn finished_consumable_applies_removes_clears_random_teleports_and_updates_stati
     let mut player = test_player();
     let mut server = MinecraftServer::new();
     let (mut client, _peer_stream) = test_client();
-    let haste_id = server
-        .registries
-        .dynamic_registry_id(
-            &spinel_registry::MOB_EFFECT_REGISTRY,
-            &Identifier::minecraft("haste"),
-        )
-        .unwrap();
-    let poison_id = server
-        .registries
-        .dynamic_registry_id(
-            &spinel_registry::MOB_EFFECT_REGISTRY,
-            &Identifier::minecraft("poison"),
-        )
-        .unwrap();
-    player.add_effect(TimedPotionEffect::new(poison_id, 0, 200, 0, 0));
+    let poison_id = server.registries.mob_effect_id(&MobEffect::POISON).unwrap();
+    player.add_effect(TimedPotionEffect::new(
+        MobEffect::POISON,
+        poison_id,
+        0,
+        200,
+        0,
+        0,
+    ));
     player.set_position(EntityPosition::new(10.0, 64.0, 10.0, 0.0, 0.0));
     let consumable_stack = ItemStack::of(Material::APPLE).with(
         CONSUMABLE,
@@ -65,9 +62,12 @@ fn finished_consumable_applies_removes_clears_random_teleports_and_updates_stati
         )
         .unwrap();
 
-    assert!(player.has_effect(haste_id));
-    assert!(!player.has_effect(poison_id));
-    assert_eq!(player.get_statistic_value("minecraft:used:minecraft:apple"), 1);
+    assert!(player.has_effect(&MobEffect::HASTE));
+    assert!(!player.has_effect(&MobEffect::POISON));
+    assert_eq!(
+        player.get_statistic_value("minecraft:used:minecraft:apple"),
+        1
+    );
     assert_ne!(
         player.get_position(),
         EntityPosition::new(10.0, 64.0, 10.0, 0.0, 0.0)
@@ -93,9 +93,136 @@ fn finished_consumable_applies_removes_clears_random_teleports_and_updates_stati
         )
         .unwrap();
 
-    assert!(!player.has_effect(haste_id));
+    assert!(!player.has_effect(&MobEffect::HASTE));
 }
 
+#[test]
+fn finished_potion_contents_custom_effects_apply_with_settings() {
+    let mut player = test_player();
+    let mut server = MinecraftServer::new();
+    let (mut client, _peer_stream) = test_client();
+
+    let potion_stack = ItemStack::of(Material::POTION)
+        .with(
+            POTION_CONTENTS,
+            PotionContents::new(
+                None,
+                None,
+                vec![CustomPotionEffect::new(
+                    Identifier::minecraft("speed"),
+                    PotionEffectSettings::new(2, 120, true, false, true, None),
+                )],
+                None,
+            ),
+        )
+        .with(
+            CONSUMABLE,
+            Consumable::new(
+                1.6,
+                ItemAnimation::Drink,
+                Identifier::minecraft("entity.generic.drink"),
+                true,
+                Vec::new(),
+            ),
+        );
+
+    player
+        .finish_item_use(PlayerHand::Main, potion_stack, 32, &mut server, &mut client)
+        .unwrap();
+
+    let speed_effect = player.get_effect(&MobEffect::SPEED).unwrap();
+    assert_eq!(speed_effect.get_amplifier(), 2);
+    assert_eq!(speed_effect.get_duration_ticks(), 120);
+    assert!(speed_effect.is_ambient());
+    assert!(!speed_effect.has_particles());
+    assert!(speed_effect.has_icon());
+}
+
+#[test]
+fn finished_suspicious_stew_effects_apply_default_and_explicit_durations() {
+    let mut player = test_player();
+    let mut server = MinecraftServer::new();
+    let (mut client, _peer_stream) = test_client();
+
+    let stew_stack = ItemStack::of(Material::SUSPICIOUS_STEW)
+        .with(
+            SUSPICIOUS_STEW_EFFECTS,
+            SuspiciousStewEffects::new(vec![
+                SuspiciousStewEffect::new(Identifier::minecraft("blindness"), 160),
+                SuspiciousStewEffect::new(Identifier::minecraft("saturation"), 12),
+            ]),
+        )
+        .with(
+            CONSUMABLE,
+            Consumable::new(
+                1.6,
+                ItemAnimation::Eat,
+                Identifier::minecraft("entity.generic.eat"),
+                true,
+                Vec::new(),
+            ),
+        );
+
+    player
+        .finish_item_use(PlayerHand::Main, stew_stack, 32, &mut server, &mut client)
+        .unwrap();
+
+    let blindness_effect = player.get_effect(&MobEffect::BLINDNESS).unwrap();
+    let saturation_effect = player.get_effect(&MobEffect::SATURATION).unwrap();
+    assert_eq!(blindness_effect.get_amplifier(), 0);
+    assert_eq!(blindness_effect.get_duration_ticks(), 160);
+    assert!(!blindness_effect.is_ambient());
+    assert!(blindness_effect.has_particles());
+    assert!(blindness_effect.has_icon());
+    assert_eq!(saturation_effect.get_duration_ticks(), 12);
+}
+
+#[test]
+fn finished_item_effect_components_ignore_unknown_mob_effect_identifiers() {
+    let mut player = test_player();
+    let mut server = MinecraftServer::new();
+    let (mut client, _peer_stream) = test_client();
+    let potion_stack = ItemStack::of(Material::POTION)
+        .with(
+            POTION_CONTENTS,
+            PotionContents::new(
+                None,
+                None,
+                vec![CustomPotionEffect::new(
+                    Identifier::minecraft("missing_effect"),
+                    PotionEffectSettings::new(0, 40, false, true, true, None),
+                )],
+                None,
+            ),
+        )
+        .with(
+            SUSPICIOUS_STEW_EFFECTS,
+            SuspiciousStewEffects::new(vec![SuspiciousStewEffect::new(
+                Identifier::minecraft("missing_stew_effect"),
+                160,
+            )]),
+        )
+        .with(
+            CONSUMABLE,
+            Consumable::new(
+                1.6,
+                ItemAnimation::Drink,
+                Identifier::minecraft("entity.generic.drink"),
+                true,
+                Vec::new(),
+            ),
+        );
+
+    player
+        .finish_item_use(PlayerHand::Main, potion_stack, 32, &mut server, &mut client)
+        .unwrap();
+
+    assert!(player.get_active_effects().is_empty());
+    assert_eq!(
+        player.get_statistic_value("minecraft:used:minecraft:potion"),
+        1
+    );
+}
 #[test]
 fn right_click_swappable_armor_matches_minestom_equipment_swap() {
     let mut player = test_player();
@@ -113,7 +240,7 @@ fn right_click_swappable_armor_matches_minestom_equipment_swap() {
         &Material::DIAMOND_HELMET
     );
     assert_eq!(
-        player.item_in_hand(PlayerHand::Main).material(),
+        player.get_item_in_hand(PlayerHand::Main).material(),
         &Material::AIR
     );
 }
@@ -174,7 +301,7 @@ fn right_click_armor_places_previous_equipment_in_used_hand() {
         &Material::DIAMOND_HELMET
     );
     assert_eq!(
-        player.item_in_hand(PlayerHand::Main).material(),
+        player.get_item_in_hand(PlayerHand::Main).material(),
         &Material::GOLDEN_HELMET
     );
 }
@@ -200,7 +327,7 @@ fn finished_consumable_decrements_used_hand() {
         .finish_item_use(PlayerHand::Main, apple_stack, 32, &mut server, &mut client)
         .unwrap();
 
-    assert_eq!(player.item_in_hand(PlayerHand::Main).amount(), 1);
+    assert_eq!(player.get_item_in_hand(PlayerHand::Main).amount(), 1);
 }
 
 #[test]
@@ -229,7 +356,7 @@ fn finished_consumable_uses_remainder_and_dispatches_play_sound_effect() {
         .unwrap();
 
     assert_eq!(
-        player.g(PlayerHand::Main).material(),
+        player.get_item_in_hand(PlayerHand::Main).material(),
         &Material::GLASS_BOTTLE
     );
 }

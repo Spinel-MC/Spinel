@@ -1,7 +1,7 @@
 pub use attack_range::AttackRange;
 pub use attribute_list::{
-    AttributeList, AttributeModifierDisplay, AttributeModifierEntry, AttributeOperation,
-    EquipmentSlotGroup,
+    AttributeList, AttributeModifier, AttributeModifierDisplay, AttributeModifierEntry,
+    AttributeOperation, EquipmentSlotGroup,
 };
 pub use bee::Bee;
 pub use block_predicate::{

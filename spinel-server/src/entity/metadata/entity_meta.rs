@@ -29,7 +29,7 @@ impl<'entity> EntityMeta<'entity> {
     }
 
     pub fn get_metadata_flag(&self, definition: &MetadataBitMaskDefinition) -> bool {
-        self.entity.get_metadata().flag(definition)
+        self.entity.get_metadata().get_flag(definition)
     }
 
     pub fn set_metadata_flag(
@@ -43,11 +43,13 @@ impl<'entity> EntityMeta<'entity> {
     }
 
     pub fn get_metadata_byte(&self, definition: &MetadataByteMaskDefinition) -> i8 {
-        self.entity.get_metadata().byte(definition)
+        self.entity.get_metadata().get_byte(definition)
     }
 
     pub fn set_metadata_byte(&mut self, definition: &MetadataByteMaskDefinition, byte_value: i8) {
-        self.entity.get_metadata_mut().set_byte(definition, byte_value);
+        self.entity
+            .get_metadata_mut()
+            .set_byte(definition, byte_value);
     }
     pub fn is_on_fire(&self) -> bool {
         self.entity.is_on_fire()

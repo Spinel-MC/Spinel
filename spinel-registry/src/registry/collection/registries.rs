@@ -186,6 +186,12 @@ impl Registries {
         self.damage_types.get(key)
     }
 
+    pub fn mob_effect(
+        &self,
+        key: &RegistryKey<mob_effect::MobEffect>,
+    ) -> Option<&mob_effect::MobEffect> {
+        self.mob_effects.get(key)
+    }
     pub fn mob_effect_id(&self, key: &RegistryKey<mob_effect::MobEffect>) -> Option<i32> {
         self.mob_effects.get_id(key)
     }
@@ -243,6 +249,9 @@ impl Registries {
         }
         if registry_name == &MOB_EFFECT_REGISTRY {
             return dynamic_registry_id_for(&self.mob_effects, entry_name);
+        }
+        if registry_name == &ENCHANTMENT_REGISTRY {
+            return dynamic_registry_id_for(&self.enchantments, entry_name);
         }
         if registry_name == &PAINTING_VARIANT_REGISTRY {
             return dynamic_registry_id_for(&self.painting_variants, entry_name);

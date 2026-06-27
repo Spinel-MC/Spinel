@@ -45,7 +45,10 @@ fn set_leash_holder_updates_both_sides_and_sends_attach_packet() {
     viewer_client.discard_queued_outbound_packets();
 
     assert!(world.set_leash_holder(leashed_id, None).unwrap());
-    assert_eq!(world.get_entity(leashed_id).unwrap().get_leash_holder(), None);
+    assert_eq!(
+        world.get_entity(leashed_id).unwrap().get_leash_holder(),
+        None
+    );
     assert!(
         world
             .get_entity(holder_id)
@@ -72,7 +75,10 @@ fn removing_a_leash_holder_detaches_every_leashed_entity() {
 
     world.take_entity(holder_id).unwrap();
 
-    assert_eq!(world.get_entity(leashed_id).unwrap().get_leash_holder(), None);
+    assert_eq!(
+        world.get_entity(leashed_id).unwrap().get_leash_holder(),
+        None
+    );
 }
 
 #[test]

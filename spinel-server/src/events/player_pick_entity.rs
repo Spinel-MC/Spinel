@@ -27,7 +27,8 @@ impl PlayerPickEntityEvent {
     }
 
     pub fn get_target_id(&self) -> Option<EntityId> {
-        self.target.map(|target| unsafe { (&*target).get_entity_id() })
+        self.target
+            .map(|target| unsafe { (&*target).get_entity_id() })
     }
 
     pub const fn get_include_data(&self) -> bool {

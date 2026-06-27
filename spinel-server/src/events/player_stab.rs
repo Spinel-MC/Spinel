@@ -20,6 +20,6 @@ impl PlayerStabEvent {
     }
 
     pub fn get_item_stack(&self) -> ItemStack {
-        unsafe { &*self.player }.g(PlayerHand::Main)
+        unsafe { &*self.player }.get_item_in_hand(PlayerHand::Main)
     }
 }

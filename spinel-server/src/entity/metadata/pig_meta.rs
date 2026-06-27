@@ -33,8 +33,11 @@ impl<'entity> PigMeta<'entity> {
         );
     }
 
-    pub fn get_variant(&self, registries: &Registries) -> Option<RegistryKey<pig_variant::PigVariant>> {
-        self.get_entity().g(registries)
+    pub fn get_variant(
+        &self,
+        registries: &Registries,
+    ) -> Option<RegistryKey<pig_variant::PigVariant>> {
+        self.get_entity().get_pig_variant_metadata(registries)
     }
 
     pub fn set_variant(

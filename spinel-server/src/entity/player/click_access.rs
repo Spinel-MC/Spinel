@@ -45,13 +45,13 @@ impl Player {
         server: &mut MinecraftServer,
         client: &mut Client,
     ) -> bool {
-        let Some(previous_item) = self.item_at(slot) else {
+        let Some(previous_item) = self.get_item_at(slot) else {
             return false;
         };
         if previous_item == item_stack {
             return true;
         }
-        let in_open_inventory = self.slot_is_in_open_inventory(slot);
+        let in_open_inventory = self.get_slot_is_in_open_inventory(slot);
         if !self.set_item_at(slot, item_stack.clone()) {
             return false;
         }
@@ -65,13 +65,13 @@ impl Player {
         InventoryItemChangeEvent::new(
             player,
             in_open_inventory,
-            self.window_slot(slot),
+            self.get_window_slot(slot),
             previous_item,
             item_stack,
         )
         .dispatch(server, client);
         let _ = self.sync_slot(slot, client);
-        if self.slot_is_held_main_hand(slot) {
+        if self.get_slot_is_held_main_hand(slot) {
             let _ = self.sync_main_hand_attributes(client);
         }
         true
@@ -108,7 +108,7 @@ impl Player {
         server: &mut MinecraftServer,
         client: &mut Client,
     ) -> ItemStack {
-        let Some(clicked) = self.item_at(slot) else {
+        let Some(clicked) = self.get_item_at(slot) else {
             return cursor;
         };
         if !clicked.is_air() && !clicked.is_similar(&cursor) {
@@ -144,20 +144,23 @@ impl Player {
     }
 
     pub(super) fn get_window_slot(&self, slot: i32) -> i32 {
-        if !self.slot_is_in_open_inventory(slot) {
+        if !self.get_slot_is_in_open_inventory(slot) {
             return slot - self.open_inventory_size();
         }
         slot
     }
 
-    pub(super) fn get_player_inventory_slot_in_click_window(&self, player_inventory_slot: i32) -> i32 {
+    pub(super) fn get_player_inventory_slot_in_click_window(
+        &self,
+        player_inventory_slot: i32,
+    ) -> i32 {
         if self.get_opened_inventory().is_none() {
             return player_inventory_slot;
         }
         self.open_inventory_size() + player_inventory_slot
     }
 
-    pub(super) fn get_resync_inventory_after_bulk_click(&self, client: &mut Client) -> bool {
+    pub(super) fn resync_inventory_after_bulk_click(&self, client: &mut Client) -> bool {
         let _ = self.sync_inventory(client);
         let _ = self.sync_open_inventory_contents(client);
         true
@@ -176,14 +179,14 @@ impl Player {
             .iter()
             .copied()
             .filter(|target_slot| {
-                self.item_at(*target_slot)
+                self.get_item_at(*target_slot)
                     .is_some_and(|target_item| !target_item.is_air())
             })
             .collect::<Vec<_>>();
         let empty_target_slots = target_slots
             .into_iter()
             .filter(|target_slot| {
-                self.item_at(*target_slot)
+                self.get_item_at(*target_slot)
                     .is_some_and(|target_item| target_item.is_air())
             })
             .collect::<Vec<_>>();
@@ -203,7 +206,8 @@ impl Player {
     fn double_click_slots(&self, clicked_slot: i32) -> Vec<i32> {
         let open_inventory_size = self.open_inventory_size();
         let player_inventory_start = open_inventory_size;
-        let player_inventory_end = open_inventory_size + self.get_inventory_ref().inner_size() as i32;
+        let player_inventory_end =
+            open_inventory_size + self.get_inventory_ref().inner_size() as i32;
         if self.get_opened_inventory().is_none() {
             return (0..self.get_inventory_ref().inner_size() as i32)
                 .filter(|slot| *slot != clicked_slot)
@@ -232,7 +236,7 @@ impl Player {
         if remaining_item.is_air() {
             return remaining_item;
         }
-        let Some(item_stack) = self.item_at(slot) else {
+        let Some(item_stack) = self.get_item_at(slot) else {
             return remaining_item;
         };
         if !remaining_item.is_similar(&item_stack) {
@@ -248,10 +252,10 @@ impl Player {
         );
         InventoryClickEvent::new(
             player,
-            self.slot_is_in_open_inventory(slot),
-            self.window_slot(slot),
+            self.get_slot_is_in_open_inventory(slot),
+            self.get_window_slot(slot),
             ClickType::DoubleClick,
-            self.item_at(slot).unwrap_or_else(ItemStack::air),
+            self.get_item_at(slot).unwrap_or_else(ItemStack::air),
             self.get_inventory_ref().cursor_item().clone(),
         )
         .dispatch(server, client);
@@ -269,7 +273,7 @@ impl Player {
         if item_stack.is_air() {
             return item_stack;
         }
-        let Some(target_item) = self.item_at(slot) else {
+        let Some(target_item) = self.get_item_at(slot) else {
             return item_stack;
         };
         if !target_item.is_air() && !target_item.is_similar(&item_stack) {
@@ -288,8 +292,8 @@ impl Player {
         self.set_item_at_with_change_event(slot, updated_target.clone(), player, server, client);
         InventoryClickEvent::new(
             player,
-            self.slot_is_in_open_inventory(slot),
-            self.window_slot(slot),
+            self.get_slot_is_in_open_inventory(slot),
+            self.get_window_slot(slot),
             ClickType::ShiftClick,
             updated_target,
             self.get_inventory_ref().cursor_item().clone(),

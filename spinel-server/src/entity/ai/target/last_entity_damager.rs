@@ -21,7 +21,10 @@ impl TargetSelector for LastEntityDamagerTarget {
         let source = creature.get_last_damage()?.get_source()?;
         let source = world.get_entity(source)?;
         let is_valid_target = !source.is_removed()
-            && source.get_position().get_distance_squared(creature.get_position()) < self.range * self.range;
+            && source
+                .get_position()
+                .get_distance_squared(creature.get_position())
+                < self.range * self.range;
         is_valid_target.then_some(source.get_entity_id())
     }
 }

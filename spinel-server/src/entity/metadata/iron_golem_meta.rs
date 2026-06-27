@@ -16,7 +16,7 @@ impl<'entity> IronGolemMeta<'entity> {
     pub fn is_player_created(&self) -> bool {
         self.get_entity()
             .get_metadata()
-            .flag(&definitions::iron_golem::is_player_created())
+            .get_flag(&definitions::iron_golem::is_player_created())
     }
 
     pub fn set_player_created(&mut self, is_player_created: bool) {

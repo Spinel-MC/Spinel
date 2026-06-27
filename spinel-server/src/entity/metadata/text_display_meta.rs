@@ -64,7 +64,10 @@ impl<'entity> TextDisplayMeta<'entity> {
     }
 
     pub fn get_background_color(&self) -> i32 {
-        self.var_int(&definitions::text_display::get_background_color(), 0x40000000)
+        self.var_int(
+            &definitions::text_display::get_background_color(),
+            0x40000000,
+        )
     }
 
     pub fn set_background_color(&mut self, background_color: i32) {
@@ -142,7 +145,7 @@ impl<'entity> TextDisplayMeta<'entity> {
         TextAlignment::from_protocol_id(
             self.get_entity()
                 .get_metadata()
-                .byte(&definitions::text_display::get_alignment()),
+                .get_byte(&definitions::text_display::get_alignment()),
         )
     }
 
@@ -175,7 +178,7 @@ impl<'entity> TextDisplayMeta<'entity> {
     }
 
     fn flag(&self, definition: &crate::entity::metadata::MetadataBitMaskDefinition) -> bool {
-        self.get_entity().get_metadata().flag(definition)
+        self.get_entity().get_metadata().get_flag(definition)
     }
 
     fn set_flag(
@@ -183,7 +186,9 @@ impl<'entity> TextDisplayMeta<'entity> {
         definition: &crate::entity::metadata::MetadataBitMaskDefinition,
         value: bool,
     ) {
-        self.get_entity_mut().get_metadata_mut().set_flag(definition, value);
+        self.get_entity_mut()
+            .get_metadata_mut()
+            .set_flag(definition, value);
     }
 }
 

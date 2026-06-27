@@ -16,7 +16,7 @@ impl<'entity> BatMeta<'entity> {
     pub fn is_hanging(&self) -> bool {
         self.get_entity()
             .get_metadata()
-            .flag(&definitions::bat::is_hanging())
+            .get_flag(&definitions::bat::is_hanging())
     }
 
     pub fn set_hanging(&mut self, is_hanging: bool) {

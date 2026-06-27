@@ -22,7 +22,7 @@ impl<'entity> SpiderMeta<'entity> {
     pub fn is_climbing(&self) -> bool {
         self.get_entity()
             .get_metadata()
-            .flag(&definitions::spider::is_climbing())
+            .get_flag(&definitions::spider::is_climbing())
     }
 
     pub fn set_climbing(&mut self, is_climbing: bool) {

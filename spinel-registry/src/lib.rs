@@ -15,22 +15,23 @@ pub mod sound;
 pub use biome::{Biome, BiomeAttribute, BiomeAttributes, BiomeEffects, Color, GrassColorModifier};
 pub use blocks::{BlockFaceDirection, BlockShapeBox, BlockState, BlockStateProperty};
 pub use data_components::{
-    ArmorTrim, AttackRange, AttributeList, AttributeModifierDisplay, AttributeModifierEntry,
-    AttributeOperation, BannerPatternLayer, BannerPatterns, Bee, BlockPredicate, BlockPredicates,
-    BlocksAttacks, Consumable, ConsumeEffect, CustomModelData, CustomPotionEffect, DamageReduction,
-    DamageResistant, DataComponentDescriptor, DataComponentMap, DataComponentMapBuilder,
-    DataComponentPatchBuilder, DataComponentPredicates, DataComponentType, DataComponentValue,
-    DeathProtection, DebugStickState, DecodeDataComponentMapError, EnchantmentList,
-    EquipmentSlotGroup, Equippable, EquippableSlot, FilteredComponent, FilteredString,
-    FireworkExplosion, FireworkExplosionShape, FireworkList, Food, GameProfileProperty,
-    InstrumentComponent, ItemAnimation, ItemBlockState, ItemDamageFunction, ItemRarity,
-    KineticWeapon, KineticWeaponCondition, LodestoneTracker, MapDecorationEntry, MapDecorations,
-    MapPostProcessing, PiercingWeapon, PotDecorations, PotionContents, PotionEffectSettings,
-    PropertiesPredicate, PropertyValuePredicate, RegistryTagReference, ResolvableProfile,
-    SeededContainerLoot, SuspiciousStewEffect, SuspiciousStewEffects, SwingAnimation,
-    SwingAnimationType, Tool, ToolRule, TooltipDisplay, TypedCustomData, UnitComponent,
-    UseCooldown, UseEffects, Weapon, WorldPosition, WritableBookContent, WrittenBookContent,
-    dye_color_from_nbt_name, dye_color_nbt_name, dye_color_protocol_id,
+    ArmorTrim, AttackRange, AttributeList, AttributeModifier, AttributeModifierDisplay,
+    AttributeModifierEntry, AttributeOperation, BannerPatternLayer, BannerPatterns, Bee,
+    BlockPredicate, BlockPredicates, BlocksAttacks, Consumable, ConsumeEffect, CustomModelData,
+    CustomPotionEffect, DamageReduction, DamageResistant, DataComponentDescriptor,
+    DataComponentMap, DataComponentMapBuilder, DataComponentPatchBuilder, DataComponentPredicates,
+    DataComponentType, DataComponentValue, DeathProtection, DebugStickState,
+    DecodeDataComponentMapError, EnchantmentList, EquipmentSlotGroup, Equippable, EquippableSlot,
+    FilteredComponent, FilteredString, FireworkExplosion, FireworkExplosionShape, FireworkList,
+    Food, GameProfileProperty, InstrumentComponent, ItemAnimation, ItemBlockState,
+    ItemDamageFunction, ItemRarity, KineticWeapon, KineticWeaponCondition, LodestoneTracker,
+    MapDecorationEntry, MapDecorations, MapPostProcessing, PiercingWeapon, PotDecorations,
+    PotionContents, PotionEffectSettings, PropertiesPredicate, PropertyValuePredicate,
+    RegistryTagReference, ResolvableProfile, SeededContainerLoot, SuspiciousStewEffect,
+    SuspiciousStewEffects, SwingAnimation, SwingAnimationType, Tool, ToolRule, TooltipDisplay,
+    TypedCustomData, UnitComponent, UseCooldown, UseEffects, Weapon, WorldPosition,
+    WritableBookContent, WrittenBookContent, dye_color_from_nbt_name, dye_color_nbt_name,
+    dye_color_protocol_id,
 };
 pub use data_components::{
     AxolotlVariant, FoxVariant, HorseColor, LlamaVariant, MooshroomVariant, ParrotColor,
@@ -66,6 +67,7 @@ pub use registry::{
     vanilla_wolf_sound_variants, vanilla_wolf_variants, vanilla_zombie_nautilus_variants,
 };
 pub use registry_values::attribute::{ALL_ATTRIBUTES, Attribute};
+pub use registry_values::mob_effect::MobEffect;
 pub use registry_values::villager_profession::VillagerProfession;
 pub use registry_values::villager_type::VillagerType;
 pub use sound::BuiltinSoundEvent;
@@ -120,6 +122,10 @@ pub mod dynamic_registry {
 
 pub mod enchantment {
     pub use crate::registry_values::enchantment::*;
+}
+
+pub mod enchantment_effect {
+    pub use crate::registry_values::enchantment_effect::*;
 }
 
 pub mod entity_type {

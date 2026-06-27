@@ -12,7 +12,7 @@ use spinel_network::wrappers::NbtTextComponent;
 use std::io;
 
 impl Player {
-    pub(crate) fn get_sync_open_inventory(&self, client: &mut Client) -> io::Result<()> {
+    pub(crate) fn sync_open_inventory(&self, client: &mut Client) -> io::Result<()> {
         let Some(inventory) = self.get_opened_inventory() else {
             return Ok(());
         };
@@ -20,7 +20,7 @@ impl Player {
         self.send_inventory_contents(client, inventory)
     }
 
-    pub(crate) fn get_sync_open_inventory_contents(&self, client: &mut Client) -> io::Result<()> {
+    pub(crate) fn sync_open_inventory_contents(&self, client: &mut Client) -> io::Result<()> {
         let Some(inventory) = self.get_opened_inventory() else {
             return Ok(());
         };
@@ -60,7 +60,7 @@ impl Player {
         .dispatch(client)
     }
 
-    pub(crate) fn get_sync_inventory(&self, client: &mut Client) -> io::Result<()> {
+    pub(crate) fn sync_inventory(&self, client: &mut Client) -> io::Result<()> {
         for (slot, item_stack) in self.get_inventory_ref().item_stacks().iter().enumerate() {
             match crate::inventory::PlayerInventory::packet_slot(slot as i32) {
                 PlayerInventoryPacketSlot::PlayerInventory(packet_slot) => {
@@ -87,7 +87,7 @@ impl Player {
         .dispatch(client)
     }
 
-    pub(crate) fn get_sync_player_inventory_window_contents(
+    pub(crate) fn sync_player_inventory_window_contents(
         &self,
         client: &mut Client,
     ) -> io::Result<()> {
@@ -112,23 +112,23 @@ impl Player {
         window_slots
     }
 
-    pub(crate) fn get_sync_slot(&self, slot: i32, client: &mut Client) -> io::Result<()> {
-        let Some(item_stack) = self.item_at(slot) else {
+    pub(crate) fn sync_slot(&self, slot: i32, client: &mut Client) -> io::Result<()> {
+        let Some(item_stack) = self.get_item_at(slot) else {
             return Ok(());
         };
-        if self.slot_is_in_open_inventory(slot) {
+        if self.get_slot_is_in_open_inventory(slot) {
             let Some(inventory) = self.get_opened_inventory() else {
                 return Ok(());
             };
             return ContainerSetSlotPacket {
                 container_id: inventory.id(),
                 state_id: 0,
-                slot: self.window_slot(slot) as i16,
+                slot: self.get_window_slot(slot) as i16,
                 item: Slot::from_item_stack(&item_stack),
             }
             .dispatch(client);
         }
-        match crate::inventory::PlayerInventory::packet_slot(self.window_slot(slot)) {
+        match crate::inventory::PlayerInventory::packet_slot(self.get_window_slot(slot)) {
             PlayerInventoryPacketSlot::PlayerInventory(packet_slot) => SetPlayerInventoryPacket {
                 slot: packet_slot,
                 item: Slot::from_item_stack(&item_stack),
@@ -144,7 +144,7 @@ impl Player {
         }
     }
 
-    pub(crate) fn get_sync_player_inventory_slot(
+    pub(crate) fn sync_player_inventory_slot(
         &self,
         slot: i32,
         client: &mut Client,
@@ -168,7 +168,7 @@ impl Player {
         }
     }
 
-    pub(crate) fn get_sync_cursor(&self, client: &mut Client) -> io::Result<()> {
+    pub(crate) fn sync_cursor(&self, client: &mut Client) -> io::Result<()> {
         SetCursorItemPacket {
             item: Slot::from_item_stack(self.get_inventory_ref().cursor_item()),
         }

@@ -134,7 +134,7 @@ fn chunk_queue_reset_preserves_minestom_batch_lead_state() {
 
     player.reset_chunk_queue();
 
-    assert_eq!(player.queued_chunk_count(), 0);
+    assert_eq!(player.get_queued_chunk_count(), 0);
     assert_eq!(player.get_chunk_batch_lead(), 4);
     assert_eq!(player.get_max_chunk_batch_lead(), 10);
     assert_eq!(player.get_target_chunks_per_tick(), 9.0);
@@ -154,7 +154,7 @@ fn queued_chunks_send_minestom_batch_packets_and_first_position_sync() {
     player.set_client(&mut client);
     player.send_chunk(empty_chunk_packet(0, 0));
 
-    assert_eq!(player.queued_chunk_count(), 1);
+    assert_eq!(player.get_queued_chunk_count(), 1);
 
     player.send_pending_chunks().unwrap();
 
@@ -170,7 +170,7 @@ fn queued_chunks_send_minestom_batch_packets_and_first_position_sync() {
         ChunkBatchFinishedPacket::get_id()
     );
     assert_eq!(sync_position_packet_id, SyncPlayerPositionPacket::get_id());
-    assert_eq!(player.queued_chunk_count(), 0);
+    assert_eq!(player.get_queued_chunk_count(), 0);
     assert_eq!(player.get_chunk_batch_lead(), 1);
     assert_eq!(player.get_pending_chunk_count(), 8.0);
 }
@@ -197,7 +197,7 @@ fn offline_player_does_not_prepare_or_send_buffered_chunks() {
         .unwrap();
 
     assert_eq!(prepared_chunk_count, 0);
-    assert_eq!(player.queued_chunk_count(), 0);
+    assert_eq!(player.get_queued_chunk_count(), 0);
 }
 
 #[test]
@@ -301,7 +301,7 @@ fn enter_world_sends_minestom_chunk_batch_then_position_sync_sequence() {
     );
     assert!(chunk_batch_start_index < waiting_for_chunks_event_index);
     assert!(player.has_entered_world());
-    assert_eq!(player.queued_chunk_count(), 0);
+    assert_eq!(player.get_queued_chunk_count(), 0);
     assert!(!player.needs_chunk_position_sync);
 }
 
@@ -403,7 +403,7 @@ fn queued_chunk_batch_finished_counts_only_sent_chunks() {
         1
     );
     assert_eq!(player.get_pending_chunk_count(), 8.0);
-    assert_eq!(player.queued_chunk_count(), 0);
+    assert_eq!(player.get_queued_chunk_count(), 0);
 }
 
 #[test]
@@ -440,7 +440,7 @@ fn unavailable_queued_chunks_still_finish_an_empty_minestom_batch() {
     );
     assert_eq!(player.get_chunk_batch_lead(), 1);
     assert_eq!(player.get_pending_chunk_count(), 9.0);
-    assert_eq!(player.queued_chunk_count(), 0);
+    assert_eq!(player.get_queued_chunk_count(), 0);
 }
 
 #[test]
@@ -523,7 +523,7 @@ fn ordinary_chunk_border_crossing_keeps_throttled_queue_state() {
         )
         .unwrap();
 
-    assert_eq!(player.queued_chunk_count(), 2);
+    assert_eq!(player.get_queued_chunk_count(), 2);
     assert!(
         player
             .chunk_queue
@@ -571,7 +571,7 @@ fn ordinary_chunk_border_crossing_unloads_departing_chunk_without_pruning_queue(
 
     assert_eq!(cache_center_packet_id, SetChunkCacheCenterPacket::get_id());
     assert_eq!(forget_chunk_packet_id, ForgetLevelChunkPacket::get_id());
-    assert_eq!(player.queued_chunk_count(), 2);
+    assert_eq!(player.get_queued_chunk_count(), 2);
     assert!(
         player
             .chunk_queue
@@ -614,7 +614,7 @@ fn slow_chunk_acknowledgements_do_not_block_multi_border_player_movement() {
 
     assert_eq!(player.get_position().get_x(), 48.1);
     assert_eq!(player.get_chunk_batch_lead(), 1);
-    assert!(player.queued_chunk_count() > 0);
+    assert!(player.get_queued_chunk_count() > 0);
     assert!(
         !client
             .queued_outbound_packet_ids()
@@ -668,7 +668,7 @@ fn sharp_turn_keeps_completed_chunks_queued_like_minestom() {
         .unwrap();
 
     assert_eq!(player.chunks_loaded_by_client, PlayerChunk::new(0, 0));
-    assert_eq!(player.queued_chunk_count(), 4);
+    assert_eq!(player.get_queued_chunk_count(), 4);
     assert!(
         player
             .chunk_queue
@@ -785,18 +785,18 @@ fn effective_chunk_view_distance_matches_minestom_client_world_cap_plus_one() {
         SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 25565),
     );
 
-    assert_eq!(player.effective_chunk_view_distance(10), 9);
+    assert_eq!(player.get_effective_chunk_view_distance(10), 9);
 
     player.set_client_chunk_view_distance(4);
 
     assert_eq!(player.get_client_chunk_view_distance(), 4);
-    assert_eq!(player.effective_chunk_view_distance(10), 5);
-    assert_eq!(player.effective_chunk_view_distance(2), 3);
+    assert_eq!(player.get_effective_chunk_view_distance(10), 5);
+    assert_eq!(player.get_effective_chunk_view_distance(2), 3);
 
     player.set_client_chunk_view_distance(-10);
 
     assert_eq!(player.get_client_chunk_view_distance(), 0);
-    assert_eq!(player.effective_chunk_view_distance(10), 1);
+    assert_eq!(player.get_effective_chunk_view_distance(10), 1);
 }
 
 #[test]
@@ -1022,7 +1022,10 @@ fn player_identity_and_connection_getters_match_minestom_profile_surface() {
     assert_eq!(player.get_uuid(), Uuid::nil());
     assert_eq!(player.get_identity().get_uuid(), Uuid::nil());
     assert_eq!(player.get_pointers().get_uuid(), Uuid::nil());
-    assert_eq!(player.get_pointers().get_entity_id(), player.get_entity_id());
+    assert_eq!(
+        player.get_pointers().get_entity_id(),
+        player.get_entity_id()
+    );
     assert_eq!(player.get_pointers().get_identity(), player.get_identity());
     assert_eq!(player.get_username(), "Player");
     assert_eq!(player.get_protocol_version(), 765);
@@ -1114,7 +1117,7 @@ fn player_death_location_inputs_debug_and_keepalive_state_match_minestom_surface
     player.refresh_keep_alive(42);
     player.refresh_answer_keep_alive(true);
     assert_eq!(player.get_last_keep_alive(), 42);
-    assert!(player.did_answer_keep_alive());
+    assert!(player.get_did_answer_keep_alive());
 }
 
 #[test]
@@ -1218,7 +1221,7 @@ fn queued_player_packets_drain_at_minestom_packet_per_tick_limit() {
     let interpreted_packets = player.interpret_packet_queue(&mut server, &mut client);
 
     assert_eq!(interpreted_packets, 50);
-    assert_eq!(player.queued_packet_count(), 10);
+    assert_eq!(player.get_queued_packet_count(), 10);
 }
 
 #[test]
@@ -1240,7 +1243,7 @@ fn server_queues_play_packets_for_player_tick_instead_of_dispatching_immediately
     assert!(server.queue_player_packet(-1, &mut client, vec![1, 2, 3]));
 
     let queued_player = server.world_manager.player_mut_for_client(&client).unwrap();
-    assert_eq!(queued_player.queued_packet_count(), 1);
+    assert_eq!(queued_player.get_queued_packet_count(), 1);
 }
 
 #[test]
@@ -1547,7 +1550,10 @@ fn player_skin_is_state_only_before_world_entry_and_is_used_in_player_info() {
     let player_info_packet = player.get_player_info_packet();
 
     assert_eq!(player.get_skin().unwrap().get_textures(), "texture-data");
-    assert_eq!(player.get_skin().unwrap().get_signature(), Some("signature-data"));
+    assert_eq!(
+        player.get_skin().unwrap().get_signature(),
+        Some("signature-data")
+    );
     assert_eq!(player_info_packet.entries.0[0].properties.len(), 1);
     assert_eq!(
         player_info_packet.entries.0[0].properties[0].name,
@@ -1985,11 +1991,11 @@ fn swap_item_hands_matches_minestom_player_action_swap() {
 
     assert!(player.swap_item_hands(&mut server, &mut client));
     assert_eq!(
-        player.item_in_hand(PlayerHand::Main).material(),
+        player.get_item_in_hand(PlayerHand::Main).material(),
         &Material::EMERALD
     );
     assert_eq!(
-        player.item_in_hand(PlayerHand::Off).material(),
+        player.get_item_in_hand(PlayerHand::Off).material(),
         &Material::DIAMOND
     );
 }
@@ -2013,7 +2019,10 @@ fn player_equipment_packet_includes_full_minestom_equipment_set() {
 
     let equipment_packet = player.get_visible_equipment_packet();
 
-    assert_eq!(equipment_packet.entity_id, player.get_entity_id().get_value());
+    assert_eq!(
+        equipment_packet.entity_id,
+        player.get_entity_id().get_value()
+    );
     assert_eq!(equipment_packet.equipment.0.len(), 7);
     assert_eq!(
         equipment_packet.equipment.0[0]
@@ -2043,7 +2052,10 @@ fn player_exposes_connected_client_like_minestom_player_connection() {
 
     player.set_client(&mut client);
 
-    assert_eq!(player.get_client().map(|client| client.addr), Some(client.addr));
+    assert_eq!(
+        player.get_client().map(|client| client.addr),
+        Some(client.addr)
+    );
 }
 
 #[test]
@@ -2185,7 +2197,10 @@ fn player_living_metadata_api_matches_minestom_living_entity_meta_surface() {
     assert!(player.is_potion_effect_ambient());
     assert_eq!(player.get_arrow_count(), 3);
     assert_eq!(player.get_bee_stinger_count(), 4);
-    assert_eq!(player.get_bed_in_which_sleeping_position(), Some(bed_position));
+    assert_eq!(
+        player.get_bed_in_which_sleeping_position(),
+        Some(bed_position)
+    );
     assert_eq!(player.get_health(), 13.5);
     assert!(player.get_dirty_metadata_packet().is_some());
 }
@@ -2353,7 +2368,10 @@ fn player_item_use_state_matches_minestom_timing_and_eating_checks() {
     assert!(player.tick().is_none());
     assert_eq!(player.get_current_item_use_time(), 1);
     let item_use_completion = player.tick().unwrap();
-    assert_eq!(item_use_completion.entity_id, player.get_entity_id().get_value());
+    assert_eq!(
+        item_use_completion.entity_id,
+        player.get_entity_id().get_value()
+    );
     assert_eq!(item_use_completion.status, 9);
     assert!(!player.is_using_item());
     assert_eq!(player.get_current_item_use_time(), 0);
@@ -2488,7 +2506,13 @@ fn player_resource_pack_api_matches_minestom_request_status_and_required_kick_fl
     player.send_resource_packs(request).unwrap();
 
     assert_eq!(player.get_pending_resource_pack_count(), 1);
-    assert_eq!(player.get_resource_pack_future().unwrap().get_pending_count(), 1);
+    assert_eq!(
+        player
+            .get_resource_pack_future()
+            .unwrap()
+            .get_pending_count(),
+        1
+    );
     let packet_frames = read_available_packet_frames(&mut peer_stream);
     assert_eq!(packet_frames[0].0, ResourcePackPopPacket::get_id());
     assert_eq!(packet_frames[1].0, ResourcePackPushPacket::get_id());
@@ -2711,7 +2735,10 @@ fn player_dimension_statistics_hover_and_leave_bed_api_match_minestom_surface() 
     });
 
     assert_eq!(snapshot.get_uuid(), player.get_uuid());
-    assert_eq!(snapshot.statistics(), &[("minecraft:jump".to_string(), 6)]);
+    assert_eq!(
+        snapshot.get_statistics(),
+        &[("minecraft:jump".to_string(), 6)]
+    );
 }
 
 #[test]
@@ -2883,7 +2910,7 @@ fn consuming_block_placement_syncs_only_the_held_slot() {
         )
     );
 
-    assert_eq!(player.g(PlayerHand::Main).amount(), 1);
+    assert_eq!(player.get_item_in_hand(PlayerHand::Main).amount(), 1);
     let packet_ids = read_available_packet_frames(&mut peer_stream)
         .into_iter()
         .map(|(packet_id, _)| packet_id)
@@ -2903,7 +2930,11 @@ fn player_inventory_add_item_stacks_syncs_only_changed_slots() {
     client.state = ConnectionState::Play;
     let mut player = Player::new(Uuid::nil(), "Player".to_string(), 0, client.addr);
     let occupied_item = ItemStack::of(Material::DIAMOND);
-    assert!(player.get_inventory().set_item_stack(0, occupied_item.clone()));
+    assert!(
+        player
+            .get_inventory()
+            .set_item_stack(0, occupied_item.clone())
+    );
     player.set_client(&mut client);
     player.mark_entered_world();
 
@@ -2914,7 +2945,10 @@ fn player_inventory_add_item_stacks_syncs_only_changed_slots() {
         ]),
         vec![true, true]
     );
-    assert_eq!(player.get_inventory_ref().get_item_stack(0), Some(&occupied_item));
+    assert_eq!(
+        player.get_inventory_ref().get_item_stack(0),
+        Some(&occupied_item)
+    );
 
     player.tick();
 

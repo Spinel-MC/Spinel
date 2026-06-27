@@ -111,7 +111,7 @@ impl<'entity> PandaMeta<'entity> {
     pub fn is_sneezing(&self) -> bool {
         self.get_entity()
             .get_metadata()
-            .flag(&definitions::panda::is_sneezing())
+            .get_flag(&definitions::panda::is_sneezing())
     }
 
     pub fn set_sneezing(&mut self, is_sneezing: bool) {
@@ -123,7 +123,7 @@ impl<'entity> PandaMeta<'entity> {
     pub fn is_rolling(&self) -> bool {
         self.get_entity()
             .get_metadata()
-            .flag(&definitions::panda::is_rolling())
+            .get_flag(&definitions::panda::is_rolling())
     }
 
     pub fn set_rolling(&mut self, is_rolling: bool) {
@@ -135,7 +135,7 @@ impl<'entity> PandaMeta<'entity> {
     pub fn is_sitting(&self) -> bool {
         self.get_entity()
             .get_metadata()
-            .flag(&definitions::panda::is_sitting())
+            .get_flag(&definitions::panda::is_sitting())
     }
 
     pub fn set_sitting(&mut self, is_sitting: bool) {
@@ -147,7 +147,7 @@ impl<'entity> PandaMeta<'entity> {
     pub fn is_on_back(&self) -> bool {
         self.get_entity()
             .get_metadata()
-            .flag(&definitions::panda::is_on_back())
+            .get_flag(&definitions::panda::is_on_back())
     }
 
     pub fn set_on_back(&mut self, is_on_back: bool) {

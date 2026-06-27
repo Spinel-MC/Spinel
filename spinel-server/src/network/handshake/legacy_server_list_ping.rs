@@ -53,7 +53,7 @@ pub fn dispatch_legacy_server_list_ping_response(
 
     let payload_str = if supports_versions {
         format!(
-            "§1\u{0000}{}\u{0000}{}\u{0000}{}\u{0000}{}\u{0000}{}",
+            "Â§1\u{0000}{}\u{0000}{}\u{0000}{}\u{0000}{}\u{0000}{}",
             127,
             data.brand.unwrap_or_default(),
             data.description.unwrap_or_default().to_legacy_string(),
@@ -62,7 +62,7 @@ pub fn dispatch_legacy_server_list_ping_response(
         )
     } else {
         format!(
-            "{}§{}§{}",
+            "{}Â§{}Â§{}",
             data.description.unwrap_or_default().to_legacy_string(),
             data.online_players.unwrap_or_default(),
             data.max_players.unwrap_or_default()

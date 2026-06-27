@@ -95,7 +95,11 @@ fn ai_group_preempts_lower_priority_goal_in_minestom_order() {
             "high:end"
         ]
     );
-    assert!(creature.get_ai_groups()[0].get_current_goal_selector().is_none());
+    assert!(
+        creature.get_ai_groups()[0]
+            .get_current_goal_selector()
+            .is_none()
+    );
 }
 
 #[test]
@@ -123,7 +127,9 @@ fn active_goal_identity_survives_goal_selector_reordering() {
     let snapshot = world.update_snapshot();
 
     creature.ai_tick(&snapshot, 1);
-    creature.get_ai_groups_mut()[0].get_goal_selectors_mut().swap(0, 1);
+    creature.get_ai_groups_mut()[0]
+        .get_goal_selectors_mut()
+        .swap(0, 1);
     creature.ai_tick(&snapshot, 2);
 
     assert_eq!(
@@ -150,14 +156,20 @@ fn removed_active_goal_keeps_running_until_it_ends() {
     let snapshot = world.update_snapshot();
 
     creature.ai_tick(&snapshot, 1);
-    creature.get_ai_groups_mut()[0].get_goal_selectors_mut().clear();
+    creature.get_ai_groups_mut()[0]
+        .get_goal_selectors_mut()
+        .clear();
     creature.ai_tick(&snapshot, 2);
 
     assert_eq!(
         *events.lock().unwrap(),
         vec!["low:start", "low:tick", "low:tick"]
     );
-    assert!(creature.get_ai_groups()[0].get_current_goal_selector().is_some());
+    assert!(
+        creature.get_ai_groups()[0]
+            .get_current_goal_selector()
+            .is_some()
+    );
 }
 
 #[test]
@@ -303,7 +315,7 @@ fn random_look_and_stroll_goal_public_configuration_matches_minestom_surface() {
     assert!(look.should_end(&creature, &snapshot, &mut targets));
 
     let stroll = RandomStrollGoal::new(4);
-    assert_eq!(stroll.radius(), 4);
+    assert_eq!(stroll.get_radius(), 4);
 }
 
 #[test]

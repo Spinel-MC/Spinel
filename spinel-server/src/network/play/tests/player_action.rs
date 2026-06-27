@@ -104,7 +104,14 @@ fn survival_break_ticks_match_minestom_hardness_tool_effect_and_environment_bran
     );
 
     let haste_id = registries.mob_effect_id(&MobEffect::HASTE).unwrap();
-    player.add_effect(TimedPotionEffect::new(haste_id, 1, 200, 0, 0));
+    player.add_effect(TimedPotionEffect::new(
+        MobEffect::HASTE,
+        haste_id,
+        1,
+        200,
+        0,
+        0,
+    ));
     assert_eq!(
         block_break_calculation::break_ticks(Block::STONE, &player, &registries, false),
         5
@@ -114,7 +121,14 @@ fn survival_break_ticks_match_minestom_hardness_tool_effect_and_environment_bran
     let fatigue_id = registries
         .mob_effect_id(&MobEffect::MINING_FATIGUE)
         .unwrap();
-    player.add_effect(TimedPotionEffect::new(fatigue_id, 0, 200, 0, 0));
+    player.add_effect(TimedPotionEffect::new(
+        MobEffect::MINING_FATIGUE,
+        fatigue_id,
+        0,
+        200,
+        0,
+        0,
+    ));
     assert_eq!(
         block_break_calculation::break_ticks(Block::STONE, &player, &registries, false),
         19

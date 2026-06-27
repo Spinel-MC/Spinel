@@ -14,8 +14,11 @@ impl<'entity> CowMeta<'entity> {
         })
     }
 
-    pub fn get_variant(&self, registries: &Registries) -> Option<RegistryKey<cow_variant::CowVariant>> {
-        self.get_entity().g(registries)
+    pub fn get_variant(
+        &self,
+        registries: &Registries,
+    ) -> Option<RegistryKey<cow_variant::CowVariant>> {
+        self.get_entity().get_cow_variant_metadata(registries)
     }
 
     pub fn set_variant(

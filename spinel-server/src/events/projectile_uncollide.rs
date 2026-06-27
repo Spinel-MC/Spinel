@@ -11,7 +11,7 @@ impl ProjectileUncollideEvent {
         Self { projectile_id }
     }
 
-    pub const fn projectile_id(&self) -> EntityId {
+    pub const fn get_projectile_id(&self) -> EntityId {
         self.projectile_id
     }
 }

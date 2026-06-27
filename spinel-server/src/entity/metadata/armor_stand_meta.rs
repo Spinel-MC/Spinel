@@ -18,7 +18,7 @@ impl<'entity> ArmorStandMeta<'entity> {
     pub fn is_small(&self) -> bool {
         self.get_entity()
             .get_metadata()
-            .flag(&definitions::armor_stand::is_small())
+            .get_flag(&definitions::armor_stand::is_small())
     }
 
     pub fn set_small(&mut self, is_small: bool) {
@@ -30,7 +30,7 @@ impl<'entity> ArmorStandMeta<'entity> {
     pub fn has_arms(&self) -> bool {
         self.get_entity()
             .get_metadata()
-            .flag(&definitions::armor_stand::has_arms())
+            .get_flag(&definitions::armor_stand::has_arms())
     }
 
     pub fn set_has_arms(&mut self, has_arms: bool) {
@@ -42,7 +42,7 @@ impl<'entity> ArmorStandMeta<'entity> {
     pub fn has_no_base_plate(&self) -> bool {
         self.get_entity()
             .get_metadata()
-            .flag(&definitions::armor_stand::has_no_base_plate())
+            .get_flag(&definitions::armor_stand::has_no_base_plate())
     }
 
     pub fn set_has_no_base_plate(&mut self, has_no_base_plate: bool) {
@@ -55,7 +55,7 @@ impl<'entity> ArmorStandMeta<'entity> {
     pub fn is_marker(&self) -> bool {
         self.get_entity()
             .get_metadata()
-            .flag(&definitions::armor_stand::is_marker())
+            .get_flag(&definitions::armor_stand::is_marker())
     }
 
     pub fn set_marker(&mut self, is_marker: bool) {
@@ -93,7 +93,10 @@ impl<'entity> ArmorStandMeta<'entity> {
     }
 
     pub fn set_right_arm_rotation(&mut self, rotation: Vector3f) {
-        self.set_rotation_vector(&definitions::armor_stand::get_right_arm_rotation(), rotation);
+        self.set_rotation_vector(
+            &definitions::armor_stand::get_right_arm_rotation(),
+            rotation,
+        );
     }
 
     pub fn get_left_leg_rotation(&self) -> Vector3f {
@@ -109,7 +112,10 @@ impl<'entity> ArmorStandMeta<'entity> {
     }
 
     pub fn set_right_leg_rotation(&mut self, rotation: Vector3f) {
-        self.set_rotation_vector(&definitions::armor_stand::get_right_leg_rotation(), rotation);
+        self.set_rotation_vector(
+            &definitions::armor_stand::get_right_leg_rotation(),
+            rotation,
+        );
     }
 
     fn rotation_vector(

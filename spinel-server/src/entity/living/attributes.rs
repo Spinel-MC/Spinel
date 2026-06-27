@@ -93,12 +93,12 @@ impl LivingAttributes {
             .iter()
             .filter(|modifier| {
                 modifier
-                    .slot()
+                    .get_slot()
                     .contains_slot_name(equipment_slot.get_nbt_name())
             })
             .filter_map(|modifier| {
-                Attribute::from_identifier(modifier.attribute_type())
-                    .map(|attribute| (attribute, modifier.id()))
+                Attribute::from_identifier(modifier.get_attribute_type())
+                    .map(|attribute| (attribute, modifier.get_id()))
             })
             .for_each(|(attribute, modifier_id)| {
                 self.get_attribute(attribute).remove_modifier(modifier_id);
@@ -114,17 +114,17 @@ impl LivingAttributes {
             .iter()
             .filter(|modifier| {
                 modifier
-                    .slot()
+                    .get_slot()
                     .contains_slot_name(equipment_slot.get_nbt_name())
             })
             .filter_map(|modifier| {
-                Attribute::from_identifier(modifier.attribute_type()).map(|attribute| {
+                Attribute::from_identifier(modifier.get_attribute_type()).map(|attribute| {
                     (
                         attribute,
                         EntityAttributeModifier {
-                            modifier_id: modifier.id().clone(),
+                            modifier_id: modifier.get_id().clone(),
                             amount: modifier.get_amount(),
-                            operation: modifier.operation().protocol_id(),
+                            operation: modifier.get_operation().protocol_id(),
                         },
                     )
                 })
@@ -168,13 +168,28 @@ impl EntityAttributeState {
         self.base_value = base_value;
     }
 
-    pub fn add_modifier(&mut self, modifier: EntityAttributeModifier) {
+    pub fn add_modifier(
+        &mut self,
+        modifier: EntityAttributeModifier,
+    ) -> Option<EntityAttributeModifier> {
         self.modifiers
-            .insert(modifier.modifier_id.to_string(), modifier);
+            .insert(modifier.modifier_id.to_string(), modifier)
     }
 
     pub fn remove_modifier(&mut self, modifier_id: &Identifier) -> Option<EntityAttributeModifier> {
         self.modifiers.remove(&modifier_id.to_string())
+    }
+
+    pub fn remove_modifier_by_value(
+        &mut self,
+        modifier: &EntityAttributeModifier,
+    ) -> Option<EntityAttributeModifier> {
+        self.remove_modifier(&modifier.modifier_id)
+    }
+
+    pub fn clear_modifiers(&mut self) {
+        self.modifiers
+            .retain(|_, modifier| modifier_id_is_protected(&modifier.modifier_id));
     }
 
     pub fn get_modifiers(&self) -> Vec<&EntityAttributeModifier> {
@@ -182,13 +197,17 @@ impl EntityAttributeState {
     }
 
     pub fn get_value(&self) -> f64 {
+        self.apply_modifiers(self.base_value)
+    }
+
+    pub fn apply_modifiers(&self, base_value: f64) -> f64 {
         let add_value_total = self
             .modifiers
             .values()
             .filter(|modifier| modifier.operation == AttributeOperation::AddValue.protocol_id())
             .map(|modifier| modifier.amount)
             .sum::<f64>();
-        let additive_base = self.base_value + add_value_total;
+        let additive_base = base_value + add_value_total;
         let add_multiplied_base_total = self
             .modifiers
             .values()
@@ -216,4 +235,8 @@ impl EntityAttributeState {
             modifiers: self.modifiers.values().cloned().collect(),
         }
     }
+}
+
+fn modifier_id_is_protected(modifier_id: &Identifier) -> bool {
+    modifier_id == &Identifier::minecraft("sprinting")
 }

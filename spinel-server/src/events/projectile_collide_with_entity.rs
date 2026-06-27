@@ -21,11 +21,11 @@ impl ProjectileCollideWithEntityEvent {
     }
 
     pub const fn get_projectile_id(&self) -> EntityId {
-        self.collision.projectile_id()
+        self.collision.get_projectile_id()
     }
 
     pub const fn get_collision_position(&self) -> EntityPosition {
-        self.collision.collision_position()
+        self.collision.get_collision_position()
     }
 
     pub const fn get_target_id(&self) -> EntityId {

@@ -30,8 +30,21 @@ fn double_click_with_open_inventory_collects_player_inventory_before_open_invent
         player.collect_double_click_items(9, cursor, player_ptr, &mut server, &mut client);
 
     assert_eq!(updated_cursor.amount(), 64);
-    assert!(player.get_inventory_ref().get_item_stack(1).unwrap().is_air());
-    assert_eq!(player.get_inventory_ref().get_item_stack(2).unwrap().amount(), 16);
+    assert!(
+        player
+            .get_inventory_ref()
+            .get_item_stack(1)
+            .unwrap()
+            .is_air()
+    );
+    assert_eq!(
+        player
+            .get_inventory_ref()
+            .get_item_stack(2)
+            .unwrap()
+            .amount(),
+        16
+    );
     assert_eq!(
         player
             .get_opened_inventory()
@@ -80,7 +93,14 @@ fn double_click_with_open_inventory_collects_open_inventory_before_player_invent
             .amount(),
         16
     );
-    assert_eq!(player.get_inventory_ref().get_item_stack(1).unwrap().amount(), 32);
+    assert_eq!(
+        player
+            .get_inventory_ref()
+            .get_item_stack(1)
+            .unwrap()
+            .amount(),
+        32
+    );
 }
 
 fn test_player() -> Player {

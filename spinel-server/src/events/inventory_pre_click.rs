@@ -46,7 +46,9 @@ impl InventoryPreClickEvent {
                 .get_opened_inventory()
                 .and_then(|inventory| inventory.get_item_stack(slot as usize));
         }
-        self.player().get_inventory_ref().get_item_stack(slot as usize)
+        self.player()
+            .get_inventory_ref()
+            .get_item_stack(slot as usize)
     }
 
     pub fn set_click(&mut self, click: Click) {

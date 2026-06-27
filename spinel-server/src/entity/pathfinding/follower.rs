@@ -273,8 +273,14 @@ impl NodeFollower for VanillaGroundNodeFollower {
         let target_yaw = (delta_z.atan2(delta_x).to_degrees() - 90.0) as f32;
         let yaw = vanilla_wrapped_yaw(current.get_yaw(), target_yaw, VANILLA_MAXIMUM_YAW_CHANGE);
         entity.set_position(
-            EntityPosition::new(current.get_x(), current.get_y(), current.get_z(), yaw, current.get_pitch())
-                .with_head_yaw(current.get_head_yaw()),
+            EntityPosition::new(
+                current.get_x(),
+                current.get_y(),
+                current.get_z(),
+                yaw,
+                current.get_pitch(),
+            )
+            .with_head_yaw(current.get_head_yaw()),
         );
 
         apply_vanilla_acceleration(entity, world, speed, yaw);
@@ -377,7 +383,10 @@ fn movement_towards(
     let distance_squared = delta_x * delta_x + delta_y * delta_y + delta_z * delta_z;
     let speed = speed.min(distance_squared);
     let radians = delta_z.atan2(delta_x);
-    let yaw = look_yaw(look_at.get_x() - current.get_x(), look_at.get_z() - current.get_z());
+    let yaw = look_yaw(
+        look_at.get_x() - current.get_x(),
+        look_at.get_z() - current.get_z(),
+    );
     let pitch = look_pitch(
         look_at.get_x() - current.get_x(),
         look_at.get_y() - current.get_y(),

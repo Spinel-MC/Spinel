@@ -5,7 +5,9 @@ use spinel_core::network::clientbound::play::entity_effect::EntityEffectPacket;
 use spinel_core::network::clientbound::play::remove_entity_effect::RemoveEntityEffectPacket;
 use spinel_core::network::clientbound::play::set_equipment::EntityEquipmentEntry;
 use spinel_core::network::clientbound::play::update_attributes::UpdateAttributesPacket;
-use spinel_registry::{Attribute, EntityBoundingBox, EntityType, ItemStack};
+use spinel_registry::{
+    Attribute, EntityBoundingBox, EntityType, ItemStack, MobEffect, RegistryKey,
+};
 use std::collections::BTreeMap;
 
 use super::{LivingEquipment, TimedPotionEffect};
@@ -28,7 +30,7 @@ pub struct LivingState {
     is_flying_with_elytra: bool,
     equipment: LivingEquipment,
     attributes: LivingAttributes,
-    effects: BTreeMap<i32, TimedPotionEffect>,
+    effects: BTreeMap<RegistryKey<MobEffect>, TimedPotionEffect>,
 }
 
 impl LivingState {
@@ -218,7 +220,7 @@ impl LivingState {
     }
 
     pub fn update_attributes_packet(&self, entity_id: EntityId) -> UpdateAttributesPacket {
-        self.attributes.packet(entity_id.get_value())
+        self.attributes.get_packet(entity_id.get_value())
     }
 
     pub fn has_attributes(&self) -> bool {
@@ -230,27 +232,27 @@ impl LivingState {
         entity_id: EntityId,
         effect: TimedPotionEffect,
     ) -> EntityEffectPacket {
-        let packet = effect.packet(entity_id);
-        self.effects.insert(effect.get_effect_id(), effect);
+        let packet = effect.get_packet(entity_id);
+        self.effects.insert(effect.get_effect_key().clone(), effect);
         packet
     }
 
     pub fn remove_effect(
         &mut self,
         entity_id: EntityId,
-        effect_id: i32,
+        effect_key: &RegistryKey<MobEffect>,
     ) -> Option<RemoveEntityEffectPacket> {
         self.effects
-            .remove(&effect_id)
+            .remove(effect_key)
             .map(|effect| effect.remove_packet(entity_id))
     }
 
-    pub fn has_effect(&self, effect_id: i32) -> bool {
-        self.effects.contains_key(&effect_id)
+    pub fn has_effect(&self, effect_key: &RegistryKey<MobEffect>) -> bool {
+        self.effects.contains_key(effect_key)
     }
 
-    pub fn get_effect(&self, effect_id: i32) -> Option<&TimedPotionEffect> {
-        self.effects.get(&effect_id)
+    pub fn get_effect(&self, effect_key: &RegistryKey<MobEffect>) -> Option<&TimedPotionEffect> {
+        self.effects.get(effect_key)
     }
 
     pub fn get_active_effects(&self) -> Vec<&TimedPotionEffect> {
@@ -267,19 +269,21 @@ impl LivingState {
     pub fn get_effect_packets(&self, entity_id: EntityId) -> Vec<EntityEffectPacket> {
         self.effects
             .values()
-            .map(|effect| effect.packet(entity_id))
+            .map(|effect| effect.get_packet(entity_id))
             .collect()
     }
 
     pub fn expire_effects_at(&mut self, tick: u64) -> Vec<TimedPotionEffect> {
-        let expired_effect_ids = self
+        let expired_effect_keys = self
             .effects
             .iter()
-            .filter_map(|(effect_id, effect)| effect.is_expired_at(tick).then_some(*effect_id))
+            .filter_map(|(effect_key, effect)| {
+                effect.is_expired_at(tick).then_some(effect_key.clone())
+            })
             .collect::<Vec<_>>();
-        expired_effect_ids
+        expired_effect_keys
             .into_iter()
-            .filter_map(|effect_id| self.effects.remove(&effect_id))
+            .filter_map(|effect_key| self.effects.remove(&effect_key))
             .collect()
     }
 

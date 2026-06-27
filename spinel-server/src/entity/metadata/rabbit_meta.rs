@@ -15,7 +15,11 @@ impl<'entity> RabbitMeta<'entity> {
     }
 
     pub fn get_variant(&self) -> RabbitVariant {
-        match self.get_entity().get_metadata().get_value(&definitions::rabbit::kind()) {
+        match self
+            .get_entity()
+            .get_metadata()
+            .get_value(&definitions::rabbit::kind())
+        {
             MetadataValue::VarInt(variant_id) => {
                 RabbitVariant::from_protocol_id(variant_id).unwrap_or_default()
             }

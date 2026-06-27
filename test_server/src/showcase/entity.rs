@@ -145,7 +145,7 @@ impl EntityShowcase {
         zombie.set_custom_name(Some(Component::text(physics_name).build()));
         zombie.set_custom_name_visible(true);
         zombie.entity_meta_mut().as_zombie().expect("msg");
-        
+
         zombie
     }
 

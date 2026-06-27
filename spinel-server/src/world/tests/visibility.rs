@@ -20,7 +20,7 @@ use spinel_core::network::clientbound::play::spawn_entity::SpawnEntityPacket;
 use spinel_core::network::clientbound::play::update_attributes::UpdateAttributesPacket;
 use spinel_network::types::{Identifier, Vector3d, Velocity};
 use spinel_network::{ConnectionState, DataType};
-use spinel_registry::{Attribute, EntityType, Registries};
+use spinel_registry::{Attribute, EntityType, MobEffect, Registries};
 use std::net::{IpAddr, Ipv4Addr, SocketAddr, TcpListener};
 use uuid::Uuid;
 
@@ -96,7 +96,13 @@ fn manual_viewer_add_and_remove_match_minestom_packets_and_no_op_edges() {
         viewer_client.queued_outbound_packet_ids(),
         vec![AttachEntityPacket::get_id(), RemoveEntitiesPacket::get_id()]
     );
-    assert!(!world.get_entity(holder_id).unwrap().get_view().is_viewer(viewer_id));
+    assert!(
+        !world
+            .get_entity(holder_id)
+            .unwrap()
+            .get_view()
+            .is_viewer(viewer_id)
+    );
     assert!(
         world
             .get_entity(passenger_id)
@@ -118,7 +124,13 @@ fn viewable_rule_update_refreshes_automatic_visibility_immediately() {
     world.add_entity(target);
     world.add_entity(Entity::Player(viewer));
     world.process_pending_entity_visibility_refreshes().unwrap();
-    assert!(world.get_entity(target_id).unwrap().get_view().is_viewer(viewer_id));
+    assert!(
+        world
+            .get_entity(target_id)
+            .unwrap()
+            .get_view()
+            .is_viewer(viewer_id)
+    );
     viewer_client.discard_queued_outbound_packets();
 
     assert!(
@@ -127,7 +139,13 @@ fn viewable_rule_update_refreshes_automatic_visibility_immediately() {
             .unwrap()
     );
 
-    assert!(!world.get_entity(target_id).unwrap().get_view().is_viewer(viewer_id));
+    assert!(
+        !world
+            .get_entity(target_id)
+            .unwrap()
+            .get_view()
+            .is_viewer(viewer_id)
+    );
     assert_eq!(
         viewer_client.queued_outbound_packet_ids(),
         vec![RemoveEntitiesPacket::get_id()]
@@ -136,7 +154,13 @@ fn viewable_rule_update_refreshes_automatic_visibility_immediately() {
 
     assert!(world.clear_entity_viewable_rule(target_id).unwrap());
 
-    assert!(world.get_entity(target_id).unwrap().get_view().is_viewer(viewer_id));
+    assert!(
+        world
+            .get_entity(target_id)
+            .unwrap()
+            .get_view()
+            .is_viewer(viewer_id)
+    );
     assert!(
         viewer_client
             .queued_outbound_packet_ids()
@@ -156,7 +180,13 @@ fn viewer_rule_update_refreshes_player_automatic_visibility_immediately() {
     world.add_entity(target);
     world.add_entity(Entity::Player(viewer));
     world.process_pending_entity_visibility_refreshes().unwrap();
-    assert!(world.get_entity(target_id).unwrap().get_view().is_viewer(viewer_id));
+    assert!(
+        world
+            .get_entity(target_id)
+            .unwrap()
+            .get_view()
+            .is_viewer(viewer_id)
+    );
     viewer_client.discard_queued_outbound_packets();
 
     assert!(
@@ -165,7 +195,13 @@ fn viewer_rule_update_refreshes_player_automatic_visibility_immediately() {
             .unwrap()
     );
 
-    assert!(!world.get_entity(target_id).unwrap().get_view().is_viewer(viewer_id));
+    assert!(
+        !world
+            .get_entity(target_id)
+            .unwrap()
+            .get_view()
+            .is_viewer(viewer_id)
+    );
     assert_eq!(
         viewer_client.queued_outbound_packet_ids(),
         vec![RemoveEntitiesPacket::get_id()]
@@ -174,7 +210,13 @@ fn viewer_rule_update_refreshes_player_automatic_visibility_immediately() {
 
     assert!(world.clear_entity_viewer_rule(viewer_id).unwrap());
 
-    assert!(world.get_entity(target_id).unwrap().get_view().is_viewer(viewer_id));
+    assert!(
+        world
+            .get_entity(target_id)
+            .unwrap()
+            .get_view()
+            .is_viewer(viewer_id)
+    );
     assert!(
         viewer_client
             .queued_outbound_packet_ids()
@@ -207,7 +249,13 @@ fn automatic_visibility_removes_stale_viewer_relationship_after_entity_moves_out
         )
         .unwrap();
 
-    assert!(!world.get_entity(target_id).unwrap().get_view().is_viewer(viewer_id));
+    assert!(
+        !world
+            .get_entity(target_id)
+            .unwrap()
+            .get_view()
+            .is_viewer(viewer_id)
+    );
     let packet_ids = viewer_client.queued_outbound_packet_ids();
     assert_eq!(packet_ids.last(), Some(&RemoveEntitiesPacket::get_id()));
     assert_eq!(
@@ -226,7 +274,7 @@ fn player_spawn_snapshot_sends_living_packets_in_minestom_order() {
     let viewer = entered_player(&mut viewer_client, "Viewer");
     let mut target = entered_player_without_client("Target");
     target.get_attribute(Attribute::MAX_HEALTH);
-    target.add_effect(TimedPotionEffect::new(1, 2, 40, 0, 0));
+    target.add_effect(TimedPotionEffect::new(MobEffect::SPEED, 0, 2, 40, 0, 0));
     target.set_velocity(Velocity(Vector3d {
         x: 0.25,
         y: 0.5,

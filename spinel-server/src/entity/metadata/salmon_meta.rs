@@ -15,7 +15,11 @@ impl<'entity> SalmonMeta<'entity> {
     }
 
     pub fn get_size(&self) -> SalmonSize {
-        match self.get_entity().get_metadata().get_value(&definitions::salmon::get_size()) {
+        match self
+            .get_entity()
+            .get_metadata()
+            .get_value(&definitions::salmon::get_size())
+        {
             MetadataValue::VarInt(size) => SalmonSize::from_protocol_id(size).unwrap_or_default(),
             _ => SalmonSize::default(),
         }

@@ -69,7 +69,10 @@ fn world_add_entity_dispatches_add_and_spawn_events_in_minestom_order() {
     assert!(world.add_entity(entity));
 
     assert_eq!(recorded_entity_instance_events(), ["add", "spawn"]);
-    assert_eq!(world.get_entity(entity_id).unwrap().get_world(), Some(world.uuid()));
+    assert_eq!(
+        world.get_entity(entity_id).unwrap().get_world(),
+        Some(world.uuid())
+    );
 }
 
 #[test]

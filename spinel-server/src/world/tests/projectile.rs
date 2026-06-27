@@ -26,13 +26,13 @@ static PROJECTILE_SHOOT_EVENT_ENTITY_ACCESSOR_MATCHED: AtomicBool = AtomicBool::
 
 #[event_listener]
 fn projectile_shoot_listener(event: &mut EntityShootEvent, _server: &mut MinecraftServer) {
-    if *PROJECTILE_TEST_ID.lock().unwrap() != Some(event.projectile_id()) {
+    if *PROJECTILE_TEST_ID.lock().unwrap() != Some(event.get_projectile_id()) {
         return;
     }
-    let shooter_id = event.shooter_id();
-    let projectile_id = event.projectile_id();
+    let shooter_id = event.get_shooter_id();
+    let projectile_id = event.get_projectile_id();
     let event_entity_id = event.get_entity().get_entity_id();
-    let event_projectile_id = event.projectile().entity_id();
+    let event_projectile_id = event.get_projectile().get_entity_id();
     if event_entity_id == shooter_id && event_projectile_id == projectile_id {
         PROJECTILE_SHOOT_EVENT_ENTITY_ACCESSOR_MATCHED.store(true, Ordering::SeqCst);
     }
@@ -46,7 +46,7 @@ fn projectile_block_collision_listener(
     event: &mut ProjectileCollideWithBlockEvent,
     _server: &mut MinecraftServer,
 ) {
-    if *PROJECTILE_TEST_ID.lock().unwrap() != Some(event.projectile_id()) {
+    if *PROJECTILE_TEST_ID.lock().unwrap() != Some(event.get_projectile_id()) {
         return;
     }
     PROJECTILE_BLOCK_COLLISION_COUNT.fetch_add(1, Ordering::SeqCst);
@@ -58,10 +58,10 @@ fn projectile_entity_collision_listener(
     event: &mut ProjectileCollideWithEntityEvent,
     _server: &mut MinecraftServer,
 ) {
-    if *PROJECTILE_TEST_ID.lock().unwrap() != Some(event.projectile_id()) {
+    if *PROJECTILE_TEST_ID.lock().unwrap() != Some(event.get_projectile_id()) {
         return;
     }
-    *PROJECTILE_TARGET_ID.lock().unwrap() = Some(event.target_id());
+    *PROJECTILE_TARGET_ID.lock().unwrap() = Some(event.get_target_id());
     PROJECTILE_ENTITY_COLLISION_COUNT.fetch_add(1, Ordering::SeqCst);
 }
 
@@ -70,7 +70,7 @@ fn projectile_collision_listener(
     event: &mut ProjectileCollideEvent,
     _server: &mut MinecraftServer,
 ) {
-    if *PROJECTILE_TEST_ID.lock().unwrap() != Some(event.projectile_id()) {
+    if *PROJECTILE_TEST_ID.lock().unwrap() != Some(event.get_projectile_id()) {
         return;
     }
     PROJECTILE_SHARED_COLLISION_COUNT.fetch_add(1, Ordering::SeqCst);
@@ -82,7 +82,7 @@ fn projectile_uncollide_listener(
     event: &mut ProjectileUncollideEvent,
     _server: &mut MinecraftServer,
 ) {
-    if *PROJECTILE_TEST_ID.lock().unwrap() != Some(event.projectile_id()) {
+    if *PROJECTILE_TEST_ID.lock().unwrap() != Some(event.get_projectile_id()) {
         return;
     }
     PROJECTILE_UNCOLLIDE_COUNT.fetch_add(1, Ordering::SeqCst);
@@ -171,7 +171,7 @@ fn projectile_tick_samples_its_path_and_sticks_in_a_solid_block() {
     let Some(Entity::Projectile(projectile)) = world.get_entity(projectile_id) else {
         panic!("spawned projectile must remain in the world");
     };
-    assert!(projectile.was_stuck());
+    assert!(projectile.get_was_stuck());
     assert!(projectile.is_on_ground());
     assert!(projectile.has_no_gravity());
     assert_eq!(
@@ -221,7 +221,7 @@ fn shared_projectile_collision_listener_can_cancel_concrete_block_collision() {
 
     world.tick();
 
-    assert!(!projectile_entity(&world, projectile_id).was_stuck());
+    assert!(!projectile_entity(&world, projectile_id).get_was_stuck());
     assert!(PROJECTILE_SHARED_COLLISION_COUNT.load(Ordering::SeqCst) >= 1);
     reset_projectile_event_state();
 }
@@ -261,7 +261,7 @@ fn stuck_projectile_uncollides_after_its_block_is_removed() {
     let Some(Entity::Projectile(projectile)) = world.get_entity(projectile_id) else {
         panic!("spawned projectile must remain in the world");
     };
-    assert!(!projectile.was_stuck());
+    assert!(!projectile.get_was_stuck());
     assert!(!projectile.is_on_ground());
     assert!(!projectile.has_no_gravity());
     assert_eq!(PROJECTILE_UNCOLLIDE_COUNT.load(Ordering::SeqCst), 1);
@@ -301,17 +301,21 @@ fn projectile_tick_emits_entity_collision_for_living_targets() {
         y: 0.0,
         z: 0.0,
     }));
-    assert!(world.get_entity(target_id).is_some_and(|target| match target {
+    assert!(
         world
-            Vector3d {
-                x: 0.75,
-                y: 64.0,
-                z: 0.5,
-            },
-            EntityType::ARROW.get_bounding_box(),
-        ),
-        _ => false,
-    }));
+            .get_entity(target_id)
+            .is_some_and(|target| match target {
+                Entity::Generic(target) => target.get_intersects_box_at(
+                    Vector3d {
+                        x: 0.75,
+                        y: 64.0,
+                        z: 0.5,
+                    },
+                    EntityType::ARROW.get_bounding_box(),
+                ),
+                _ => false,
+            })
+    );
     assert!(
         world
             .chunk_entities(crate::world::ChunkPosition::new(0, 0))
@@ -324,13 +328,15 @@ fn projectile_tick_emits_entity_collision_for_living_targets() {
     let projectile_position = projectile_entity(&world, projectile_id).get_position();
     let target_position = world.get_entity(target_id).unwrap().get_position();
     assert!(
-        world.get_entity(target_id).is_some_and(|target| match target {
-            .entity_by_id(target_id)
-                projectile_position.as_vector(),
-                EntityType::ARROW.get_bounding_box(),
-            ),
-            _ => false,
-        }),
+        world
+            .get_entity(target_id)
+            .is_some_and(|target| match target {
+                Entity::Generic(target) => target.get_intersects_box_at(
+                    projectile_position.as_vector(),
+                    EntityType::ARROW.get_bounding_box(),
+                ),
+                _ => false,
+            }),
         "projectile={projectile_position:?} target={target_position:?}"
     );
     assert!(PROJECTILE_ENTITY_COLLISION_COUNT.load(Ordering::SeqCst) >= 1);
@@ -338,7 +344,6 @@ fn projectile_tick_emits_entity_collision_for_living_targets() {
     assert_eq!(*PROJECTILE_TARGET_ID.lock().unwrap(), Some(target_id));
     reset_projectile_event_state();
 }
-
 fn projectile_entity(world: &World, projectile_id: EntityId) -> &crate::entity::ProjectileEntity {
     let Some(Entity::Projectile(projectile)) = world.get_entity(projectile_id) else {
         panic!("projectile must remain in the world");

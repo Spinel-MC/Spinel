@@ -21,7 +21,13 @@ fn player_inventory_offhand_swap_works_without_open_inventory() {
     let player_ptr = &mut player as *mut Player;
 
     assert!(player.apply_held_swap(0, OFFHAND_SLOT, player_ptr, &mut server, &mut client));
-    assert!(player.get_inventory_ref().get_item_stack(0).unwrap().is_air());
+    assert!(
+        player
+            .get_inventory_ref()
+            .get_item_stack(0)
+            .unwrap()
+            .is_air()
+    );
     assert_eq!(
         player
             .get_inventory_ref()
@@ -56,7 +62,11 @@ fn open_inventory_hotbar_swap_uses_player_inventory_hotbar_slot() {
         &Material::DIAMOND
     );
     assert_eq!(
-        player.get_inventory_ref().get_item_stack(0).unwrap().material(),
+        player
+            .get_inventory_ref()
+            .get_item_stack(0)
+            .unwrap()
+            .material(),
         &Material::EMERALD
     );
 }
@@ -74,7 +84,13 @@ fn open_inventory_offhand_swap_uses_player_inventory_offhand_slot() {
     let player_ptr = &mut player as *mut Player;
 
     assert!(player.apply_held_swap(9, OFFHAND_SLOT, player_ptr, &mut server, &mut client));
-    assert!(player.get_inventory_ref().get_item_stack(0).unwrap().is_air());
+    assert!(
+        player
+            .get_inventory_ref()
+            .get_item_stack(0)
+            .unwrap()
+            .is_air()
+    );
     assert_eq!(
         player
             .get_inventory_ref()
@@ -99,7 +115,13 @@ fn open_inventory_shift_click_stacks_before_filling_empty_slots() {
     let player_ptr = &mut player as *mut Player;
 
     assert!(player.apply_shift_click(18, player_ptr, &mut server, &mut client));
-    assert!(player.get_inventory_ref().get_item_stack(9).unwrap().is_air());
+    assert!(
+        player
+            .get_inventory_ref()
+            .get_item_stack(9)
+            .unwrap()
+            .is_air()
+    );
     assert_eq!(
         player
             .get_opened_inventory()
@@ -149,7 +171,14 @@ fn dragging_across_open_and_player_inventory_slots_updates_cursor_and_slots() {
             .amount(),
         5
     );
-    assert_eq!(player.get_inventory_ref().get_item_stack(0).unwrap().amount(), 5);
+    assert_eq!(
+        player
+            .get_inventory_ref()
+            .get_item_stack(0)
+            .unwrap()
+            .amount(),
+        5
+    );
     assert!(player.get_inventory_ref().cursor_item().is_air());
 }
 
@@ -171,11 +200,43 @@ fn dragging_more_slots_than_cursor_items_places_only_available_items() {
         &mut server,
         &mut client,
     ));
-    assert_eq!(player.get_inventory_ref().get_item_stack(0).unwrap().amount(), 1);
-    assert_eq!(player.get_inventory_ref().get_item_stack(1).unwrap().amount(), 1);
-    assert!(player.get_inventory_ref().get_item_stack(2).unwrap().is_air());
-    assert!(player.get_inventory_ref().get_item_stack(3).unwrap().is_air());
-    assert!(player.get_inventory_ref().get_item_stack(4).unwrap().is_air());
+    assert_eq!(
+        player
+            .get_inventory_ref()
+            .get_item_stack(0)
+            .unwrap()
+            .amount(),
+        1
+    );
+    assert_eq!(
+        player
+            .get_inventory_ref()
+            .get_item_stack(1)
+            .unwrap()
+            .amount(),
+        1
+    );
+    assert!(
+        player
+            .get_inventory_ref()
+            .get_item_stack(2)
+            .unwrap()
+            .is_air()
+    );
+    assert!(
+        player
+            .get_inventory_ref()
+            .get_item_stack(3)
+            .unwrap()
+            .is_air()
+    );
+    assert!(
+        player
+            .get_inventory_ref()
+            .get_item_stack(4)
+            .unwrap()
+            .is_air()
+    );
     assert!(player.get_inventory_ref().cursor_item().is_air());
 }
 
@@ -197,7 +258,14 @@ fn dragging_overstacked_cursor_to_empty_slot_moves_the_requested_amount() {
         &mut server,
         &mut client,
     ));
-    assert_eq!(player.get_inventory_ref().get_item_stack(0).unwrap().amount(), 20);
+    assert_eq!(
+        player
+            .get_inventory_ref()
+            .get_item_stack(0)
+            .unwrap()
+            .amount(),
+        20
+    );
     assert!(player.get_inventory_ref().cursor_item().is_air());
 }
 
@@ -214,7 +282,14 @@ fn left_click_respects_extracted_vanilla_max_stack_size() {
     let mut client = test_client();
 
     assert!(player.left_click(0, &mut server, &mut client));
-    assert_eq!(player.get_inventory_ref().get_item_stack(0).unwrap().amount(), 16);
+    assert_eq!(
+        player
+            .get_inventory_ref()
+            .get_item_stack(0)
+            .unwrap()
+            .amount(),
+        16
+    );
     assert_eq!(player.get_inventory_ref().cursor_item().amount(), 4);
 }
 

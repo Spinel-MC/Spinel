@@ -18,7 +18,7 @@ impl<'entity> ChickenMeta<'entity> {
         &self,
         registries: &Registries,
     ) -> Option<RegistryKey<chicken_variant::ChickenVariant>> {
-        self.get_entity().g(registries)
+        self.get_entity().get_chicken_variant_metadata(registries)
     }
 
     pub fn set_variant(

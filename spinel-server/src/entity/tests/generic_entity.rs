@@ -48,7 +48,10 @@ fn generic_entity_teleport_overloads_update_position_velocity_chunks_and_flags()
         TeleportFlags::absolute(),
     );
     assert_eq!(chunk_teleport.get_chunks(), Some([1, 2, 3].as_slice()));
-    assert_eq!(chunk_teleport.get_flags().bitmask(), TeleportFlags::DELTA_COORD);
+    assert_eq!(
+        chunk_teleport.get_flags().bitmask(),
+        TeleportFlags::DELTA_COORD
+    );
 
     let full_teleport = entity.teleport_with_velocity_chunks_and_flags(
         EntityPosition::new(4.0, 70.0, 5.0, 180.0, 0.0),
@@ -266,7 +269,10 @@ fn generic_entity_living_mob_and_ageable_metadata_api_matches_minestom_meta_surf
     assert!(entity.is_potion_effect_ambient());
     assert_eq!(entity.get_arrow_count(), 3);
     assert_eq!(entity.get_bee_stinger_count(), 4);
-    assert_eq!(entity.get_bed_in_which_sleeping_position(), Some(bed_position));
+    assert_eq!(
+        entity.get_bed_in_which_sleeping_position(),
+        Some(bed_position)
+    );
     assert!(entity.is_no_ai());
     assert!(entity.is_left_handed());
     assert!(entity.is_aggressive());
@@ -610,8 +616,14 @@ fn typed_object_metadata_api_matches_minestom_other_meta_surface() {
         .expect("fishing bobber entity must expose FishingHookMeta");
     assert_eq!(fishing_hook_meta.get_hooked_entity_id(), 7);
     assert!(fishing_hook_meta.is_catchable());
-    assert_eq!(fishing_hook_meta.get_owner_entity_id(), Some(owner_entity_id));
-    assert_eq!(fishing_hook.spawn_packet().data, owner_entity_id.get_value());
+    assert_eq!(
+        fishing_hook_meta.get_owner_entity_id(),
+        Some(owner_entity_id)
+    );
+    assert_eq!(
+        fishing_hook.spawn_packet().data,
+        owner_entity_id.get_value()
+    );
     assert!(
         boat.get_entity_meta_mut()
             .as_boat()
@@ -2425,12 +2437,18 @@ fn fish_metadata_owners_match_minestom_meta_surface() {
             .expect("pufferfish entity must expose PufferfishMeta");
         assert!(!pufferfish_meta.is_from_bucket());
         assert_eq!(pufferfish_meta.get_state(), PufferfishState::Unpuffed);
-        assert_eq!(pufferfish_meta.get_entity().get_bounding_box().get_width(), 0.35);
+        assert_eq!(
+            pufferfish_meta.get_entity().get_bounding_box().get_width(),
+            0.35
+        );
         pufferfish_meta.set_from_bucket(true);
         pufferfish_meta.set_state(PufferfishState::FullyPuffed);
         assert!(pufferfish_meta.is_from_bucket());
         assert_eq!(pufferfish_meta.get_state(), PufferfishState::FullyPuffed);
-        assert_eq!(pufferfish_meta.get_entity().get_bounding_box().get_width(), 0.7);
+        assert_eq!(
+            pufferfish_meta.get_entity().get_bounding_box().get_width(),
+            0.7
+        );
     }
     {
         let mut salmon_meta = salmon
@@ -2447,7 +2465,10 @@ fn fish_metadata_owners_match_minestom_meta_surface() {
             .get_entity_meta_mut()
             .as_tropical_fish()
             .expect("tropical fish entity must expose TropicalFishMeta");
-        assert_eq!(tropical_fish_meta.get_variant(), TropicalFishVariant::DEFAULT);
+        assert_eq!(
+            tropical_fish_meta.get_variant(),
+            TropicalFishVariant::DEFAULT
+        );
         tropical_fish_meta.set_variant(tropical_variant);
         assert_eq!(tropical_fish_meta.get_variant(), tropical_variant);
     }
@@ -2483,9 +2504,11 @@ fn generic_entity_event_node_pose_kill_viewer_packets_and_occlusion_match_minest
             1.0,
         ));
 
-    entity.get_event_node().listen("EntityPoseEvent", |entity_id| {
-        POSE_EVENT_ENTITY_ID.store(entity_id.get_value(), Ordering::SeqCst);
-    });
+    entity
+        .get_event_node()
+        .listen("EntityPoseEvent", |entity_id| {
+            POSE_EVENT_ENTITY_ID.store(entity_id.get_value(), Ordering::SeqCst);
+        });
     entity.set_pose(EntityPose::Sleeping);
 
     assert_eq!(

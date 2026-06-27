@@ -125,7 +125,9 @@ impl GoalSelector for CombinedAttackGoal {
             self.should_stop = true;
             return;
         };
-        let distance_squared = creature.get_position().get_distance_squared(target.get_position());
+        let distance_squared = creature
+            .get_position()
+            .get_distance_squared(target.get_position());
         let mut should_come_close = false;
         if distance_squared <= self.melee_range_squared
             && cooldown_is_ready(time, self.last_attack_tick, self.melee_delay_ticks)
@@ -137,10 +139,11 @@ impl GoalSelector for CombinedAttackGoal {
         {
             if world.has_line_of_sight(creature.get_entity_id(), target.get_entity_id()) {
                 let projectile = (self.projectile_generator)(creature);
-                let target_position =
-                    target
-                        .get_position()
-                        .get_offset(0.0, target.get_entity_type().get_eye_height(), 0.0);
+                let target_position = target.get_position().get_offset(
+                    0.0,
+                    target.get_entity_type().get_eye_height(),
+                    0.0,
+                );
                 creature.queue_projectile(
                     projectile,
                     target_position,

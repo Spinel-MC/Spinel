@@ -35,7 +35,6 @@ impl ProjectileEntity {
         ProjectileEntityMeta::new(self)
     }
 
-
     pub const fn get_shooter(&self) -> Option<EntityId> {
         self.shooter
     }
@@ -86,7 +85,8 @@ impl ProjectileEntity {
     }
 
     pub fn is_critical(&self) -> bool {
-        self.get_metadata().flag(&definitions::is_critical_arrow())
+        self.get_metadata()
+            .get_flag(&definitions::is_critical_arrow())
     }
 
     pub fn set_critical(&mut self, is_critical: bool) {
@@ -95,7 +95,8 @@ impl ProjectileEntity {
     }
 
     pub fn has_no_clip(&self) -> bool {
-        self.get_metadata().flag(&definitions::has_no_clip_arrow())
+        self.get_metadata()
+            .get_flag(&definitions::has_no_clip_arrow())
     }
 
     pub fn set_no_clip(&mut self, has_no_clip: bool) {

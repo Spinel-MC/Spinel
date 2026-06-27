@@ -22,9 +22,19 @@ fn player_inventory_shift_click_moves_hotbar_to_inventory() {
     let player_ptr = &mut player as *mut Player;
 
     assert!(player.apply_shift_click(0, player_ptr, &mut server, &mut client));
-    assert!(player.get_inventory_ref().get_item_stack(0).unwrap().is_air());
+    assert!(
+        player
+            .get_inventory_ref()
+            .get_item_stack(0)
+            .unwrap()
+            .is_air()
+    );
     assert_eq!(
-        player.get_inventory_ref().get_item_stack(9).unwrap().material(),
+        player
+            .get_inventory_ref()
+            .get_item_stack(9)
+            .unwrap()
+            .material(),
         &Material::DIAMOND
     );
 }
@@ -40,9 +50,19 @@ fn player_inventory_shift_click_moves_inventory_to_hotbar() {
     let player_ptr = &mut player as *mut Player;
 
     assert!(player.apply_shift_click(9, player_ptr, &mut server, &mut client));
-    assert!(player.get_inventory_ref().get_item_stack(9).unwrap().is_air());
+    assert!(
+        player
+            .get_inventory_ref()
+            .get_item_stack(9)
+            .unwrap()
+            .is_air()
+    );
     assert_eq!(
-        player.get_inventory_ref().get_item_stack(0).unwrap().material(),
+        player
+            .get_inventory_ref()
+            .get_item_stack(0)
+            .unwrap()
+            .material(),
         &Material::DIAMOND
     );
 }
@@ -66,7 +86,11 @@ fn player_inventory_shift_click_moves_offhand_to_inventory_before_hotbar() {
             .is_air()
     );
     assert_eq!(
-        player.get_inventory_ref().get_item_stack(9).unwrap().material(),
+        player
+            .get_inventory_ref()
+            .get_item_stack(9)
+            .unwrap()
+            .material(),
         &Material::DIAMOND
     );
 }
@@ -91,7 +115,11 @@ fn open_inventory_shift_click_uses_minestom_transfer_order() {
             .is_air()
     );
     assert_eq!(
-        player.get_inventory_ref().get_item_stack(8).unwrap().material(),
+        player
+            .get_inventory_ref()
+            .get_item_stack(8)
+            .unwrap()
+            .material(),
         &Material::DIAMOND
     );
 }
@@ -149,15 +177,27 @@ fn open_inventory_consecutive_shift_clicks_use_the_current_open_window() {
             .is_air()
     );
     assert_eq!(
-        player.get_inventory_ref().get_item_stack(8).unwrap().material(),
+        player
+            .get_inventory_ref()
+            .get_item_stack(8)
+            .unwrap()
+            .material(),
         &Material::DIAMOND
     );
     assert_eq!(
-        player.get_inventory_ref().get_item_stack(7).unwrap().material(),
+        player
+            .get_inventory_ref()
+            .get_item_stack(7)
+            .unwrap()
+            .material(),
         &Material::EMERALD
     );
     assert_eq!(
-        player.get_inventory_ref().get_item_stack(6).unwrap().material(),
+        player
+            .get_inventory_ref()
+            .get_item_stack(6)
+            .unwrap()
+            .material(),
         &Material::GOLD_INGOT
     );
 }
@@ -186,7 +226,13 @@ fn open_inventory_rejects_clicks_for_a_different_window_id() {
             .material(),
         &Material::DIAMOND
     );
-    assert!(player.get_inventory_ref().get_item_stack(8).unwrap().is_air());
+    assert!(
+        player
+            .get_inventory_ref()
+            .get_item_stack(8)
+            .unwrap()
+            .is_air()
+    );
 }
 
 #[test]
@@ -200,7 +246,13 @@ fn player_inventory_shift_click_equips_registry_backed_head_items() {
     let player_ptr = &mut player as *mut Player;
 
     assert!(player.apply_shift_click(0, player_ptr, &mut server, &mut client));
-    assert!(player.get_inventory_ref().get_item_stack(0).unwrap().is_air());
+    assert!(
+        player
+            .get_inventory_ref()
+            .get_item_stack(0)
+            .unwrap()
+            .is_air()
+    );
     assert_eq!(
         player
             .get_inventory_ref()
@@ -221,7 +273,13 @@ fn player_inventory_shift_click_equips_extracted_component_helmet() {
     let player_ptr = &mut player as *mut Player;
 
     assert!(player.apply_shift_click(0, player_ptr, &mut server, &mut client));
-    assert!(player.get_inventory_ref().get_item_stack(0).unwrap().is_air());
+    assert!(
+        player
+            .get_inventory_ref()
+            .get_item_stack(0)
+            .unwrap()
+            .is_air()
+    );
     assert_eq!(
         player
             .get_inventory_ref()
@@ -245,7 +303,13 @@ fn window_zero_hotbar_shift_click_equips_extracted_component_helmet() {
         &mut server,
         &mut client
     ));
-    assert!(player.get_inventory_ref().get_item_stack(0).unwrap().is_air());
+    assert!(
+        player
+            .get_inventory_ref()
+            .get_item_stack(0)
+            .unwrap()
+            .is_air()
+    );
     assert_eq!(
         player
             .get_inventory_ref()
@@ -266,11 +330,20 @@ fn player_inventory_shift_click_equips_registry_backed_chest_items() {
     let player_ptr = &mut player as *mut Player;
 
     assert!(player.apply_shift_click(0, player_ptr, &mut server, &mut client));
-    assert!(player.get_inventory_ref().get_item_stack(0).unwrap().is_air());
+    assert!(
+        player
+            .get_inventory_ref()
+            .get_item_stack(0)
+            .unwrap()
+            .is_air()
+    );
     assert_eq!(
         player
             .get_inventory_ref()
-            .get_equipment(crate::entity::EquipmentSlot::Chestplate, player.get_held_slot())
+            .get_equipment(
+                crate::entity::EquipmentSlot::Chestplate,
+                player.get_held_slot()
+            )
             .material(),
         &Material::ELYTRA
     );

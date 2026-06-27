@@ -41,7 +41,10 @@ fn on_set_creative_mode_slot(
         .get_item_stack(slot as usize)
         .cloned()
         .unwrap_or_else(spinel_registry::ItemStack::air);
-    if !player.get_inventory().set_item_stack(slot as usize, item_stack) {
+    if !player
+        .get_inventory()
+        .set_item_stack(slot as usize, item_stack)
+    {
         return false;
     }
     let current_item_stack = player
@@ -50,7 +53,8 @@ fn on_set_creative_mode_slot(
         .cloned()
         .unwrap_or_else(spinel_registry::ItemStack::air);
     player.update_inventory_slot_attributes(slot, &previous_item_stack, &current_item_stack);
-    if player.g(slot) && player.sync_main_hand_attributes(client).is_err() {
+    if player.get_slot_is_held_main_hand(slot) && player.sync_main_hand_attributes(client).is_err()
+    {
         return false;
     }
     server

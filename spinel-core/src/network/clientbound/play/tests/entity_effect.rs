@@ -16,4 +16,11 @@ fn entity_effect_packet_matches_minestom_potion_network_shape() {
 
     assert_eq!(EntityEffectPacket::get_id(), 0x82);
     assert_eq!(payload, vec![7, 1, 2, 40, 6]);
+
+    let decoded_packet = EntityEffectPacket::decode(&mut payload.as_slice()).unwrap();
+    assert_eq!(decoded_packet.entity_id, packet.entity_id);
+    assert_eq!(decoded_packet.effect_id, packet.effect_id);
+    assert_eq!(decoded_packet.amplifier, packet.amplifier);
+    assert_eq!(decoded_packet.duration_ticks, packet.duration_ticks);
+    assert_eq!(decoded_packet.flags, packet.flags);
 }

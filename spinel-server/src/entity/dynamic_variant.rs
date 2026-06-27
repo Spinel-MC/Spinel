@@ -48,8 +48,9 @@ impl GenericEntity {
         &self,
         registries: &Registries,
     ) -> Option<RegistryKey<cat_variant::CatVariant>> {
-        let MetadataValue::CatVariant(variant_id) =
-            self.get_metadata().get_value(&definitions::cat::get_variant())
+        let MetadataValue::CatVariant(variant_id) = self
+            .get_metadata()
+            .get_value(&definitions::cat::get_variant())
         else {
             return None;
         };
@@ -73,8 +74,9 @@ impl GenericEntity {
         &self,
         registries: &Registries,
     ) -> Option<RegistryKey<chicken_variant::ChickenVariant>> {
-        let MetadataValue::ChickenVariant(variant_id) =
-            self.get_metadata().get_value(&definitions::chicken::get_variant())
+        let MetadataValue::ChickenVariant(variant_id) = self
+            .get_metadata()
+            .get_value(&definitions::chicken::get_variant())
         else {
             return None;
         };
@@ -98,8 +100,9 @@ impl GenericEntity {
         &self,
         registries: &Registries,
     ) -> Option<RegistryKey<cow_variant::CowVariant>> {
-        let MetadataValue::CowVariant(variant_id) =
-            self.get_metadata().get_value(&definitions::cow::get_variant())
+        let MetadataValue::CowVariant(variant_id) = self
+            .get_metadata()
+            .get_value(&definitions::cow::get_variant())
         else {
             return None;
         };
@@ -123,8 +126,9 @@ impl GenericEntity {
         &self,
         registries: &Registries,
     ) -> Option<RegistryKey<frog_variant::FrogVariant>> {
-        let MetadataValue::FrogVariant(variant_id) =
-            self.get_metadata().get_value(&definitions::frog::get_variant())
+        let MetadataValue::FrogVariant(variant_id) = self
+            .get_metadata()
+            .get_value(&definitions::frog::get_variant())
         else {
             return None;
         };
@@ -148,8 +152,9 @@ impl GenericEntity {
         &self,
         registries: &Registries,
     ) -> Option<RegistryKey<pig_variant::PigVariant>> {
-        let MetadataValue::PigVariant(variant_id) =
-            self.get_metadata().get_value(&definitions::pig::get_variant())
+        let MetadataValue::PigVariant(variant_id) = self
+            .get_metadata()
+            .get_value(&definitions::pig::get_variant())
         else {
             return None;
         };
@@ -173,8 +178,9 @@ impl GenericEntity {
         &self,
         registries: &Registries,
     ) -> Option<RegistryKey<wolf_variant::WolfVariant>> {
-        let MetadataValue::WolfVariant(variant_id) =
-            self.get_metadata().get_value(&definitions::wolf::get_variant())
+        let MetadataValue::WolfVariant(variant_id) = self
+            .get_metadata()
+            .get_value(&definitions::wolf::get_variant())
         else {
             return None;
         };
@@ -198,8 +204,9 @@ impl GenericEntity {
         &self,
         registries: &Registries,
     ) -> Option<RegistryKey<wolf_sound_variant::WolfSoundVariant>> {
-        let MetadataValue::WolfSoundVariant(variant_id) =
-            self.get_metadata().get_value(&definitions::wolf::get_sound_variant())
+        let MetadataValue::WolfSoundVariant(variant_id) = self
+            .get_metadata()
+            .get_value(&definitions::wolf::get_sound_variant())
         else {
             return None;
         };
@@ -266,30 +273,30 @@ impl GenericEntity {
 
         let component_id = component.id();
         if component_id == CAT_VARIANT.id() && self.get_entity_type() == EntityType::CAT {
-            return component_from_variant(self.cat_variant(registries)?);
+            return component_from_variant(self.get_cat_variant_metadata(registries)?);
         }
         if component_id == CHICKEN_VARIANT.id() && self.get_entity_type() == EntityType::CHICKEN {
-            return component_from_variant(self.chicken_variant(registries)?);
+            return component_from_variant(self.get_chicken_variant_metadata(registries)?);
         }
         if component_id == COW_VARIANT.id() && self.get_entity_type() == EntityType::COW {
-            return component_from_variant(self.cow_variant(registries)?);
+            return component_from_variant(self.get_cow_variant_metadata(registries)?);
         }
         if component_id == FROG_VARIANT.id() && self.get_entity_type() == EntityType::FROG {
-            return component_from_variant(self.frog_variant(registries)?);
+            return component_from_variant(self.get_frog_variant_metadata(registries)?);
         }
         if component_id == PIG_VARIANT.id() && self.get_entity_type() == EntityType::PIG {
-            return component_from_variant(self.pig_variant(registries)?);
+            return component_from_variant(self.get_pig_variant_metadata(registries)?);
         }
         if component_id == WOLF_VARIANT.id() && self.get_entity_type() == EntityType::WOLF {
-            return component_from_variant(self.wolf_variant(registries)?);
+            return component_from_variant(self.get_wolf_variant_metadata(registries)?);
         }
         if component_id == WOLF_SOUND_VARIANT.id() && self.get_entity_type() == EntityType::WOLF {
-            return component_from_variant(self.wolf_sound_variant(registries)?);
+            return component_from_variant(self.get_wolf_sound_variant_metadata(registries)?);
         }
         if component_id == ZOMBIE_NAUTILUS_VARIANT.id()
             && self.get_entity_type() == EntityType::ZOMBIE_NAUTILUS
         {
-            return component_from_variant(self.zombie_nautilus_variant(registries)?);
+            return component_from_variant(self.get_zombie_nautilus_variant_metadata(registries)?);
         }
         self.component(component)
     }

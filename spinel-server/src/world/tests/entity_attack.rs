@@ -18,7 +18,7 @@ static ENTITY_ATTACK_EVENT_LOG: Mutex<Vec<(EntityId, EntityId)>> = Mutex::new(Ve
 
 #[event_listener]
 fn creature_attack_listener(event: &mut EntityAttackEvent, _server: &mut MinecraftServer) {
-    let attack_pair = (event.get_entity_id(), event.target_id());
+    let attack_pair = (event.get_entity_id(), event.get_target_id());
     if *ENTITY_ATTACK_TEST_PAIR.lock().unwrap() != Some(attack_pair) {
         return;
     }

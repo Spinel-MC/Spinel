@@ -18,7 +18,7 @@ use spinel_core::network::clientbound::play::remove_entity_effect::RemoveEntityE
 use spinel_core::network::clientbound::play::set_entity_data::SetEntityDataPacket;
 use spinel_core::network::clientbound::play::set_passengers::SetPassengersPacket;
 use spinel_network::types::Velocity;
-use spinel_registry::EntityType;
+use spinel_registry::{EntityType, MobEffect, RegistryKey};
 use std::collections::BTreeSet;
 use uuid::Uuid;
 
@@ -94,7 +94,9 @@ impl EntityScheduler<'_> {
         callback: impl FnMut(EntityScheduleContext<'_>) -> TaskSchedule + Send + 'static,
     ) -> Task {
         match self {
-            Self::Generic(scheduler) => scheduler.schedule_next_tick(map_generic_schedule(callback)),
+            Self::Generic(scheduler) => {
+                scheduler.schedule_next_tick(map_generic_schedule(callback))
+            }
             Self::Player(scheduler) => scheduler.schedule_next_tick(map_player_schedule(callback)),
         }
     }
@@ -119,7 +121,6 @@ impl From<EntityCreature> for Entity {
 }
 
 impl Entity {
-
     pub fn get_pointers(&self) -> EntityPointers {
         match self {
             Self::Creature(entity) => entity.get_pointers(),
@@ -138,7 +139,9 @@ impl Entity {
     pub fn get_living_acquirable(&self) -> Option<EntityAcquirable> {
         match self {
             Self::Creature(_) => Some(self.get_acquirable()),
-            Self::Generic(entity) if entity.get_entity_type().is_living() => Some(self.get_acquirable()),
+            Self::Generic(entity) if entity.get_entity_type().is_living() => {
+                Some(self.get_acquirable())
+            }
             Self::Player(_) => Some(self.get_acquirable()),
             _ => None,
         }
@@ -148,12 +151,15 @@ impl Entity {
         match self {
             Self::Generic(entity) => EntityScheduler::Generic(entity.get_scheduler()),
             Self::Player(player) => EntityScheduler::Player(player.get_scheduler()),
-            Self::Creature(entity) => EntityScheduler::Generic(entity.get_entity_mut().get_scheduler()),
+            Self::Creature(entity) => {
+                EntityScheduler::Generic(entity.get_entity_mut().get_scheduler())
+            }
             Self::ExperienceOrb(entity) => EntityScheduler::Generic(entity.get_scheduler()),
             Self::Item(entity) => EntityScheduler::Generic(entity.get_scheduler()),
             Self::Projectile(entity) => EntityScheduler::Generic(entity.get_scheduler()),
         }
-    }    pub fn new(entity_type: EntityType) -> Self {
+    }
+    pub fn new(entity_type: EntityType) -> Self {
         Self::Generic(GenericEntity::new(entity_type))
     }
 
@@ -325,36 +331,58 @@ impl Entity {
         }
     }
 
-    pub fn remove_effect(&mut self, effect_id: i32) -> Option<RemoveEntityEffectPacket> {
+    pub fn remove_effect(
+        &mut self,
+        effect_key: &RegistryKey<MobEffect>,
+    ) -> Option<RemoveEntityEffectPacket> {
         match self {
-            Self::Creature(entity) => entity.remove_effect(effect_id),
-            Self::ExperienceOrb(entity) => entity.remove_effect(effect_id),
-            Self::Generic(entity) => entity.remove_effect(effect_id),
-            Self::Item(entity) => entity.remove_effect(effect_id),
-            Self::Player(player) => player.remove_effect(effect_id),
-            Self::Projectile(entity) => entity.remove_effect(effect_id),
+            Self::Creature(entity) => entity.remove_effect(effect_key),
+            Self::ExperienceOrb(entity) => entity.remove_effect(effect_key),
+            Self::Generic(entity) => entity.remove_effect(effect_key),
+            Self::Item(entity) => entity.remove_effect(effect_key),
+            Self::Player(player) => player.remove_effect(effect_key),
+            Self::Projectile(entity) => entity.remove_effect(effect_key),
         }
     }
 
-    pub fn get_effect(&self, effect_id: i32) -> Option<&TimedPotionEffect> {
+    pub fn has_effect(&self, effect_key: &RegistryKey<MobEffect>) -> bool {
+        self.get_effect(effect_key).is_some()
+    }
+
+    pub fn get_effect_level(&self, effect_key: &RegistryKey<MobEffect>) -> i32 {
+        self.get_effect(effect_key)
+            .map_or(-1, TimedPotionEffect::get_amplifier)
+    }
+
+    pub fn clear_effects(&mut self) -> Vec<RemoveEntityEffectPacket> {
         match self {
-            Self::Creature(entity) => entity.effect(effect_id),
-            Self::ExperienceOrb(entity) => entity.effect(effect_id),
-            Self::Generic(entity) => entity.effect(effect_id),
-            Self::Item(entity) => entity.effect(effect_id),
-            Self::Player(player) => player.get_effect(effect_id),
-            Self::Projectile(entity) => entity.effect(effect_id),
+            Self::Creature(entity) => entity.clear_effects(),
+            Self::ExperienceOrb(entity) => entity.clear_effects(),
+            Self::Generic(entity) => entity.clear_effects(),
+            Self::Item(entity) => entity.clear_effects(),
+            Self::Player(player) => player.clear_effects(),
+            Self::Projectile(entity) => entity.clear_effects(),
+        }
+    }
+    pub fn get_effect(&self, effect_key: &RegistryKey<MobEffect>) -> Option<&TimedPotionEffect> {
+        match self {
+            Self::Creature(entity) => entity.get_effect(effect_key),
+            Self::ExperienceOrb(entity) => entity.get_effect(effect_key),
+            Self::Generic(entity) => entity.get_effect(effect_key),
+            Self::Item(entity) => entity.get_effect(effect_key),
+            Self::Player(player) => player.get_effect(effect_key),
+            Self::Projectile(entity) => entity.get_effect(effect_key),
         }
     }
 
     pub fn get_active_effects(&self) -> Vec<&TimedPotionEffect> {
         match self {
-            Self::Creature(entity) => entity.active_effects(),
-            Self::ExperienceOrb(entity) => entity.active_effects(),
-            Self::Generic(entity) => entity.active_effects(),
-            Self::Item(entity) => entity.active_effects(),
+            Self::Creature(entity) => entity.get_active_effects(),
+            Self::ExperienceOrb(entity) => entity.get_active_effects(),
+            Self::Generic(entity) => entity.get_active_effects(),
+            Self::Item(entity) => entity.get_active_effects(),
             Self::Player(player) => player.get_active_effects(),
-            Self::Projectile(entity) => entity.active_effects(),
+            Self::Projectile(entity) => entity.get_active_effects(),
         }
     }
 
@@ -516,13 +544,15 @@ impl Entity {
         }
     }
 
-    pub(crate) fn get_scheduled_position_sync_packet(&mut self) -> Option<EntityPositionSyncPacket> {
+    pub(crate) fn get_scheduled_position_sync_packet(
+        &mut self,
+    ) -> Option<EntityPositionSyncPacket> {
         match self {
             Self::Creature(entity) => entity.get_scheduled_position_sync_packet(),
             Self::ExperienceOrb(entity) => entity.get_scheduled_position_sync_packet(),
             Self::Generic(entity) => entity.get_scheduled_position_sync_packet(),
             Self::Item(entity) => entity.get_scheduled_position_sync_packet(),
-            Self::Player(player) => player.scheduled_entity_position_sync_packet(),
+            Self::Player(player) => player.get_scheduled_entity_position_sync_packet(),
             Self::Projectile(entity) => entity.get_scheduled_position_sync_packet(),
         }
     }

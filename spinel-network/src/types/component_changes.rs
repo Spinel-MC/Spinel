@@ -2323,18 +2323,18 @@ fn encode_attribute_modifiers_component(component_nbt: &Nbt, data: &mut Vec<u8>)
         .encode(data)
         .ok()?;
     for modifier in attribute_list.get_modifiers() {
-        VarIntWrapper(attribute_protocol_id(modifier.attribute_type())?)
+        VarIntWrapper(attribute_protocol_id(modifier.get_attribute_type())?)
             .encode(data)
             .ok()?;
-        modifier.id().to_string().encode(data).ok()?;
+        modifier.get_id().to_string().encode(data).ok()?;
         modifier.get_amount().encode(data).ok()?;
-        VarIntWrapper(modifier.operation().protocol_id())
+        VarIntWrapper(modifier.get_operation().protocol_id())
             .encode(data)
             .ok()?;
-        VarIntWrapper(modifier.slot().protocol_id())
+        VarIntWrapper(modifier.get_slot().protocol_id())
             .encode(data)
             .ok()?;
-        encode_attribute_modifier_display(modifier.display(), data)?;
+        encode_attribute_modifier_display(modifier.get_display(), data)?;
     }
     Some(())
 }
@@ -2360,12 +2360,12 @@ fn attribute_protocol_id(attribute: &spinel_registry::Identifier) -> Option<i32>
 
 fn encode_enchantment_list_component(component_nbt: &Nbt, data: &mut Vec<u8>) -> Option<()> {
     let enchantment_list = EnchantmentList::from_component_nbt(component_nbt)?;
-    VarIntWrapper(enchantment_list.enchantments().len() as i32)
+    VarIntWrapper(enchantment_list.get_enchantments().len() as i32)
         .encode(data)
         .ok()?;
-    for (enchantment, level) in enchantment_list.enchantments() {
+    for (enchantment, level) in enchantment_list.get_enchantments() {
         let enchantment_id =
-            VANILLA_REGISTRIES.dynamic_registry_id(&ENCHANTMENT_REGISTRY, enchantment)?;
+            VANILLA_REGISTRIES.dynamic_registry_id(&ENCHANTMENT_REGISTRY, enchantment.key())?;
         VarIntWrapper(enchantment_id).encode(data).ok()?;
         VarIntWrapper(*level).encode(data).ok()?;
     }

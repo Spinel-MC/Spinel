@@ -16,7 +16,7 @@ impl Player {
         server: &mut MinecraftServer,
         client: &mut Client,
     ) -> bool {
-        let Some(clicked) = self.item_at(slot) else {
+        let Some(clicked) = self.get_item_at(slot) else {
             return false;
         };
         if clicked.is_air() {

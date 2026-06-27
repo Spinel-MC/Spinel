@@ -17,7 +17,7 @@ impl<'entity> TameableAnimalMeta<'entity> {
     pub fn is_sitting(&self) -> bool {
         self.get_entity()
             .get_metadata()
-            .flag(&definitions::tameable_animal::is_sitting())
+            .get_flag(&definitions::tameable_animal::is_sitting())
     }
 
     pub fn set_sitting(&mut self, is_sitting: bool) {
@@ -29,7 +29,7 @@ impl<'entity> TameableAnimalMeta<'entity> {
     pub fn is_tamed(&self) -> bool {
         self.get_entity()
             .get_metadata()
-            .flag(&definitions::tameable_animal::is_tamed())
+            .get_flag(&definitions::tameable_animal::is_tamed())
     }
 
     pub fn set_tamed(&mut self, is_tamed: bool) {

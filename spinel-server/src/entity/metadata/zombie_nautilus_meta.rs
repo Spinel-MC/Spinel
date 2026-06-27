@@ -18,7 +18,8 @@ impl<'entity> ZombieNautilusMeta<'entity> {
         &self,
         registries: &Registries,
     ) -> Option<RegistryKey<zombie_nautilus_variant::ZombieNautilusVariant>> {
-        self.get_entity().g(registries)
+        self.get_entity()
+            .get_zombie_nautilus_variant_metadata(registries)
     }
 
     pub fn set_variant(

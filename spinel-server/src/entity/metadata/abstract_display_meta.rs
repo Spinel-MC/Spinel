@@ -194,7 +194,10 @@ impl<'entity> AbstractDisplayMeta<'entity> {
     }
 
     pub fn set_shadow_strength(&mut self, shadow_strength: f32) {
-        self.set_float(&definitions::display::get_shadow_strength(), shadow_strength);
+        self.set_float(
+            &definitions::display::get_shadow_strength(),
+            shadow_strength,
+        );
     }
 
     pub fn get_width(&self) -> f32 {
@@ -262,7 +265,10 @@ impl<'entity> AbstractDisplayMeta<'entity> {
             .set(definition, MetadataValue::Float(value));
     }
 
-    fn get_rotation(&self, definition: &crate::entity::metadata::MetadataDefinition) -> Quaternionf {
+    fn get_rotation(
+        &self,
+        definition: &crate::entity::metadata::MetadataDefinition,
+    ) -> Quaternionf {
         match self.get_entity().get_metadata().get_value(definition) {
             MetadataValue::Quaternionf(rotation) => rotation,
             _ => Quaternionf {

@@ -16,7 +16,11 @@ impl<'entity> FoxMeta<'entity> {
     }
 
     pub fn get_variant(&self) -> FoxVariant {
-        match self.get_entity().get_metadata().get_value(&definitions::fox::get_variant()) {
+        match self
+            .get_entity()
+            .get_metadata()
+            .get_value(&definitions::fox::get_variant())
+        {
             MetadataValue::VarInt(variant_id) => {
                 FoxVariant::from_protocol_id(variant_id).unwrap_or_default()
             }
@@ -34,7 +38,7 @@ impl<'entity> FoxMeta<'entity> {
     pub fn is_sitting(&self) -> bool {
         self.get_entity()
             .get_metadata()
-            .flag(&definitions::fox::is_sitting())
+            .get_flag(&definitions::fox::is_sitting())
     }
 
     pub fn set_sitting(&mut self, is_sitting: bool) {
@@ -46,7 +50,7 @@ impl<'entity> FoxMeta<'entity> {
     pub fn is_fox_sneaking(&self) -> bool {
         self.get_entity()
             .get_metadata()
-            .flag(&definitions::fox::is_crouching())
+            .get_flag(&definitions::fox::is_crouching())
     }
 
     pub fn set_fox_sneaking(&mut self, is_fox_sneaking: bool) {
@@ -58,7 +62,7 @@ impl<'entity> FoxMeta<'entity> {
     pub fn is_interested(&self) -> bool {
         self.get_entity()
             .get_metadata()
-            .flag(&definitions::fox::is_interested())
+            .get_flag(&definitions::fox::is_interested())
     }
 
     pub fn set_interested(&mut self, is_interested: bool) {
@@ -70,7 +74,7 @@ impl<'entity> FoxMeta<'entity> {
     pub fn is_pouncing(&self) -> bool {
         self.get_entity()
             .get_metadata()
-            .flag(&definitions::fox::is_pouncing())
+            .get_flag(&definitions::fox::is_pouncing())
     }
 
     pub fn set_pouncing(&mut self, is_pouncing: bool) {
@@ -82,7 +86,7 @@ impl<'entity> FoxMeta<'entity> {
     pub fn is_sleeping(&self) -> bool {
         self.get_entity()
             .get_metadata()
-            .flag(&definitions::fox::is_sleeping())
+            .get_flag(&definitions::fox::is_sleeping())
     }
 
     pub fn set_sleeping(&mut self, is_sleeping: bool) {
@@ -94,7 +98,7 @@ impl<'entity> FoxMeta<'entity> {
     pub fn is_faceplanted(&self) -> bool {
         self.get_entity()
             .get_metadata()
-            .flag(&definitions::fox::is_faceplanted())
+            .get_flag(&definitions::fox::is_faceplanted())
     }
 
     pub fn set_faceplanted(&mut self, is_faceplanted: bool) {
@@ -106,7 +110,7 @@ impl<'entity> FoxMeta<'entity> {
     pub fn is_defending(&self) -> bool {
         self.get_entity()
             .get_metadata()
-            .flag(&definitions::fox::is_defending())
+            .get_flag(&definitions::fox::is_defending())
     }
 
     pub fn set_defending(&mut self, is_defending: bool) {

@@ -1351,7 +1351,7 @@ fn chunk_world_membership_and_viewer_chunk_send_match_minestom_chunk_api() {
         world.chunk(chunk_position).unwrap().world(),
         Some(world.uuid())
     );
-    assert_eq!(player.queued_chunk_count(), 1);
+    assert_eq!(player.get_queued_chunk_count(), 1);
 }
 
 #[test]
@@ -1691,7 +1691,7 @@ fn player_set_instance_rejects_same_world_and_completes_on_next_manager_tick() {
         0
     );
     assert_eq!(player.get_position().get_x(), 16.0);
-    assert_eq!(player.queued_chunk_count(), 9);
+    assert_eq!(player.get_queued_chunk_count(), 9);
 }
 
 #[test]
@@ -2074,7 +2074,7 @@ fn linked_shared_world_same_chunk_player_transition_skips_chunk_refresh() {
         .player_by_uuid(player_uuid)
         .unwrap();
 
-    assert_eq!(player.queued_chunk_count(), 0);
+    assert_eq!(player.get_queued_chunk_count(), 0);
     assert!(
         server
             .world_manager

@@ -21,7 +21,7 @@ impl Player {
         server: &mut MinecraftServer,
         client: &mut Client,
     ) -> bool {
-        let Some(clicked) = self.item_at(slot) else {
+        let Some(clicked) = self.get_item_at(slot) else {
             return false;
         };
         let cursor = self.get_inventory_ref().cursor_item().clone();
@@ -34,7 +34,8 @@ impl Player {
             return false;
         }
         self.set_item_at_with_change_event(slot, result.clicked().clone(), player, server, client);
-        self.get_inventory().set_cursor_item(result.cursor().clone());
+        self.get_inventory()
+            .set_cursor_item(result.cursor().clone());
         self.dispatch_inventory_click(
             slot,
             click_type,
@@ -54,13 +55,15 @@ impl Player {
         server: &mut MinecraftServer,
         client: &mut Client,
     ) -> bool {
-        let Some(clicked) = self.item_at(slot) else {
+        let Some(clicked) = self.get_item_at(slot) else {
             return false;
         };
-        let held_item_slot = self.player_inventory_slot_in_click_window(held_slot);
-        let held_item = self.item_at(held_item_slot).unwrap_or_else(ItemStack::air);
-        let cursor_is_held =
-            self.get_opened_inventory().is_none() && !self.get_inventory_ref().cursor_item().is_air();
+        let held_item_slot = self.get_player_inventory_slot_in_click_window(held_slot);
+        let held_item = self
+            .get_item_at(held_item_slot)
+            .unwrap_or_else(ItemStack::air);
+        let cursor_is_held = self.get_opened_inventory().is_none()
+            && !self.get_inventory_ref().cursor_item().is_air();
         if cursor_is_held {
             return false;
         }
@@ -92,7 +95,7 @@ impl Player {
         server: &mut MinecraftServer,
         client: &mut Client,
     ) -> bool {
-        let Some(clicked) = self.item_at(slot) else {
+        let Some(clicked) = self.get_item_at(slot) else {
             return false;
         };
         if clicked.is_air() {
@@ -166,7 +169,7 @@ impl Player {
         server: &mut MinecraftServer,
         client: &mut Client,
     ) -> bool {
-        let Some(clicked) = self.item_at(slot) else {
+        let Some(clicked) = self.get_item_at(slot) else {
             return false;
         };
         let cursor = self.get_inventory_ref().cursor_item().clone();
@@ -209,7 +212,7 @@ impl Player {
             let remaining_after_slot =
                 self.drag_into_slot(slot, remaining, amount, player, server, client);
             if remaining_after_slot.amount() != cursor_before_slot.amount() {
-                let clicked_item = self.item_at(slot).unwrap_or_else(ItemStack::air);
+                let clicked_item = self.get_item_at(slot).unwrap_or_else(ItemStack::air);
                 self.dispatch_inventory_click(
                     slot,
                     click_type,
@@ -227,7 +230,7 @@ impl Player {
     }
 
     pub(super) fn apply_middle_click(&mut self, slot: i32) -> bool {
-        let Some(clicked) = self.item_at(slot) else {
+        let Some(clicked) = self.get_item_at(slot) else {
             return false;
         };
         if self.get_game_mode() != GameMode::Creative || clicked.is_air() {
@@ -248,11 +251,11 @@ impl Player {
         server: &mut MinecraftServer,
         client: &mut Client,
     ) -> bool {
-        let in_open_inventory = self.slot_is_in_open_inventory(slot);
+        let in_open_inventory = self.get_slot_is_in_open_inventory(slot);
         InventoryClickEvent::new(
             player,
             in_open_inventory,
-            self.g(slot),
+            slot,
             click_type,
             clicked_item.clone(),
             cursor_item.clone(),

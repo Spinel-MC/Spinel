@@ -19,7 +19,7 @@ fn generic_entity_movement_tick_applies_minestom_gravity_in_blocks_per_second() 
 
     assert_eq!(entity.get_position().get_y(), 64.0);
     assert!((entity.get_velocity().0.y - -1.568).abs() < 0.000001);
-    assert_eq!(entity.gravity_tick_count(), 1);
+    assert_eq!(entity.get_gravity_tick_count(), 1);
 }
 
 #[test]
@@ -206,7 +206,7 @@ fn player_movement_tick_updates_velocity_without_overriding_client_position() {
         EntityPosition::new(1.0, 64.0, 1.0, 0.0, 0.0)
     );
     assert!((player.get_velocity().0.y - -1.568).abs() < 0.000001);
-    assert_eq!(player.gravity_tick_count(), 1);
+    assert_eq!(player.get_gravity_tick_count(), 1);
 }
 
 fn simulate_zombie_movement(

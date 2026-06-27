@@ -39,7 +39,9 @@ impl PlayerViewerSnapshot {
             attributes_packet: (!player.get_attributes().is_empty())
                 .then(|| player.update_attributes_packet()),
             effect_packets: player.get_effect_packets(),
-            passenger_packet: player.has_passenger().then(|| player.get_passenger_packet()),
+            passenger_packet: player
+                .has_passenger()
+                .then(|| player.get_passenger_packet()),
         }
     }
 

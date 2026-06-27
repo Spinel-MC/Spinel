@@ -18,7 +18,7 @@ impl<'entity> SheepMeta<'entity> {
         let color_id = self
             .get_entity()
             .get_metadata()
-            .byte(&definitions::sheep::color_id());
+            .get_byte(&definitions::sheep::color_id());
         DyeColor::ALL
             .get(color_id as usize)
             .copied()
@@ -38,7 +38,7 @@ impl<'entity> SheepMeta<'entity> {
     pub fn is_sheared(&self) -> bool {
         self.get_entity()
             .get_metadata()
-            .flag(&definitions::sheep::is_sheared())
+            .get_flag(&definitions::sheep::is_sheared())
     }
 
     pub fn set_sheared(&mut self, is_sheared: bool) {

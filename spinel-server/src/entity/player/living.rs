@@ -1,7 +1,7 @@
 use crate::entity::{EntityAttributeState, Player, TimedPotionEffect};
 use spinel_core::network::clientbound::play::entity_effect::EntityEffectPacket;
 use spinel_core::network::clientbound::play::remove_entity_effect::RemoveEntityEffectPacket;
-use spinel_registry::{Attribute, EntityBoundingBox};
+use spinel_registry::{Attribute, EntityBoundingBox, MobEffect, RegistryKey};
 use std::io;
 
 impl Player {
@@ -31,20 +31,24 @@ impl Player {
         self.living.add_effect(self.get_entity_id(), effect)
     }
 
-    pub fn remove_effect(&mut self, effect_id: i32) -> Option<RemoveEntityEffectPacket> {
-        self.living.remove_effect(self.get_entity_id(), effect_id)
+    pub fn remove_effect(
+        &mut self,
+        effect_key: &RegistryKey<MobEffect>,
+    ) -> Option<RemoveEntityEffectPacket> {
+        self.living.remove_effect(self.get_entity_id(), effect_key)
     }
 
-    pub fn has_effect(&self, effect_id: i32) -> bool {
-        self.living.has_effect(effect_id)
+    pub fn has_effect(&self, effect_key: &RegistryKey<MobEffect>) -> bool {
+        self.living.has_effect(effect_key)
     }
 
-    pub fn get_effect(&self, effect_id: i32) -> Option<&TimedPotionEffect> {
-        self.living.get_effect(effect_id)
+    pub fn get_effect(&self, effect_key: &RegistryKey<MobEffect>) -> Option<&TimedPotionEffect> {
+        self.living.get_effect(effect_key)
     }
 
-    pub fn get_effect_level(&self, effect_id: i32) -> Option<i32> {
-        self.get_effect(effect_id).map(TimedPotionEffect::get_amplifier)
+    pub fn get_effect_level(&self, effect_key: &RegistryKey<MobEffect>) -> i32 {
+        self.get_effect(effect_key)
+            .map_or(-1, TimedPotionEffect::get_amplifier)
     }
 
     pub fn get_active_effects(&self) -> Vec<&TimedPotionEffect> {

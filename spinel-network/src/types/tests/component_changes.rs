@@ -5,15 +5,17 @@ use spinel_nbt::NbtCompound;
 use spinel_registry::data_components::UnitComponent;
 use spinel_registry::data_components::vanilla_components::DAMAGE_TYPE;
 use spinel_registry::data_components::vanilla_components::{
-    ATTRIBUTE_MODIFIERS, BREAK_SOUND, BUNDLE_CONTENTS, CUSTOM_NAME, ENTITY_DATA, FOOD, GLIDER,
-    INSTRUMENT, INTANGIBLE_PROJECTILE, LORE, MAX_STACK_SIZE, POTION_CONTENTS, PROFILE,
-    TOOLTIP_STYLE, USE_COOLDOWN, USE_EFFECTS, USE_REMAINDER, VILLAGER_VARIANT,
+    ATTRIBUTE_MODIFIERS, BREAK_SOUND, BUNDLE_CONTENTS, CUSTOM_NAME, ENCHANTMENTS, ENTITY_DATA,
+    FOOD, GLIDER, INSTRUMENT, INTANGIBLE_PROJECTILE, LORE, MAX_STACK_SIZE, POTION_CONTENTS,
+    PROFILE, STORED_ENCHANTMENTS, TOOLTIP_STYLE, USE_COOLDOWN, USE_EFFECTS, USE_REMAINDER,
+    VILLAGER_VARIANT,
 };
+use spinel_registry::enchantment::Enchantment;
 use spinel_registry::{
-    AttributeList, AttributeModifierDisplay, AttributeModifierEntry, AttributeOperation,
-    BuiltinSoundEvent, DataComponentMap, EquipmentSlotGroup, Food, GameProfileProperty, Identifier,
-    InstrumentComponent, ItemStack, Material, PotionContents, ResolvableProfile, TypedCustomData,
-    UseCooldown, UseEffects,
+    AttributeList, AttributeModifier, AttributeModifierDisplay, AttributeModifierEntry,
+    AttributeOperation, BuiltinSoundEvent, DataComponentMap, DataComponentValue, EnchantmentList,
+    EquipmentSlotGroup, Food, GameProfileProperty, Identifier, InstrumentComponent, ItemStack,
+    Material, PotionContents, ResolvableProfile, TypedCustomData, UseCooldown, UseEffects,
 };
 use spinel_utils::component::Component;
 
@@ -242,9 +244,11 @@ fn use_effects_component_decode_preserves_minestom_network_payload() {
 fn attribute_modifiers_component_decode_preserves_minestom_network_payload() {
     let attribute_modifiers = AttributeList::new(vec![AttributeModifierEntry::new(
         Identifier::minecraft("attack_speed"),
-        Identifier::minecraft("base_attack_speed"),
-        -2.8,
-        AttributeOperation::AddValue,
+        AttributeModifier::new(
+            Identifier::minecraft("base_attack_speed"),
+            -2.8,
+            AttributeOperation::AddValue,
+        ),
         EquipmentSlotGroup::MainHand,
         AttributeModifierDisplay::Default,
     )]);
@@ -256,6 +260,109 @@ fn attribute_modifiers_component_decode_preserves_minestom_network_payload() {
     assert_eq!(decoded_component_changes, component_changes);
 }
 
+#[test]
+fn attribute_modifiers_component_writes_minestom_network_modifier_field_order() {
+    let attribute_modifiers = AttributeList::new(vec![AttributeModifierEntry::new(
+        Identifier::minecraft("attack_speed"),
+        AttributeModifier::new(
+            Identifier::minecraft("base_attack_speed"),
+            -2.8,
+            AttributeOperation::AddValue,
+        ),
+        EquipmentSlotGroup::MainHand,
+        AttributeModifierDisplay::Default,
+    )]);
+    let component_patch = DataComponentMap::new().with(ATTRIBUTE_MODIFIERS, attribute_modifiers);
+    let component_changes = ComponentChanges::from(&component_patch);
+    let mut payload = component_changes.added[0].data.as_slice();
+
+    assert_eq!(component_changes.added.len(), 1);
+    assert_eq!(component_changes.added[0].type_id, ATTRIBUTE_MODIFIERS.id());
+    assert_eq!(VarIntWrapper::decode(&mut payload).unwrap().0, 1);
+    assert_eq!(
+        VarIntWrapper::decode(&mut payload).unwrap().0,
+        spinel_registry::Attribute::ATTACK_SPEED.protocol_id()
+    );
+    assert_eq!(
+        Identifier::decode(&mut payload).unwrap(),
+        Identifier::minecraft("base_attack_speed")
+    );
+    assert_eq!(f64::decode(&mut payload).unwrap(), -2.8);
+    assert_eq!(
+        VarIntWrapper::decode(&mut payload).unwrap().0,
+        AttributeOperation::AddValue.protocol_id()
+    );
+    assert_eq!(
+        VarIntWrapper::decode(&mut payload).unwrap().0,
+        EquipmentSlotGroup::MainHand.protocol_id()
+    );
+    assert_eq!(VarIntWrapper::decode(&mut payload).unwrap().0, 0);
+    assert!(payload.is_empty());
+}
+
+#[test]
+fn attribute_modifiers_component_writes_minestom_network_display_union_branches() {
+    let attribute_modifiers = AttributeList::new(vec![
+        AttributeModifierEntry::new(
+            Identifier::minecraft("attack_speed"),
+            AttributeModifier::new(
+                Identifier::minecraft("hidden_speed"),
+                1.0,
+                AttributeOperation::AddMultipliedBase,
+            ),
+            EquipmentSlotGroup::OffHand,
+            AttributeModifierDisplay::Hidden,
+        ),
+        AttributeModifierEntry::new(
+            Identifier::minecraft("attack_damage"),
+            AttributeModifier::new(
+                Identifier::minecraft("override_damage"),
+                2.0,
+                AttributeOperation::AddMultipliedTotal,
+            ),
+            EquipmentSlotGroup::Head,
+            AttributeModifierDisplay::Override(
+                Component::text("override").build().to_component_nbt(),
+            ),
+        ),
+    ]);
+    let component_patch = DataComponentMap::new().with(ATTRIBUTE_MODIFIERS, attribute_modifiers);
+    let component_changes = ComponentChanges::from(&component_patch);
+    let mut payload = component_changes.added[0].data.as_slice();
+
+    assert_eq!(VarIntWrapper::decode(&mut payload).unwrap().0, 2);
+    skip_attribute_modifier_payload_before_display(&mut payload);
+    assert_eq!(VarIntWrapper::decode(&mut payload).unwrap().0, 1);
+    skip_attribute_modifier_payload_before_display(&mut payload);
+    assert_eq!(VarIntWrapper::decode(&mut payload).unwrap().0, 2);
+    assert!(!payload.is_empty());
+}
+
+#[test]
+fn enchantment_components_write_minestom_network_registry_id_map_for_both_owners() {
+    let enchantments = EnchantmentList::from_enchantment(Enchantment::SHARPNESS, 5);
+    let component_patch = DataComponentMap::new()
+        .with(ENCHANTMENTS, enchantments.clone())
+        .with(STORED_ENCHANTMENTS, enchantments);
+    let component_changes = ComponentChanges::from(&component_patch);
+    let enchantments_payload = component_changes
+        .added
+        .iter()
+        .find(|component| component.type_id == ENCHANTMENTS.id())
+        .unwrap();
+    let stored_enchantments_payload = component_changes
+        .added
+        .iter()
+        .find(|component| component.type_id == STORED_ENCHANTMENTS.id())
+        .unwrap();
+
+    assert_eq!(component_changes.added.len(), 2);
+    assert_eq!(enchantments_payload.data, stored_enchantments_payload.data);
+    assert_enchantment_component_payload_is_single_sharpness_level(
+        enchantments_payload.data.as_slice(),
+        5,
+    );
+}
 #[test]
 fn profile_component_decode_preserves_minestom_network_payload() {
     let profile = ResolvableProfile::new(
@@ -299,6 +406,30 @@ fn bundle_contents_component_decode_preserves_nested_item_stack_list_payload() {
 }
 
 #[test]
+fn component_changes_decode_rejects_attribute_and_enchantment_payloads_larger_than_minestom_limit()
+{
+    let attribute_error = ComponentChanges::decode(
+        &mut oversized_single_component_payload(ATTRIBUTE_MODIFIERS.id()).as_slice(),
+    )
+    .unwrap_err();
+    assert_eq!(attribute_error.kind(), std::io::ErrorKind::InvalidData);
+
+    let enchantment_error = ComponentChanges::decode(
+        &mut oversized_single_component_payload(ENCHANTMENTS.id()).as_slice(),
+    )
+    .unwrap_err();
+    assert_eq!(enchantment_error.kind(), std::io::ErrorKind::InvalidData);
+
+    let stored_enchantment_error = ComponentChanges::decode(
+        &mut oversized_single_component_payload(STORED_ENCHANTMENTS.id()).as_slice(),
+    )
+    .unwrap_err();
+    assert_eq!(
+        stored_enchantment_error.kind(),
+        std::io::ErrorKind::InvalidData
+    );
+}
+#[test]
 fn component_changes_decode_rejects_unknown_component_id() {
     let mut payload = Vec::new();
 
@@ -321,4 +452,33 @@ fn component_changes_decode_rejects_maps_larger_than_minestom_limit() {
     let error = ComponentChanges::decode(&mut payload.as_slice()).unwrap_err();
 
     assert_eq!(error.kind(), std::io::ErrorKind::InvalidData);
+}
+
+fn skip_attribute_modifier_payload_before_display(payload: &mut &[u8]) {
+    VarIntWrapper::decode(payload).unwrap();
+    Identifier::decode(payload).unwrap();
+    f64::decode(payload).unwrap();
+    VarIntWrapper::decode(payload).unwrap();
+    VarIntWrapper::decode(payload).unwrap();
+}
+
+fn assert_enchantment_component_payload_is_single_sharpness_level(mut payload: &[u8], level: i32) {
+    assert_eq!(VarIntWrapper::decode(&mut payload).unwrap().0, 1);
+    let enchantment_id = VarIntWrapper::decode(&mut payload).unwrap().0;
+    assert!(enchantment_id >= 0);
+    assert_eq!(VarIntWrapper::decode(&mut payload).unwrap().0, level);
+    assert!(payload.is_empty());
+}
+
+fn oversized_single_component_payload(component_type_id: i32) -> Vec<u8> {
+    let mut payload = Vec::new();
+    VarIntWrapper(1).encode(&mut payload).unwrap();
+    VarIntWrapper(0).encode(&mut payload).unwrap();
+    VarIntWrapper(component_type_id)
+        .encode(&mut payload)
+        .unwrap();
+    VarIntWrapper(i16::MAX as i32 + 1)
+        .encode(&mut payload)
+        .unwrap();
+    payload
 }

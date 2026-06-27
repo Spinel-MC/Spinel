@@ -50,7 +50,7 @@ impl Entity {
             return Ok(false);
         }
         passenger.set_vehicle(self.get_entity_id());
-        passenger.set_position(self.passenger_position(passenger));
+        passenger.set_position(self.get_passenger_position(passenger));
         Ok(true)
     }
 

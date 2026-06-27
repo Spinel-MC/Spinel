@@ -26,9 +26,10 @@ impl<'entity> PhantomMeta<'entity> {
     }
 
     pub fn set_size(&mut self, size: i32) {
-        self.get_entity_mut()
-            .get_metadata_mut()
-            .set(&definitions::phantom::get_size(), MetadataValue::VarInt(size));
+        self.get_entity_mut().get_metadata_mut().set(
+            &definitions::phantom::get_size(),
+            MetadataValue::VarInt(size),
+        );
     }
 }
 

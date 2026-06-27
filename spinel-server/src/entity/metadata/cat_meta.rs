@@ -17,8 +17,11 @@ impl<'entity> CatMeta<'entity> {
         })
     }
 
-    pub fn get_variant(&self, registries: &Registries) -> Option<RegistryKey<cat_variant::CatVariant>> {
-        self.get_entity().g(registries)
+    pub fn get_variant(
+        &self,
+        registries: &Registries,
+    ) -> Option<RegistryKey<cat_variant::CatVariant>> {
+        self.get_entity().get_cat_variant_metadata(registries)
     }
 
     pub fn set_variant(

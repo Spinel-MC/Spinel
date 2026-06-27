@@ -18,7 +18,11 @@ fn client_close_for_window_zero_refreshes_player_inventory_window() {
     assert!(player.close_inventory_window_with_client(true, 0, &mut server, &mut client));
     assert!(player.get_opened_inventory().is_none());
     assert_eq!(
-        player.get_inventory_ref().get_item_stack(36).unwrap().material(),
+        player
+            .get_inventory_ref()
+            .get_item_stack(36)
+            .unwrap()
+            .material(),
         &Material::DIAMOND
     );
 }

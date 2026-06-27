@@ -1,43 +1,51 @@
-use crate::Identifier;
 use crate::data_components::DataComponentValue;
+use crate::enchantment::Enchantment;
+use crate::{Identifier, RegistryKey};
 use spinel_nbt::{Nbt, NbtCompound};
 use std::collections::HashMap;
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct EnchantmentList {
-    enchantments: HashMap<Identifier, i32>,
+    enchantments: HashMap<RegistryKey<Enchantment>, i32>,
 }
 
 impl EnchantmentList {
     #[must_use]
-    pub fn new(enchantments: HashMap<Identifier, i32>) -> Self {
+    pub fn new(enchantments: HashMap<RegistryKey<Enchantment>, i32>) -> Self {
         Self { enchantments }
     }
 
     #[must_use]
-    pub fn enchantments(&self) -> &HashMap<Identifier, i32> {
+    pub fn from_enchantment(enchantment: RegistryKey<Enchantment>, level: i32) -> Self {
+        Self {
+            enchantments: HashMap::from([(enchantment, level)]),
+        }
+    }
+
+    #[must_use]
+    pub fn get_enchantments(&self) -> &HashMap<RegistryKey<Enchantment>, i32> {
         &self.enchantments
     }
 
     #[must_use]
-    pub fn has(&self, enchantment: &Identifier) -> bool {
+    pub fn has(&self, enchantment: &RegistryKey<Enchantment>) -> bool {
         self.enchantments.contains_key(enchantment)
     }
 
     #[must_use]
-    pub fn level(&self, enchantment: &Identifier) -> i32 {
+    pub fn level(&self, enchantment: &RegistryKey<Enchantment>) -> i32 {
         self.enchantments.get(enchantment).copied().unwrap_or(0)
     }
 
     #[must_use]
-    pub fn with(&self, enchantment: Identifier, level: i32) -> Self {
+    pub fn with(&self, enchantment: RegistryKey<Enchantment>, level: i32) -> Self {
         let mut enchantments = self.enchantments.clone();
         enchantments.insert(enchantment, level);
         Self { enchantments }
     }
 
     #[must_use]
-    pub fn remove(&self, enchantment: &Identifier) -> Self {
+    pub fn remove(&self, enchantment: &RegistryKey<Enchantment>) -> Self {
         let mut enchantments = self.enchantments.clone();
         enchantments.remove(enchantment);
         Self { enchantments }
@@ -48,7 +56,7 @@ impl DataComponentValue for EnchantmentList {
     fn to_component_nbt(&self) -> Nbt {
         let mut compound = NbtCompound::new();
         for (enchantment, level) in &self.enchantments {
-            compound.insert(enchantment.to_string(), Nbt::Int(*level));
+            compound.insert(enchantment.key().to_string(), Nbt::Int(*level));
         }
         Nbt::Compound(compound)
     }
@@ -64,7 +72,8 @@ impl DataComponentValue for EnchantmentList {
                 let Nbt::Int(level) = level else {
                     return None;
                 };
-                Some((enchantment.parse().ok()?, *level))
+                let enchantment_identifier: Identifier = enchantment.parse().ok()?;
+                Some((RegistryKey::new(enchantment_identifier), *level))
             })
             .collect::<Option<HashMap<_, _>>>()?;
         Some(Self { enchantments })

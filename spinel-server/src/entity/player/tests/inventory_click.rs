@@ -23,8 +23,22 @@ fn public_double_click_collects_matching_stacks_into_cursor() {
 
     assert!(player.double_click(0, &mut server, &mut client));
     assert_eq!(player.get_inventory_ref().cursor_item().amount(), 64);
-    assert_eq!(player.get_inventory_ref().get_item_stack(0).unwrap().amount(), 3);
-    assert_eq!(player.get_inventory_ref().get_item_stack(1).unwrap().amount(), 1);
+    assert_eq!(
+        player
+            .get_inventory_ref()
+            .get_item_stack(0)
+            .unwrap()
+            .amount(),
+        3
+    );
+    assert_eq!(
+        player
+            .get_inventory_ref()
+            .get_item_stack(1)
+            .unwrap()
+            .amount(),
+        1
+    );
 }
 
 fn test_player() -> Player {

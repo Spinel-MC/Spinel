@@ -20,15 +20,15 @@ fn item_merge_test_listener(event: &mut EntityItemMergeEvent, _server: &mut Mine
         return;
     }
     let entity_id = event.get_entity_id();
-    let merged_entity_id = event.merged_entity_id();
+    let merged_entity_id = event.get_merged_entity_id();
     let event_entity_id = event.get_entity().get_entity_id();
-    let event_merged_entity_id = event.merged_entity().entity_id();
+    let event_merged_entity_id = event.get_merged_entity().get_entity_id();
     if event_entity_id == entity_id && event_merged_entity_id == merged_entity_id {
         ITEM_MERGE_EVENT_ENTITY_ACCESSOR_MATCHED.store(true, Ordering::SeqCst);
     }
     event.set_cancelled(ITEM_MERGE_TEST_CANCELLED.load(Ordering::SeqCst));
     if ITEM_MERGE_TEST_MUTATES_RESULT.load(Ordering::SeqCst) {
-        event.set_result(event.result().with_amount(7));
+        event.set_result(event.get_result().with_amount(7));
     }
 }
 

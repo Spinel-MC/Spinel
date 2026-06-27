@@ -53,7 +53,7 @@ fn player_move_test_listener(event: &mut PlayerMoveEvent, _server: &mut Minecraf
                 packet_position.get_y(),
                 packet_position.get_z(),
                 90.0,
-               45.0,
+                45.0,
             ));
         }
         PLAYER_MOVE_TEST_COORDINATES => {
@@ -305,13 +305,13 @@ fn measure_fast_movement_load_vs_throttled_send_cost() {
     let queued_before_tick = world
         .player_by_addr(&client.addr)
         .unwrap()
-        .queued_chunk_count();
+        .get_queued_chunk_count();
 
     let tick_start = Instant::now();
     world.tick_with_registries(&registries);
     let tick_elapsed = tick_start.elapsed();
     let player = world.player_by_addr(&client.addr).unwrap();
-    let queued_after_tick = player.queued_chunk_count();
+    let queued_after_tick = player.get_queued_chunk_count();
     let chunk_batch_lead = player.get_chunk_batch_lead();
     let target_chunks_per_tick = player.get_target_chunks_per_tick();
     drop(world);
@@ -385,7 +385,7 @@ fn measure_fast_client_movement_chunk_generation_per_second() {
     let generated_chunks_per_second = generated_chunk_count as f64 / movement_elapsed.as_secs_f64();
     let loaded_chunks = world.chunks().count();
     let player = world.player_by_addr(&client.addr).unwrap();
-    let queued_chunks = player.queued_chunk_count();
+    let queued_chunks = player.get_queued_chunk_count();
     let chunk_batch_lead = player.get_chunk_batch_lead();
     let target_chunks_per_tick = player.get_target_chunks_per_tick();
     drop(world);
@@ -490,7 +490,7 @@ fn incremental_walking_andsprinting_cross_east_chunk_borders_without_correction(
     assert_eq!(player_position(&world, &client).get_x(), 32.15);
     assert!(
         !client
-           .queued_outbound_packet_ids()
+            .queued_outbound_packet_ids()
             .contains(&SyncPlayerPositionPacket::get_id())
     );
 }
@@ -621,14 +621,14 @@ fn position_and_rotation_movement_queues_chunks_only_after_async_load_completion
         world
             .player_by_addr(&client.addr)
             .unwrap()
-            .queued_chunk_count(),
+            .get_queued_chunk_count(),
         0
     );
 
     let completion_deadline = Instant::now() + Duration::from_secs(2);
     while world
         .player_by_addr(&client.addr)
-        .is_some_and(|player| player.queued_chunk_count() == 0)
+        .is_some_and(|player| player.get_queued_chunk_count() == 0)
     {
         assert!(Instant::now() < completion_deadline);
         world.tick_with_registries(&registries);
@@ -638,7 +638,7 @@ fn position_and_rotation_movement_queues_chunks_only_after_async_load_completion
     assert!(
         world
             .player_by_addr(&client.addr)
-            .is_some_and(|player| player.queued_chunk_count() > 0)
+            .is_some_and(|player| player.get_queued_chunk_count() > 0)
     );
 }
 
@@ -666,7 +666,7 @@ fn recent_reverse_transition_does_not_schedule_chunk_loads_like_minestom() {
         world
             .player_by_addr(&client.addr)
             .unwrap()
-            .queued_chunk_count(),
+            .get_queued_chunk_count(),
         0
     );
 
@@ -681,7 +681,7 @@ fn recent_reverse_transition_does_not_schedule_chunk_loads_like_minestom() {
         world
             .player_by_addr(&client.addr)
             .unwrap()
-            .queued_chunk_count(),
+            .get_queued_chunk_count(),
         10
     );
 }
@@ -711,7 +711,7 @@ fn rapid_forward_reverse_stop_loads_and_lights_the_standing_chunk() {
     let initial_delivery_deadline = Instant::now() + Duration::from_secs(10);
     while world
         .player_by_addr(&client.addr)
-        .is_some_and(|player| player.queued_chunk_count() > 0)
+        .is_some_and(|player| player.get_queued_chunk_count() > 0)
     {
         assert!(
             Instant::now() < initial_delivery_deadline,
@@ -719,7 +719,7 @@ fn rapid_forward_reverse_stop_loads_and_lights_the_standing_chunk() {
             world
                 .player_by_addr(&client.addr)
                 .unwrap()
-                .queued_chunk_count(),
+                .get_queued_chunk_count(),
             world
                 .player_by_addr(&client.addr)
                 .unwrap()
@@ -1231,7 +1231,10 @@ fn chunk_viewer_membership_matches_minestom_no_op_edges() {
 
     assert!(chunk.add_viewer(viewer));
     assert!(!chunk.add_viewer(viewer));
-    assert_eq!(chunk.viewers().collect::<Vec<_>>(), vec![viewer.get_value()]);
+    assert_eq!(
+        chunk.viewers().collect::<Vec<_>>(),
+        vec![viewer.get_value()]
+    );
     assert!(chunk.remove_viewer(viewer));
     assert!(!chunk.remove_viewer(viewer));
     assert!(chunk.viewers().next().is_none());
@@ -1304,7 +1307,10 @@ fn added_entities_record_their_current_world_membership() {
 
     world.add_entity(entity);
 
-    assert_eq!(world.entities().next().unwrap().get_world(), Some(world_uuid));
+    assert_eq!(
+        world.entities().next().unwrap().get_world(),
+        Some(world_uuid)
+    );
 }
 
 #[test]

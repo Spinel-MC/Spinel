@@ -54,14 +54,17 @@ impl MetadataHolder {
         let updated_value = MetadataValue::Byte(updated_flags);
         self.entries
             .insert(definition.get_index(), updated_value.clone());
-        self.dirty_entries.insert(definition.get_index(), updated_value);
+        self.dirty_entries
+            .insert(definition.get_index(), updated_value);
     }
 
     pub fn get_byte(&self, definition: &MetadataByteMaskDefinition) -> i8 {
-        let Some(MetadataValue::Byte(current_value)) = self.entries.get(&definition.get_index()) else {
+        let Some(MetadataValue::Byte(current_value)) = self.entries.get(&definition.get_index())
+        else {
             return definition.get_default_value();
         };
-        (((*current_value as u8) & (definition.get_byte_mask() as u8)) >> definition.get_offset()) as i8
+        (((*current_value as u8) & (definition.get_byte_mask() as u8)) >> definition.get_offset())
+            as i8
     }
 
     pub fn set_byte(&mut self, definition: &MetadataByteMaskDefinition, byte_value: i8) {
@@ -75,7 +78,8 @@ impl MetadataHolder {
         let updated_value = MetadataValue::Byte(updated_value as i8);
         self.entries
             .insert(definition.get_index(), updated_value.clone());
-        self.dirty_entries.insert(definition.get_index(), updated_value);
+        self.dirty_entries
+            .insert(definition.get_index(), updated_value);
     }
 
     pub fn get_entries(&self) -> Vec<MetadataEntry> {

@@ -21,7 +21,7 @@ impl<'entity> WolfMeta<'entity> {
         &self,
         registries: &Registries,
     ) -> Option<RegistryKey<wolf_variant::WolfVariant>> {
-        self.get_entity().g(registries)
+        self.get_entity().get_wolf_variant_metadata(registries)
     }
 
     pub fn set_variant(
@@ -37,7 +37,8 @@ impl<'entity> WolfMeta<'entity> {
         &self,
         registries: &Registries,
     ) -> Option<RegistryKey<wolf_sound_variant::WolfSoundVariant>> {
-        self.get_entity().g(registries)
+        self.get_entity()
+            .get_wolf_sound_variant_metadata(registries)
     }
 
     pub fn set_sound_variant(

@@ -42,7 +42,7 @@ impl<'entity> AvatarMeta<'entity> {
     pub fn is_cape_enabled(&self) -> bool {
         self.get_entity()
             .get_metadata()
-            .flag(&definitions::avatar::is_cape_enabled())
+            .get_flag(&definitions::avatar::is_cape_enabled())
     }
 
     pub fn set_cape_enabled(&mut self, is_cape_enabled: bool) {
@@ -54,7 +54,7 @@ impl<'entity> AvatarMeta<'entity> {
     pub fn is_jacket_enabled(&self) -> bool {
         self.get_entity()
             .get_metadata()
-            .flag(&definitions::avatar::is_jacket_enabled())
+            .get_flag(&definitions::avatar::is_jacket_enabled())
     }
 
     pub fn set_jacket_enabled(&mut self, is_jacket_enabled: bool) {
@@ -66,7 +66,7 @@ impl<'entity> AvatarMeta<'entity> {
     pub fn is_left_sleeve_enabled(&self) -> bool {
         self.get_entity()
             .get_metadata()
-            .flag(&definitions::avatar::is_left_sleeve_enabled())
+            .get_flag(&definitions::avatar::is_left_sleeve_enabled())
     }
 
     pub fn set_left_sleeve_enabled(&mut self, is_left_sleeve_enabled: bool) {
@@ -79,7 +79,7 @@ impl<'entity> AvatarMeta<'entity> {
     pub fn is_right_sleeve_enabled(&self) -> bool {
         self.get_entity()
             .get_metadata()
-            .flag(&definitions::avatar::is_right_sleeve_enabled())
+            .get_flag(&definitions::avatar::is_right_sleeve_enabled())
     }
 
     pub fn set_right_sleeve_enabled(&mut self, is_right_sleeve_enabled: bool) {
@@ -92,7 +92,7 @@ impl<'entity> AvatarMeta<'entity> {
     pub fn is_left_leg_enabled(&self) -> bool {
         self.get_entity()
             .get_metadata()
-            .flag(&definitions::avatar::is_left_pants_leg_enabled())
+            .get_flag(&definitions::avatar::is_left_pants_leg_enabled())
     }
 
     pub fn set_left_leg_enabled(&mut self, is_left_leg_enabled: bool) {
@@ -105,7 +105,7 @@ impl<'entity> AvatarMeta<'entity> {
     pub fn is_right_leg_enabled(&self) -> bool {
         self.get_entity()
             .get_metadata()
-            .flag(&definitions::avatar::is_right_pants_leg_enabled())
+            .get_flag(&definitions::avatar::is_right_pants_leg_enabled())
     }
 
     pub fn set_right_leg_enabled(&mut self, is_right_leg_enabled: bool) {
@@ -118,7 +118,7 @@ impl<'entity> AvatarMeta<'entity> {
     pub fn is_hat_enabled(&self) -> bool {
         self.get_entity()
             .get_metadata()
-            .flag(&definitions::avatar::is_hat_enabled())
+            .get_flag(&definitions::avatar::is_hat_enabled())
     }
 
     pub fn set_hat_enabled(&mut self, is_hat_enabled: bool) {

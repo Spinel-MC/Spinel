@@ -38,7 +38,7 @@ impl Player {
             window_click.click().clone(),
         );
         event.dispatch(server, client);
-        if self.did_close_inventory() {
+        if self.get_did_close_inventory() {
             self.set_did_close_inventory(false);
             return self.resync_inventory(client);
         }
@@ -136,6 +136,7 @@ impl Player {
     }
 
     fn cursor_mismatch(&self, packet: &ContainerClickPacket) -> bool {
-        ItemStackHash::from_item_stack(self.get_inventory_ref().cursor_item()) != packet.carried_item
+        ItemStackHash::from_item_stack(self.get_inventory_ref().cursor_item())
+            != packet.carried_item
     }
 }

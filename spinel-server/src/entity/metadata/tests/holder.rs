@@ -39,7 +39,10 @@ fn metadata_holder_retains_latest_changes_while_notifications_are_disabled() {
     let dirty_entries = metadata.drain_dirty_entries();
 
     assert_eq!(dirty_entries.len(), 1);
-    assert_eq!(dirty_entries[0].index, definitions::get_air_ticks().get_index());
+    assert_eq!(
+        dirty_entries[0].index,
+        definitions::get_air_ticks().get_index()
+    );
     assert_eq!(dirty_entries[0].value, MetadataValue::VarInt(20));
 }
 
@@ -50,8 +53,8 @@ fn metadata_holder_bitmask_entries_share_the_base_byte() {
     metadata.set_flag(&definitions::is_on_fire(), true);
     metadata.set_flag(&definitions::is_crouching(), true);
 
-    assert!(metadata.flag(&definitions::is_on_fire()));
-    assert!(metadata.flag(&definitions::is_crouching()));
+    assert!(metadata.get_flag(&definitions::is_on_fire()));
+    assert!(metadata.get_flag(&definitions::is_crouching()));
     assert_eq!(
         metadata.get_value(&definitions::entity_flags()),
         MetadataValue::Byte(0x03)
@@ -67,7 +70,7 @@ fn metadata_holder_byte_mask_preserves_neighboring_bits() {
 
     metadata.set_byte(&alignment, 2);
 
-    assert_eq!(metadata.byte(&alignment), 2);
+    assert_eq!(metadata.get_byte(&alignment), 2);
     assert_eq!(metadata.get_value(&flags), MetadataValue::Byte(0x31));
 }
 

@@ -28,7 +28,7 @@ impl PathGenerator {
                     EntityPosition::new(
                         original_start.get_x(),
                         y,
-                       original_start.get_z(),
+                        original_start.get_z(),
                         original_start.get_yaw(),
                         original_start.get_pitch(),
                     )
@@ -44,7 +44,7 @@ impl PathGenerator {
                     EntityPosition::new(
                         original_goal.get_x(),
                         y,
-                       original_goal.get_z(),
+                        original_goal.get_z(),
                         original_goal.get_yaw(),
                         original_goal.get_pitch(),
                     )
@@ -75,11 +75,14 @@ impl PathGenerator {
             let current_index = open_node.index;
             let current = &nodes[current_index];
             if current.get_score() - straight_distance > variance
-                || start.get_distance_squared(current.get_position()) > maximum_distance * maximum_distance
+                || start.get_distance_squared(current.get_position())
+                    > maximum_distance * maximum_distance
             {
                 continue;
             }
-            if current.get_position().get_distance_squared(goal) < minimum_distance * minimum_distance {
+            if current.get_position().get_distance_squared(goal)
+                < minimum_distance * minimum_distance
+            {
                 open.push(open_node);
                 break;
             }

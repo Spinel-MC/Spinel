@@ -64,7 +64,7 @@ impl PathNode {
     }
 
     pub fn get_parent_coordinates(&self) -> Option<(i32, i32, i32)> {
-        self.get_parent().map(PathNode::block_coordinates)
+        self.get_parent().map(PathNode::get_block_coordinates)
     }
 
     pub fn set_position(&mut self, position: EntityPosition) {
@@ -142,7 +142,10 @@ impl Display for PathNode {
 fn position_identity_hash(position: EntityPosition) -> i32 {
     cantor(
         position.get_x().floor() as i32,
-        cantor(position.get_y().floor() as i32, position.get_z().floor() as i32),
+        cantor(
+            position.get_y().floor() as i32,
+            position.get_z().floor() as i32,
+        ),
     )
 }
 

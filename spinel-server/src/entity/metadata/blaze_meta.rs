@@ -16,7 +16,7 @@ impl<'entity> BlazeMeta<'entity> {
     pub fn is_on_fire(&self) -> bool {
         self.get_entity()
             .get_metadata()
-            .flag(&definitions::blaze::is_on_fire())
+            .get_flag(&definitions::blaze::is_on_fire())
     }
 
     pub fn set_on_fire(&mut self, is_on_fire: bool) {

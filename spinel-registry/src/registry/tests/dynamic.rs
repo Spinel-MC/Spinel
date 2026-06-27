@@ -1,9 +1,11 @@
 use crate::biome::{Biome, Color};
+use crate::mob_effect::MobEffect;
 use crate::{
     BIOME_REGISTRY, DynamicRegistry, ENCHANTMENT_REGISTRY, Identifier, RegisterError, Registries,
     ZOMBIE_NAUTILUS_VARIANT_REGISTRY,
 };
-use std::path::Path;
+use spinel_nbt::parse_snbt_compound;
+use std::{collections::BTreeMap, path::Path};
 
 #[test]
 fn custom_biome_packet_entries_include_local_data() {
@@ -96,6 +98,48 @@ fn enchantment_exclusive_set_tags_are_bound() {
     }));
 }
 
+#[test]
+fn vanilla_mob_effect_registry_entries_preserve_extracted_protocol_metadata() {
+    let registries = Registries::new_vanilla();
+    let speed = registries
+        .mob_effect(&MobEffect::SPEED)
+        .expect("extracted speed effect should be registered");
+
+    assert_eq!(speed.get_protocol_id(), 0);
+    assert_eq!(speed.get_translation_key(), "effect.minecraft.speed");
+    assert_eq!(speed.get_color(), 3402751);
+    assert!(!speed.is_instantaneous());
+}
+#[test]
+fn vanilla_enchantment_registry_packets_preserve_generated_payloads() {
+    let registries = Registries::new_vanilla();
+    let registry_entries = registries.dynamic_registry_entries(false);
+    let generated_entries: BTreeMap<String, String> =
+        serde_json::from_str(include_str!("../../../assets/enchantments.json"))
+            .expect("generated enchantment JSON should decode");
+    let expected_bane_of_arthropods = parse_snbt_compound(
+        generated_entries
+            .get("minecraft:bane_of_arthropods")
+            .expect("bane of arthropods should be generated"),
+    )
+    .expect("generated bane of arthropods SNBT should decode");
+    let enchantment_entries = registry_entries
+        .iter()
+        .find(|(registry_id, _entries)| *registry_id == ENCHANTMENT_REGISTRY)
+        .map(|(_registry_id, entries)| entries)
+        .expect("enchantment registry packet entries should exist");
+    let (_, actual_bane_of_arthropods) = enchantment_entries
+        .iter()
+        .find(|(entry_key, _payload)| *entry_key == Identifier::minecraft("bane_of_arthropods"))
+        .expect("bane of arthropods should be present in the registry packet");
+
+    assert_eq!(enchantment_entries.len(), generated_entries.len());
+    assert_eq!(
+        actual_bane_of_arthropods.as_ref(),
+        Some(&expected_bane_of_arthropods)
+    );
+    assert!(expected_bane_of_arthropods.contains_key("effects"));
+}
 #[test]
 fn registry_build_assets_do_not_depend_on_vanilla_datapack_folder() {
     let manifest_dir = Path::new(env!("CARGO_MANIFEST_DIR"));

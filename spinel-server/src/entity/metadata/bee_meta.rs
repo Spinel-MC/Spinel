@@ -15,7 +15,9 @@ impl<'entity> BeeMeta<'entity> {
     }
 
     pub fn is_angry(&self) -> bool {
-        self.get_entity().get_metadata().flag(&definitions::bee::is_angry())
+        self.get_entity()
+            .get_metadata()
+            .get_flag(&definitions::bee::is_angry())
     }
 
     pub fn set_angry(&mut self, is_angry: bool) {
@@ -27,7 +29,7 @@ impl<'entity> BeeMeta<'entity> {
     pub fn has_stung(&self) -> bool {
         self.get_entity()
             .get_metadata()
-            .flag(&definitions::bee::has_stung())
+            .get_flag(&definitions::bee::has_stung())
     }
 
     pub fn set_has_stung(&mut self, has_stung: bool) {
@@ -39,7 +41,7 @@ impl<'entity> BeeMeta<'entity> {
     pub fn has_nectar(&self) -> bool {
         self.get_entity()
             .get_metadata()
-            .flag(&definitions::bee::has_nectar())
+            .get_flag(&definitions::bee::has_nectar())
     }
 
     pub fn set_has_nectar(&mut self, has_nectar: bool) {

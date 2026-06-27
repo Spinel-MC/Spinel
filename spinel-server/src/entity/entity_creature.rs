@@ -272,7 +272,7 @@ impl EntityCreature {
         if self.navigator.get_physics_timing() == NodeFollowerPhysicsTiming::AfterPhysics {
             self.tick_navigation(world, time);
         }
-        self.entity.tick();
+        self.entity.tick_before_event();
     }
 
     pub fn tick(&mut self, world: &WorldSnapshot, time: u64) {
@@ -312,3 +312,5 @@ impl AsMut<GenericEntity> for EntityCreature {
         &mut self.entity
     }
 }
+
+

@@ -23,7 +23,7 @@ pub(crate) fn break_ticks(
         return UNBREAKABLE;
     }
 
-    let item_stack = player.item_in_hand(PlayerHand::Main);
+    let item_stack = player.get_item_in_hand(PlayerHand::Main);
     let material = item_stack.material();
     if bamboo_is_instant_with_sword(block, material, registries) {
         return 0;
@@ -152,23 +152,18 @@ fn tool_rule_contains_block(rule: &ToolRule, block: Block, registries: &Registri
 
 fn player_has_effect(
     player: &Player,
-    registries: &Registries,
+    _registries: &Registries,
     effect: &spinel_registry::RegistryKey<MobEffect>,
 ) -> bool {
-    registries
-        .mob_effect_id(effect)
-        .is_some_and(|effect_id| player.has_effect(effect_id))
+    player.has_effect(effect)
 }
 
 fn player_effect_level(
     player: &Player,
-    registries: &Registries,
+    _registries: &Registries,
     effect: &spinel_registry::RegistryKey<MobEffect>,
 ) -> i32 {
-    registries
-        .mob_effect_id(effect)
-        .and_then(|effect_id| player.get_effect_level(effect_id))
-        .unwrap_or(-1)
+    player.get_effect_level(effect)
 }
 
 fn haste_multiplier(player: &Player, registries: &Registries) -> f32 {

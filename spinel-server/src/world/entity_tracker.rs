@@ -47,7 +47,8 @@ impl EntityTracker {
                 position,
             },
         );
-        self.entries_by_entity_uuid.insert(entity.get_uuid(), entity_id);
+        self.entries_by_entity_uuid
+            .insert(entity.get_uuid(), entity_id);
         self.targets_for_entity(entity)
             .into_iter()
             .for_each(|target| self.register_target(entity_id, position, target));

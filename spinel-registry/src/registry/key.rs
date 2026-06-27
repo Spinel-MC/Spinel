@@ -45,6 +45,17 @@ impl<T> PartialEq for RegistryKey<T> {
 
 impl<T> Eq for RegistryKey<T> {}
 
+impl<T> PartialOrd for RegistryKey<T> {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl<T> Ord for RegistryKey<T> {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.key.cmp(&other.key)
+    }
+}
 impl<T> Hash for RegistryKey<T> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.key.hash(state);

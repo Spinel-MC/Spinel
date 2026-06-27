@@ -219,7 +219,10 @@ fn synchronization_only_entity_suppresses_ordinary_physics_movement_packet() {
 
     world.tick_with_registries(&Registries::new_vanilla());
 
-    assert_eq!(world.get_entity(target_id).unwrap().get_position().get_x(), 2.0);
+    assert_eq!(
+        world.get_entity(target_id).unwrap().get_position().get_x(),
+        2.0
+    );
     assert!(
         !viewer_client
             .queued_outbound_packet_ids()

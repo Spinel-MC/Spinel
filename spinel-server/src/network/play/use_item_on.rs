@@ -50,7 +50,7 @@ fn on_use_item_on(
         return acknowledge_block_change(packet.sequence, client);
     }
     let player = unsafe { &mut *event_input.player };
-    let item_stack = player.item_in_hand(event_input.hand);
+    let item_stack = player.get_item_in_hand(event_input.hand);
     if let Some(block) = item_stack.material().block() {
         let block_state = item_stack.get_or(BLOCK_STATE, ItemBlockState::default());
         let default_block_state = DataComponentMap::default().get_or(
@@ -103,7 +103,7 @@ fn place_block(
     let mut can_place_block = player.get_game_mode() != GameMode::Spectator;
     if player.get_game_mode() == GameMode::Adventure {
         can_place_block = player
-            .item_in_hand(hand)
+            .get_item_in_hand(hand)
             .get_or(CAN_PLACE_ON, BlockPredicates::default())
             .test_state_with_nbt(
                 server
@@ -119,7 +119,7 @@ fn place_block(
         interacted_position,
         block_face,
         cursor_position,
-        player.item_in_hand(hand).material().clone(),
+        player.get_item_in_hand(hand).material().clone(),
         server,
         client,
     );
@@ -202,10 +202,10 @@ pub(crate) fn synchronize_placed_block_inventory(
     client: &mut Client,
 ) -> bool {
     if does_consume_block {
-        let consumed_item = player.g(hand).consume(1);
+        let consumed_item = player.get_item_in_hand(hand).consume(1);
         return player.set_item_in_hand(hand, consumed_item);
     }
-    player.g(client).is_ok()
+    player.sync_inventory(client).is_ok()
 }
 fn placement_position(
     position: BlockPosition,
@@ -270,7 +270,7 @@ fn refresh_inventory_and_chunk(
     server: &mut MinecraftServer,
     client: &mut Client,
 ) -> bool {
-    let inventory_is_refreshed = player.g(client).is_ok();
+    let inventory_is_refreshed = player.sync_inventory(client).is_ok();
     let chunk_is_refreshed = server.refresh_chunk_in_world(client, position);
     inventory_is_refreshed && chunk_is_refreshed
 }

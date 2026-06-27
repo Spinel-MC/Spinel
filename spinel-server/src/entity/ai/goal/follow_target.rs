@@ -37,7 +37,10 @@ impl GoalSelector for FollowTargetGoal {
         let Some(target) = target.and_then(|target| world.get_entity(target)) else {
             return false;
         };
-        let should_follow = target.get_position().get_distance_squared(creature.get_position()) >= 4.0;
+        let should_follow = target
+            .get_position()
+            .get_distance_squared(creature.get_position())
+            >= 4.0;
         if should_follow {
             self.target = Some(target.get_entity_id());
         }
@@ -59,7 +62,11 @@ impl GoalSelector for FollowTargetGoal {
         };
         creature.set_target(Some(target.get_entity_id()));
         self.last_target_position = Some(target.get_position());
-        if target.get_position().get_distance_squared(creature.get_position()) < 4.0 {
+        if target
+            .get_position()
+            .get_distance_squared(creature.get_position())
+            < 4.0
+        {
             self.should_force_end = true;
             creature.get_navigator_mut().reset();
             return;
@@ -122,7 +129,10 @@ impl GoalSelector for FollowTargetGoal {
             || creature.get_target().is_none_or(|target| {
                 world.get_entity(target).is_none_or(|target| {
                     target.is_removed()
-                        || target.get_position().get_distance_squared(creature.get_position()) < 4.0
+                        || target
+                            .get_position()
+                            .get_distance_squared(creature.get_position())
+                            < 4.0
                 })
             })
     }

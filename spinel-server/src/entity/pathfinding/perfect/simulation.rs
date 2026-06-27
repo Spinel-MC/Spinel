@@ -219,7 +219,10 @@ pub(crate) fn position_is_simulatable(
     position: EntityPosition,
     bounding_box: EntityBoundingBox,
 ) -> bool {
-    if !world.get_world_border().contains(position.get_x(), position.get_z()) {
+    if !world
+        .get_world_border()
+        .contains(position.get_x(), position.get_z())
+    {
         return false;
     }
     let minimum_x = (position.get_x() + bounding_box.minimum_x()).floor() as i32;

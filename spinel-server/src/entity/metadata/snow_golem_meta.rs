@@ -16,7 +16,7 @@ impl<'entity> SnowGolemMeta<'entity> {
     pub fn has_pumpkin_hat(&self) -> bool {
         self.get_entity()
             .get_metadata()
-            .flag(&definitions::snow_golem::has_pumpkin_hat())
+            .get_flag(&definitions::snow_golem::has_pumpkin_hat())
     }
 
     pub fn set_has_pumpkin_hat(&mut self, has_pumpkin_hat: bool) {

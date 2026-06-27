@@ -49,7 +49,13 @@ fn add_passenger_reparents_and_updates_both_entity_sides() {
     assert_eq!(passenger.get_vehicle(), Some(vehicle_id));
     assert_eq!(
         passenger.get_position(),
-        EntityPosition::new(10.0, 70.0 + EntityType::PIG.get_height() * 0.75, 12.0, 0.0, 0.0)
+        EntityPosition::new(
+            10.0,
+            70.0 + EntityType::PIG.get_height() * 0.75,
+            12.0,
+            0.0,
+            0.0
+        )
     );
 }
 
@@ -88,7 +94,10 @@ fn remove_passenger_clears_both_entity_sides_and_is_idempotent() {
             .get_passengers()
             .is_empty()
     );
-    assert_eq!(world.entity_by_id(passenger_id).unwrap().get_vehicle(), None);
+    assert_eq!(
+        world.entity_by_id(passenger_id).unwrap().get_vehicle(),
+        None
+    );
 }
 
 #[test]
@@ -104,7 +113,10 @@ fn taking_an_entity_detaches_its_vehicle_and_passenger_relations() {
 
     world.take_entity(vehicle_id).unwrap();
 
-    assert_eq!(world.entity_by_id(passenger_id).unwrap().get_vehicle(), None);
+    assert_eq!(
+        world.entity_by_id(passenger_id).unwrap().get_vehicle(),
+        None
+    );
 }
 
 #[test]
@@ -191,14 +203,22 @@ fn vehicle_movement_recursively_refreshes_passenger_chain_positions() {
             .unwrap()
     );
 
-    let passenger_position =
-        EntityPosition::new(40.0, 80.0 + EntityType::PIG.get_height() * 0.75, 24.0, 0.0, 0.0);
+    let passenger_position = EntityPosition::new(
+        40.0,
+        80.0 + EntityType::PIG.get_height() * 0.75,
+        24.0,
+        0.0,
+        0.0,
+    );
     assert_eq!(
         world.entity_by_id(passenger_id).unwrap().get_position(),
         passenger_position
     );
     assert_eq!(
-        world.entity_by_id(nested_passenger_id).unwrap().get_position(),
+        world
+            .entity_by_id(nested_passenger_id)
+            .unwrap()
+            .get_position(),
         EntityPosition::new(
             40.0,
             passenger_position.get_y() + EntityType::ZOMBIE.get_height(),
@@ -228,14 +248,22 @@ fn direct_world_position_mutation_recursively_refreshes_passenger_chain_position
 
     assert!(world.set_entity_position(vehicle_id, EntityPosition::new(8.0, 90.0, -6.0, 0.0, 0.0)));
 
-    let passenger_position =
-        EntityPosition::new(8.0, 90.0 + EntityType::PIG.get_height() * 0.75, -6.0, 0.0, 0.0);
+    let passenger_position = EntityPosition::new(
+        8.0,
+        90.0 + EntityType::PIG.get_height() * 0.75,
+        -6.0,
+        0.0,
+        0.0,
+    );
     assert_eq!(
         world.entity_by_id(passenger_id).unwrap().get_position(),
         passenger_position
     );
     assert_eq!(
-        world.entity_by_id(nested_passenger_id).unwrap().get_position(),
+        world
+            .entity_by_id(nested_passenger_id)
+            .unwrap()
+            .get_position(),
         EntityPosition::new(
             8.0,
             passenger_position.get_y() + EntityType::ZOMBIE.get_height(),
@@ -264,14 +292,22 @@ fn reparenting_a_vehicle_with_existing_passengers_refreshes_the_whole_chain() {
 
     assert!(world.add_passenger(vehicle_id, passenger_id).unwrap());
 
-    let passenger_position =
-        EntityPosition::new(20.0, 70.0 + EntityType::PIG.get_height() * 0.75, 10.0, 0.0, 0.0);
+    let passenger_position = EntityPosition::new(
+        20.0,
+        70.0 + EntityType::PIG.get_height() * 0.75,
+        10.0,
+        0.0,
+        0.0,
+    );
     assert_eq!(
         world.entity_by_id(passenger_id).unwrap().get_position(),
         passenger_position
     );
     assert_eq!(
-        world.entity_by_id(nested_passenger_id).unwrap().get_position(),
+        world
+            .entity_by_id(nested_passenger_id)
+            .unwrap()
+            .get_position(),
         EntityPosition::new(
             20.0,
             passenger_position.get_y() + EntityType::ZOMBIE.get_height(),

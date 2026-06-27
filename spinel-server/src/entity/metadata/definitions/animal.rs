@@ -159,7 +159,11 @@ pub mod fox {
 pub mod frog {
     use super::*;
     value_definition!(get_variant, 17, MetadataValue::FrogVariant(1));
-    value_definition!(get_tongue_target, 18, MetadataValue::OptionalVarInt(Some(0)));
+    value_definition!(
+        get_tongue_target,
+        18,
+        MetadataValue::OptionalVarInt(Some(0))
+    );
 }
 
 pub mod ocelot {

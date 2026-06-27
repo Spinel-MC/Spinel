@@ -20,7 +20,9 @@ impl<'entity> WitherMeta<'entity> {
     }
 
     pub fn set_center_head(&mut self, center_head: Option<&Entity>) {
-        self.set_center_head_entity_id(center_head.map_or(0, |entity| entity.get_entity_id().get_value()));
+        self.set_center_head_entity_id(
+            center_head.map_or(0, |entity| entity.get_entity_id().get_value()),
+        );
     }
 
     pub fn get_left_head_entity_id(&self) -> i32 {
@@ -28,7 +30,9 @@ impl<'entity> WitherMeta<'entity> {
     }
 
     pub fn set_left_head(&mut self, left_head: Option<&Entity>) {
-        self.set_left_head_entity_id(left_head.map_or(0, |entity| entity.get_entity_id().get_value()));
+        self.set_left_head_entity_id(
+            left_head.map_or(0, |entity| entity.get_entity_id().get_value()),
+        );
     }
 
     pub fn get_right_head_entity_id(&self) -> i32 {
@@ -36,7 +40,9 @@ impl<'entity> WitherMeta<'entity> {
     }
 
     pub fn set_right_head(&mut self, right_head: Option<&Entity>) {
-        self.set_right_head_entity_id(right_head.map_or(0, |entity| entity.get_entity_id().get_value()));
+        self.set_right_head_entity_id(
+            right_head.map_or(0, |entity| entity.get_entity_id().get_value()),
+        );
     }
 
     pub fn get_invulnerable_time(&self) -> i32 {

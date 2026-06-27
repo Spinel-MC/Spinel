@@ -53,7 +53,10 @@ impl WorldSnapshot {
                 )
             })
             .collect::<Vec<_>>();
-        let entity_ids = entities.iter().map(|entity| entity.get_entity_id()).collect();
+        let entity_ids = entities
+            .iter()
+            .map(|entity| entity.get_entity_id())
+            .collect();
         Self {
             world: world.uuid(),
             name: world.name().clone(),

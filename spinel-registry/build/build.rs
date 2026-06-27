@@ -9,6 +9,7 @@ mod damage_type_entries;
 mod dynamic_registry_assets;
 mod entity_entries;
 mod item_entries;
+mod mob_effect_entries;
 mod sound_entries;
 mod static_protocol_entries;
 mod tag_entries;
@@ -21,6 +22,7 @@ use block_entries::{
 use dynamic_registry_assets::DYNAMIC_REGISTRY_ASSETS;
 use entity_entries::entity_entries;
 use item_entries::item_entries;
+use mob_effect_entries::mob_effect_entries;
 use sound_entries::sound_entries;
 
 const GENERATED_DIRECTORY: &str = "src/generated";
@@ -300,6 +302,12 @@ impl BuildScript {
         if type_name == "DamageType" {
             return self.damage_types();
         }
+        if type_name == "Enchantment" {
+            return self.enchantment_module();
+        }
+        if type_name == "MobEffect" {
+            return self.mob_effect_module();
+        }
         Ok(self.dynamic_module(type_name, &self.dynamic_registry_keys(registry_path)?))
     }
 
@@ -334,6 +342,40 @@ impl BuildScript {
         ))
     }
 
+    fn enchantment_module(&self) -> io::Result<String> {
+        let keys = self.dynamic_registry_keys("enchantment")?;
+        let constants = keys
+            .iter()
+            .map(|key| {
+                format!(
+                    "    pub const {}: RegistryKey<Self> = RegistryKey::vanilla_static(\"{}\");\n",
+                    const_name(key),
+                    vanilla_path(key)
+                )
+            })
+            .collect::<String>();
+        Ok(format!(
+            "use crate::{{DynamicRegistry, Identifier, RegistryKey}};\nuse crate::enchantment::Enchantment;\nuse spinel_nbt::parse_snbt_compound;\nuse std::collections::BTreeMap;\nconst ENCHANTMENT_ENTRIES: &str = include_str!(\"../../assets/enchantments.json\");\nimpl Enchantment {{\n{constants}}}\npub fn register_enchantments(registry: &mut DynamicRegistry<Enchantment>) {{\n    let entries: BTreeMap<String, String> = serde_json::from_str(ENCHANTMENT_ENTRIES).expect(\"SpinelExtractor enchantments.json is malformed\");\n    for (key, entry) in entries {{\n        let identifier: Identifier = key.parse().expect(\"SpinelExtractor enchantment key is malformed\");\n        let raw_nbt = parse_snbt_compound(&entry).expect(\"SpinelExtractor enchantment payload is malformed SNBT\");\n        let _ = registry.register_vanilla(RegistryKey::new(identifier), Enchantment::raw(raw_nbt));\n    }}\n}}\n"
+        ))
+    }
+
+    fn mob_effect_module(&self) -> io::Result<String> {
+        let entries = mob_effect_entries()?;
+        let constants = entries
+            .iter()
+            .map(|entry| {
+                format!(
+                    "    pub const {}: RegistryKey<Self> = RegistryKey::vanilla_static(\"{}\");\n",
+                    const_name(&entry.name),
+                    entry.name
+                )
+            })
+            .collect::<String>();
+        let registrations = entries.iter().map(|entry| format!("    let _ = registry.register_vanilla(MobEffect::{}, MobEffect::new({}, \"{}\".to_owned(), {}, {}));\n", const_name(&entry.name), entry.id, entry.translation_key, entry.color, entry.instantaneous)).collect::<String>();
+        Ok(format!(
+            "use crate::{{DynamicRegistry, RegistryKey}};\nuse crate::mob_effect::MobEffect;\nimpl MobEffect {{\n{constants}}}\npub fn register_mob_effects(registry: &mut DynamicRegistry<MobEffect>) {{\n{registrations}}}\n"
+        ))
+    }
     fn dynamic_module(&self, type_name: &str, keys: &[String]) -> String {
         let constants = keys
             .iter()

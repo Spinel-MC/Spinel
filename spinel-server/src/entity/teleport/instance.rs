@@ -14,7 +14,11 @@ impl From<EntityPosition> for EntityTeleportRequest {
     fn from(position: EntityPosition) -> Self {
         Self {
             position,
-            velocity: Velocity(Vector3d { x: 0.0, y: 0.0, z: 0.0 }),
+            velocity: Velocity(Vector3d {
+                x: 0.0,
+                y: 0.0,
+                z: 0.0,
+            }),
             chunks: None,
             flags: TeleportFlags::absolute().with(TeleportFlags::DELTA_COORD),
             should_confirm: true,

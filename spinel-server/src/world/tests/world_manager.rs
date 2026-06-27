@@ -106,6 +106,12 @@ fn world_manager_add_passenger_moves_passenger_to_vehicle_world_first() {
     assert_eq!(passenger.get_vehicle(), Some(vehicle_id));
     assert_eq!(
         passenger.get_position(),
-        EntityPosition::new(12.0, 70.0 + EntityType::PIG.get_height() * 0.75, 8.0, 0.0, 0.0,)
+        EntityPosition::new(
+            12.0,
+            70.0 + EntityType::PIG.get_height() * 0.75,
+            8.0,
+            0.0,
+            0.0,
+        )
     );
 }

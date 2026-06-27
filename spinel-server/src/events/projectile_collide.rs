@@ -17,11 +17,11 @@ impl ProjectileCollideEvent {
         }
     }
 
-    pub const fn projectile_id(&self) -> EntityId {
+    pub const fn get_projectile_id(&self) -> EntityId {
         self.projectile_id
     }
 
-    pub const fn collision_position(&self) -> EntityPosition {
+    pub const fn get_collision_position(&self) -> EntityPosition {
         self.collision_position
     }
 

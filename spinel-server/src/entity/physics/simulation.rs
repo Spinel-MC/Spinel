@@ -33,8 +33,11 @@ pub fn simulate_movement(
     } else {
         blockless_movement(position, velocity_per_tick)
     };
-    let bordered_position =
-        apply_world_border(position, collision.get_new_position(), world.get_world_border());
+    let bordered_position = apply_world_border(
+        position,
+        collision.get_new_position(),
+        world.get_world_border(),
+    );
     let position_changed = bordered_position.get_x() != position.get_x()
         || bordered_position.get_y() != position.get_y()
         || bordered_position.get_z() != position.get_z();

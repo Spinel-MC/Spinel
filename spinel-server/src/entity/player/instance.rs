@@ -1,11 +1,11 @@
-use crate::entity::player::PlayerMeta;
+use crate::entity::EntityPose;
 use crate::entity::generic_entity::EntityAerodynamics;
 use crate::entity::metadata::{MetadataHolder, definitions};
 use crate::entity::physics::{EntityPhysicsResult, knockback_velocity, simulate_movement};
 use crate::entity::player::BelowNameTag;
 use crate::entity::player::ChunkUpdateLimitChecker;
 use crate::entity::player::PendingResourcePacks;
-use crate::entity::EntityPose;
+use crate::entity::player::PlayerMeta;
 use crate::entity::player::PlayerViewerSnapshot;
 use crate::entity::player::chunks::PlayerChunk;
 use crate::entity::player::input::PlayerInputs;
@@ -504,7 +504,6 @@ impl Player {
         self.is_dead()
     }
 
-
     pub const fn is_dead(&self) -> bool {
         self.living.is_dead()
     }
@@ -522,7 +521,7 @@ impl Player {
     }
 
     pub fn is_on_fire(&self) -> bool {
-        self.metadata.flag(&definitions::is_on_fire())
+        self.metadata.get_flag(&definitions::is_on_fire())
     }
 
     pub fn set_fire_ticks(&mut self, fire_ticks: i32) {
@@ -579,7 +578,10 @@ impl Player {
     }
 
     pub fn get_additional_hearts(&self) -> f32 {
-        match self.metadata.get_value(&definitions::get_additional_hearts()) {
+        match self
+            .metadata
+            .get_value(&definitions::get_additional_hearts())
+        {
             MetadataValue::Float(additional_hearts) => additional_hearts,
             _ => 0.0,
         }
@@ -1238,7 +1240,6 @@ impl Player {
         PlayerMeta::new(self)
     }
 
-
     pub const fn get_pointers(&self) -> EntityPointers {
         EntityPointers::new(self.uuid, self.entity_id)
     }
@@ -1459,27 +1460,28 @@ impl Player {
     }
 
     pub fn is_sneaking(&self) -> bool {
-        self.metadata.flag(&definitions::is_crouching())
+        self.metadata.get_flag(&definitions::is_crouching())
     }
 
     pub fn is_sprinting(&self) -> bool {
-        self.metadata.flag(&definitions::is_sprinting())
+        self.metadata.get_flag(&definitions::is_sprinting())
     }
 
     pub fn is_swimming(&self) -> bool {
-        self.metadata.flag(&definitions::is_swimming())
+        self.metadata.get_flag(&definitions::is_swimming())
     }
 
     pub fn is_invisible(&self) -> bool {
-        self.metadata.flag(&definitions::is_invisible())
+        self.metadata.get_flag(&definitions::is_invisible())
     }
 
     pub fn is_glowing(&self) -> bool {
-        self.metadata.flag(&definitions::has_glowing_effect())
+        self.metadata.get_flag(&definitions::has_glowing_effect())
     }
 
     pub fn is_flying_with_elytra(&self) -> bool {
-        self.metadata.flag(&definitions::is_flying_with_elytra())
+        self.metadata
+            .get_flag(&definitions::is_flying_with_elytra())
     }
 
     pub fn get_air_ticks(&self) -> i32 {
@@ -1491,13 +1493,13 @@ impl Player {
 
     pub fn is_hand_active(&self) -> bool {
         self.metadata
-            .flag(&definitions::living_entity::is_hand_active())
+            .get_flag(&definitions::living_entity::is_hand_active())
     }
 
     pub fn get_active_hand(&self) -> PlayerHand {
         if self
             .metadata
-            .flag(&definitions::living_entity::get_active_hand())
+            .get_flag(&definitions::living_entity::get_active_hand())
         {
             return PlayerHand::Off;
         }
@@ -1506,7 +1508,7 @@ impl Player {
 
     pub fn is_in_riptide_spin_attack(&self) -> bool {
         self.metadata
-            .flag(&definitions::living_entity::is_riptide_spin_attack())
+            .get_flag(&definitions::living_entity::is_riptide_spin_attack())
     }
 
     pub fn get_effect_particles(&self) -> Vec<Particle> {
@@ -1681,7 +1683,9 @@ impl Player {
     }
 
     pub(crate) fn set_flying_with_elytra(&mut self, flying_with_elytra: bool) -> bool {
-        let old_flying_with_elytra = self.metadata.flag(&definitions::is_flying_with_elytra());
+        let old_flying_with_elytra = self
+            .metadata
+            .get_flag(&definitions::is_flying_with_elytra());
         self.metadata
             .set_flag(&definitions::is_flying_with_elytra(), flying_with_elytra);
         self.refresh_pose();
@@ -1690,8 +1694,10 @@ impl Player {
     }
 
     pub fn set_air_ticks(&mut self, air_ticks: i32) {
-        self.metadata
-            .set(&definitions::get_air_ticks(), MetadataValue::VarInt(air_ticks));
+        self.metadata.set(
+            &definitions::get_air_ticks(),
+            MetadataValue::VarInt(air_ticks),
+        );
         self.refresh_dirty_metadata_to_viewers();
     }
 
@@ -1760,7 +1766,10 @@ impl Player {
     }
 
     pub fn get_main_hand(&self) -> MainHand {
-        match self.metadata.get_value(&definitions::avatar::get_main_hand()) {
+        match self
+            .metadata
+            .get_value(&definitions::avatar::get_main_hand())
+        {
             MetadataValue::MainHand(main_hand) => main_hand,
             _ => MainHand::Right,
         }
@@ -1775,7 +1784,8 @@ impl Player {
     }
 
     pub fn is_cape_enabled(&self) -> bool {
-        self.metadata.flag(&definitions::avatar::is_cape_enabled())
+        self.metadata
+            .get_flag(&definitions::avatar::is_cape_enabled())
     }
 
     pub fn set_cape_enabled(&mut self, cape_enabled: bool) {
@@ -1786,7 +1796,7 @@ impl Player {
 
     pub fn is_jacket_enabled(&self) -> bool {
         self.metadata
-            .flag(&definitions::avatar::is_jacket_enabled())
+            .get_flag(&definitions::avatar::is_jacket_enabled())
     }
 
     pub fn set_jacket_enabled(&mut self, jacket_enabled: bool) {
@@ -1797,7 +1807,7 @@ impl Player {
 
     pub fn is_left_sleeve_enabled(&self) -> bool {
         self.metadata
-            .flag(&definitions::avatar::is_left_sleeve_enabled())
+            .get_flag(&definitions::avatar::is_left_sleeve_enabled())
     }
 
     pub fn set_left_sleeve_enabled(&mut self, left_sleeve_enabled: bool) {
@@ -1810,7 +1820,7 @@ impl Player {
 
     pub fn is_right_sleeve_enabled(&self) -> bool {
         self.metadata
-            .flag(&definitions::avatar::is_right_sleeve_enabled())
+            .get_flag(&definitions::avatar::is_right_sleeve_enabled())
     }
 
     pub fn set_right_sleeve_enabled(&mut self, right_sleeve_enabled: bool) {
@@ -1823,7 +1833,7 @@ impl Player {
 
     pub fn is_left_leg_enabled(&self) -> bool {
         self.metadata
-            .flag(&definitions::avatar::is_left_pants_leg_enabled())
+            .get_flag(&definitions::avatar::is_left_pants_leg_enabled())
     }
 
     pub fn set_left_leg_enabled(&mut self, left_leg_enabled: bool) {
@@ -1836,7 +1846,7 @@ impl Player {
 
     pub fn is_right_leg_enabled(&self) -> bool {
         self.metadata
-            .flag(&definitions::avatar::is_right_pants_leg_enabled())
+            .get_flag(&definitions::avatar::is_right_pants_leg_enabled())
     }
 
     pub fn set_right_leg_enabled(&mut self, right_leg_enabled: bool) {
@@ -1848,7 +1858,8 @@ impl Player {
     }
 
     pub fn is_hat_enabled(&self) -> bool {
-        self.metadata.flag(&definitions::avatar::is_hat_enabled())
+        self.metadata
+            .get_flag(&definitions::avatar::is_hat_enabled())
     }
 
     pub fn set_hat_enabled(&mut self, hat_enabled: bool) {
@@ -1883,8 +1894,10 @@ impl Player {
     }
 
     pub fn set_score(&mut self, score: i32) {
-        self.metadata
-            .set(&definitions::player::get_score(), MetadataValue::VarInt(score));
+        self.metadata.set(
+            &definitions::player::get_score(),
+            MetadataValue::VarInt(score),
+        );
         self.refresh_dirty_metadata_to_viewers();
     }
 
@@ -2053,8 +2066,11 @@ impl Player {
     }
 
     pub fn take_knockback(&mut self, strength: f32, x: f64, z: f64) {
-        let living_strength =
-            strength * (1.0 - self.living.get_attribute_value(Attribute::KNOCKBACK_RESISTANCE) as f32);
+        let living_strength = strength
+            * (1.0
+                - self
+                    .living
+                    .get_attribute_value(Attribute::KNOCKBACK_RESISTANCE) as f32);
         self.velocity = knockback_velocity(self.velocity, self.on_ground, living_strength, x, z);
     }
 
@@ -2132,7 +2148,7 @@ impl Player {
     pub(crate) fn get_attach_entity_packet(
         &self,
     ) -> spinel_core::network::clientbound::play::attach_entity::AttachEntityPacket {
-        self.leash.packet(self.entity_id)
+        self.leash.get_packet(self.entity_id)
     }
 
     pub const fn get_synchronization_ticks(&self) -> u64 {
@@ -2533,11 +2549,9 @@ impl Player {
             return false;
         }
         let current_item_stack = self.get_equipment(equipment_slot);
-        self.living.get_attributes_mut().update_equipment_attributes(
-            &previous_item_stack,
-            &current_item_stack,
-            equipment_slot,
-        );
+        self.living
+            .get_attributes_mut()
+            .update_equipment_attributes(&previous_item_stack, &current_item_stack, equipment_slot);
         let slot = self
             .inventory
             .slot_for_equipment(equipment_slot, self.held_slot);
@@ -2561,8 +2575,8 @@ impl Player {
         server: &mut crate::server::MinecraftServer,
         client: &mut Client,
     ) -> bool {
-        let main_hand_item = self.item_in_hand(PlayerHand::Main);
-        let off_hand_item = self.item_in_hand(PlayerHand::Off);
+        let main_hand_item = self.get_item_in_hand(PlayerHand::Main);
+        let off_hand_item = self.get_item_in_hand(PlayerHand::Off);
         let mut event =
             PlayerSwapItemEvent::new(self as *mut Player, off_hand_item, main_hand_item);
         event.dispatch(server, client);
@@ -2585,7 +2599,7 @@ impl Player {
         server: &mut crate::server::MinecraftServer,
         client: &mut Client,
     ) -> bool {
-        let hand_item = self.item_in_hand(PlayerHand::Main);
+        let hand_item = self.get_item_in_hand(PlayerHand::Main);
         if hand_item.is_air() {
             return false;
         }
@@ -2674,7 +2688,7 @@ impl Player {
     }
 
     fn dispatch_player_respawn_event(&mut self) -> PlayerSpawnPoint {
-        let respawn_point = self.respawn_point();
+        let respawn_point = self.get_respawn_point();
         let Some(client_ptr) = self.client else {
             return respawn_point;
         };
@@ -2782,7 +2796,7 @@ impl Player {
         shift: bool,
         sprint: bool,
     ) -> bool {
-        let old_shift = self.metadata.flag(&definitions::is_crouching());
+        let old_shift = self.metadata.get_flag(&definitions::is_crouching());
         self.inputs
             .refresh(forward, backward, left, right, jump, shift, sprint);
         self.metadata.set_flag(&definitions::is_crouching(), shift);
@@ -2815,7 +2829,10 @@ impl Player {
     }
 
     pub(crate) fn get_metadata_packet(&self) -> SetEntityDataPacket {
-        SetEntityDataPacket::new(self.get_entity_id().get_value(), self.metadata.get_entries())
+        SetEntityDataPacket::new(
+            self.get_entity_id().get_value(),
+            self.metadata.get_entries(),
+        )
     }
 
     pub(crate) fn get_dirty_metadata_packet(&mut self) -> Option<SetEntityDataPacket> {
@@ -2935,11 +2952,14 @@ impl Player {
     }
 
     pub(super) fn refresh_pose(&mut self) {
-        let pose = if self.metadata.flag(&definitions::is_flying_with_elytra()) {
+        let pose = if self
+            .metadata
+            .get_flag(&definitions::is_flying_with_elytra())
+        {
             EntityPose::FallFlying
-        } else if self.metadata.flag(&definitions::is_swimming()) {
+        } else if self.metadata.get_flag(&definitions::is_swimming()) {
             EntityPose::Swimming
-        } else if self.metadata.flag(&definitions::is_crouching()) {
+        } else if self.metadata.get_flag(&definitions::is_crouching()) {
             EntityPose::Sneaking
         } else {
             EntityPose::Standing
@@ -2969,7 +2989,8 @@ impl Player {
     }
 
     pub(super) fn sync_health(&mut self) -> io::Result<()> {
-        let packet = SetHealthPacket::new(self.living.get_health(), self.food, self.food_saturation);
+        let packet =
+            SetHealthPacket::new(self.living.get_health(), self.food, self.food_saturation);
         let Some(client) = self.get_client_mut() else {
             return Ok(());
         };
@@ -3150,8 +3171,12 @@ impl Player {
         respawn_packet.dispatch(client)?;
         GameEventPacket::from(GameEvent::StartWaitingForLevelChunks).dispatch(client)?;
         ServerDifficultyPacket::normal(false).dispatch(client)?;
-        SetHealthPacket::new(self.get_health(), self.get_food(), self.get_food_saturation())
-            .dispatch(client)?;
+        SetHealthPacket::new(
+            self.get_health(),
+            self.get_food(),
+            self.get_food_saturation(),
+        )
+        .dispatch(client)?;
         SetExperiencePacket::new(
             self.get_experience(),
             self.get_experience_level(),

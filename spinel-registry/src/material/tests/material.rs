@@ -387,7 +387,7 @@ fn item_stack_has_attack_speed_modifier(item_stack: &ItemStack, amount: f64) -> 
         .get(ATTRIBUTE_MODIFIERS)
         .map(|attribute_list| {
             attribute_list.get_modifiers().iter().any(|modifier| {
-                modifier.attribute_type().to_string() == "minecraft:attack_speed"
+                modifier.get_attribute_type().to_string() == "minecraft:attack_speed"
                     && (modifier.get_amount() - amount).abs() < f64::EPSILON
             })
         })

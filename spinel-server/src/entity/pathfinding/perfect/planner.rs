@@ -53,7 +53,7 @@ pub struct PerfectPathPlanner {
 }
 
 impl PerfectPathPlanner {
-    pub fn get_plan(&self, request: PerfectPathRequest<'_>) -> PerfectPathResult {
+    pub fn plan(&self, request: PerfectPathRequest<'_>) -> PerfectPathResult {
         if (request.is_cancelled)() {
             return PerfectPathResult {
                 termination: PerfectPathTermination::Cancelled,

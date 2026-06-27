@@ -119,17 +119,20 @@ impl GoalSelector for RangedAttackGoal {
             self.should_stop = true;
             return;
         };
-        let distance_squared = creature.get_position().get_distance_squared(target.get_position());
+        let distance_squared = creature
+            .get_position()
+            .get_distance_squared(target.get_position());
         let mut should_come_close = false;
         if distance_squared <= self.attack_range_squared
             && cooldown_is_ready(time, self.last_shot_tick, self.delay_ticks)
         {
             if world.has_line_of_sight(creature.get_entity_id(), target.get_entity_id()) {
                 let projectile = (self.projectile_generator)(creature);
-                let target_position =
-                    target
-                        .get_position()
-                        .get_offset(0.0, target.get_entity_type().get_eye_height(), 0.0);
+                let target_position = target.get_position().get_offset(
+                    0.0,
+                    target.get_entity_type().get_eye_height(),
+                    0.0,
+                );
                 creature.queue_projectile(projectile, target_position, self.power, self.spread);
                 self.last_shot_tick = Some(time);
             } else {

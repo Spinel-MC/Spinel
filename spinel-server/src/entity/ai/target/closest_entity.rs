@@ -34,7 +34,9 @@ impl TargetSelector for ClosestEntityTarget {
             .filter(|entity| !entity.is_removed())
             .filter(|entity| (self.target_predicate)(*entity))
             .filter_map(|entity| {
-                let distance_squared = entity.get_position().get_distance_squared(creature.get_position());
+                let distance_squared = entity
+                    .get_position()
+                    .get_distance_squared(creature.get_position());
                 (distance_squared <= maximum_distance_squared)
                     .then_some((entity.get_entity_id(), distance_squared))
             })

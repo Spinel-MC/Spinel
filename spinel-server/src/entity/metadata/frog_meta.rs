@@ -19,7 +19,7 @@ impl<'entity> FrogMeta<'entity> {
         &self,
         registries: &Registries,
     ) -> Option<RegistryKey<frog_variant::FrogVariant>> {
-        self.get_entity().g(registries)
+        self.get_entity().get_frog_variant_metadata(registries)
     }
 
     pub fn set_variant(
