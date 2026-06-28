@@ -8,6 +8,6 @@ fn on_pre_login(event: &mut PreLoginEvent, _server: &mut MinecraftServer) {
     event.should_authenticate = false;
     println!(
         "PreLoginEvent: User {} is attempting to log in.",
-        event.get_username()
+        event.username()
     );
 }

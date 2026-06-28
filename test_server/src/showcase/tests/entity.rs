@@ -35,7 +35,7 @@ fn entity_showcase_controls_minestom_and_vanilla_physics_zombies_together() {
             _ => None,
         })
         .collect::<Vec<_>>();
-    starts.sort_by(|left, right| left.z().total_cmp(&right.z()));
+    starts.sort_by(|left, right| left.get_z().total_cmp(&right.get_z()));
 
     assert_eq!(starts.len(), 2);
     assert!(EntityShowcase::pathfind(
@@ -54,7 +54,8 @@ fn entity_showcase_controls_minestom_and_vanilla_physics_zombies_together() {
         })
         .filter(|creature| {
             starts.iter().all(|start| {
-                creature.get_position().x() != start.x() || creature.get_position().z() != start.z()
+                creature.get_position().get_x() != start.get_x()
+                    || creature.get_position().get_z() != start.get_z()
             })
         })
         .count();
@@ -90,7 +91,7 @@ fn entity_showcase_controls_minestom_and_vanilla_physics_zombies_individually() 
             _ => None,
         })
         .collect::<Vec<_>>();
-    starts.sort_by(|left, right| left.z().total_cmp(&right.z()));
+    starts.sort_by(|left, right| left.get_z().total_cmp(&right.get_z()));
     let minestom_start = starts[0];
     let vanilla_start = starts[1];
 
@@ -101,7 +102,7 @@ fn entity_showcase_controls_minestom_and_vanilla_physics_zombies_individually() 
     ));
     world.tick();
     let positions_after_minestom_stick = creature_positions_by_z(world);
-    assert!(positions_after_minestom_stick[0].x() != minestom_start.x());
+    assert!(positions_after_minestom_stick[0].get_x() != minestom_start.get_x());
     assert_eq!(positions_after_minestom_stick[1], vanilla_start);
 
     assert!(EntityShowcase::pathfind(
@@ -111,7 +112,7 @@ fn entity_showcase_controls_minestom_and_vanilla_physics_zombies_individually() 
     ));
     world.tick();
     let positions_after_vanilla_stick = creature_positions_by_z(world);
-    assert!(positions_after_vanilla_stick[1].x() != vanilla_start.x());
+    assert!(positions_after_vanilla_stick[1].get_x() != vanilla_start.get_x());
 }
 
 #[test]
@@ -148,10 +149,10 @@ fn entity_showcase_pathfinding_sticks_are_added_without_replacing_occupied_slots
     assert!(player.get_inventory().set_item_stack(1, emerald.clone()));
 
     assert_eq!(controls.give_to_player(&mut player), vec![true, true, true]);
-    assert_eq!(player.inventory_ref().get_item_stack(0), Some(&diamond));
-    assert_eq!(player.inventory_ref().get_item_stack(1), Some(&emerald));
+    assert_eq!(player.get_inventory_ref().get_item_stack(0), Some(&diamond));
+    assert_eq!(player.get_inventory_ref().get_item_stack(1), Some(&emerald));
     let stored_pathfinding_sticks = player
-        .inventory_ref()
+        .get_inventory_ref()
         .item_stacks()
         .iter()
         .filter(|item_stack| item_stack.material() == &spinel::registry::Material::STICK)
@@ -170,8 +171,8 @@ fn entity_showcase_pathfinding_sticks_are_added_without_replacing_occupied_slots
     world.tick();
     let positions_after_pathfind = creature_positions_by_z(world);
 
-    assert!(positions_after_pathfind[0].x() != starts[0].x());
-    assert!(positions_after_pathfind[1].x() != starts[1].x());
+    assert!(positions_after_pathfind[0].get_x() != starts[0].get_x());
+    assert!(positions_after_pathfind[1].get_x() != starts[1].get_x());
 }
 fn creature_positions_by_z(world: &spinel::server::world::World) -> Vec<EntityPosition> {
     let mut positions = world
@@ -181,6 +182,6 @@ fn creature_positions_by_z(world: &spinel::server::world::World) -> Vec<EntityPo
             _ => None,
         })
         .collect::<Vec<_>>();
-    positions.sort_by(|left, right| left.z().total_cmp(&right.z()));
+    positions.sort_by(|left, right| left.get_z().total_cmp(&right.get_z()));
     positions
 }

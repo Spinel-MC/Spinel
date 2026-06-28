@@ -39,16 +39,21 @@ impl SpawnCommand {
             return CommandExecutionResult::precondition_failed();
         };
         let player_position = player.get_position();
-        let Some(world) = player.world() else {
+        let Some(world) = player.get_world() else {
             return CommandExecutionResult::precondition_failed();
         };
         let (x, y, z) = position.resolve(
-            player_position.x(),
-            player_position.y(),
-            player_position.z(),
+            player_position.get_x(),
+            player_position.get_y(),
+            player_position.get_z(),
         );
-        let entity_position =
-            EntityPosition::new(x, y, z, player_position.yaw(), player_position.pitch());
+        let entity_position = EntityPosition::new(
+            x,
+            y,
+            z,
+            player_position.get_yaw(),
+            player_position.get_pitch(),
+        );
         match world.spawn_entity(entity_type, entity_position, context.nbt_compound("nbt")) {
             Ok(_) => CommandExecutionResult::success(),
             Err(_) => CommandExecutionResult::precondition_failed(),

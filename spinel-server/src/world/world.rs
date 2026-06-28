@@ -1835,6 +1835,10 @@ impl World {
 
     pub(crate) fn add_entity_after_instance_event(&mut self, mut entity: Entity) {
         entity.set_world(self.uuid);
+        if let Entity::Creature(creature) = &mut entity {
+            creature.set_event_dispatcher(self.event_dispatcher);
+            creature.set_pathfinding_world(Arc::new(self.update_snapshot()));
+        }
         self.entity_tracker.register(&entity);
         let entity_id = entity.get_entity_id();
         self.entities.push(entity);
@@ -8065,4 +8069,3 @@ fn distinct_entities_mut(
     let (before_first, from_first) = entities.split_at_mut(first_index);
     (&mut from_first[0], &mut before_first[second_index])
 }
-

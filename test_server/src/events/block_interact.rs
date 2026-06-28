@@ -92,8 +92,8 @@ fn pathfind_showcase_zombie(
     let hand = event.hand();
     let block_position = event.block_position();
     let player = event.player();
-    let pathfinding_stick = player.item_in_hand(hand);
-    let Some(world_id) = player.world().map(|world| world.uuid()) else {
+    let pathfinding_stick = player.get_item_in_hand(hand);
+    let Some(world_id) = player.get_world().map(|world| world.uuid()) else {
         return false;
     };
     let Some(world) = server.world_manager.world_mut(world_id) else {
@@ -111,7 +111,7 @@ fn sign_player_context(
 )> {
     let player = event.player();
     Some((
-        player.current_world()?,
+        player.get_current_world()?,
         player.get_position(),
         player.get_uuid(),
     ))

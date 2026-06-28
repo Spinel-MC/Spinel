@@ -112,15 +112,23 @@ fn assert_player_has_pathfinding_stick(
     let world = server.world_manager.world(world_id).unwrap();
     let player = world.player_by_uuid(player_uuid).unwrap();
     assert_eq!(
-        player.item_in_hand(PlayerHand::Main).material(),
+        player.get_item_in_hand(PlayerHand::Main).material(),
         &Material::STICK
     );
     assert_eq!(
-        player.inventory_ref().get_item_stack(1).unwrap().material(),
+        player
+            .get_inventory_ref()
+            .get_item_stack(1)
+            .unwrap()
+            .material(),
         &Material::STICK
     );
     assert_eq!(
-        player.inventory_ref().get_item_stack(2).unwrap().material(),
+        player
+            .get_inventory_ref()
+            .get_item_stack(2)
+            .unwrap()
+            .material(),
         &Material::STICK
     );
 }

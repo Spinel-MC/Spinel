@@ -51,25 +51,25 @@ impl EntityShowcase {
         origin: EntityPosition,
     ) -> io::Result<EntityShowcaseControls> {
         let minestom_zombie_position = EntityPosition::new(
-            origin.x() + 3.0,
-            origin.y(),
-            origin.z(),
-            origin.yaw(),
-            origin.pitch(),
+            origin.get_x() + 3.0,
+            origin.get_y(),
+            origin.get_z(),
+            origin.get_yaw(),
+            origin.get_pitch(),
         );
         let vanilla_zombie_position = EntityPosition::new(
-            origin.x() + 3.0,
-            origin.y(),
-            origin.z() + 2.0,
-            origin.yaw(),
-            origin.pitch(),
+            origin.get_x() + 3.0,
+            origin.get_y(),
+            origin.get_z() + 2.0,
+            origin.get_yaw(),
+            origin.get_pitch(),
         );
         let item_position = EntityPosition::new(
-            origin.x() + 5.0,
-            origin.y() + 1.0,
-            origin.z() + 5.0,
-            origin.yaw(),
-            origin.pitch(),
+            origin.get_x() + 5.0,
+            origin.get_y() + 1.0,
+            origin.get_z() + 5.0,
+            origin.get_yaw(),
+            origin.get_pitch(),
         );
         let Some(world) = server.world_manager.world_mut(world_id) else {
             return Err(io::Error::new(
@@ -87,7 +87,7 @@ impl EntityShowcase {
         }
         let mut vanilla_zombie = Self::zombie(vanilla_zombie_position, "Vanilla Physics");
         vanilla_zombie
-            .navigator_mut()
+            .get_navigator_mut()
             .set_node_follower(VanillaGroundNodeFollower::default());
         let vanilla_zombie_id = vanilla_zombie.get_entity_id();
         if !vanilla_zombie.set_instance(world) {
@@ -144,7 +144,7 @@ impl EntityShowcase {
         zombie.set_position(position);
         zombie.set_custom_name(Some(Component::text(physics_name).build()));
         zombie.set_custom_name_visible(true);
-        zombie.entity_meta_mut().as_zombie().expect("msg");
+        zombie.get_entity_meta_mut().as_zombie().expect("msg");
 
         zombie
     }
@@ -177,7 +177,7 @@ impl EntityShowcase {
 
     fn pathfind_zombie(world: &mut World, zombie_id: i32, destination: EntityPosition) -> bool {
         world
-            .entity_mut(EntityId::from_raw(zombie_id))
+            .get_entity_mut(EntityId::from_raw(zombie_id))
             .is_some_and(|entity| {
                 let Entity::Creature(zombie) = entity else {
                     return false;

@@ -24,9 +24,9 @@ impl WorldShowcase {
                 "Player world was not found.",
             ));
         };
-        let base_x = origin.x() as i32;
-        let base_y = origin.y() as i32;
-        let base_z = origin.z() as i32;
+        let base_x = origin.get_x() as i32;
+        let base_y = origin.get_y() as i32;
+        let base_z = origin.get_z() as i32;
         world.set_time(6_000)?;
         let weather = Weather::new(0.5, 0.0)
             .map_err(|error| io::Error::new(io::ErrorKind::InvalidInput, error))?;
