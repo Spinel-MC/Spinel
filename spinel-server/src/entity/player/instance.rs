@@ -1968,6 +1968,27 @@ impl Player {
         &self.inventory
     }
 
+    pub fn add_item_stacks(&mut self, item_stacks: Vec<ItemStack>) -> Vec<bool> {
+        let added_item_stacks = self.inventory.add_item_stacks(item_stacks);
+        let _ = self.sync_dirty_player_inventory_slots();
+        added_item_stacks
+    }
+
+    fn sync_dirty_player_inventory_slots(&mut self) -> bool {
+        let dirty_slots = self.inventory.drain_dirty_slots();
+        if dirty_slots.is_empty() {
+            return true;
+        }
+        let Some(client) = self.client else {
+            return false;
+        };
+        let client = unsafe { &mut *(client as *mut Client) };
+        dirty_slots.into_iter().all(|dirty_slot| {
+            self.sync_player_inventory_slot(dirty_slot as i32, client)
+                .is_ok()
+        })
+    }
+
     pub fn open_inventory(&mut self, inventory: Inventory) {
         self.open_inventory = Some(inventory);
         let Some(client) = self.client else {

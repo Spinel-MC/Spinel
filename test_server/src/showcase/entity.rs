@@ -24,7 +24,7 @@ pub struct EntityShowcaseControls {
 
 impl EntityShowcaseControls {
     pub fn give_to_player(self, player: &mut Player) -> Vec<bool> {
-        player.get_inventory().add_item_stacks(vec![
+        player.add_item_stacks(vec![
             self.dual_pathfinding_stick,
             self.minestom_pathfinding_stick,
             self.vanilla_pathfinding_stick,

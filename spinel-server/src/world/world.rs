@@ -638,19 +638,39 @@ impl World {
             .find(|entity| match entity {
                 Entity::Creature(entity) => {
                     entity.can_prevent_block_placement()
-                        && entity.get_intersects_box_at(block_center, block_box)
+                        && entity_strictly_intersects_block(
+                            entity.get_relative_start(),
+                            entity.get_relative_end(),
+                            block_center,
+                            block_box,
+                        )
                 }
                 Entity::ExperienceOrb(entity) => {
                     entity.can_prevent_block_placement()
-                        && entity.get_intersects_box_at(block_center, block_box)
+                        && entity_strictly_intersects_block(
+                            entity.get_relative_start(),
+                            entity.get_relative_end(),
+                            block_center,
+                            block_box,
+                        )
                 }
                 Entity::Generic(entity) => {
                     entity.can_prevent_block_placement()
-                        && entity.get_intersects_box_at(block_center, block_box)
+                        && entity_strictly_intersects_block(
+                            entity.get_relative_start(),
+                            entity.get_relative_end(),
+                            block_center,
+                            block_box,
+                        )
                 }
                 Entity::Item(entity) => {
                     entity.can_prevent_block_placement()
-                        && entity.get_intersects_box_at(block_center, block_box)
+                        && entity_strictly_intersects_block(
+                            entity.get_relative_start(),
+                            entity.get_relative_end(),
+                            block_center,
+                            block_box,
+                        )
                 }
                 Entity::Player(player) => {
                     player.can_prevent_block_placement()
@@ -658,7 +678,12 @@ impl World {
                 }
                 Entity::Projectile(entity) => {
                     entity.can_prevent_block_placement()
-                        && entity.get_intersects_box_at(block_center, block_box)
+                        && entity_strictly_intersects_block(
+                            entity.get_relative_start(),
+                            entity.get_relative_end(),
+                            block_center,
+                            block_box,
+                        )
                 }
             })
             .map(Entity::get_entity_id)
@@ -992,6 +1017,15 @@ impl World {
 
     pub fn update_snapshot(&self) -> WorldSnapshot {
         WorldSnapshot::from_world(self)
+    }
+
+    fn refresh_creature_pathfinding_worlds(&mut self) {
+        let pathfinding_world = Arc::new(self.update_snapshot());
+        self.entities.iter_mut().for_each(|entity| {
+            if let Entity::Creature(creature) = entity {
+                creature.set_pathfinding_world(pathfinding_world.clone());
+            }
+        });
     }
 
     pub fn set_chunk_loader(&mut self, chunk_loader: impl ChunkLoader + 'static) {
@@ -4195,6 +4229,7 @@ impl World {
         let mut entity_touches = Vec::new();
         let mut moved_entities = Vec::new();
         let mut entity_movements = Vec::new();
+        let mut navigation_velocity_packets = Vec::new();
         let mut mergeable_item_entity_ids = Vec::new();
         let mut experience_orb_ids = Vec::new();
         let mut projectile_paths = Vec::new();
@@ -4217,7 +4252,12 @@ impl World {
                         if let Some(movement) = entity.movement_tick(&world_snapshot) {
                             entity_movements.push(movement);
                         }
+                        let velocity_before_navigation = entity.get_velocity();
                         entity.tick_after_movement(&world_snapshot, self.world_age as u64);
+                        if entity.get_velocity() != velocity_before_navigation {
+                            navigation_velocity_packets
+                                .push((entity.get_entity_id(), entity.get_velocity_packet()));
+                        }
                         if let Some(movement) = entity.position_movement_after_tick() {
                             entity_movements.push(movement);
                         }
@@ -4369,6 +4409,11 @@ impl World {
         entity_movements
             .into_iter()
             .for_each(|movement| self.apply_entity_movement(movement));
+        navigation_velocity_packets
+            .into_iter()
+            .for_each(|(entity_id, velocity_packet)| {
+                let _ = self.send_packet_to_player_viewers_and_self(entity_id, velocity_packet);
+            });
         metadata_packets
             .into_iter()
             .for_each(|(entity_id, packet)| {
@@ -6179,6 +6224,7 @@ impl World {
         if do_block_updates {
             self.execute_neighbor_block_placement_rules(position, update_distance)?;
         }
+        self.refresh_creature_pathfinding_worlds();
         self.broadcast_block_update(position, block_state)?;
         self.broadcast_block_entity_update(position)?;
         self.invalidate_neighbor_chunk_lighting(position);
@@ -7751,12 +7797,26 @@ fn player_intersects_block(
         z: block_center.z + block_box.depth() / 2.0,
     };
 
-    player_start.x <= block_end.x
-        && player_end.x >= block_start.x
-        && player_start.y <= block_end.y
-        && player_end.y >= block_start.y
-        && player_start.z <= block_end.z
-        && player_end.z >= block_start.z
+    boxes_strictly_intersect(player_start, player_end, block_start, block_end)
+}
+
+fn entity_strictly_intersects_block(
+    entity_start: Vector3d,
+    entity_end: Vector3d,
+    block_center: Vector3d,
+    block_box: EntityBoundingBox,
+) -> bool {
+    let block_start = Vector3d {
+        x: block_center.x - block_box.get_width() / 2.0,
+        y: block_center.y,
+        z: block_center.z - block_box.depth() / 2.0,
+    };
+    let block_end = Vector3d {
+        x: block_center.x + block_box.get_width() / 2.0,
+        y: block_center.y + block_box.get_height(),
+        z: block_center.z + block_box.depth() / 2.0,
+    };
+    boxes_strictly_intersect(entity_start, entity_end, block_start, block_end)
 }
 
 fn player_pose_fits_at(world: &World, player_position: EntityPosition, pose: EntityPose) -> bool {
@@ -7831,6 +7891,20 @@ fn boxes_intersect(
         && first_end.y >= second_start.y
         && first_start.z <= second_end.z
         && first_end.z >= second_start.z
+}
+
+fn boxes_strictly_intersect(
+    first_start: Vector3d,
+    first_end: Vector3d,
+    second_start: Vector3d,
+    second_end: Vector3d,
+) -> bool {
+    first_start.x < second_end.x
+        && first_end.x > second_start.x
+        && first_start.y < second_end.y
+        && first_end.y > second_start.y
+        && first_start.z < second_end.z
+        && first_end.z > second_start.z
 }
 
 #[derive(Clone, Copy)]

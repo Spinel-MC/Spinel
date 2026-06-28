@@ -312,5 +312,3 @@ impl AsMut<GenericEntity> for EntityCreature {
         &mut self.entity
     }
 }
-
-

@@ -158,6 +158,13 @@ impl EntityPhysicsResult {
         }
     }
 
+    pub const fn with_on_ground(self, is_on_ground: bool) -> Self {
+        Self {
+            is_on_ground,
+            ..self
+        }
+    }
+
     pub const fn as_cached(self) -> Self {
         Self {
             cached: true,

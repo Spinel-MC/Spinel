@@ -248,21 +248,25 @@ fn world_entity_tick_event_observes_effect_before_same_tick_expiry() {
     let server_ptr = &mut server as *mut MinecraftServer as usize;
     let world = server.world_manager.world_mut(world_uuid).unwrap();
     world.use_server_event_dispatcher(server_ptr);
-    assert!(world
-        .add_entity_effect(
-            entity_id,
-            TimedPotionEffect::new(MobEffect::SPEED, 0, 0, 1, 0, 0),
-        )
-        .unwrap());
+    assert!(
+        world
+            .add_entity_effect(
+                entity_id,
+                TimedPotionEffect::new(MobEffect::SPEED, 0, 0, 1, 0, 0),
+            )
+            .unwrap()
+    );
 
     world.tick_with_registries(&Registries::new_vanilla());
 
     assert!(LIVING_EFFECT_TICK_EVENT_OBSERVED_ACTIVE_EFFECT.load(Ordering::SeqCst));
-    assert!(world
-        .get_entity(entity_id)
-        .unwrap()
-        .get_effect(&MobEffect::SPEED)
-        .is_none());
+    assert!(
+        world
+            .get_entity(entity_id)
+            .unwrap()
+            .get_effect(&MobEffect::SPEED)
+            .is_none()
+    );
     reset_living_effect_test_state();
 }
 #[test]
@@ -364,5 +368,3 @@ fn reset_living_effect_test_state() {
     LIVING_EFFECT_REMOVE_EVENT_ENTITY_ACCESSOR_MATCHED.store(false, Ordering::SeqCst);
     LIVING_EFFECT_TICK_EVENT_OBSERVED_ACTIVE_EFFECT.store(false, Ordering::SeqCst);
 }
-
-

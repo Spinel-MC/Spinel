@@ -128,6 +128,28 @@ fn navigator_exposes_minestom_modifiable_node_collection() {
 }
 
 #[test]
+fn navigator_default_request_uses_minestom_bounding_box_distance_and_path_limits() {
+    let world = pathfinding_world();
+    let snapshot = world.update_snapshot();
+    let mut navigator = Navigator::default();
+    let start = EntityPosition::new(0.5, 65.0, 0.5, 0.0, 0.0);
+
+    assert!(
+        navigator
+            .set_path_to(
+                &snapshot,
+                start,
+                EntityType::ZOMBIE.get_bounding_box(),
+                true,
+                PathRequest::from(EntityPosition::new(1.1, 65.0, 0.5, 0.0, 0.0)),
+            )
+            .unwrap()
+    );
+    let path = navigator.get_path().unwrap();
+    assert_eq!(path.get_maximum_distance(), 50.0);
+    assert_eq!(path.get_variance(), 20.0);
+}
+#[test]
 fn path_node_identity_uses_floored_block_coordinates() {
     let first = PathNode::new(
         EntityPosition::new(1.1, 64.9, -2.1, 0.0, 0.0),
@@ -296,7 +318,7 @@ fn navigator_follows_computed_path_and_runs_completion_once() {
         navigator.state(),
         PathState::Computed | PathState::BestEffort
     ));
-    assert!(navigator.is_complete(entity.get_position()));
+    assert!(!navigator.is_complete(entity.get_position()));
 
     for _ in 0..200 {
         entity.movement_tick(&snapshot);
@@ -519,12 +541,7 @@ fn navigator_recomputes_after_repath_current_node() {
     ]);
 
     navigator.tick(&mut entity, &snapshot, false);
-    assert_eq!(
-        navigator.get_path().unwrap().get_current_type(),
-        Some(PathNodeType::Repath)
-    );
 
-    navigator.tick(&mut entity, &snapshot, false);
     assert_ne!(
         navigator.get_path().unwrap().get_current_type(),
         Some(PathNodeType::Repath)
@@ -563,6 +580,56 @@ fn navigator_marks_path_invalid_without_next_target() {
     navigator.tick(&mut entity, &snapshot, false);
 
     assert_eq!(navigator.state(), PathState::Invalid);
+}
+
+#[test]
+fn navigator_moves_toward_jump_node_before_executing_jump_like_minestom() {
+    let world = pathfinding_world();
+    let snapshot = world.update_snapshot();
+    let mut entity = GenericEntity::new(EntityType::ZOMBIE);
+    entity.set_position(EntityPosition::new(0.5, 65.0, 0.5, 0.0, 0.0));
+    entity.set_on_ground(true);
+    let follower_events = Arc::new(Mutex::new(Vec::new()));
+    let mut navigator = Navigator::default();
+    navigator.set_node_follower(RecordingNodeFollower {
+        events: Arc::clone(&follower_events),
+    });
+
+    assert!(
+        navigator
+            .set_path_to(
+                &snapshot,
+                entity.get_position(),
+                entity.get_bounding_box(),
+                true,
+                PathRequest::from(EntityPosition::new(4.5, 66.0, 0.5, 0.0, 0.0))
+                    .with_minimum_distance(0.25),
+            )
+            .unwrap()
+    );
+    let path = navigator.get_path_mut().unwrap();
+    path.set_state(PathState::Following);
+    path.set_nodes(vec![
+        PathNode::new(
+            EntityPosition::new(1.5, 66.0, 0.5, 0.0, 0.0),
+            0.0,
+            0.0,
+            PathNodeType::Jump,
+        ),
+        PathNode::new(
+            EntityPosition::new(2.5, 66.0, 0.5, 0.0, 0.0),
+            0.0,
+            0.0,
+            PathNodeType::Walk,
+        ),
+    ]);
+
+    navigator.tick(&mut entity, &snapshot, false);
+
+    assert_eq!(
+        follower_events.lock().unwrap().as_slice(),
+        &["move", "jump"]
+    );
 }
 
 #[test]
@@ -644,6 +711,104 @@ fn entity_creature_set_path_to_owns_pathfinding_request() {
     };
 
     assert_eq!(creature.get_navigator().goal_position(), Some(destination));
+}
+
+#[test]
+fn entity_creature_set_path_to_observes_blocks_placed_after_spawn() {
+    let mut world = pathfinding_world();
+    let mut creature = EntityCreature::new(EntityType::ZOMBIE);
+    creature.set_position(EntityPosition::new(0.5, 65.0, 0.5, 0.0, 0.0));
+    creature.set_on_ground(true);
+    let creature_id = creature.get_entity_id();
+    creature.set_instance(&mut world);
+    world
+        .set_block(BlockPosition::new(1, 65, 0), Block::STONE)
+        .unwrap();
+    let Entity::Creature(creature) = world.entity_by_id_mut(creature_id).unwrap() else {
+        panic!("creature entity must preserve its subtype");
+    };
+
+    assert!(
+        creature
+            .set_path_to(
+                PathRequest::from(EntityPosition::new(2.5, 65.0, 0.5, 0.0, 0.0))
+                    .with_minimum_distance(0.35)
+            )
+            .unwrap()
+    );
+    assert!(
+        creature
+            .get_navigator()
+            .get_nodes()
+            .unwrap()
+            .iter()
+            .any(|node| node.get_node_type() == PathNodeType::Jump)
+    );
+}
+#[test]
+fn world_tick_pathfinding_zombie_jumps_over_one_block_obstruction() {
+    let mut world = pathfinding_world();
+    world
+        .set_block(BlockPosition::new(1, 65, 0), Block::STONE)
+        .unwrap();
+    let mut creature = EntityCreature::new(EntityType::ZOMBIE);
+    creature.set_position(EntityPosition::new(0.5, 65.0, 0.5, 0.0, 0.0));
+    creature.set_on_ground(true);
+    let creature_id = creature.get_entity_id();
+    world.add_entity(Entity::Creature(creature));
+    let snapshot = world.update_snapshot();
+    let Entity::Creature(creature) = world.entity_by_id_mut(creature_id).unwrap() else {
+        panic!("creature entity must preserve its subtype");
+    };
+    let start_position = creature.get_position();
+    let bounding_box = creature.get_bounding_box();
+    assert!(
+        creature
+            .get_navigator_mut()
+            .set_path_to(
+                &snapshot,
+                start_position,
+                bounding_box,
+                true,
+                PathRequest::from(EntityPosition::new(2.5, 65.0, 0.5, 0.0, 0.0))
+                    .with_minimum_distance(0.35),
+            )
+            .unwrap()
+    );
+    assert!(
+        creature
+            .get_navigator()
+            .get_nodes()
+            .unwrap()
+            .iter()
+            .any(|node| node.get_node_type() == PathNodeType::Jump)
+    );
+
+    let mut crossed_obstruction_while_airborne = false;
+    for _ in 0..80 {
+        world.tick();
+        let Entity::Creature(creature) = world.entity_by_id(creature_id).unwrap() else {
+            panic!("creature entity must preserve its subtype");
+        };
+        let position = creature.get_position();
+        crossed_obstruction_while_airborne |=
+            position.get_x() >= 1.0 && position.get_x() <= 2.0 && position.get_y() > 65.25;
+    }
+
+    let Entity::Creature(creature) = world.entity_by_id(creature_id).unwrap() else {
+        panic!("creature entity must preserve its subtype");
+    };
+    let final_position = creature.get_position();
+    assert!(
+        crossed_obstruction_while_airborne,
+        "zombie never became airborne over obstruction; final position: {:?}",
+        final_position
+    );
+    assert!(
+        final_position.get_x() > 2.0,
+        "zombie did not reach the far side of obstruction: {:?}",
+        final_position
+    );
 }
 
 #[test]
@@ -1343,6 +1508,40 @@ fn assert_valid_default_path(
             .block(BlockPosition::new(block_x, block_y, block_z))
             .is_solid()
     }));
+}
+
+struct RecordingNodeFollower {
+    events: Arc<Mutex<Vec<&'static str>>>,
+}
+
+impl NodeFollower for RecordingNodeFollower {
+    fn move_towards(
+        &self,
+        _entity: &mut GenericEntity,
+        _world: &crate::world::WorldSnapshot,
+        _target: EntityPosition,
+        _speed: f64,
+        _look_at: EntityPosition,
+    ) {
+        self.events.lock().unwrap().push("move");
+    }
+
+    fn jump(
+        &self,
+        _entity: &mut GenericEntity,
+        _point: Option<EntityPosition>,
+        _target: Option<EntityPosition>,
+    ) {
+        self.events.lock().unwrap().push("jump");
+    }
+
+    fn is_at_point(&self, _entity: &GenericEntity, _point: EntityPosition) -> bool {
+        false
+    }
+
+    fn movement_speed(&self, _entity: &GenericEntity) -> f64 {
+        1.0
+    }
 }
 
 struct SingleBestEffortNodeGenerator;

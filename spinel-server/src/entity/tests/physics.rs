@@ -44,6 +44,23 @@ fn generic_entity_movement_tick_collides_with_extracted_block_collision_shape() 
 }
 
 #[test]
+fn grounded_entity_with_zero_velocity_keeps_ground_state_and_zero_velocity() {
+    let mut world = World::new(Identifier::minecraft("overworld"));
+    world
+        .set_block(BlockPosition::new(1, 63, 1), Block::STONE)
+        .unwrap();
+    let snapshot = world.update_snapshot();
+    let mut entity = GenericEntity::new(EntityType::ZOMBIE);
+    entity.set_position(EntityPosition::new(1.5, 64.0, 1.5, 0.0, 0.0));
+    entity.set_on_ground(true);
+
+    assert!(entity.movement_tick(&snapshot).is_none());
+
+    assert_eq!(entity.get_position().get_y(), 64.0);
+    assert_eq!(entity.get_velocity().0.y, 0.0);
+    assert!(entity.is_on_ground());
+}
+#[test]
 fn physics_result_preserves_minestom_collision_evidence_and_cache_reuse() {
     let mut world = World::new(Identifier::minecraft("overworld"));
     world

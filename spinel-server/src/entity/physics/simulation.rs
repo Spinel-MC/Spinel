@@ -9,6 +9,7 @@ use spinel_registry::{BlockShapeBox, EntityBoundingBox};
 const VELOCITY_EPSILON: f64 = 0.000001;
 const COLLISION_RATIO_LIMIT: f64 = 1.0 - VELOCITY_EPSILON;
 const COLLISION_BACKOFF: f64 = 0.99999;
+const GROUND_SUPPORT_EPSILON: f64 = 0.000001;
 
 pub fn simulate_movement(
     position: EntityPosition,
@@ -41,6 +42,9 @@ pub fn simulate_movement(
     let position_changed = bordered_position.get_x() != position.get_x()
         || bordered_position.get_y() != position.get_y()
         || bordered_position.get_z() != position.get_z();
+    let has_ground_support =
+        is_on_ground && position_has_ground_support(position, bounding_box, world);
+    let is_grounded_after_collision = collision.is_on_ground() || has_ground_support;
     let new_velocity_per_tick = update_velocity(
         bordered_position,
         collision.get_new_velocity_per_tick(),
@@ -48,13 +52,18 @@ pub fn simulate_movement(
         aerodynamics,
         position_changed,
         is_flying,
-        is_on_ground,
+        is_grounded_after_collision,
         has_no_gravity,
     );
     let remains_cached = collision.is_cached()
         && new_velocity_per_tick == collision.get_new_velocity_per_tick()
         && bordered_position == collision.get_new_position();
-    collision.with_movement(bordered_position, new_velocity_per_tick, remains_cached)
+    let movement =
+        collision.with_movement(bordered_position, new_velocity_per_tick, remains_cached);
+    if !position_changed && is_grounded_after_collision {
+        return movement.with_on_ground(true);
+    }
+    movement
 }
 
 pub fn simulate_collision(
@@ -324,6 +333,55 @@ fn intervals_overlap(
     first_minimum < second_maximum && first_maximum > second_minimum
 }
 
+fn position_has_ground_support(
+    position: EntityPosition,
+    bounding_box: EntityBoundingBox,
+    world: &WorldSnapshot,
+) -> bool {
+    let entity_minimum_x = position.get_x() + bounding_box.minimum_x();
+    let entity_maximum_x = position.get_x() + bounding_box.maximum_x();
+    let entity_minimum_y = position.get_y() + bounding_box.minimum_y();
+    let entity_minimum_z = position.get_z() + bounding_box.minimum_z();
+    let entity_maximum_z = position.get_z() + bounding_box.maximum_z();
+    let minimum_block_x = entity_minimum_x.floor() as i32;
+    let maximum_block_x = entity_maximum_x.floor() as i32;
+    let support_block_y = (entity_minimum_y - GROUND_SUPPORT_EPSILON).floor() as i32;
+    let minimum_block_z = entity_minimum_z.floor() as i32;
+    let maximum_block_z = entity_maximum_z.floor() as i32;
+
+    (minimum_block_x..=maximum_block_x).any(|block_x| {
+        (minimum_block_z..=maximum_block_z).any(|block_z| {
+            let block_position = BlockPosition::new(block_x, support_block_y, block_z);
+            world
+                .block_state(block_position)
+                .collision_shape()
+                .iter()
+                .any(|shape| {
+                    let shape_maximum_y = f64::from(block_position.y) + shape.max_y;
+                    let shape_minimum_x = f64::from(block_position.x) + shape.min_x;
+                    let shape_maximum_x = f64::from(block_position.x) + shape.max_x;
+                    let shape_minimum_z = f64::from(block_position.z) + shape.min_z;
+                    let shape_maximum_z = f64::from(block_position.z) + shape.max_z;
+                    let shape_supports_feet =
+                        (shape_maximum_y - entity_minimum_y).abs() <= GROUND_SUPPORT_EPSILON;
+                    shape_supports_feet
+                        && intervals_overlap(
+                            entity_minimum_x,
+                            entity_maximum_x,
+                            shape_minimum_x,
+                            shape_maximum_x,
+                        )
+                        && intervals_overlap(
+                            entity_minimum_z,
+                            entity_maximum_z,
+                            shape_minimum_z,
+                            shape_maximum_z,
+                        )
+                })
+        })
+    })
+}
+
 fn blockless_movement(
     position: EntityPosition,
     velocity_per_tick: Velocity,
@@ -419,6 +477,9 @@ fn update_velocity(
     has_no_gravity: bool,
 ) -> Velocity {
     if !position_changed {
+        if is_on_ground {
+            return Velocity(zero_vector());
+        }
         if is_flying {
             return Velocity(zero_vector());
         }

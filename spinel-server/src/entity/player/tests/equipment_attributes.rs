@@ -111,6 +111,31 @@ fn active_equipment_change_syncs_inventory_slot_and_attributes() {
     );
 }
 
+#[test]
+fn active_item_stack_grant_syncs_inserted_inventory_slots_immediately() {
+    let mut player = player();
+    let mut client = queued_client();
+    player.set_client(&mut client);
+
+    assert_eq!(
+        player.add_item_stacks(vec![
+            ItemStack::of(Material::STICK),
+            ItemStack::of(Material::EMERALD),
+            ItemStack::of(Material::DIAMOND),
+        ]),
+        vec![true, true, true]
+    );
+
+    assert_eq!(
+        client.queued_outbound_packet_ids(),
+        vec![
+            SetPlayerInventoryPacket::get_id(),
+            SetPlayerInventoryPacket::get_id(),
+            SetPlayerInventoryPacket::get_id(),
+        ]
+    );
+}
+
 fn queued_client() -> Client {
     let listener = TcpListener::bind(SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 0)).unwrap();
     let addr = listener.local_addr().unwrap();

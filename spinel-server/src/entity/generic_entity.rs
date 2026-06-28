@@ -5310,4 +5310,3 @@ fn boxes_intersect(
         && first_start.z <= second_end.z
         && first_end.z >= second_start.z
 }
-

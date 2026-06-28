@@ -1,4 +1,4 @@
-use crate::entity::pathfinding::PathRequest;
+use crate::entity::pathfinding::{PathNode, PathNodeType, PathRequest, PathState};
 use crate::entity::{Entity, EntityCreature, EntityPosition, GenericEntity, Player};
 use crate::network::client::instance::Client;
 use crate::world::{Block, BlockPosition, ChunkPosition, World};
@@ -9,6 +9,7 @@ use spinel_core::network::clientbound::play::entity_velocity::EntityVelocityPack
 use spinel_core::network::clientbound::play::player_info_remove::PlayerInfoRemovePacket;
 use spinel_core::network::clientbound::play::player_info_update::PlayerInfoUpdatePacket;
 use spinel_core::network::clientbound::play::remove_entities::RemoveEntitiesPacket;
+use spinel_core::network::clientbound::play::set_entity_data::SetEntityDataPacket;
 use spinel_core::network::clientbound::play::spawn_entity::SpawnEntityPacket;
 use spinel_network::ConnectionState;
 use spinel_network::DataType;
@@ -191,10 +192,76 @@ fn creature_pathfinding_tick_sends_body_and_head_rotation_to_viewers() {
         vec![
             EntityPositionAndRotationPacket::get_id(),
             EntityHeadLookPacket::get_id(),
+            SetEntityDataPacket::get_id(),
         ]
     );
 }
 
+#[test]
+fn creature_pathfinding_jump_sends_velocity_packet_to_viewers_same_tick() {
+    let mut world = World::new(Identifier::minecraft("pathfinding_jump_velocity"));
+    world.load_chunk(ChunkPosition::new(0, 0)).unwrap();
+    for block_x in 0..=3 {
+        world
+            .set_block(BlockPosition::new(block_x, 64, 0), Block::STONE)
+            .unwrap();
+    }
+    world
+        .set_block(BlockPosition::new(1, 65, 0), Block::STONE)
+        .unwrap();
+    let mut viewer_client = queued_client();
+    let viewer = entered_player(&mut viewer_client);
+    let mut creature = EntityCreature::new(EntityType::ZOMBIE);
+    creature.set_position(EntityPosition::new(0.5, 65.0, 0.5, 0.0, 0.0));
+    creature.set_on_ground(true);
+    let creature_id = creature.get_entity_id();
+    world.add_entity(Entity::Player(viewer));
+    world.add_entity(Entity::Creature(creature));
+    world.process_pending_entity_visibility_refreshes().unwrap();
+    viewer_client.discard_queued_outbound_packets();
+    {
+        let Entity::Creature(creature) = world.get_entity_mut(creature_id).unwrap() else {
+            panic!("creature entity must preserve its subtype");
+        };
+        assert!(
+            creature
+                .set_path_to(
+                    PathRequest::from(EntityPosition::new(2.5, 66.0, 0.5, 0.0, 0.0))
+                        .with_minimum_distance(0.1),
+                )
+                .unwrap()
+        );
+        let path = creature.get_navigator_mut().get_path_mut().unwrap();
+        path.set_state(PathState::Following);
+        path.set_nodes(vec![
+            PathNode::new(
+                EntityPosition::new(1.5, 66.0, 0.5, 0.0, 0.0),
+                0.0,
+                0.0,
+                PathNodeType::Jump,
+            ),
+            PathNode::new(
+                EntityPosition::new(2.5, 66.0, 0.5, 0.0, 0.0),
+                0.0,
+                0.0,
+                PathNodeType::Walk,
+            ),
+        ]);
+    }
+
+    world.tick_with_registries(&Registries::new_vanilla());
+
+    let packet_ids = viewer_client.queued_outbound_packet_ids();
+    let Entity::Creature(creature) = world.get_entity(creature_id).unwrap() else {
+        panic!("creature entity must preserve its subtype");
+    };
+    assert!(
+        packet_ids.contains(&EntityVelocityPacket::get_id()),
+        "queued packet ids: {packet_ids:?}, velocity: {:?}, on_ground: {}",
+        creature.get_velocity(),
+        creature.is_on_ground()
+    );
+}
 #[test]
 fn synchronization_only_entity_suppresses_ordinary_physics_movement_packet() {
     let mut world = World::new(Identifier::minecraft("overworld"));
