@@ -23,6 +23,7 @@ fn on_player_block_interact(event: &mut PlayerBlockInteractEvent, server: &mut M
         return;
     }
 
+    let pathfind_result = pathfind_showcase_zombie(event, server);
     if pathfind_result {
         event.set_blocking_item_use(true);
         event.set_cancelled(true);

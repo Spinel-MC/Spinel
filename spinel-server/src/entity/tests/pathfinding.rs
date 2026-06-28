@@ -1444,6 +1444,96 @@ fn perfect_planner_is_deterministic_and_replays_to_predicted_state() {
     assert_eq!(replayed, plan.final_state);
 }
 
+#[test]
+fn minestom_follower_accepts_new_path_after_long_jump_landing() {
+    let mut world = pathfinding_world();
+    world
+        .set_block(BlockPosition::new(1, 65, 0), Block::STONE)
+        .unwrap();
+    world
+        .set_block(BlockPosition::new(2, 65, 0), Block::STONE)
+        .unwrap();
+    let mut creature = EntityCreature::new(EntityType::ZOMBIE);
+    creature.set_position(EntityPosition::new(0.5, 65.0, 0.5, 0.0, 0.0));
+    creature.set_on_ground(true);
+    let creature_id = creature.get_entity_id();
+    world.add_entity(Entity::Creature(creature));
+    {
+        let snapshot = world.update_snapshot();
+        let Entity::Creature(creature) = world.entity_by_id_mut(creature_id).unwrap() else {
+            panic!("creature entity must preserve its subtype");
+        };
+        let start_position = creature.get_position();
+        let bounding_box = creature.get_bounding_box();
+        assert!(
+            creature
+                .get_navigator_mut()
+                .set_path_to(
+                    &snapshot,
+                    start_position,
+                    bounding_box,
+                    true,
+                    PathRequest::from(EntityPosition::new(4.5, 66.0, 0.5, 0.0, 0.0))
+                        .with_minimum_distance(0.35),
+                )
+                .unwrap()
+        );
+    }
+    for _ in 0..120 {
+        world.tick();
+    }
+    {
+        let Entity::Creature(creature) = world.entity_by_id_mut(creature_id).unwrap() else {
+            panic!("creature entity must preserve its subtype");
+        };
+        assert!(
+            creature
+                .set_path_to(PathRequest::from(EntityPosition::new(
+                    0.5, 65.0, 0.5, 0.0, 0.0
+                )))
+                .unwrap()
+        );
+    }
+    world.tick();
+    let Entity::Creature(creature) = world.entity_by_id(creature_id).unwrap() else {
+        panic!("creature entity must preserve its subtype");
+    };
+
+    assert_ne!(creature.get_navigator().state(), PathState::Invalid);
+    assert!(
+        creature
+            .get_navigator()
+            .get_nodes()
+            .is_some_and(|nodes| !nodes.is_empty())
+    );
+}
+#[test]
+fn ground_generator_treats_epsilon_above_ground_landing_as_flat_ground() {
+    let mut world = pathfinding_world();
+    world
+        .set_block(BlockPosition::new(1, 65, 0), Block::STONE)
+        .unwrap();
+    world
+        .set_block(BlockPosition::new(2, 65, 0), Block::STONE)
+        .unwrap();
+    let snapshot = world.update_snapshot();
+    let current = PathNode::new(
+        EntityPosition::new(4.150000062584876, 65.00000000002315, 0.5, -90.0, 21.760849),
+        0.0,
+        0.0,
+        PathNodeType::Walk,
+    );
+    let neighbors = GroundNodeGenerator.walkable(
+        &snapshot,
+        &HashSet::new(),
+        &current,
+        EntityPosition::new(0.5, 65.0, 0.5, 0.0, 0.0),
+        EntityType::ZOMBIE.get_bounding_box(),
+    );
+
+    assert!(!neighbors.is_empty());
+}
+
 fn pathfinding_world() -> World {
     pathfinding_world_in_chunk_range(0, 0, 0, 0)
 }

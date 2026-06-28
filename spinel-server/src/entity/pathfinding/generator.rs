@@ -454,6 +454,14 @@ fn create_ground_walk_node(
             candidate.get_yaw(),
             candidate.get_pitch(),
         )
+    } else if vertical_delta.abs() <= PRECISE_MOVEMENT_EPSILON {
+        EntityPosition::new(
+            candidate.get_x(),
+            current_position.get_y(),
+            candidate.get_z(),
+            candidate.get_yaw(),
+            candidate.get_pitch(),
+        )
     } else {
         candidate
     };
