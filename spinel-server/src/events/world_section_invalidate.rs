@@ -2,14 +2,14 @@ use crate::world::World;
 use spinel_macros::event_dispatcher;
 
 #[event_dispatcher]
-pub struct InstanceSectionInvalidateEvent {
+pub struct WorldSectionInvalidateEvent {
     world: *mut World,
     section_x: i32,
     section_y: i32,
     section_z: i32,
 }
 
-impl InstanceSectionInvalidateEvent {
+impl WorldSectionInvalidateEvent {
     pub fn new(world: *mut World, section_x: i32, section_y: i32, section_z: i32) -> Self {
         Self {
             world,

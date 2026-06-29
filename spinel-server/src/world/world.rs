@@ -6,7 +6,7 @@ use crate::entity::{
     ExperienceOrb, GenericEntity, ItemEntity, Player, PlayerChunk, PlayerChunkTransition,
     TimedPotionEffect,
 };
-use crate::events::add_entity_to_instance::AddEntityToInstanceEvent;
+use crate::events::add_entity_to_world::AddEntityToWorldEvent;
 use crate::events::entity_attack::EntityAttackEvent;
 use crate::events::entity_damage::EntityDamageEvent;
 use crate::events::entity_death::EntityDeathEvent;
@@ -22,14 +22,6 @@ use crate::events::entity_spawn::EntitySpawnEvent;
 use crate::events::entity_teleport::EntityTeleportEvent;
 use crate::events::entity_tick::EntityTickEvent;
 use crate::events::entity_velocity::EntityVelocityEvent;
-use crate::events::instance_block_update::InstanceBlockUpdateEvent;
-use crate::events::instance_chunk_load::InstanceChunkLoadEvent;
-use crate::events::instance_chunk_unload::InstanceChunkUnloadEvent;
-use crate::events::instance_register::InstanceRegisterEvent;
-use crate::events::instance_section_invalidate::InstanceSectionInvalidateEvent;
-use crate::events::instance_tick::InstanceTickEvent;
-use crate::events::instance_tick_end::InstanceTickEndEvent;
-use crate::events::instance_unregister::InstanceUnregisterEvent;
 use crate::events::pickup_experience::PickupExperienceEvent;
 use crate::events::pickup_item::PickupItemEvent;
 use crate::events::player_block_break::PlayerBlockBreakEvent;
@@ -41,7 +33,15 @@ use crate::events::player_tick_end::PlayerTickEndEvent;
 use crate::events::projectile_collide_with_block::ProjectileCollideWithBlockEvent;
 use crate::events::projectile_collide_with_entity::ProjectileCollideWithEntityEvent;
 use crate::events::projectile_uncollide::ProjectileUncollideEvent;
-use crate::events::remove_entity_from_instance::RemoveEntityFromInstanceEvent;
+use crate::events::remove_entity_from_world::RemoveEntityFromWorldEvent;
+use crate::events::world_block_update::WorldBlockUpdateEvent;
+use crate::events::world_chunk_load::WorldChunkLoadEvent;
+use crate::events::world_chunk_unload::WorldChunkUnloadEvent;
+use crate::events::world_register::WorldRegisterEvent;
+use crate::events::world_section_invalidate::WorldSectionInvalidateEvent;
+use crate::events::world_tick::WorldTickEvent;
+use crate::events::world_tick_end::WorldTickEndEvent;
+use crate::events::world_unregister::WorldUnregisterEvent;
 use crate::network::client::instance::Client;
 use crate::scoreboard::Team;
 use crate::world::chunk_loading_executor::ChunkLoadingExecutor;
@@ -1051,12 +1051,12 @@ impl World {
         self.event_dispatcher = Some(server);
     }
 
-    pub fn load_instance(&self) -> Result<()> {
-        self.chunk_loader.load_instance()
+    pub fn load_world(&self) -> Result<()> {
+        self.chunk_loader.load_world()
     }
 
-    pub fn save_instance(&self) -> Result<()> {
-        self.chunk_loader.save_instance()
+    pub fn save_world(&self) -> Result<()> {
+        self.chunk_loader.save_world()
     }
 
     pub fn save_chunk(&self, position: ChunkPosition) -> Result<bool> {
@@ -1535,7 +1535,7 @@ impl World {
         if let Some(chunk) = self.chunks.get_mut(&ticket.position) {
             chunk.on_load();
         }
-        self.dispatch_instance_chunk_load_event(ticket.position);
+        self.dispatch_world_chunk_load_event(ticket.position);
         ticket.complete();
         self.queue_waiting_players_for_loaded_chunk(ticket.position);
         Ok(true)
@@ -1545,10 +1545,10 @@ impl World {
         self.async_chunk_loads.contains_key(&position)
     }
 
-    pub fn save_instance_future(&self) -> WorldIoTask {
+    pub fn save_world_future(&self) -> WorldIoTask {
         self.optional_io_task(self.chunk_loader.supports_parallel_saving(), {
             let chunk_loader = self.chunk_loader.clone();
-            move || chunk_loader.save_instance()
+            move || chunk_loader.save_world()
         })
     }
 
@@ -1587,7 +1587,7 @@ impl World {
             return Ok(false);
         }
         self.send_chunk_unload_to_players(position)?;
-        self.dispatch_instance_chunk_unload_event(position);
+        self.dispatch_world_chunk_unload_event(position);
         self.remove_entities_in_chunk(position);
         self.entity_tracker.delete_chunk_partition(position);
         let Some(mut chunk) = self.chunks.remove(&position) else {
@@ -1628,88 +1628,87 @@ impl World {
         ticked_block_count
     }
 
-    fn dispatch_instance_chunk_load_event(&mut self, position: ChunkPosition) {
+    fn dispatch_world_chunk_load_event(&mut self, position: ChunkPosition) {
         let Some(server_ptr) = self.event_dispatcher else {
             return;
         };
         let server = unsafe { &mut *(server_ptr as *mut crate::server::MinecraftServer) };
         let world = self as *mut World;
-        InstanceChunkLoadEvent::new(world, position).dispatch(server);
+        WorldChunkLoadEvent::new(world, position).dispatch(server);
     }
 
-    fn dispatch_instance_chunk_unload_event(&mut self, position: ChunkPosition) {
+    fn dispatch_world_chunk_unload_event(&mut self, position: ChunkPosition) {
         let Some(server_ptr) = self.event_dispatcher else {
             return;
         };
         let server = unsafe { &mut *(server_ptr as *mut crate::server::MinecraftServer) };
         let world = self as *mut World;
-        InstanceChunkUnloadEvent::new(world, position).dispatch(server);
+        WorldChunkUnloadEvent::new(world, position).dispatch(server);
     }
 
-    pub(crate) fn dispatch_instance_register_event(&mut self) {
-        self.dispatch_world_event_node("InstanceRegisterEvent");
+    pub(crate) fn dispatch_world_register_event(&mut self) {
+        self.dispatch_world_event_node("WorldRegisterEvent");
         let Some(server_ptr) = self.event_dispatcher else {
             return;
         };
         let server = unsafe { &mut *(server_ptr as *mut crate::server::MinecraftServer) };
         let world = self as *mut World;
-        InstanceRegisterEvent::new(world).dispatch(server);
+        WorldRegisterEvent::new(world).dispatch(server);
     }
 
-    pub(crate) fn dispatch_instance_unregister_event(&mut self) {
-        self.dispatch_world_event_node("InstanceUnregisterEvent");
+    pub(crate) fn dispatch_world_unregister_event(&mut self) {
+        self.dispatch_world_event_node("WorldUnregisterEvent");
         let Some(server_ptr) = self.event_dispatcher else {
             return;
         };
         let server = unsafe { &mut *(server_ptr as *mut crate::server::MinecraftServer) };
         let world = self as *mut World;
-        InstanceUnregisterEvent::new(world).dispatch(server);
+        WorldUnregisterEvent::new(world).dispatch(server);
     }
 
-    fn dispatch_instance_section_invalidate_event(
+    fn dispatch_world_section_invalidate_event(
         &mut self,
         section_x: i32,
         section_y: i32,
         section_z: i32,
     ) {
-        self.dispatch_world_event_node("InstanceSectionInvalidateEvent");
+        self.dispatch_world_event_node("WorldSectionInvalidateEvent");
         let Some(server_ptr) = self.event_dispatcher else {
             return;
         };
         let server = unsafe { &mut *(server_ptr as *mut crate::server::MinecraftServer) };
         let world = self as *mut World;
-        InstanceSectionInvalidateEvent::new(world, section_x, section_y, section_z)
-            .dispatch(server);
+        WorldSectionInvalidateEvent::new(world, section_x, section_y, section_z).dispatch(server);
     }
 
-    fn dispatch_instance_block_update_event(&mut self, position: BlockPosition, block: Block) {
-        self.dispatch_world_event_node("InstanceBlockUpdateEvent");
+    fn dispatch_world_block_update_event(&mut self, position: BlockPosition, block: Block) {
+        self.dispatch_world_event_node("WorldBlockUpdateEvent");
         let Some(server_ptr) = self.event_dispatcher else {
             return;
         };
         let server = unsafe { &mut *(server_ptr as *mut crate::server::MinecraftServer) };
         let world = self as *mut World;
-        InstanceBlockUpdateEvent::new(world, position, block).dispatch(server);
+        WorldBlockUpdateEvent::new(world, position, block).dispatch(server);
     }
 
-    fn dispatch_instance_tick_event(&mut self) {
-        self.dispatch_world_event_node("InstanceTickEvent");
+    fn dispatch_world_tick_event(&mut self) {
+        self.dispatch_world_event_node("WorldTickEvent");
         let Some(server_ptr) = self.event_dispatcher else {
             return;
         };
         let server = unsafe { &mut *(server_ptr as *mut crate::server::MinecraftServer) };
         let world = self as *mut World;
-        InstanceTickEvent::new(world, self.world_age).dispatch(server);
+        WorldTickEvent::new(world, self.world_age).dispatch(server);
     }
 
-    fn dispatch_instance_tick_end_event(&mut self) {
-        self.dispatch_world_event_node("InstanceTickEndEvent");
+    fn dispatch_world_tick_end_event(&mut self) {
+        self.dispatch_world_event_node("WorldTickEndEvent");
         let Some(server_ptr) = self.event_dispatcher else {
             return;
         };
         let server = unsafe { &mut *(server_ptr as *mut crate::server::MinecraftServer) };
         let world = self as *mut World;
-        InstanceTickEndEvent::new(world, self.world_age).dispatch(server);
+        WorldTickEndEvent::new(world, self.world_age).dispatch(server);
     }
 
     fn dispatch_world_event_node(&mut self, event_name: &'static str) {
@@ -1718,14 +1717,14 @@ impl World {
         self.event_node = event_node;
     }
 
-    pub(crate) fn dispatch_add_entity_to_instance_event(&mut self, entity: &mut Entity) -> bool {
+    pub(crate) fn dispatch_add_entity_to_world_event(&mut self, entity: &mut Entity) -> bool {
         let Some(server_ptr) = self.event_dispatcher else {
             return false;
         };
         let server = unsafe { &mut *(server_ptr as *mut crate::server::MinecraftServer) };
         let world = self as *mut World;
         let entity = entity as *mut Entity;
-        let mut event = AddEntityToInstanceEvent::new(world, entity);
+        let mut event = AddEntityToWorldEvent::new(world, entity);
         event.dispatch(server);
         event.is_cancelled()
     }
@@ -1759,7 +1758,7 @@ impl World {
         EntityDespawnEvent::new(entity).dispatch(server);
     }
 
-    fn dispatch_remove_entity_from_instance_event(&mut self, entity_id: EntityId) {
+    fn dispatch_remove_entity_from_world_event(&mut self, entity_id: EntityId) {
         let Some(server_ptr) = self.event_dispatcher else {
             return;
         };
@@ -1771,7 +1770,7 @@ impl World {
         };
         let server = unsafe { &mut *(server_ptr as *mut crate::server::MinecraftServer) };
         let world = self as *mut World;
-        RemoveEntityFromInstanceEvent::new(world, entity).dispatch(server);
+        RemoveEntityFromWorldEvent::new(world, entity).dispatch(server);
     }
 
     fn send_chunk_unload_to_players(&mut self, position: ChunkPosition) -> Result<()> {
@@ -1860,15 +1859,15 @@ impl World {
     }
 
     pub(crate) fn add_entity(&mut self, mut entity: Entity) -> bool {
-        if self.dispatch_add_entity_to_instance_event(&mut entity) {
+        if self.dispatch_add_entity_to_world_event(&mut entity) {
             return false;
         }
-        self.add_entity_after_instance_event(entity);
+        self.add_entity_after_world_event(entity);
         true
     }
 
-    pub(crate) fn add_entity_after_instance_event(&mut self, mut entity: Entity) {
-        entity.set_world(self.uuid);
+    pub(crate) fn add_entity_after_world_event(&mut self, mut entity: Entity) {
+        entity.assign_world(self.uuid);
         if let Entity::Creature(creature) = &mut entity {
             creature.set_event_dispatcher(self.event_dispatcher);
             creature.set_pathfinding_world(Arc::new(self.update_snapshot()));
@@ -1882,11 +1881,11 @@ impl World {
 
     pub(crate) fn take_entity(&mut self, entity_id: EntityId) -> Option<Entity> {
         self.dispatch_entity_despawn_event(entity_id);
-        self.take_entity_from_instance(entity_id)
+        self.take_entity_from_world(entity_id)
     }
 
-    pub(crate) fn take_entity_from_instance(&mut self, entity_id: EntityId) -> Option<Entity> {
-        self.dispatch_remove_entity_from_instance_event(entity_id);
+    pub(crate) fn take_entity_from_world(&mut self, entity_id: EntityId) -> Option<Entity> {
+        self.dispatch_remove_entity_from_world_event(entity_id);
         self.detach_entity_passenger_relations(entity_id);
         self.detach_leashed_entities(entity_id);
         let _ = self.hide_entity_from_all_viewers(entity_id);
@@ -2617,6 +2616,13 @@ impl World {
         Ok(true)
     }
 
+    pub fn swing_creature_main_hand(&mut self, entity_id: EntityId) -> Result<bool> {
+        let Some(animation_packet) = self.creature_main_hand_animation(entity_id) else {
+            return Ok(false);
+        };
+        self.send_packet_to_entity_viewers(entity_id, animation_packet)?;
+        Ok(true)
+    }
     pub fn creature_attack_entity(
         &mut self,
         creature_id: EntityId,
@@ -2919,7 +2925,7 @@ impl World {
             let Some(player) = self.player_by_addr_mut(&client.addr) else {
                 return Err(Error::new(ErrorKind::NotFound, "Player not found."));
             };
-            player.set_world(world_uuid);
+            player.assign_world(world_uuid);
             player.set_dimension_type(dimension_type);
             let first_spawn = !player.has_entered_world();
             player.unsafe_init_with_chunk_positions(
@@ -4223,7 +4229,7 @@ impl World {
         self.process_next_tick_scheduler();
         self.tick_time();
         self.tick_weather();
-        self.dispatch_instance_tick_event();
+        self.dispatch_world_tick_event();
         let world_snapshot = self.update_snapshot();
         let mut player_addresses = Vec::new();
         let mut entity_touches = Vec::new();
@@ -4454,7 +4460,7 @@ impl World {
             let _ = self.finish_player_item_use(completion);
         });
         self.process_tick_end_scheduler();
-        self.dispatch_instance_tick_end_event();
+        self.dispatch_world_tick_end_event();
         self.currently_changing_blocks.clear();
     }
 
@@ -6228,7 +6234,7 @@ impl World {
         self.broadcast_block_update(position, block_state)?;
         self.broadcast_block_entity_update(position)?;
         self.invalidate_neighbor_chunk_lighting(position);
-        self.dispatch_instance_block_update_event(position, block);
+        self.dispatch_world_block_update_event(position, block);
         Ok(true)
     }
 
@@ -6607,7 +6613,7 @@ impl World {
         if !chunk.invalidate_section(section_y) {
             return false;
         }
-        self.dispatch_instance_section_invalidate_event(section_x, section_y, section_z);
+        self.dispatch_world_section_invalidate_event(section_x, section_y, section_z);
         true
     }
 
@@ -7561,7 +7567,7 @@ impl World {
             chunk.on_load();
         }
         if chunk_was_missing && should_dispatch_load_event {
-            self.dispatch_instance_chunk_load_event(position);
+            self.dispatch_world_chunk_load_event(position);
         }
         self.chunks
             .get_mut(&position)

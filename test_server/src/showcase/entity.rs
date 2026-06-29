@@ -79,7 +79,7 @@ impl EntityShowcase {
         };
         let minestom_zombie = Self::zombie(minestom_zombie_position, "Minestom Physics");
         let minestom_zombie_id = minestom_zombie.get_entity_id();
-        if !minestom_zombie.set_instance(world) {
+        if !minestom_zombie.set_world(world) {
             return Err(io::Error::new(
                 io::ErrorKind::Interrupted,
                 "Minestom physics zombie add cancelled.",
@@ -90,7 +90,7 @@ impl EntityShowcase {
             .get_navigator_mut()
             .set_node_follower(VanillaGroundNodeFollower::default());
         let vanilla_zombie_id = vanilla_zombie.get_entity_id();
-        if !vanilla_zombie.set_instance(world) {
+        if !vanilla_zombie.set_world(world) {
             return Err(io::Error::new(
                 io::ErrorKind::Interrupted,
                 "Vanilla physics zombie add cancelled.",

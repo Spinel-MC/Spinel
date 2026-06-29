@@ -2,13 +2,13 @@ use crate::world::{Block, BlockPosition, World};
 use spinel_macros::event_dispatcher;
 
 #[event_dispatcher]
-pub struct InstanceBlockUpdateEvent {
+pub struct WorldBlockUpdateEvent {
     world: *mut World,
     block_position: BlockPosition,
     block: Block,
 }
 
-impl InstanceBlockUpdateEvent {
+impl WorldBlockUpdateEvent {
     pub fn new(world: *mut World, block_position: BlockPosition, block: Block) -> Self {
         Self {
             world,

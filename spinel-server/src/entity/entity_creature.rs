@@ -150,7 +150,7 @@ impl EntityCreature {
             return Err(EntityCreatureAttackError::WorldUnavailable);
         };
         world
-            .swing_generic_entity_main_hand(self.get_entity_id())
+            .swing_creature_main_hand(self.get_entity_id())
             .map_err(
                 |error| EntityCreatureAttackError::MainHandAnimationDispatchFailed {
                     message: error.to_string(),
@@ -231,13 +231,13 @@ impl EntityCreature {
             .set_path_to(world, start, bounding_box, is_on_ground, request)
     }
 
-    pub fn set_instance(self, world: &mut World) -> bool {
+    pub fn set_world(self, world: &mut World) -> bool {
         world.add_entity(crate::entity::Entity::Creature(self))
     }
 
-    pub fn set_instance_at(mut self, world: &mut World, position: EntityPosition) -> bool {
+    pub fn set_world_at(mut self, world: &mut World, position: EntityPosition) -> bool {
         self.set_position(position);
-        self.set_instance(world)
+        self.set_world(world)
     }
 
     pub fn ai_tick(&mut self, world: &WorldSnapshot, time: u64) {
@@ -248,9 +248,9 @@ impl EntityCreature {
         self.ai_groups = ai_groups;
     }
 
-    pub(crate) fn set_world(&mut self, world: Uuid) {
+    pub(crate) fn assign_world(&mut self, world: Uuid) {
         self.navigator.reset();
-        self.entity.set_world(world);
+        self.entity.assign_world(world);
     }
 
     pub(crate) fn set_event_dispatcher(&mut self, event_dispatcher: Option<usize>) {

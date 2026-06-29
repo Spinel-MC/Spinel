@@ -55,7 +55,7 @@ fn world_damage_entity_applies_minestom_event_mutation_and_last_damage_order() {
     LIVING_DAMAGE_EVENT_AMOUNT_BITS.store(3.0f32.to_bits(), Ordering::SeqCst);
     LIVING_DAMAGE_EVENT_ANIMATE.store(false, Ordering::SeqCst);
 
-    let world_uuid = server.world_manager.instance_uuids()[0];
+    let world_uuid = server.world_manager.world_uuids()[0];
     let server_ptr = &mut server as *mut MinecraftServer as usize;
     let world = server.world_manager.world_mut(world_uuid).unwrap();
     world.use_server_event_dispatcher(server_ptr);
@@ -73,7 +73,7 @@ fn world_damage_entity_applies_minestom_event_mutation_and_last_damage_order() {
     assert_eq!(entity.get_health(), 17.0);
     assert_eq!(entity.get_last_damage().unwrap().get_amount(), 3.0);
     assert_eq!(entity.get_last_damage_source(), Some("minecraft:generic"));
-    let world_uuid = server.world_manager.instance_uuids()[0];
+    let world_uuid = server.world_manager.world_uuids()[0];
     let shared_entity = server
         .world_manager
         .world(world_uuid)
@@ -106,7 +106,7 @@ fn world_damage_entity_cancellation_does_not_store_last_damage_or_reduce_health(
     LIVING_DAMAGE_EVENT_CANCELLED.store(true, Ordering::SeqCst);
     LIVING_DAMAGE_EVENT_AMOUNT_BITS.store(3.0f32.to_bits(), Ordering::SeqCst);
 
-    let world_uuid = server.world_manager.instance_uuids()[0];
+    let world_uuid = server.world_manager.world_uuids()[0];
     let server_ptr = &mut server as *mut MinecraftServer as usize;
     let world = server.world_manager.world_mut(world_uuid).unwrap();
     world.use_server_event_dispatcher(server_ptr);

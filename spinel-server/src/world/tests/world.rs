@@ -181,7 +181,7 @@ fn world_with_entered_player(client: &mut Client) -> World {
     let mut world = World::new(Identifier::minecraft("overworld"));
     let mut player = Player::new(Uuid::nil(), "Player".to_string(), 0, client.addr);
     player.set_client(client);
-    player.set_world(world.uuid());
+    player.assign_world(world.uuid());
     player.set_position(EntityPosition::new(0.0, 64.0, 0.0, 0.0, 0.0));
     player.mark_entered_world();
     world.add_entity(Entity::Player(player));
@@ -1314,7 +1314,7 @@ fn added_entities_record_their_current_world_membership() {
 }
 
 #[test]
-fn world_dimension_registration_and_void_api_match_minestom_instance_surface() {
+fn world_dimension_registration_and_void_api_match_minestom_world_surface() {
     let dimension_type = DimensionType::THE_NETHER;
     let cached_dimension_type = DimensionType::builder()
         .vertical_bounds(-32, 256, 128)
@@ -1334,7 +1334,7 @@ fn world_dimension_registration_and_void_api_match_minestom_instance_surface() {
 }
 
 #[test]
-fn world_entity_and_player_lookup_api_matches_minestom_instance_surface() {
+fn world_entity_and_player_lookup_api_matches_minestom_world_surface() {
     let mut world = World::new(Identifier::minecraft("overworld"));
     let generic_entity = Entity::new(EntityType::ZOMBIE);
     let generic_entity_id = generic_entity.get_entity_id();

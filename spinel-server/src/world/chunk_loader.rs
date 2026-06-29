@@ -7,10 +7,10 @@ pub trait ChunkLoader: Send + Sync {
     fn save_chunks(&self, chunks: &[&Chunk]) -> io::Result<()> {
         chunks.iter().try_for_each(|chunk| self.save_chunk(chunk))
     }
-    fn load_instance(&self) -> io::Result<()> {
+    fn load_world(&self) -> io::Result<()> {
         Ok(())
     }
-    fn save_instance(&self) -> io::Result<()> {
+    fn save_world(&self) -> io::Result<()> {
         Ok(())
     }
     fn unload_chunk(&self, chunk: &mut Chunk) -> io::Result<()>;

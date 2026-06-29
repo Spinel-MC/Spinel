@@ -672,7 +672,7 @@ fn creature_rejects_path_requests_before_world_assignment() {
     ));
 
     let creature_id = creature.get_entity_id();
-    creature.set_instance(&mut world);
+    creature.set_world(&mut world);
     let Entity::Creature(creature) = world.entity_by_id_mut(creature_id).unwrap() else {
         panic!("creature entity must preserve its subtype");
     };
@@ -692,7 +692,7 @@ fn entity_creature_set_path_to_owns_pathfinding_request() {
     let mut creature = EntityCreature::new(EntityType::ZOMBIE);
     creature.set_position(EntityPosition::new(0.5, 65.0, 0.5, 0.0, 0.0));
     let creature_id = creature.get_entity_id();
-    creature.set_instance(&mut world);
+    creature.set_world(&mut world);
     let destination = EntityPosition::new(3.5, 65.0, 0.5, 0.0, 0.0);
     {
         let Entity::Creature(creature) = world.entity_by_id_mut(creature_id).unwrap() else {
@@ -720,7 +720,7 @@ fn entity_creature_set_path_to_observes_blocks_placed_after_spawn() {
     creature.set_position(EntityPosition::new(0.5, 65.0, 0.5, 0.0, 0.0));
     creature.set_on_ground(true);
     let creature_id = creature.get_entity_id();
-    creature.set_instance(&mut world);
+    creature.set_world(&mut world);
     world
         .set_block(BlockPosition::new(1, 65, 0), Block::STONE)
         .unwrap();

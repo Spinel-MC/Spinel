@@ -36,7 +36,7 @@ fn entity_creature_attack_dispatches_entity_attack_event_without_client_context(
     let creature_id = creature.get_entity_id();
     let target_id = target.get_entity_id();
     *ENTITY_ATTACK_TEST_PAIR.lock().unwrap() = Some((creature_id, target_id));
-    creature.set_instance(&mut world);
+    creature.set_world(&mut world);
 
     let Some(Entity::Creature(creature)) = world.get_entity_mut(creature_id) else {
         panic!("creature must be assigned to the test world");
@@ -74,8 +74,8 @@ fn entity_creature_attack_with_swing_swings_main_hand_before_dispatching_attack_
     let creature_id = creature.get_entity_id();
     let target_id = target.get_entity_id();
     *ENTITY_ATTACK_TEST_PAIR.lock().unwrap() = Some((creature_id, target_id));
-    Entity::Player(viewer).set_instance(&mut world);
-    creature.set_instance(&mut world);
+    Entity::Player(viewer).set_world(&mut world);
+    creature.set_world(&mut world);
     world.add_entity_viewer(creature_id, viewer_id).unwrap();
     viewer_client.discard_queued_outbound_packets();
 

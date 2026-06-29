@@ -38,7 +38,7 @@ impl Entity {
             .get_world()
             .ok_or(PassengerError::PassengerHasNoWorld)?;
         if passenger.get_world() != Some(vehicle_world) {
-            passenger.set_world(vehicle_world);
+            passenger.assign_world(vehicle_world);
         }
         if passenger
             .get_vehicle()
@@ -60,7 +60,7 @@ impl Entity {
             .get_world()
             .ok_or(PassengerError::PassengerHasNoWorld)?;
         if passenger.get_world() != Some(vehicle_world) {
-            passenger.set_world(vehicle_world);
+            passenger.assign_world(vehicle_world);
         }
         if !self.detach_passenger(passenger.get_entity_id()) {
             return Ok(false);

@@ -2,11 +2,11 @@ use crate::world::World;
 use spinel_macros::event_dispatcher;
 
 #[event_dispatcher]
-pub struct InstanceUnregisterEvent {
+pub struct WorldRegisterEvent {
     world: *mut World,
 }
 
-impl InstanceUnregisterEvent {
+impl WorldRegisterEvent {
     pub fn new(world: *mut World) -> Self {
         Self { world }
     }

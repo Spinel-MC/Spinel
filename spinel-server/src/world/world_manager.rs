@@ -101,7 +101,7 @@ impl WorldManager {
 
     pub fn register_world(&mut self, mut world: World) {
         world.set_registered(true);
-        world.dispatch_instance_register_event();
+        world.dispatch_world_register_event();
         self.worlds.push(world);
     }
 
@@ -145,7 +145,7 @@ impl WorldManager {
         Ok(copied_world_uuid)
     }
 
-    pub fn instance_uuids(&self) -> Vec<Uuid> {
+    pub fn world_uuids(&self) -> Vec<Uuid> {
         self.worlds
             .iter()
             .map(World::uuid)
@@ -183,7 +183,7 @@ impl WorldManager {
         if has_online_players {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidInput,
-                "You cannot unregister an instance with players inside.",
+                "You cannot unregister a world with players inside.",
             ));
         }
         let chunk_positions = self.worlds[world_index]
@@ -193,7 +193,7 @@ impl WorldManager {
         for chunk_position in chunk_positions {
             self.worlds[world_index].unload_chunk(chunk_position)?;
         }
-        self.worlds[world_index].dispatch_instance_unregister_event();
+        self.worlds[world_index].dispatch_world_unregister_event();
         self.worlds[world_index].set_registered(false);
         Ok(Some(self.worlds.remove(world_index)))
     }
@@ -289,17 +289,17 @@ impl WorldManager {
         let entity = source_world
             .entity_by_id_mut(entity_id)
             .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "Entity not found."))?;
-        if target_world.dispatch_add_entity_to_instance_event(entity) {
+        if target_world.dispatch_add_entity_to_world_event(entity) {
             return Err(io::Error::new(
                 io::ErrorKind::Interrupted,
                 "Entity add cancelled.",
             ));
         }
-        let Some(mut entity) = source_world.take_entity_from_instance(entity_id) else {
+        let Some(mut entity) = source_world.take_entity_from_world(entity_id) else {
             return Err(io::Error::new(io::ErrorKind::NotFound, "Entity not found."));
         };
         entity.set_position(position);
-        target_world.add_entity_after_instance_event(entity);
+        target_world.add_entity_after_world_event(entity);
         Ok(())
     }
 
@@ -340,7 +340,7 @@ impl WorldManager {
         target_world: Uuid,
     ) -> io::Result<PlayerWorldTransitionTicket> {
         let position = self
-            .player_set_instance_default_position(player_uuid)
+            .player_set_world_default_position(player_uuid)
             .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "Player not found."))?;
         self.set_player_world_at_position_future(player_uuid, target_world, position)
     }
@@ -366,7 +366,7 @@ impl WorldManager {
         if current_world == Some(target_world) {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidInput,
-                "Instance should be different than the current one",
+                "World should be different than the current one",
             ));
         }
         if current_world.is_none() && self.inactive_player(player_uuid).is_none() {
@@ -505,7 +505,7 @@ impl WorldManager {
             .world(transition.target_world)
             .map(World::weather)
             .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "Target world not found."))?;
-        let _ = player.set_instance_position(
+        let _ = player.set_world_position(
             transition.position,
             target_view_distance,
             transition.should_refresh_chunks,
@@ -522,7 +522,7 @@ impl WorldManager {
                 let dimension_change = current_world_name
                     .as_ref()
                     .is_some_and(|current_world_name| current_world_name != &target_world_name);
-                player.spawn_after_instance_transition(
+                player.spawn_after_world_transition(
                     unsafe { &mut *client_ptr },
                     target_world_name,
                     chunks.clone(),
@@ -574,7 +574,7 @@ impl WorldManager {
             .map(World::uuid)
     }
 
-    fn player_set_instance_default_position(&self, player_uuid: Uuid) -> Option<EntityPosition> {
+    fn player_set_world_default_position(&self, player_uuid: Uuid) -> Option<EntityPosition> {
         if let Some(position) = self
             .worlds
             .iter()

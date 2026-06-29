@@ -43,7 +43,7 @@ fn world_set_entity_velocity_applies_event_mutation_and_sends_packet_to_viewers(
     VELOCITY_EVENT_ENTITY_ACCESSOR_MATCHED.store(false, Ordering::SeqCst);
     let (mut server, viewer_client, entity_id) = velocity_server();
     *VELOCITY_TEST_ENTITY.lock().unwrap() = Some(entity_id);
-    let world_uuid = server.world_manager.instance_uuids()[0];
+    let world_uuid = server.world_manager.world_uuids()[0];
     let server_ptr = &mut server as *mut MinecraftServer as usize;
     let world = server.world_manager.world_mut(world_uuid).unwrap();
     world.use_server_event_dispatcher(server_ptr);
@@ -86,7 +86,7 @@ fn world_set_entity_velocity_cancellation_preserves_state_and_sends_no_packet() 
     VELOCITY_EVENT_ENTITY_ACCESSOR_MATCHED.store(false, Ordering::SeqCst);
     let (mut server, viewer_client, entity_id) = velocity_server();
     *VELOCITY_TEST_ENTITY.lock().unwrap() = Some(entity_id);
-    let world_uuid = server.world_manager.instance_uuids()[0];
+    let world_uuid = server.world_manager.world_uuids()[0];
     let server_ptr = &mut server as *mut MinecraftServer as usize;
     let world = server.world_manager.world_mut(world_uuid).unwrap();
     world.use_server_event_dispatcher(server_ptr);

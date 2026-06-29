@@ -1,7 +1,7 @@
 use crate::entity::player::{Player, PlayerChunk};
 use crate::entity::{Entity, EntityPosition};
-use crate::events::instance_chunk_load::InstanceChunkLoadEvent;
-use crate::events::instance_chunk_unload::InstanceChunkUnloadEvent;
+use crate::events::world_chunk_load::WorldChunkLoadEvent;
+use crate::events::world_chunk_unload::WorldChunkUnloadEvent;
 use crate::network::client::instance::Client;
 use crate::server::MinecraftServer;
 use crate::world::{Block, BlockPosition, Chunk, ChunkLoader, ChunkPosition};
@@ -19,10 +19,7 @@ static CHUNK_LIFECYCLE_WORLD: Mutex<Option<Uuid>> = Mutex::new(None);
 static CHUNK_LIFECYCLE_SEQUENCE: Mutex<Vec<&'static str>> = Mutex::new(Vec::new());
 
 #[event_listener]
-fn chunk_load_lifecycle_listener(
-    event: &mut InstanceChunkLoadEvent,
-    _server: &mut MinecraftServer,
-) {
+fn chunk_load_lifecycle_listener(event: &mut WorldChunkLoadEvent, _server: &mut MinecraftServer) {
     let position = event.chunk_position();
     let world = event.world();
     if *CHUNK_LIFECYCLE_WORLD.lock().unwrap() != Some(world.uuid()) {
@@ -36,7 +33,7 @@ fn chunk_load_lifecycle_listener(
 
 #[event_listener]
 fn chunk_unload_lifecycle_listener(
-    event: &mut InstanceChunkUnloadEvent,
+    event: &mut WorldChunkUnloadEvent,
     _server: &mut MinecraftServer,
 ) {
     let position = event.chunk_position();

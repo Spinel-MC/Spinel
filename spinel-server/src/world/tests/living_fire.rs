@@ -62,7 +62,7 @@ fn world_set_entity_fire_ticks_dispatches_minestom_set_fire_event_mutation() {
     LIVING_FIRE_SET_EVENT_ENABLED.store(true, Ordering::SeqCst);
     LIVING_FIRE_SET_EVENT_TICKS.store(3, Ordering::SeqCst);
 
-    let world_uuid = server.world_manager.instance_uuids()[0];
+    let world_uuid = server.world_manager.world_uuids()[0];
     let server_ptr = &mut server as *mut MinecraftServer as usize;
     let world = server.world_manager.world_mut(world_uuid).unwrap();
     world.use_server_event_dispatcher(server_ptr);
@@ -85,7 +85,7 @@ fn world_set_player_fire_ticks_uses_the_same_minestom_set_fire_path() {
     LIVING_FIRE_SET_EVENT_ENABLED.store(true, Ordering::SeqCst);
     LIVING_FIRE_SET_EVENT_TICKS.store(4, Ordering::SeqCst);
 
-    let world_uuid = server.world_manager.instance_uuids()[0];
+    let world_uuid = server.world_manager.world_uuids()[0];
     let server_ptr = &mut server as *mut MinecraftServer as usize;
     let world = server.world_manager.world_mut(world_uuid).unwrap();
     world.use_server_event_dispatcher(server_ptr);
@@ -106,7 +106,7 @@ fn world_living_tick_dispatches_minestom_natural_fire_extinguish_event() {
     let entity_id = tracked_living_entity_id(&server);
     *LIVING_FIRE_TEST_ENTITY.lock().unwrap() = Some(entity_id);
     LIVING_FIRE_EXTINGUISH_EVENT_ENABLED.store(true, Ordering::SeqCst);
-    let world_uuid = server.world_manager.instance_uuids()[0];
+    let world_uuid = server.world_manager.world_uuids()[0];
     {
         let server_ptr = &mut server as *mut MinecraftServer as usize;
         let world = server.world_manager.world_mut(world_uuid).unwrap();
@@ -134,7 +134,7 @@ fn world_player_living_tick_dispatches_minestom_natural_fire_extinguish_event() 
     let entity_id = tracked_player_entity_id(&server);
     *LIVING_FIRE_TEST_ENTITY.lock().unwrap() = Some(entity_id);
     LIVING_FIRE_EXTINGUISH_EVENT_ENABLED.store(true, Ordering::SeqCst);
-    let world_uuid = server.world_manager.instance_uuids()[0];
+    let world_uuid = server.world_manager.world_uuids()[0];
     {
         let server_ptr = &mut server as *mut MinecraftServer as usize;
         let world = server.world_manager.world_mut(world_uuid).unwrap();

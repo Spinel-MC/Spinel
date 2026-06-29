@@ -2,12 +2,12 @@ use crate::world::{ChunkPosition, World};
 use spinel_macros::event_dispatcher;
 
 #[event_dispatcher]
-pub struct InstanceChunkLoadEvent {
+pub struct WorldChunkUnloadEvent {
     world: *mut World,
     chunk_position: ChunkPosition,
 }
 
-impl InstanceChunkLoadEvent {
+impl WorldChunkUnloadEvent {
     pub fn new(world: *mut World, chunk_position: ChunkPosition) -> Self {
         Self {
             world,

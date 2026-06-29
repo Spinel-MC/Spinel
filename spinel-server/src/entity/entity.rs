@@ -267,13 +267,13 @@ impl Entity {
         }
     }
 
-    pub fn set_instance(self, world: &mut World) -> bool {
+    pub fn set_world(self, world: &mut World) -> bool {
         world.add_entity(self)
     }
 
-    pub fn set_instance_at(mut self, world: &mut World, position: EntityPosition) -> bool {
+    pub fn set_world_at(mut self, world: &mut World, position: EntityPosition) -> bool {
         self.set_position(position);
-        self.set_instance(world)
+        self.set_world(world)
     }
 
     pub fn get_last_damage_source(&self) -> Option<&crate::entity::Damage> {
@@ -309,14 +309,14 @@ impl Entity {
         }
     }
 
-    pub(crate) fn set_world(&mut self, world: Uuid) {
+    pub(crate) fn assign_world(&mut self, world: Uuid) {
         match self {
-            Self::Creature(entity) => entity.set_world(world),
-            Self::ExperienceOrb(entity) => entity.set_world(world),
-            Self::Generic(entity) => entity.set_world(world),
-            Self::Item(entity) => entity.set_world(world),
-            Self::Player(player) => player.set_world(world),
-            Self::Projectile(entity) => entity.set_world(world),
+            Self::Creature(entity) => entity.assign_world(world),
+            Self::ExperienceOrb(entity) => entity.assign_world(world),
+            Self::Generic(entity) => entity.assign_world(world),
+            Self::Item(entity) => entity.assign_world(world),
+            Self::Player(player) => player.assign_world(world),
+            Self::Projectile(entity) => entity.assign_world(world),
         }
     }
 

@@ -1,7 +1,7 @@
 use crate::entity::{Entity, EntityPosition, GenericEntity};
 use crate::events::entity_tick::EntityTickEvent;
-use crate::events::instance_tick::InstanceTickEvent;
-use crate::events::instance_tick_end::InstanceTickEndEvent;
+use crate::events::world_tick::WorldTickEvent;
+use crate::events::world_tick_end::WorldTickEndEvent;
 use crate::server::MinecraftServer;
 use spinel_macros::event_listener;
 use spinel_network::types::Identifier;
@@ -16,7 +16,7 @@ static INSTANCE_TICK_EVENT_TEST_WORLD: Mutex<Option<Uuid>> = Mutex::new(None);
 static INSTANCE_TICK_EVENT_TEST_LOCK: Mutex<()> = Mutex::new(());
 
 #[event_listener]
-fn instance_tick_test_listener(event: &mut InstanceTickEvent, _server: &mut MinecraftServer) {
+fn world_tick_test_listener(event: &mut WorldTickEvent, _server: &mut MinecraftServer) {
     if !INSTANCE_TICK_EVENT_TEST_ENABLED.load(Ordering::SeqCst) {
         return;
     }
@@ -40,10 +40,7 @@ fn instance_tick_test_listener(event: &mut InstanceTickEvent, _server: &mut Mine
 }
 
 #[event_listener]
-fn instance_tick_end_test_listener(
-    event: &mut InstanceTickEndEvent,
-    _server: &mut MinecraftServer,
-) {
+fn world_tick_end_test_listener(event: &mut WorldTickEndEvent, _server: &mut MinecraftServer) {
     if !INSTANCE_TICK_EVENT_TEST_ENABLED.load(Ordering::SeqCst) {
         return;
     }
@@ -88,7 +85,7 @@ fn entity_tick_test_listener(event: &mut EntityTickEvent, _server: &mut Minecraf
 }
 
 #[test]
-fn instance_tick_events_surround_world_tick_work() {
+fn world_tick_events_surround_world_tick_work() {
     let _lock = INSTANCE_TICK_EVENT_TEST_LOCK.lock().unwrap();
     INSTANCE_TICK_EVENT_TEST_SEQUENCE.lock().unwrap().clear();
     INSTANCE_TICK_EVENT_TEST_ENABLED.store(true, Ordering::SeqCst);

@@ -31,10 +31,10 @@ fn entity_showcase_sign_interaction_keeps_player_valid_after_spawning_entities()
             0.0,
             0.0,
         ));
-        assert!(Entity::Generic(entity).set_instance(world));
+        assert!(Entity::Generic(entity).set_world(world));
     });
     let player = Player::new(player_uuid, "SignInteraction".to_string(), 0, client.addr);
-    assert!(Entity::Player(player).set_instance(world));
+    assert!(Entity::Player(player).set_world(world));
     assert!(matches!(
         ShowcaseSigns::command_at_position(sign_position),
         Some(test_server::showcase::ShowcaseSignCommand::Entity)
@@ -66,7 +66,7 @@ fn repeated_entity_showcase_sign_interactions_keep_player_valid() {
         0,
         client.addr,
     );
-    assert!(Entity::Player(player).set_instance(world));
+    assert!(Entity::Player(player).set_world(world));
 
     (1..=8).for_each(|sequence| {
         dispatch_sign_interaction(&mut server, &mut client, sign_position, sequence);

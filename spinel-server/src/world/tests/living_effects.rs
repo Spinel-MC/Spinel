@@ -72,7 +72,7 @@ fn world_add_entity_effect_cancellation_preserves_effect_state_and_sends_no_pack
     let (mut server, entity_id, viewer_client) = server_with_living_entity_and_viewer();
     *LIVING_EFFECT_TEST_ENTITY.lock().unwrap() = Some(entity_id);
     LIVING_EFFECT_ADD_CANCELLED.store(true, Ordering::SeqCst);
-    let world_uuid = server.world_manager.instance_uuids()[0];
+    let world_uuid = server.world_manager.world_uuids()[0];
     let server_ptr = &mut server as *mut MinecraftServer as usize;
     let world = server.world_manager.world_mut(world_uuid).unwrap();
     world.use_server_event_dispatcher(server_ptr);
@@ -103,7 +103,7 @@ fn world_add_entity_effect_replacement_removes_previous_effect_before_add_packet
     reset_living_effect_test_state();
     let (mut server, entity_id, viewer_client) = server_with_living_entity_and_viewer();
     *LIVING_EFFECT_TEST_ENTITY.lock().unwrap() = Some(entity_id);
-    let world_uuid = server.world_manager.instance_uuids()[0];
+    let world_uuid = server.world_manager.world_uuids()[0];
     let server_ptr = &mut server as *mut MinecraftServer as usize;
     let world = server.world_manager.world_mut(world_uuid).unwrap();
     world.use_server_event_dispatcher(server_ptr);
@@ -154,7 +154,7 @@ fn world_clear_entity_effects_dispatches_one_remove_packet_and_event_per_effect(
     reset_living_effect_test_state();
     let (mut server, entity_id, viewer_client) = server_with_living_entity_and_viewer();
     *LIVING_EFFECT_TEST_ENTITY.lock().unwrap() = Some(entity_id);
-    let world_uuid = server.world_manager.instance_uuids()[0];
+    let world_uuid = server.world_manager.world_uuids()[0];
     let server_ptr = &mut server as *mut MinecraftServer as usize;
     let world = server.world_manager.world_mut(world_uuid).unwrap();
     world.use_server_event_dispatcher(server_ptr);
@@ -203,7 +203,7 @@ fn world_living_tick_expires_effect_and_dispatches_remove_packet_and_event() {
     reset_living_effect_test_state();
     let (mut server, entity_id, viewer_client) = server_with_living_entity_and_viewer();
     *LIVING_EFFECT_TEST_ENTITY.lock().unwrap() = Some(entity_id);
-    let world_uuid = server.world_manager.instance_uuids()[0];
+    let world_uuid = server.world_manager.world_uuids()[0];
     let server_ptr = &mut server as *mut MinecraftServer as usize;
     let world = server.world_manager.world_mut(world_uuid).unwrap();
     world.use_server_event_dispatcher(server_ptr);
@@ -244,7 +244,7 @@ fn world_entity_tick_event_observes_effect_before_same_tick_expiry() {
     reset_living_effect_test_state();
     let (mut server, entity_id, _viewer_client) = server_with_living_entity_and_viewer();
     *LIVING_EFFECT_TEST_ENTITY.lock().unwrap() = Some(entity_id);
-    let world_uuid = server.world_manager.instance_uuids()[0];
+    let world_uuid = server.world_manager.world_uuids()[0];
     let server_ptr = &mut server as *mut MinecraftServer as usize;
     let world = server.world_manager.world_mut(world_uuid).unwrap();
     world.use_server_event_dispatcher(server_ptr);

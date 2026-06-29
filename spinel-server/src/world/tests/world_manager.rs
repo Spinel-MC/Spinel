@@ -23,7 +23,7 @@ impl ChunkLoader for ManagerTestChunkLoader {
 }
 
 #[test]
-fn world_manager_create_and_register_worlds_match_minestom_instance_manager_surface() {
+fn world_manager_create_and_register_worlds_match_minestom_world_manager_surface() {
     let mut worlds = WorldManager::new();
     let first_world = worlds.create_world(Identifier::minecraft("overworld"));
     let second_world =

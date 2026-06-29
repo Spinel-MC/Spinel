@@ -115,7 +115,7 @@ impl Player {
         self.refresh_recipes()
     }
 
-    pub(crate) fn spawn_after_instance_transition(
+    pub(crate) fn spawn_after_world_transition(
         &mut self,
         client: &mut Client,
         world_name: Identifier,
@@ -127,7 +127,7 @@ impl Player {
         dimension_change: bool,
         update_chunks: bool,
     ) -> io::Result<()> {
-        self.prepare_instance_spawn(world_name.clone());
+        self.prepare_world_spawn(world_name.clone());
         if dimension_change {
             RespawnPacket::new(self.get_game_mode(), world_name.clone()).dispatch(client)?;
         }
@@ -277,7 +277,7 @@ impl Player {
         self.set_position(position);
     }
 
-    pub(crate) fn set_instance_position(
+    pub(crate) fn set_world_position(
         &mut self,
         position: crate::entity::EntityPosition,
         world_view_distance: i32,

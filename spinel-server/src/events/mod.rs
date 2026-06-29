@@ -1,6 +1,6 @@
 pub use spinel_events::*;
 
-pub mod add_entity_to_instance;
+pub mod add_entity_to_world;
 pub mod advancement_tab;
 pub mod connection;
 pub mod creative_inventory_action;
@@ -21,14 +21,6 @@ pub mod entity_spawn;
 pub mod entity_teleport;
 pub mod entity_tick;
 pub mod entity_velocity;
-pub mod instance_block_update;
-pub mod instance_chunk_load;
-pub mod instance_chunk_unload;
-pub mod instance_register;
-pub mod instance_section_invalidate;
-pub mod instance_tick;
-pub mod instance_tick_end;
-pub mod instance_unregister;
 pub mod intention;
 pub mod inventory_click;
 pub mod inventory_close;
@@ -102,11 +94,19 @@ pub mod projectile_collide;
 pub mod projectile_collide_with_block;
 pub mod projectile_collide_with_entity;
 pub mod projectile_uncollide;
-pub mod remove_entity_from_instance;
+pub mod remove_entity_from_world;
 pub mod server_list_ping;
 pub mod shutdown;
 pub mod signal;
 pub mod startup;
+pub mod world_block_update;
+pub mod world_chunk_load;
+pub mod world_chunk_unload;
+pub mod world_register;
+pub mod world_section_invalidate;
+pub mod world_tick;
+pub mod world_tick_end;
+pub mod world_unregister;
 
 #[cfg(test)]
 mod tests;

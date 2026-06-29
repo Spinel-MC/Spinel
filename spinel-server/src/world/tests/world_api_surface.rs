@@ -77,18 +77,18 @@ fn world_scheduler_runs_next_tick_before_time_and_tick_end_after_world_work() {
 }
 
 #[test]
-fn world_event_node_dispatches_instance_scoped_callbacks() {
+fn world_event_node_dispatches_world_scoped_callbacks() {
     let mut world = World::new(Identifier::minecraft("overworld"));
     let event_count = Arc::new(AtomicUsize::new(0));
     let listener_count = event_count.clone();
 
-    world.event_node().listen("InstanceTickEvent", move |_| {
+    world.event_node().listen("WorldTickEvent", move |_| {
         listener_count.fetch_add(1, Ordering::SeqCst);
     });
     world.tick();
 
     assert_eq!(event_count.load(Ordering::SeqCst), 1);
-    assert_eq!(world.event_node().listener_count("InstanceTickEvent"), 1);
+    assert_eq!(world.event_node().listener_count("WorldTickEvent"), 1);
 }
 
 #[test]
@@ -970,7 +970,7 @@ fn neighbor_block_placement_rules_recompute_six_neighbors_until_max_update_dista
 }
 
 #[test]
-fn block_mutation_dispatches_instance_block_update_event_and_refreshes_timestamp() {
+fn block_mutation_dispatches_world_block_update_event_and_refreshes_timestamp() {
     let mut world = World::new(Identifier::minecraft("overworld"));
     let event_count = Arc::new(AtomicUsize::new(0));
     let listener_count = event_count.clone();
@@ -979,7 +979,7 @@ fn block_mutation_dispatches_instance_block_update_event_and_refreshes_timestamp
 
     world
         .event_node()
-        .listen("InstanceBlockUpdateEvent", move |_| {
+        .listen("WorldBlockUpdateEvent", move |_| {
             listener_count.fetch_add(1, Ordering::SeqCst);
         });
     world.set_block(block_position, Block::STONE).unwrap();
@@ -1312,7 +1312,7 @@ fn break_block_sends_destroy_effect_to_chunk_viewers_except_breaker() {
 }
 
 #[test]
-fn world_identity_and_pointers_resolve_instance_uuid_like_minestom() {
+fn world_identity_and_pointers_resolve_world_uuid_like_minestom() {
     let world = World::new(Identifier::minecraft("overworld"));
 
     assert_eq!(world.identity().uuid(), world.uuid());
@@ -1408,7 +1408,7 @@ fn world_manager_unregister_world_unloads_chunks_and_removes_registration() {
 }
 
 #[test]
-fn world_manager_register_and_unregister_dispatch_instance_events_in_order() {
+fn world_manager_register_and_unregister_dispatch_world_events_in_order() {
     let event_order = Arc::new(std::sync::Mutex::new(Vec::new()));
     let mut worlds = WorldManager::new();
     let mut world = World::new(Identifier::minecraft("overworld"));
@@ -1416,16 +1416,12 @@ fn world_manager_register_and_unregister_dispatch_instance_events_in_order() {
     let register_order = event_order.clone();
     let unregister_order = event_order.clone();
 
-    world
-        .event_node()
-        .listen("InstanceRegisterEvent", move |_| {
-            register_order.lock().unwrap().push("register");
-        });
-    world
-        .event_node()
-        .listen("InstanceUnregisterEvent", move |_| {
-            unregister_order.lock().unwrap().push("unregister");
-        });
+    world.event_node().listen("WorldRegisterEvent", move |_| {
+        register_order.lock().unwrap().push("register");
+    });
+    world.event_node().listen("WorldUnregisterEvent", move |_| {
+        unregister_order.lock().unwrap().push("unregister");
+    });
     worlds.register_world(world);
     worlds.unregister_world(world_uuid).unwrap().unwrap();
 
@@ -1558,7 +1554,7 @@ impl ChunkLoader for SynchronousTrackingLoader {
 }
 
 #[test]
-fn generic_entity_set_instance_moves_between_worlds_after_target_chunk_load() {
+fn generic_entity_set_world_moves_between_worlds_after_target_chunk_load() {
     let mut worlds = WorldManager::new();
     let first_world = worlds.create_world(Identifier::minecraft("first"));
     let second_world = worlds.create_world(Identifier::minecraft("second"));
@@ -1594,7 +1590,7 @@ fn generic_entity_set_instance_moves_between_worlds_after_target_chunk_load() {
 }
 
 #[test]
-fn generic_entity_set_instance_point_and_default_position_match_minestom_overloads() {
+fn generic_entity_set_world_point_and_default_position_match_minestom_overloads() {
     let mut worlds = WorldManager::new();
     let first_world = worlds.create_world(Identifier::minecraft("first"));
     let second_world = worlds.create_world(Identifier::minecraft("second"));
@@ -1623,7 +1619,7 @@ fn generic_entity_set_instance_point_and_default_position_match_minestom_overloa
 }
 
 #[test]
-fn player_set_instance_rejects_same_world_and_completes_on_next_manager_tick() {
+fn player_set_world_rejects_same_world_and_completes_on_next_manager_tick() {
     let mut server = MinecraftServer::new();
     let first_world = server
         .world_manager
@@ -1695,7 +1691,7 @@ fn player_set_instance_rejects_same_world_and_completes_on_next_manager_tick() {
 }
 
 #[test]
-fn inactive_player_set_instance_default_uses_respawn_point() {
+fn inactive_player_set_world_default_uses_respawn_point() {
     let mut server = MinecraftServer::new();
     let target_world = server
         .world_manager
@@ -1755,7 +1751,7 @@ fn inactive_player_set_instance_default_uses_respawn_point() {
 }
 
 #[test]
-fn player_set_instance_future_completes_after_spawn_packets_and_viewer_refresh() {
+fn player_set_world_future_completes_after_spawn_packets_and_viewer_refresh() {
     let mut server = MinecraftServer::new();
     let first_world = server
         .world_manager
@@ -1875,7 +1871,7 @@ fn player_set_instance_future_completes_after_spawn_packets_and_viewer_refresh()
 }
 
 #[test]
-fn same_dimension_player_set_instance_does_not_send_respawn_packet() {
+fn same_dimension_player_set_world_does_not_send_respawn_packet() {
     let mut server = MinecraftServer::new();
     let first_world = server
         .world_manager
@@ -2022,15 +2018,15 @@ fn world_copy_preserves_loaded_chunks_tags_dimension_and_source_world() {
 }
 
 #[test]
-fn world_manager_instances_include_normal_and_shared_worlds_as_owned_snapshot() {
+fn world_manager_worlds_include_normal_and_shared_worlds_as_owned_snapshot() {
     let mut worlds = WorldManager::new();
     let source_world = worlds.create_world(Identifier::minecraft("source"));
     let shared_world = worlds.create_shared_world(source_world).unwrap();
-    let instance_uuids = worlds.instance_uuids();
+    let world_uuids = worlds.world_uuids();
 
-    assert!(instance_uuids.contains(&source_world));
-    assert!(instance_uuids.contains(&shared_world));
-    assert_eq!(instance_uuids.len(), 2);
+    assert!(world_uuids.contains(&source_world));
+    assert!(world_uuids.contains(&shared_world));
+    assert_eq!(world_uuids.len(), 2);
 }
 
 #[test]
@@ -2083,7 +2079,7 @@ fn linked_shared_world_same_chunk_player_transition_skips_chunk_refresh() {
 }
 
 #[test]
-fn world_snapshot_preserves_instance_chunk_entity_and_tag_state_after_mutation() {
+fn world_snapshot_preserves_world_chunk_entity_and_tag_state_after_mutation() {
     let mut world = World::new(Identifier::minecraft("overworld"));
     let world_tag = Tag::<i32>::integer("snapshot_world");
     let chunk_tag = Tag::<i32>::integer("snapshot_chunk");

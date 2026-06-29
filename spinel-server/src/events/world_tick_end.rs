@@ -2,12 +2,12 @@ use crate::world::World;
 use spinel_macros::event_dispatcher;
 
 #[event_dispatcher]
-pub struct InstanceTickEndEvent {
+pub struct WorldTickEndEvent {
     world: *mut World,
     world_age: i64,
 }
 
-impl InstanceTickEndEvent {
+impl WorldTickEndEvent {
     pub fn new(world: *mut World, world_age: i64) -> Self {
         Self { world, world_age }
     }

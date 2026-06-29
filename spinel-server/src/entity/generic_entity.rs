@@ -219,7 +219,7 @@ impl GenericEntity {
         self.world
     }
 
-    pub(crate) fn set_world(&mut self, world: Uuid) {
+    pub(crate) fn assign_world(&mut self, world: Uuid) {
         self.world = Some(world);
     }
 

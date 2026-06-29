@@ -323,7 +323,7 @@ fn first_spawn_inventory_sync_waits_until_client_starts_waiting_for_chunks() {
     );
 
     player
-        .spawn_after_instance_transition(
+        .spawn_after_world_transition(
             &mut client,
             Identifier::minecraft("overworld"),
             vec![PlayerChunk::new(0, 0)],

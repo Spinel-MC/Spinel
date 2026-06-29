@@ -1,8 +1,8 @@
 use crate::entity::{Entity, EntityId, GenericEntity};
-use crate::events::add_entity_to_instance::AddEntityToInstanceEvent;
+use crate::events::add_entity_to_world::AddEntityToWorldEvent;
 use crate::events::entity_despawn::EntityDespawnEvent;
 use crate::events::entity_spawn::EntitySpawnEvent;
-use crate::events::remove_entity_from_instance::RemoveEntityFromInstanceEvent;
+use crate::events::remove_entity_from_world::RemoveEntityFromWorldEvent;
 use crate::server::MinecraftServer;
 use crate::world::{World, WorldManager};
 use spinel_macros::event_listener;
@@ -18,10 +18,7 @@ static ENTITY_INSTANCE_EVENT_LOG: Mutex<Vec<&'static str>> = Mutex::new(Vec::new
 static ENTITY_INSTANCE_EVENT_CANCEL_ADD: AtomicBool = AtomicBool::new(false);
 
 #[event_listener]
-fn entity_add_to_instance_listener(
-    event: &mut AddEntityToInstanceEvent,
-    _server: &mut MinecraftServer,
-) {
+fn entity_add_to_world_listener(event: &mut AddEntityToWorldEvent, _server: &mut MinecraftServer) {
     if *ENTITY_INSTANCE_EVENT_TARGET.lock().unwrap() != Some(event.get_entity_id()) {
         return;
     }
@@ -46,8 +43,8 @@ fn entity_despawn_listener(event: &mut EntityDespawnEvent, _server: &mut Minecra
 }
 
 #[event_listener]
-fn entity_remove_from_instance_listener(
-    event: &mut RemoveEntityFromInstanceEvent,
+fn entity_remove_from_world_listener(
+    event: &mut RemoveEntityFromWorldEvent,
     _server: &mut MinecraftServer,
 ) {
     if *ENTITY_INSTANCE_EVENT_TARGET.lock().unwrap() != Some(event.get_entity_id()) {
@@ -59,7 +56,7 @@ fn entity_remove_from_instance_listener(
 #[test]
 fn world_add_entity_dispatches_add_and_spawn_events_in_minestom_order() {
     let _lock = ENTITY_INSTANCE_EVENT_TEST_LOCK.lock().unwrap();
-    reset_entity_instance_event_state();
+    reset_entity_world_event_state();
     let mut server = MinecraftServer::new();
     let mut world = event_world("entity_add_spawn", &mut server);
     let entity = Entity::Generic(GenericEntity::new(EntityType::ZOMBIE));
@@ -68,7 +65,7 @@ fn world_add_entity_dispatches_add_and_spawn_events_in_minestom_order() {
 
     assert!(world.add_entity(entity));
 
-    assert_eq!(recorded_entity_instance_events(), ["add", "spawn"]);
+    assert_eq!(recorded_entity_world_events(), ["add", "spawn"]);
     assert_eq!(
         world.get_entity(entity_id).unwrap().get_world(),
         Some(world.uuid())
@@ -78,7 +75,7 @@ fn world_add_entity_dispatches_add_and_spawn_events_in_minestom_order() {
 #[test]
 fn world_add_entity_cancellation_blocks_insert_and_spawn_event() {
     let _lock = ENTITY_INSTANCE_EVENT_TEST_LOCK.lock().unwrap();
-    reset_entity_instance_event_state();
+    reset_entity_world_event_state();
     let mut server = MinecraftServer::new();
     let mut world = event_world("entity_add_cancel", &mut server);
     let entity = Entity::Generic(GenericEntity::new(EntityType::ZOMBIE));
@@ -88,45 +85,42 @@ fn world_add_entity_cancellation_blocks_insert_and_spawn_event() {
 
     assert!(!world.add_entity(entity));
 
-    assert_eq!(recorded_entity_instance_events(), ["add"]);
+    assert_eq!(recorded_entity_world_events(), ["add"]);
     assert!(world.get_entity(entity_id).is_none());
 }
 
 #[test]
-fn world_take_entity_dispatches_despawn_before_remove_from_instance() {
+fn world_take_entity_dispatches_despawn_before_remove_from_world() {
     let _lock = ENTITY_INSTANCE_EVENT_TEST_LOCK.lock().unwrap();
-    reset_entity_instance_event_state();
+    reset_entity_world_event_state();
     let mut server = MinecraftServer::new();
     let mut world = event_world("entity_take", &mut server);
     let entity = Entity::Generic(GenericEntity::new(EntityType::ZOMBIE));
     let entity_id = entity.get_entity_id();
     world.add_entity(entity);
-    reset_entity_instance_event_log(entity_id);
+    reset_entity_world_event_log(entity_id);
 
     assert!(world.take_entity(entity_id).is_some());
 
-    assert_eq!(recorded_entity_instance_events(), ["despawn", "remove"]);
+    assert_eq!(recorded_entity_world_events(), ["despawn", "remove"]);
 }
 
 #[test]
 fn world_transfer_extraction_dispatches_remove_without_despawn() {
     let _lock = ENTITY_INSTANCE_EVENT_TEST_LOCK.lock().unwrap();
-    reset_entity_instance_event_state();
+    reset_entity_world_event_state();
     let mut server = MinecraftServer::new();
     let mut source_world = event_world("entity_transfer_source", &mut server);
     let mut target_world = event_world("entity_transfer_target", &mut server);
     let entity = Entity::Generic(GenericEntity::new(EntityType::ZOMBIE));
     let entity_id = entity.get_entity_id();
     source_world.add_entity(entity);
-    reset_entity_instance_event_log(entity_id);
+    reset_entity_world_event_log(entity_id);
 
-    let entity = source_world.take_entity_from_instance(entity_id).unwrap();
+    let entity = source_world.take_entity_from_world(entity_id).unwrap();
     assert!(target_world.add_entity(entity));
 
-    assert_eq!(
-        recorded_entity_instance_events(),
-        ["remove", "add", "spawn"]
-    );
+    assert_eq!(recorded_entity_world_events(), ["remove", "add", "spawn"]);
     assert_eq!(
         target_world.get_entity(entity_id).unwrap().get_world(),
         Some(target_world.uuid())
@@ -136,7 +130,7 @@ fn world_transfer_extraction_dispatches_remove_without_despawn() {
 #[test]
 fn world_manager_cancelled_transfer_keeps_entity_in_source_world() {
     let _lock = ENTITY_INSTANCE_EVENT_TEST_LOCK.lock().unwrap();
-    reset_entity_instance_event_state();
+    reset_entity_world_event_state();
     ENTITY_INSTANCE_EVENT_CANCEL_ADD.store(true, Ordering::SeqCst);
     let mut server = MinecraftServer::new();
     let server_ptr = &mut server as *mut MinecraftServer as usize;
@@ -154,7 +148,7 @@ fn world_manager_cancelled_transfer_keeps_entity_in_source_world() {
         .world_mut(target_world)
         .unwrap()
         .use_server_event_dispatcher(server_ptr);
-    reset_entity_instance_event_log(entity_id);
+    reset_entity_world_event_log(entity_id);
     ENTITY_INSTANCE_EVENT_CANCEL_ADD.store(true, Ordering::SeqCst);
 
     let result = worlds.set_entity_world_at_position(
@@ -178,7 +172,7 @@ fn world_manager_cancelled_transfer_keeps_entity_in_source_world() {
             .get_entity(entity_id)
             .is_none()
     );
-    assert_eq!(recorded_entity_instance_events(), ["add"]);
+    assert_eq!(recorded_entity_world_events(), ["add"]);
 }
 
 fn event_world(name: &str, server: &mut MinecraftServer) -> World {
@@ -187,18 +181,18 @@ fn event_world(name: &str, server: &mut MinecraftServer) -> World {
     world
 }
 
-fn reset_entity_instance_event_state() {
+fn reset_entity_world_event_state() {
     *ENTITY_INSTANCE_EVENT_TARGET.lock().unwrap() = None;
     ENTITY_INSTANCE_EVENT_LOG.lock().unwrap().clear();
     ENTITY_INSTANCE_EVENT_CANCEL_ADD.store(false, Ordering::SeqCst);
 }
 
-fn reset_entity_instance_event_log(entity_id: EntityId) {
+fn reset_entity_world_event_log(entity_id: EntityId) {
     *ENTITY_INSTANCE_EVENT_TARGET.lock().unwrap() = Some(entity_id);
     ENTITY_INSTANCE_EVENT_LOG.lock().unwrap().clear();
     ENTITY_INSTANCE_EVENT_CANCEL_ADD.store(false, Ordering::SeqCst);
 }
 
-fn recorded_entity_instance_events() -> Vec<&'static str> {
+fn recorded_entity_world_events() -> Vec<&'static str> {
     ENTITY_INSTANCE_EVENT_LOG.lock().unwrap().clone()
 }

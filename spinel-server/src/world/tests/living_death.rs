@@ -84,7 +84,7 @@ fn world_kill_entity_dispatches_entity_death_event_after_living_state_changes() 
     let entity_id = tracked_living_entity_id(&server);
     *LIVING_DEATH_TEST_ENTITY.lock().unwrap() = Some(entity_id);
 
-    let world_uuid = server.world_manager.instance_uuids()[0];
+    let world_uuid = server.world_manager.world_uuids()[0];
     let server_ptr = &mut server as *mut MinecraftServer as usize;
     let world = server.world_manager.world_mut(world_uuid).unwrap();
     world.use_server_event_dispatcher(server_ptr);

@@ -405,7 +405,7 @@ impl Player {
         self.current_world
     }
 
-    pub(crate) fn set_world(&mut self, world: Uuid) {
+    pub(crate) fn assign_world(&mut self, world: Uuid) {
         self.current_world = Some(world);
     }
 
@@ -475,7 +475,7 @@ impl Player {
         )
     }
 
-    pub(super) fn prepare_instance_spawn(&mut self, world_name: Identifier) {
+    pub(super) fn prepare_world_spawn(&mut self, world_name: Identifier) {
         self.pending_spawning_world = None;
         self.living.revive();
         self.world_name = Some(world_name);
