@@ -186,6 +186,9 @@ impl PartialOrd for OpenNode {
 
 impl Ord for OpenNode {
     fn cmp(&self, other: &Self) -> Ordering {
-        self.minestom_order(other).reverse()
+        match self.minestom_order(other) {
+            Ordering::Equal => self.index.cmp(&other.index),
+            order => order.reverse(),
+        }
     }
 }

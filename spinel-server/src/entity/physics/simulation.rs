@@ -9,7 +9,6 @@ use spinel_registry::{BlockShapeBox, EntityBoundingBox};
 const VELOCITY_EPSILON: f64 = 0.000001;
 const COLLISION_RATIO_LIMIT: f64 = 1.0 - VELOCITY_EPSILON;
 const COLLISION_BACKOFF: f64 = 0.99999;
-const GROUND_SUPPORT_EPSILON: f64 = 0.000001;
 
 pub fn simulate_movement(
     position: EntityPosition,
@@ -42,9 +41,6 @@ pub fn simulate_movement(
     let position_changed = bordered_position.get_x() != position.get_x()
         || bordered_position.get_y() != position.get_y()
         || bordered_position.get_z() != position.get_z();
-    let has_ground_support =
-        is_on_ground && position_has_ground_support(position, bounding_box, world);
-    let is_grounded_after_collision = collision.is_on_ground() || has_ground_support;
     let new_velocity_per_tick = update_velocity(
         bordered_position,
         collision.get_new_velocity_per_tick(),
@@ -52,18 +48,13 @@ pub fn simulate_movement(
         aerodynamics,
         position_changed,
         is_flying,
-        is_grounded_after_collision,
+        is_on_ground,
         has_no_gravity,
     );
     let remains_cached = collision.is_cached()
         && new_velocity_per_tick == collision.get_new_velocity_per_tick()
         && bordered_position == collision.get_new_position();
-    let movement =
-        collision.with_movement(bordered_position, new_velocity_per_tick, remains_cached);
-    if !position_changed && is_grounded_after_collision {
-        return movement.with_on_ground(true);
-    }
-    movement
+    collision.with_movement(bordered_position, new_velocity_per_tick, remains_cached)
 }
 
 pub fn simulate_collision(
@@ -116,15 +107,14 @@ fn collide_with_blocks(
         let Some(intersection) =
             earliest_block_intersection(current_position, remaining_delta, bounding_box, world)
         else {
-            current_position = offset_position(current_position, remaining_delta);
+            current_position =
+                offset_position(current_position, minestom_swept_delta(remaining_delta));
             break;
         };
         let travelled_ratio = intersection.intersection.ratio.min(COLLISION_RATIO_LIMIT);
-        current_position = offset_position(
-            current_position,
-            multiply_vector(remaining_delta, travelled_ratio),
-        );
-        remaining_delta = multiply_vector(remaining_delta, 1.0 - travelled_ratio);
+        let travelled_delta = minestom_resolved_delta(remaining_delta, travelled_ratio);
+        current_position = offset_position(current_position, travelled_delta);
+        remaining_delta = subtract_vector(remaining_delta, travelled_delta);
         let collision_axis = match intersection.intersection.normal {
             RaycastNormal::NegativeX | RaycastNormal::PositiveX => {
                 collision_x = true;
@@ -300,19 +290,30 @@ fn intersect_block_shape(
     {
         return None;
     }
+    let moving_center = Vector3d {
+        x: bounding_box.minimum_x() + bounding_box.get_width() / 2.0,
+        y: bounding_box.minimum_y() + bounding_box.get_height() / 2.0,
+        z: bounding_box.minimum_z() + bounding_box.depth() / 2.0,
+    };
+    let ray_center = add_vector(position.as_vector(), moving_center);
+    let half_width = bounding_box.get_width() / 2.0;
+    let half_height = bounding_box.get_height() / 2.0;
+    let half_depth = bounding_box.depth() / 2.0;
+    let expanded_minimum = Vector3d {
+        x: shape.min_x - ray_center.x + f64::from(block_position.x) - half_width,
+        y: shape.min_y - ray_center.y + f64::from(block_position.y) - half_height,
+        z: shape.min_z - ray_center.z + f64::from(block_position.z) - half_depth,
+    };
+    let expanded_maximum = Vector3d {
+        x: shape.max_x - ray_center.x + f64::from(block_position.x) + half_width,
+        y: shape.max_y - ray_center.y + f64::from(block_position.y) + half_height,
+        z: shape.max_z - ray_center.z + f64::from(block_position.z) + half_depth,
+    };
     let expanded_shape = RaycastBoundingBox::new(
-        Vector3d {
-            x: shape_minimum.x - bounding_box.maximum_x(),
-            y: shape_minimum.y - bounding_box.maximum_y(),
-            z: shape_minimum.z - bounding_box.maximum_z(),
-        },
-        Vector3d {
-            x: shape_maximum.x - bounding_box.minimum_x(),
-            y: shape_maximum.y - bounding_box.minimum_y(),
-            z: shape_maximum.z - bounding_box.minimum_z(),
-        },
+        minestom_collision_offsets(expanded_minimum, delta),
+        minestom_collision_offsets(expanded_maximum, delta),
     );
-    RaycastIntersection::between_ray_and_box(position.as_vector(), delta, expanded_shape)
+    RaycastIntersection::between_ray_and_box(zero_vector(), delta, expanded_shape)
         .map(|intersection| {
             let ratio = intersection.ratio * COLLISION_BACKOFF;
             RaycastIntersection {
@@ -331,55 +332,6 @@ fn intervals_overlap(
     second_maximum: f64,
 ) -> bool {
     first_minimum < second_maximum && first_maximum > second_minimum
-}
-
-fn position_has_ground_support(
-    position: EntityPosition,
-    bounding_box: EntityBoundingBox,
-    world: &WorldSnapshot,
-) -> bool {
-    let entity_minimum_x = position.get_x() + bounding_box.minimum_x();
-    let entity_maximum_x = position.get_x() + bounding_box.maximum_x();
-    let entity_minimum_y = position.get_y() + bounding_box.minimum_y();
-    let entity_minimum_z = position.get_z() + bounding_box.minimum_z();
-    let entity_maximum_z = position.get_z() + bounding_box.maximum_z();
-    let minimum_block_x = entity_minimum_x.floor() as i32;
-    let maximum_block_x = entity_maximum_x.floor() as i32;
-    let support_block_y = (entity_minimum_y - GROUND_SUPPORT_EPSILON).floor() as i32;
-    let minimum_block_z = entity_minimum_z.floor() as i32;
-    let maximum_block_z = entity_maximum_z.floor() as i32;
-
-    (minimum_block_x..=maximum_block_x).any(|block_x| {
-        (minimum_block_z..=maximum_block_z).any(|block_z| {
-            let block_position = BlockPosition::new(block_x, support_block_y, block_z);
-            world
-                .block_state(block_position)
-                .collision_shape()
-                .iter()
-                .any(|shape| {
-                    let shape_maximum_y = f64::from(block_position.y) + shape.max_y;
-                    let shape_minimum_x = f64::from(block_position.x) + shape.min_x;
-                    let shape_maximum_x = f64::from(block_position.x) + shape.max_x;
-                    let shape_minimum_z = f64::from(block_position.z) + shape.min_z;
-                    let shape_maximum_z = f64::from(block_position.z) + shape.max_z;
-                    let shape_supports_feet =
-                        (shape_maximum_y - entity_minimum_y).abs() <= GROUND_SUPPORT_EPSILON;
-                    shape_supports_feet
-                        && intervals_overlap(
-                            entity_minimum_x,
-                            entity_maximum_x,
-                            shape_minimum_x,
-                            shape_maximum_x,
-                        )
-                        && intervals_overlap(
-                            entity_minimum_z,
-                            entity_maximum_z,
-                            shape_minimum_z,
-                            shape_maximum_z,
-                        )
-                })
-        })
-    })
 }
 
 fn blockless_movement(
@@ -477,9 +429,6 @@ fn update_velocity(
     has_no_gravity: bool,
 ) -> Velocity {
     if !position_changed {
-        if is_on_ground {
-            return Velocity(zero_vector());
-        }
         if is_flying {
             return Velocity(zero_vector());
         }
@@ -539,12 +488,60 @@ fn add_vector(left: Vector3d, right: Vector3d) -> Vector3d {
     }
 }
 
+fn subtract_vector(left: Vector3d, right: Vector3d) -> Vector3d {
+    Vector3d {
+        x: left.x - right.x,
+        y: left.y - right.y,
+        z: left.z - right.z,
+    }
+}
+
 fn multiply_vector(vector: Vector3d, multiplier: f64) -> Vector3d {
     Vector3d {
         x: vector.x * multiplier,
         y: vector.y * multiplier,
         z: vector.z * multiplier,
     }
+}
+
+fn minestom_resolved_delta(delta: Vector3d, ratio: f64) -> Vector3d {
+    let resolved_delta = multiply_vector(delta, ratio);
+    Vector3d {
+        x: clamp_velocity(resolved_delta.x),
+        y: clamp_velocity(resolved_delta.y),
+        z: clamp_velocity(resolved_delta.z),
+    }
+}
+
+fn minestom_collision_offsets(offsets: Vector3d, direction: Vector3d) -> Vector3d {
+    Vector3d {
+        x: minestom_collision_offset(offsets.x, direction.x),
+        y: minestom_collision_offset(offsets.y, direction.y),
+        z: minestom_collision_offset(offsets.z, direction.z),
+    }
+}
+
+fn minestom_collision_offset(offset: f64, direction: f64) -> f64 {
+    if direction != 0.0 && (offset / direction).abs() < VELOCITY_EPSILON {
+        return 0.0;
+    }
+    offset
+}
+
+fn minestom_swept_delta(delta: Vector3d) -> Vector3d {
+    Vector3d {
+        x: minestom_swept_component(delta.x),
+        y: minestom_swept_component(delta.y),
+        z: minestom_swept_component(delta.z),
+    }
+}
+
+fn minestom_swept_component(component: f64) -> f64 {
+    let swept_component = component * COLLISION_RATIO_LIMIT;
+    if swept_component.abs() < VELOCITY_EPSILON {
+        return 0.0;
+    }
+    swept_component
 }
 
 fn zero_vector() -> Vector3d {

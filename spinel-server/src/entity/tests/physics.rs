@@ -44,7 +44,7 @@ fn generic_entity_movement_tick_collides_with_extracted_block_collision_shape() 
 }
 
 #[test]
-fn grounded_entity_with_zero_velocity_keeps_ground_state_and_zero_velocity() {
+fn stationary_entity_uses_minestom_zero_delta_gravity_and_ground_result() {
     let mut world = World::new(Identifier::minecraft("overworld"));
     world
         .set_block(BlockPosition::new(1, 63, 1), Block::STONE)
@@ -57,8 +57,8 @@ fn grounded_entity_with_zero_velocity_keeps_ground_state_and_zero_velocity() {
     assert!(entity.movement_tick(&snapshot).is_none());
 
     assert_eq!(entity.get_position().get_y(), 64.0);
-    assert_eq!(entity.get_velocity().0.y, 0.0);
-    assert!(entity.is_on_ground());
+    assert_eq!(entity.get_velocity().0.y, -1.568);
+    assert!(!entity.is_on_ground());
 }
 #[test]
 fn physics_result_preserves_minestom_collision_evidence_and_cache_reuse() {

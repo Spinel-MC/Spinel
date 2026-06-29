@@ -146,7 +146,7 @@ impl NodeGenerator for PreciseGroundNodeGenerator {
         world: &WorldSnapshot,
         position: EntityPosition,
         bounding_box: EntityBoundingBox,
-        _maximum_fall: i32,
+        maximum_fall: i32,
     ) -> Option<f64> {
         let centered_position = EntityPosition::new(
             position.get_x().floor() + 0.5,
@@ -160,7 +160,7 @@ impl NodeGenerator for PreciseGroundNodeGenerator {
                 centered_position,
                 Velocity(Vector3d {
                     x: 0.0,
-                    y: -(MAXIMUM_GROUND_FALL_DISTANCE as f64),
+                    y: -f64::from(maximum_fall),
                     z: 0.0,
                 }),
                 bounding_box,
@@ -179,12 +179,9 @@ impl NodeGenerator for PreciseGroundNodeGenerator {
         end: EntityPosition,
         bounding_box: EntityBoundingBox,
     ) -> bool {
-        movement_has_no_collision(
-            world,
-            start.get_offset(0.0, PRECISE_MOVEMENT_EPSILON, 0.0),
-            end.get_offset(0.0, PRECISE_MOVEMENT_EPSILON, 0.0),
-            bounding_box,
-        )
+        let raised_start = start.get_offset(0.0, PRECISE_MOVEMENT_EPSILON, 0.0);
+        let raised_end = end.get_offset(0.0, PRECISE_MOVEMENT_EPSILON, 0.0);
+        movement_has_no_collision(world, raised_start, raised_end, bounding_box)
     }
 }
 
@@ -548,156 +545,74 @@ fn movement_has_no_collision(
     !collision.has_collision_x() && !collision.has_collision_y() && !collision.has_collision_z()
 }
 
-fn same_block(left: EntityPosition, right: EntityPosition) -> bool {
-    block_coordinates(left) == block_coordinates(right)
+fn footprint_positions(
+    position: EntityPosition,
+    bounding_box: EntityBoundingBox,
+    y_offset: i32,
+) -> Vec<BlockPosition> {
+    let minimum_x = (position.get_x() + bounding_box.minimum_x()).floor() as i32;
+    let maximum_x = (position.get_x() + bounding_box.maximum_x()).floor() as i32;
+    let minimum_z = (position.get_z() + bounding_box.minimum_z()).floor() as i32;
+    let maximum_z = (position.get_z() + bounding_box.maximum_z()).floor() as i32;
+    let y = (position.get_y() + bounding_box.minimum_y()).floor() as i32 + y_offset;
+    (minimum_x..=maximum_x)
+        .flat_map(|x| (minimum_z..=maximum_z).map(move |z| BlockPosition::new(x, y, z)))
+        .collect()
 }
 
-struct FlightNeighbor {
+#[derive(Clone, Copy)]
+struct NeighborCandidate {
     position: EntityPosition,
     cost: f64,
+}
+
+fn flying_neighbors(
+    position: EntityPosition,
+    bounding_box: EntityBoundingBox,
+    cost_increment: f64,
+) -> Vec<NeighborCandidate> {
+    let step_size = horizontal_step_size(bounding_box);
+    (-step_size..=step_size)
+        .flat_map(|x_offset| {
+            (-step_size..=step_size).flat_map(move |y_offset| {
+                (-step_size..=step_size).filter_map(move |z_offset| {
+                    let same_position = x_offset == 0 && y_offset == 0 && z_offset == 0;
+                    if same_position {
+                        return None;
+                    }
+
+                    let offset_distance =
+                        ((x_offset * x_offset + y_offset * y_offset + z_offset * z_offset) as f64)
+                            .sqrt();
+                    Some(NeighborCandidate {
+                        position: EntityPosition::new(
+                            position.get_x().floor() + 0.5 + f64::from(x_offset),
+                            position.get_y().floor() + f64::from(y_offset),
+                            position.get_z().floor() + 0.5 + f64::from(z_offset),
+                            position.get_yaw(),
+                            position.get_pitch(),
+                        ),
+                        cost: offset_distance * cost_increment,
+                    })
+                })
+            })
+        })
+        .collect()
 }
 
 fn water_neighbors(
     world: &WorldSnapshot,
     position: EntityPosition,
     bounding_box: EntityBoundingBox,
-) -> Vec<FlightNeighbor> {
-    let step_size = horizontal_step_size(bounding_box);
-    let mut neighbors = Vec::new();
-    for x_offset in -step_size..=step_size {
-        for z_offset in -step_size..=step_size {
-            if x_offset == 0 && z_offset == 0 {
-                continue;
-            }
-            let cost = ((x_offset * x_offset + z_offset * z_offset) as f64).sqrt() * 0.98;
-            [
-                centered_block_offset(position, x_offset, 0.0, z_offset),
-                centered_block_offset(position, x_offset, 1.5, z_offset),
-                centered_block_offset(position, x_offset, -0.5, z_offset),
-            ]
-            .into_iter()
-            .filter(|candidate| world.block(position_block(*candidate)) == Block::WATER)
-            .for_each(|candidate| {
-                neighbors.push(FlightNeighbor {
-                    position: candidate,
-                    cost,
-                });
-            });
-        }
-    }
-    let block_above = EntityPosition::new(
-        position.get_x(),
-        position.get_y().floor() + 1.5,
-        position.get_z(),
-        position.get_yaw(),
-        position.get_pitch(),
-    );
-    if world.block(position_block(block_above)) == Block::WATER {
-        neighbors.push(FlightNeighbor {
-            position,
-            cost: 2.0,
-        });
-    }
-    let block_below = EntityPosition::new(
-        position.get_x(),
-        position.get_y().floor() - 0.5,
-        position.get_z(),
-        position.get_yaw(),
-        position.get_pitch(),
-    );
-    if world.block(position_block(block_below)) == Block::WATER {
-        neighbors.push(FlightNeighbor {
-            position: block_below,
-            cost: 2.0,
-        });
-    }
-    neighbors
-}
-
-fn flying_neighbors(
-    position: EntityPosition,
-    bounding_box: EntityBoundingBox,
-    current_level_y_offset: f64,
-) -> Vec<FlightNeighbor> {
-    let step_size = horizontal_step_size(bounding_box);
-    let mut neighbors = Vec::new();
-    for x_offset in -step_size..=step_size {
-        for z_offset in -step_size..=step_size {
-            if x_offset == 0 && z_offset == 0 {
-                continue;
-            }
-            let cost = ((x_offset * x_offset + z_offset * z_offset) as f64).sqrt() * 0.98;
-            neighbors.push(FlightNeighbor {
-                position: centered_block_offset(
-                    position,
-                    x_offset,
-                    current_level_y_offset,
-                    z_offset,
-                ),
-                cost,
-            });
-            neighbors.push(FlightNeighbor {
-                position: centered_block_offset(position, x_offset, 1.5, z_offset),
-                cost,
-            });
-            neighbors.push(FlightNeighbor {
-                position: centered_block_offset(position, x_offset, -0.5, z_offset),
-                cost,
-            });
-        }
-    }
-    neighbors.push(FlightNeighbor {
-        position: EntityPosition::new(
-            position.get_x(),
-            position.get_y().floor() + 1.5,
-            position.get_z(),
-            position.get_yaw(),
-            position.get_pitch(),
-        ),
-        cost: 2.0,
-    });
-    neighbors.push(FlightNeighbor {
-        position: EntityPosition::new(
-            position.get_x(),
-            position.get_y().floor() - 0.5,
-            position.get_z(),
-            position.get_yaw(),
-            position.get_pitch(),
-        ),
-        cost: 2.0,
-    });
-    neighbors
-}
-
-fn centered_block_offset(
-    position: EntityPosition,
-    x_offset: i32,
-    y_offset: f64,
-    z_offset: i32,
-) -> EntityPosition {
-    EntityPosition::new(
-        position.get_x().floor() + 0.5 + x_offset as f64,
-        position.get_y().floor() + y_offset,
-        position.get_z().floor() + 0.5 + z_offset as f64,
-        position.get_yaw(),
-        position.get_pitch(),
-    )
-}
-
-fn block_coordinates(position: EntityPosition) -> (i32, i32, i32) {
-    (
-        position.get_x().floor() as i32,
-        position.get_y().floor() as i32,
-        position.get_z().floor() as i32,
-    )
-}
-
-fn position_block(position: EntityPosition) -> BlockPosition {
-    BlockPosition::new(
-        position.get_x().floor() as i32,
-        position.get_y().floor() as i32,
-        position.get_z().floor() as i32,
-    )
+) -> Vec<NeighborCandidate> {
+    flying_neighbors(position, bounding_box, 0.5)
+        .into_iter()
+        .filter(|neighbor| {
+            occupancy_positions(neighbor.position, bounding_box)
+                .into_iter()
+                .all(|block_position| world.block(block_position).is_liquid())
+        })
+        .collect()
 }
 
 fn occupancy_positions(
@@ -719,17 +634,19 @@ fn occupancy_positions(
         .collect()
 }
 
-fn footprint_positions(
-    position: EntityPosition,
-    bounding_box: EntityBoundingBox,
-    y_offset: i32,
-) -> Vec<BlockPosition> {
-    let minimum_x = (position.get_x() + bounding_box.minimum_x()).floor() as i32;
-    let maximum_x = (position.get_x() + bounding_box.maximum_x()).floor() as i32;
-    let minimum_z = (position.get_z() + bounding_box.minimum_z()).floor() as i32;
-    let maximum_z = (position.get_z() + bounding_box.maximum_z()).floor() as i32;
-    let y = (position.get_y() + bounding_box.minimum_y()).floor() as i32 + y_offset;
-    (minimum_x..=maximum_x)
-        .flat_map(|x| (minimum_z..=maximum_z).map(move |z| BlockPosition::new(x, y, z)))
-        .collect()
+fn same_block(first: EntityPosition, second: EntityPosition) -> bool {
+    block_coordinates(first) == block_coordinates(second)
+}
+
+fn position_block(position: EntityPosition) -> BlockPosition {
+    let (x, y, z) = block_coordinates(position);
+    BlockPosition::new(x, y, z)
+}
+
+fn block_coordinates(position: EntityPosition) -> (i32, i32, i32) {
+    (
+        position.get_x().floor() as i32,
+        position.get_y().floor() as i32,
+        position.get_z().floor() as i32,
+    )
 }

@@ -198,7 +198,7 @@ fn creature_pathfinding_tick_sends_body_and_head_rotation_to_viewers() {
 }
 
 #[test]
-fn creature_pathfinding_jump_sends_velocity_packet_to_viewers_same_tick() {
+fn creature_pathfinding_jump_sends_velocity_after_minestom_ground_collision_tick() {
     let mut world = World::new(Identifier::minecraft("pathfinding_jump_velocity"));
     world.load_chunk(ChunkPosition::new(0, 0)).unwrap();
     for block_x in 0..=3 {
@@ -250,6 +250,12 @@ fn creature_pathfinding_jump_sends_velocity_packet_to_viewers_same_tick() {
     }
 
     world.tick_with_registries(&Registries::new_vanilla());
+    assert!(!viewer_client
+        .queued_outbound_packet_ids()
+        .contains(&EntityVelocityPacket::get_id()));
+    viewer_client.discard_queued_outbound_packets();
+
+    world.tick_with_registries(&Registries::new_vanilla());
 
     let packet_ids = viewer_client.queued_outbound_packet_ids();
     let Entity::Creature(creature) = world.get_entity(creature_id).unwrap() else {
@@ -288,7 +294,7 @@ fn synchronization_only_entity_suppresses_ordinary_physics_movement_packet() {
 
     assert_eq!(
         world.get_entity(target_id).unwrap().get_position().get_x(),
-        2.0
+        1.9999989999999999
     );
     assert!(
         !viewer_client

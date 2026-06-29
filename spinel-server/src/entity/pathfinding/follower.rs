@@ -382,7 +382,7 @@ fn movement_towards(
     let delta_z = target.get_z() - current.get_z();
     let distance_squared = delta_x * delta_x + delta_y * delta_y + delta_z * delta_z;
     let speed = speed.min(distance_squared);
-    let radians = delta_z.atan2(delta_x);
+    let radians = libm::atan2(delta_z, delta_x);
     let yaw = look_yaw(
         look_at.get_x() - current.get_x(),
         look_at.get_z() - current.get_z(),
@@ -405,9 +405,9 @@ fn movement_towards(
     };
     FollowerMovement {
         velocity: Velocity(Vector3d {
-            x: radians.cos() * speed,
+            x: libm::cos(radians) * speed,
             y: vertical_speed,
-            z: radians.sin() * speed,
+            z: libm::sin(radians) * speed,
         }),
         yaw,
         pitch,
@@ -529,11 +529,16 @@ fn same_block(left: EntityPosition, right: EntityPosition) -> bool {
 }
 
 fn look_yaw(delta_x: f64, delta_z: f64) -> f32 {
-    (delta_z.atan2(delta_x).to_degrees() - 90.0) as f32
+    let degrees = delta_z.atan2(delta_x).to_degrees() as f32 - 90.0;
+    if degrees < -180.0 {
+        return degrees + 360.0;
+    }
+    if degrees > 180.0 {
+        return degrees - 360.0;
+    }
+    degrees
 }
 
 fn look_pitch(delta_x: f64, delta_y: f64, delta_z: f64) -> f32 {
-    (-delta_y
-        .atan2((delta_x * delta_x + delta_z * delta_z).sqrt())
-        .to_degrees()) as f32
+    (-delta_y.atan2(delta_x.abs().max(delta_z.abs())).to_degrees()) as f32
 }
