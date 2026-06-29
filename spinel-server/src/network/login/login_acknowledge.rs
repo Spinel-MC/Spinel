@@ -30,7 +30,7 @@ impl<'a> ConfigurationTransition<'a> {
     }
 }
 
-#[packet_listener(id: "login_acknowledged", state: ConnectionState::Login, module: "login")]
+#[packet_listener(id: "login_acknowledged", state: ConnectionState::Login)]
 fn on_login_acknowledged(
     client: &mut Client,
     _packet: LoginAcknowledgedPacket,

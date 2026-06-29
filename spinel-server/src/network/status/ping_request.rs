@@ -5,7 +5,7 @@ use spinel_core::network::clientbound::status::pong_response::PongResponsePacket
 use spinel_core::network::serverbound::status::ping_request::PingRequestPacket;
 use spinel_macros::packet_listener;
 
-#[packet_listener(module: "ping")]
+#[packet_listener()]
 fn on_ping_request(
     client: &mut Client,
     packet: PingRequestPacket,

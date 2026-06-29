@@ -4,7 +4,7 @@ use crate::server::MinecraftServer;
 use spinel_core::network::serverbound::login::login_plugin_response::LoginPluginResponsePacket;
 use spinel_macros::packet_listener;
 
-#[packet_listener(module: "login")]
+#[packet_listener()]
 fn on_login_plugin_response(
     client: &mut Client,
     packet: LoginPluginResponsePacket,

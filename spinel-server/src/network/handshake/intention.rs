@@ -5,7 +5,7 @@ use spinel_core::network::serverbound::handshake::intention::IntentionPacket;
 use spinel_macros::packet_listener;
 use spinel_network::ConnectionState;
 
-#[packet_listener(id: "intention", state: ConnectionState::Handshaking, module: "intention")]
+#[packet_listener(id: "intention", state: ConnectionState::Handshaking)]
 fn on_intention(
     client: &mut Client,
     packet: IntentionPacket,

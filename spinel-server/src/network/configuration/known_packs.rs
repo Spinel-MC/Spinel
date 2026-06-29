@@ -156,7 +156,7 @@ fn error_during_login() -> TextComponent {
     )
 }
 
-#[packet_listener(module: "login")]
+#[packet_listener()]
 fn on_known_packs(
     client: &mut Client,
     _packet: KnownPacksPacket,

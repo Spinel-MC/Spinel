@@ -4,7 +4,7 @@ use crate::server::MinecraftServer;
 use spinel_core::network::serverbound::play::client_information::ClientInformationPacket;
 use spinel_macros::packet_listener;
 
-#[packet_listener(module: "play")]
+#[packet_listener()]
 fn on_client_information(
     client: &mut Client,
     packet: ClientInformationPacket,

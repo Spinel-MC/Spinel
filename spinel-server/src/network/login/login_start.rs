@@ -205,12 +205,12 @@ pub(crate) fn resume_login_after_plugin_responses(client: &mut Client) -> bool {
     true
 }
 
-#[event_listener(module: "login")]
+#[event_listener()]
 fn on_intention(event: &mut IntentionEvent, _server: &mut MinecraftServer) {
     event.client().login_metadata = Some(LoginMetadata::new(event.protocol_version));
 }
 
-#[packet_listener(module: "login")]
+#[packet_listener()]
 fn on_login_start(
     client: &mut Client,
     packet: LoginStartPacket,

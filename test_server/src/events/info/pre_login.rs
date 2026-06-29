@@ -3,7 +3,7 @@ use spinel::{
     server::{MinecraftServer, events::login::PreLoginEvent},
 };
 
-#[event_listener(module: "login")]
+#[event_listener()]
 fn on_pre_login(event: &mut PreLoginEvent, _server: &mut MinecraftServer) {
     event.should_authenticate = false;
     println!(

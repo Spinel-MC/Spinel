@@ -6,7 +6,7 @@ use spinel_core::network::serverbound::handshake::legacy_server_list_ping::Legac
 use spinel_macros::packet_listener;
 use std::io::Read;
 
-#[packet_listener(module: "legacy_server_list_ping")]
+#[packet_listener()]
 pub fn handle_legacy_server_list_ping(
     client: &mut Client,
     _packet: LegacyServerListPingPacket,

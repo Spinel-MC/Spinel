@@ -126,7 +126,7 @@ impl<'a> EncryptionResponseHandler<'a> {
     }
 }
 
-#[packet_listener(module: "login")]
+#[packet_listener()]
 fn on_encryption_response(
     client: &mut Client,
     packet: EncryptionResponsePacket,
