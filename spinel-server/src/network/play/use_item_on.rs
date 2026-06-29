@@ -205,7 +205,7 @@ pub(crate) fn synchronize_placed_block_inventory(
         let consumed_item = player.get_item_in_hand(hand).consume(1);
         return player.set_item_in_hand(hand, consumed_item);
     }
-    player.sync_inventory(client).is_ok()
+    player.sync_player_inventory_window_contents(client).is_ok()
 }
 fn placement_position(
     position: BlockPosition,
@@ -270,7 +270,7 @@ fn refresh_inventory_and_chunk(
     server: &mut MinecraftServer,
     client: &mut Client,
 ) -> bool {
-    let inventory_is_refreshed = player.sync_inventory(client).is_ok();
+    let inventory_is_refreshed = player.sync_player_inventory_window_contents(client).is_ok();
     let chunk_is_refreshed = server.refresh_chunk_in_world(client, position);
     inventory_is_refreshed && chunk_is_refreshed
 }

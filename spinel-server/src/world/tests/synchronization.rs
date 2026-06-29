@@ -250,9 +250,11 @@ fn creature_pathfinding_jump_sends_velocity_after_minestom_ground_collision_tick
     }
 
     world.tick_with_registries(&Registries::new_vanilla());
-    assert!(!viewer_client
-        .queued_outbound_packet_ids()
-        .contains(&EntityVelocityPacket::get_id()));
+    assert!(
+        !viewer_client
+            .queued_outbound_packet_ids()
+            .contains(&EntityVelocityPacket::get_id())
+    );
     viewer_client.discard_queued_outbound_packets();
 
     world.tick_with_registries(&Registries::new_vanilla());

@@ -17,6 +17,7 @@ use crate::world::{
 use spinel_core::entity::game_mode::GameMode;
 use spinel_core::network::clientbound::configuration::resource_pack_pop::ResourcePackPopPacket as ConfigurationResourcePackPopPacket;
 use spinel_core::network::clientbound::configuration::resource_pack_push::ResourcePackPushPacket as ConfigurationResourcePackPushPacket;
+use spinel_core::network::clientbound::play::container_set_content::ContainerSetContentPacket;
 use spinel_core::network::clientbound::play::disconnect::PlayDisconnectPacket;
 use spinel_core::network::clientbound::play::forget_level_chunk::ForgetLevelChunkPacket;
 use spinel_core::network::clientbound::play::game_event::{GameEvent, GameEventPacket};
@@ -2888,6 +2889,34 @@ fn player_sound_effect_action_bar_and_boss_bar_apis_send_minestom_packets() {
             BossBarPacket::get_id(),
         ]
     );
+}
+
+#[test]
+fn non_consuming_block_placement_syncs_one_inventory_window_contents_packet() {
+    let (mut client, mut peer_stream) = test_client_pair();
+    client.state = ConnectionState::Play;
+    let mut player = Player::new(Uuid::nil(), "Player".to_string(), 0, client.addr);
+    assert!(player.set_item_in_hand(
+        PlayerHand::Main,
+        ItemStack::of(Material::STONE).with_amount(2),
+    ));
+    player.set_client(&mut client);
+
+    assert!(
+        crate::network::play::use_item_on::synchronize_placed_block_inventory(
+            &mut player,
+            PlayerHand::Main,
+            false,
+            &mut client,
+        )
+    );
+
+    assert_eq!(player.get_item_in_hand(PlayerHand::Main).amount(), 2);
+    let packet_ids = read_available_packet_frames(&mut peer_stream)
+        .into_iter()
+        .map(|(packet_id, _)| packet_id)
+        .collect::<Vec<_>>();
+    assert_eq!(packet_ids, vec![ContainerSetContentPacket::get_id()]);
 }
 
 #[test]

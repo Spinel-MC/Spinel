@@ -33,6 +33,10 @@ impl CreativeInventoryActionEvent {
         &self.item_stack
     }
 
+    pub fn set_item_stack(&mut self, item_stack: ItemStack) {
+        self.item_stack = item_stack;
+    }
+
     pub fn is_cancelled(&self) -> bool {
         self.cancelled
     }

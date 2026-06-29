@@ -1,6 +1,8 @@
 use crate::entity::metadata::definitions;
 use crate::entity::{Entity, EntityId, EntityPosition, GenericEntity, Player};
+use crate::events::creative_inventory_action::CreativeInventoryActionEvent;
 use crate::events::entity_attack::EntityAttackEvent;
+use crate::events::item_drop::ItemDropEvent;
 use crate::events::player_chat::PlayerChatEvent;
 use crate::events::player_entity_interact::PlayerEntityInteractEvent;
 use crate::events::player_game_mode_request::PlayerGameModeRequestEvent;
@@ -24,6 +26,7 @@ use crate::server::MinecraftServer;
 use crate::world::{Block, ChunkPosition};
 use spinel_core::entity::game_mode::GameMode;
 use spinel_core::network::clientbound::play::set_camera::SetCameraPacket;
+use spinel_core::network::clientbound::play::set_player_inventory::SetPlayerInventoryPacket;
 use spinel_core::network::clientbound::play::sync_player_pos::SyncPlayerPositionPacket;
 use spinel_core::network::clientbound::play::system_chat::SystemChatPacket;
 use spinel_core::network::serverbound::play::change_game_mode::ChangeGameModePacket;
@@ -42,11 +45,12 @@ use spinel_core::network::serverbound::play::player_command::PlayerCommandPacket
 use spinel_core::network::serverbound::play::player_input::PlayerInputPacket;
 use spinel_core::network::serverbound::play::player_loaded::PlayerLoadedPacket;
 use spinel_core::network::serverbound::play::plugin_message::ServerboundPlayCustomPayloadPacket;
+use spinel_core::network::serverbound::play::set_creative_mode_slot::SetCreativeModeSlotPacket;
 use spinel_core::network::serverbound::play::steer_boat::SteerBoatPacket;
 use spinel_core::network::serverbound::play::teleport_to_entity::TeleportToEntityPacket;
 use spinel_macros::event_listener;
-use spinel_network::types::Identifier;
 use spinel_network::types::entity_metadata::MetadataValue;
+use spinel_network::types::{Identifier, Slot, UntrustedSlot};
 use spinel_network::{ConnectionState, DataType, PacketStruct, VarIntWrapper};
 use spinel_registry::data_components::vanilla_components::PIERCING_WEAPON;
 use spinel_registry::{EntityType, ItemStack, Material, PiercingWeapon};
@@ -79,6 +83,10 @@ static LISTENER_PARITY_INPUTS: Mutex<Vec<(bool, bool, bool, bool, bool, bool, bo
     Mutex::new(Vec::new());
 static LISTENER_PARITY_START_SNEAKING: AtomicUsize = AtomicUsize::new(0);
 static LISTENER_PARITY_STOP_SNEAKING: AtomicUsize = AtomicUsize::new(0);
+static LISTENER_PARITY_CREATIVE_ACTIONS: Mutex<Vec<(i32, ItemStack)>> = Mutex::new(Vec::new());
+static LISTENER_PARITY_CREATIVE_REPLACEMENT: Mutex<Option<ItemStack>> = Mutex::new(None);
+static LISTENER_PARITY_CREATIVE_CANCEL: AtomicBool = AtomicBool::new(false);
+static LISTENER_PARITY_DROPPED_ITEMS: Mutex<Vec<ItemStack>> = Mutex::new(Vec::new());
 static LISTENER_PARITY_LOCK: Mutex<()> = Mutex::new(());
 
 #[event_listener]
@@ -278,6 +286,39 @@ fn player_stop_sneaking_test_listener(
     if LISTENER_PARITY_ENABLED.load(Ordering::SeqCst) {
         LISTENER_PARITY_STOP_SNEAKING.fetch_add(1, Ordering::SeqCst);
     }
+}
+
+#[event_listener]
+fn creative_inventory_action_test_listener(
+    event: &mut CreativeInventoryActionEvent,
+    _server: &mut MinecraftServer,
+) {
+    if !LISTENER_PARITY_ENABLED.load(Ordering::SeqCst) {
+        return;
+    }
+    LISTENER_PARITY_CREATIVE_ACTIONS
+        .lock()
+        .unwrap()
+        .push((event.slot(), event.get_item_stack().clone()));
+    if let Some(replacement_item_stack) =
+        LISTENER_PARITY_CREATIVE_REPLACEMENT.lock().unwrap().clone()
+    {
+        event.set_item_stack(replacement_item_stack);
+    }
+    if LISTENER_PARITY_CREATIVE_CANCEL.load(Ordering::SeqCst) {
+        event.set_cancelled(true);
+    }
+}
+
+#[event_listener]
+fn item_drop_test_listener(event: &mut ItemDropEvent, _server: &mut MinecraftServer) {
+    if !LISTENER_PARITY_ENABLED.load(Ordering::SeqCst) {
+        return;
+    }
+    LISTENER_PARITY_DROPPED_ITEMS
+        .lock()
+        .unwrap()
+        .push(event.item().clone());
 }
 
 #[event_listener]
@@ -944,6 +985,127 @@ fn player_loaded_listener_dispatches_after_client_loaded_packet() {
 }
 
 #[test]
+fn creative_inventory_action_listener_applies_destroy_slot_air_and_refreshes_slot() {
+    let _scope = ListenerParityScope::new();
+    let (mut server, mut client, mut peer_stream, _world_uuid, _player_id) =
+        server_with_play_player(GameMode::Creative);
+    attach_client_to_player(&mut server, &mut client);
+    let diamond_item_stack = ItemStack::of(Material::DIAMOND);
+    player_for_client(&mut server, &client)
+        .get_inventory()
+        .set_item_stack(0, diamond_item_stack);
+
+    assert!(dispatch_packet(
+        &mut server,
+        &mut client,
+        creative_mode_slot_packet(36, ItemStack::air())
+    ));
+
+    assert_eq!(
+        player_for_client(&mut server, &client)
+            .get_inventory_ref()
+            .get_item_stack(0)
+            .cloned()
+            .unwrap_or_else(ItemStack::air),
+        ItemStack::air()
+    );
+    let refreshed_packet = read_set_player_inventory_packet(&mut peer_stream);
+    assert_eq!(refreshed_packet.slot, 0);
+    assert_eq!(refreshed_packet.item.to_item_stack(), ItemStack::air());
+}
+
+#[test]
+fn creative_inventory_action_listener_refreshes_previous_slot_when_cancelled() {
+    let _scope = ListenerParityScope::new();
+    let (mut server, mut client, mut peer_stream, _world_uuid, _player_id) =
+        server_with_play_player(GameMode::Creative);
+    attach_client_to_player(&mut server, &mut client);
+    let diamond_item_stack = ItemStack::of(Material::DIAMOND);
+    player_for_client(&mut server, &client)
+        .get_inventory()
+        .set_item_stack(0, diamond_item_stack.clone());
+    LISTENER_PARITY_CREATIVE_CANCEL.store(true, Ordering::SeqCst);
+
+    assert!(dispatch_packet(
+        &mut server,
+        &mut client,
+        creative_mode_slot_packet(36, ItemStack::air())
+    ));
+
+    assert_eq!(
+        player_for_client(&mut server, &client)
+            .get_inventory_ref()
+            .get_item_stack(0)
+            .cloned()
+            .unwrap_or_else(ItemStack::air),
+        diamond_item_stack
+    );
+    let refreshed_packet = read_set_player_inventory_packet(&mut peer_stream);
+    assert_eq!(refreshed_packet.slot, 0);
+    assert_eq!(refreshed_packet.item.to_item_stack(), diamond_item_stack);
+}
+
+#[test]
+fn creative_inventory_action_listener_commits_listener_replacement_item() {
+    let _scope = ListenerParityScope::new();
+    let (mut server, mut client, mut peer_stream, _world_uuid, _player_id) =
+        server_with_play_player(GameMode::Creative);
+    attach_client_to_player(&mut server, &mut client);
+    let sent_item_stack = ItemStack::of(Material::DIAMOND);
+    let replacement_item_stack = ItemStack::of(Material::EMERALD);
+    *LISTENER_PARITY_CREATIVE_REPLACEMENT.lock().unwrap() = Some(replacement_item_stack.clone());
+
+    assert!(dispatch_packet(
+        &mut server,
+        &mut client,
+        creative_mode_slot_packet(36, sent_item_stack.clone())
+    ));
+
+    assert_eq!(
+        player_for_client(&mut server, &client)
+            .get_inventory_ref()
+            .get_item_stack(0)
+            .cloned()
+            .unwrap_or_else(ItemStack::air),
+        replacement_item_stack
+    );
+    assert_eq!(
+        LISTENER_PARITY_CREATIVE_ACTIONS.lock().unwrap().as_slice(),
+        [(0, sent_item_stack)]
+    );
+    let refreshed_packet = read_set_player_inventory_packet(&mut peer_stream);
+    assert_eq!(refreshed_packet.slot, 0);
+    assert_eq!(
+        refreshed_packet.item.to_item_stack(),
+        replacement_item_stack
+    );
+}
+
+#[test]
+fn creative_inventory_action_listener_drops_slot_minus_one_item() {
+    let _scope = ListenerParityScope::new();
+    let (mut server, mut client, _peer_stream, _world_uuid, _player_id) =
+        server_with_play_player(GameMode::Creative);
+    attach_client_to_player(&mut server, &mut client);
+    let dropped_item_stack = ItemStack::of(Material::DIAMOND);
+
+    assert!(dispatch_packet(
+        &mut server,
+        &mut client,
+        creative_mode_slot_packet(-1, dropped_item_stack.clone())
+    ));
+
+    assert_eq!(
+        LISTENER_PARITY_CREATIVE_ACTIONS.lock().unwrap().as_slice(),
+        [(-1, dropped_item_stack.clone())]
+    );
+    assert_eq!(
+        LISTENER_PARITY_DROPPED_ITEMS.lock().unwrap().as_slice(),
+        [dropped_item_stack]
+    );
+}
+
+#[test]
 fn change_game_mode_listener_dispatches_request_without_mutating_player_mode() {
     let _scope = ListenerParityScope::new();
     let (mut server, mut client, _peer_stream, world_uuid, player_id) =
@@ -1161,6 +1323,10 @@ impl ListenerParityScope {
         LISTENER_PARITY_INPUTS.lock().unwrap().clear();
         LISTENER_PARITY_START_SNEAKING.store(0, Ordering::SeqCst);
         LISTENER_PARITY_STOP_SNEAKING.store(0, Ordering::SeqCst);
+        LISTENER_PARITY_CREATIVE_ACTIONS.lock().unwrap().clear();
+        *LISTENER_PARITY_CREATIVE_REPLACEMENT.lock().unwrap() = None;
+        LISTENER_PARITY_CREATIVE_CANCEL.store(false, Ordering::SeqCst);
+        LISTENER_PARITY_DROPPED_ITEMS.lock().unwrap().clear();
         LISTENER_PARITY_ENABLED.store(true, Ordering::SeqCst);
         Self { _lock: lock }
     }
@@ -1199,6 +1365,21 @@ fn attach_client_to_player(server: &mut MinecraftServer, client: &mut Client) {
     unsafe { &mut *player }.set_client(client);
 }
 
+fn player_for_client<'a>(server: &'a mut MinecraftServer, client: &Client) -> &'a mut Player {
+    let player = server
+        .world_manager
+        .player_pointer_for_client(client)
+        .unwrap();
+    unsafe { &mut *player }
+}
+
+fn creative_mode_slot_packet(slot: i16, item_stack: ItemStack) -> SetCreativeModeSlotPacket {
+    SetCreativeModeSlotPacket {
+        slot,
+        clicked_item: UntrustedSlot(Slot::from_item_stack(&item_stack)),
+    }
+}
+
 fn dispatch_packet<T: DataType + PacketStruct>(
     server: &mut MinecraftServer,
     client: &mut Client,
@@ -1229,6 +1410,12 @@ fn read_packet_frame(peer_stream: &mut TcpStream) -> (i32, Vec<u8>) {
     let payload_start = frame_cursor.position() as usize;
     let payload = frame_cursor.into_inner()[payload_start..].to_vec();
     (packet_id, payload)
+}
+
+fn read_set_player_inventory_packet(peer_stream: &mut TcpStream) -> SetPlayerInventoryPacket {
+    let (_packet_id, payload) =
+        read_packet_frame_with_id(peer_stream, SetPlayerInventoryPacket::get_id());
+    SetPlayerInventoryPacket::decode(&mut payload.as_slice()).unwrap()
 }
 
 fn read_packet_frame_with_id(
