@@ -174,6 +174,44 @@ fn entity_showcase_pathfinding_sticks_are_added_without_replacing_occupied_slots
     assert!(positions_after_pathfind[0].get_x() != starts[0].get_x());
     assert!(positions_after_pathfind[1].get_x() != starts[1].get_x());
 }
+#[test]
+fn entity_showcase_minestom_stick_targets_selected_block_top_like_minestom_showcase() {
+    let mut server = MinecraftServer::new();
+    let world_id = server.world_manager.create_world(Identifier::minecraft(
+        "minestom_showcase_slab_destination_test",
+    ));
+    let world = server.world_manager.world_mut(world_id).unwrap();
+    world.load_chunk(ChunkPosition::new(0, 0)).unwrap();
+    for x in 0..=12 {
+        for z in 0..=5 {
+            world
+                .set_block(BlockPosition::new(x, 64, z), Block::STONE)
+                .unwrap();
+        }
+    }
+    world
+        .set_block(BlockPosition::new(8, 65, 1), Block::OAK_SLAB)
+        .unwrap();
+    let controls = EntityShowcase::spawn(
+        &mut server,
+        world_id,
+        EntityPosition::new(0.5, 65.0, 0.5, 0.0, 0.0),
+    )
+    .unwrap();
+    let world = server.world_manager.world_mut(world_id).unwrap();
+
+    assert!(EntityShowcase::pathfind(
+        world,
+        controls.minestom_pathfinding_stick(),
+        BlockPosition::new(8, 65, 1),
+    ));
+
+    let minestom_goal_position = creature_goal_positions_by_z(world)[0];
+    assert_eq!(
+        minestom_goal_position,
+        Some(EntityPosition::new(8.5, 66.0, 1.5, 0.0, 0.0))
+    );
+}
 fn creature_positions_by_z(world: &spinel::server::world::World) -> Vec<EntityPosition> {
     let mut positions = world
         .entities()
@@ -184,4 +222,24 @@ fn creature_positions_by_z(world: &spinel::server::world::World) -> Vec<EntityPo
         .collect::<Vec<_>>();
     positions.sort_by(|left, right| left.get_z().total_cmp(&right.get_z()));
     positions
+}
+
+fn creature_goal_positions_by_z(
+    world: &spinel::server::world::World,
+) -> Vec<Option<EntityPosition>> {
+    let mut goal_positions = world
+        .entities()
+        .filter_map(|entity| match entity {
+            Entity::Creature(creature) => Some((
+                creature.get_position().get_z(),
+                creature.get_navigator().goal_position(),
+            )),
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+    goal_positions.sort_by(|left, right| left.0.total_cmp(&right.0));
+    goal_positions
+        .into_iter()
+        .map(|(_, goal_position)| goal_position)
+        .collect()
 }
