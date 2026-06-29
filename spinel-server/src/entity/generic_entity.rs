@@ -4609,6 +4609,10 @@ impl GenericEntity {
             self.has_physics,
             self.on_ground,
             false,
+            self.get_attribute_value(
+                Attribute::STEP_HEIGHT.protocol_id(),
+                Attribute::STEP_HEIGHT.default_value(),
+            ),
             self.previous_physics_result,
         );
         self.previous_physics_result = Some(physics);

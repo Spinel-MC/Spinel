@@ -90,6 +90,7 @@ fn physics_result_preserves_minestom_collision_evidence_and_cache_reuse() {
         true,
         false,
         false,
+        0.0,
         None,
     );
     let second = simulate_movement(
@@ -102,6 +103,7 @@ fn physics_result_preserves_minestom_collision_evidence_and_cache_reuse() {
         true,
         first.is_on_ground(),
         false,
+        0.0,
         Some(first),
     );
 
@@ -247,6 +249,7 @@ fn simulate_zombie_movement(
         true,
         false,
         false,
+        0.0,
         previous,
     )
 }

@@ -2352,6 +2352,7 @@ impl Player {
             self.has_physics,
             self.on_ground,
             self.is_flying(),
+            Attribute::STEP_HEIGHT.default_value(),
             self.previous_physics_result,
         );
         self.previous_physics_result = Some(physics);

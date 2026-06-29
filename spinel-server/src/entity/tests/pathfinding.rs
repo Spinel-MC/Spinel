@@ -5,7 +5,8 @@ use crate::entity::pathfinding::perfect::{
 use crate::entity::pathfinding::{
     FlyingNodeGenerator, GroundNodeFollower, GroundNodeGenerator, Navigator, NoPhysicsNodeFollower,
     NodeFollower, NodeGenerator, Path, PathGenerator, PathNode, PathNodeType, PathRequest,
-    PathState, PreciseGroundNodeGenerator, SetPathToError, WaterNodeGenerator,
+    PathState, PreciseGroundNodeGenerator, SetPathToError, VanillaGroundNodeFollower,
+    WaterNodeGenerator,
 };
 use crate::entity::physics::simulate_collision;
 use crate::entity::{Entity, EntityCreature, EntityPosition, GenericEntity};
@@ -18,8 +19,8 @@ use std::collections::{BTreeMap, HashSet};
 use std::path::{Path as FsPath, PathBuf};
 use std::process::Command;
 use std::sync::{
-    atomic::{AtomicBool, Ordering},
     Arc, Mutex,
+    atomic::{AtomicBool, Ordering},
 };
 use std::{env, fs};
 
@@ -115,15 +116,17 @@ fn navigator_exposes_minestom_modifiable_node_collection() {
     let mut navigator = Navigator::default();
     let start = EntityPosition::new(0.5, 65.0, 0.5, 0.0, 0.0);
 
-    assert!(navigator
-        .set_path_to(
-            &snapshot,
-            start,
-            EntityType::ZOMBIE.get_bounding_box(),
-            true,
-            PathRequest::from(EntityPosition::new(3.5, 65.0, 0.5, 0.0, 0.0)),
-        )
-        .unwrap());
+    assert!(
+        navigator
+            .set_path_to(
+                &snapshot,
+                start,
+                EntityType::ZOMBIE.get_bounding_box(),
+                true,
+                PathRequest::from(EntityPosition::new(3.5, 65.0, 0.5, 0.0, 0.0)),
+            )
+            .unwrap()
+    );
     navigator.get_nodes_mut().unwrap().clear();
 
     assert!(navigator.get_nodes().unwrap().is_empty());
@@ -136,15 +139,17 @@ fn navigator_default_request_uses_minestom_bounding_box_distance_and_path_limits
     let mut navigator = Navigator::default();
     let start = EntityPosition::new(0.5, 65.0, 0.5, 0.0, 0.0);
 
-    assert!(navigator
-        .set_path_to(
-            &snapshot,
-            start,
-            EntityType::ZOMBIE.get_bounding_box(),
-            true,
-            PathRequest::from(EntityPosition::new(1.1, 65.0, 0.5, 0.0, 0.0)),
-        )
-        .unwrap());
+    assert!(
+        navigator
+            .set_path_to(
+                &snapshot,
+                start,
+                EntityType::ZOMBIE.get_bounding_box(),
+                true,
+                PathRequest::from(EntityPosition::new(1.1, 65.0, 0.5, 0.0, 0.0)),
+            )
+            .unwrap()
+    );
     let path = navigator.get_path().unwrap();
     assert_eq!(path.get_maximum_distance(), 50.0);
     assert_eq!(path.get_variance(), 20.0);
@@ -252,36 +257,40 @@ fn navigator_completes_same_block_and_minimum_distance_requests_immediately() {
     let same_block_completed = Arc::new(AtomicBool::new(false));
     let same_block_completed_for_callback = Arc::clone(&same_block_completed);
 
-    assert!(!navigator
-        .set_path_to(
-            &snapshot,
-            entity.get_position(),
-            entity.get_bounding_box(),
-            true,
-            PathRequest::from(EntityPosition::new(0.9, 65.0, 0.9, 0.0, 0.0))
-                .with_minimum_distance(0.1)
-                .on_complete(move || {
-                    same_block_completed_for_callback.store(true, Ordering::SeqCst);
-                }),
-        )
-        .unwrap());
+    assert!(
+        !navigator
+            .set_path_to(
+                &snapshot,
+                entity.get_position(),
+                entity.get_bounding_box(),
+                true,
+                PathRequest::from(EntityPosition::new(0.9, 65.0, 0.9, 0.0, 0.0))
+                    .with_minimum_distance(0.1)
+                    .on_complete(move || {
+                        same_block_completed_for_callback.store(true, Ordering::SeqCst);
+                    }),
+            )
+            .unwrap()
+    );
     assert!(same_block_completed.load(Ordering::SeqCst));
 
     let minimum_distance_completed = Arc::new(AtomicBool::new(false));
     let minimum_distance_completed_for_callback = Arc::clone(&minimum_distance_completed);
-    assert!(!navigator
-        .set_path_to(
-            &snapshot,
-            entity.get_position(),
-            entity.get_bounding_box(),
-            true,
-            PathRequest::from(EntityPosition::new(2.5, 65.0, 0.5, 0.0, 0.0))
-                .with_minimum_distance(5.0)
-                .on_complete(move || {
-                    minimum_distance_completed_for_callback.store(true, Ordering::SeqCst);
-                }),
-        )
-        .unwrap());
+    assert!(
+        !navigator
+            .set_path_to(
+                &snapshot,
+                entity.get_position(),
+                entity.get_bounding_box(),
+                true,
+                PathRequest::from(EntityPosition::new(2.5, 65.0, 0.5, 0.0, 0.0))
+                    .with_minimum_distance(5.0)
+                    .on_complete(move || {
+                        minimum_distance_completed_for_callback.store(true, Ordering::SeqCst);
+                    }),
+            )
+            .unwrap()
+    );
     assert!(minimum_distance_completed.load(Ordering::SeqCst));
 }
 
@@ -295,19 +304,21 @@ fn navigator_follows_computed_path_and_runs_completion_once() {
     let completed_for_callback = Arc::clone(&completed);
     let mut navigator = Navigator::default();
 
-    assert!(navigator
-        .set_path_to(
-            &snapshot,
-            entity.get_position(),
-            entity.get_bounding_box(),
-            true,
-            PathRequest::from(EntityPosition::new(5.5, 65.0, 0.5, 0.0, 0.0))
-                .with_minimum_distance(0.5)
-                .on_complete(move || {
-                    completed_for_callback.store(true, Ordering::SeqCst);
-                }),
-        )
-        .unwrap());
+    assert!(
+        navigator
+            .set_path_to(
+                &snapshot,
+                entity.get_position(),
+                entity.get_bounding_box(),
+                true,
+                PathRequest::from(EntityPosition::new(5.5, 65.0, 0.5, 0.0, 0.0))
+                    .with_minimum_distance(0.5)
+                    .on_complete(move || {
+                        completed_for_callback.store(true, Ordering::SeqCst);
+                    }),
+            )
+            .unwrap()
+    );
     assert!(matches!(
         navigator.state(),
         PathState::Computed | PathState::BestEffort
@@ -335,16 +346,18 @@ fn navigator_reset_and_no_physics_follower_match_public_lifecycle() {
     let mut navigator = Navigator::default();
     navigator.set_node_follower(NoPhysicsNodeFollower);
 
-    assert!(navigator
-        .set_path_to(
-            &snapshot,
-            entity.get_position(),
-            entity.get_bounding_box(),
-            true,
-            PathRequest::from(EntityPosition::new(3.5, 65.0, 0.5, 0.0, 0.0))
-                .with_minimum_distance(0.5),
-        )
-        .unwrap());
+    assert!(
+        navigator
+            .set_path_to(
+                &snapshot,
+                entity.get_position(),
+                entity.get_bounding_box(),
+                true,
+                PathRequest::from(EntityPosition::new(3.5, 65.0, 0.5, 0.0, 0.0))
+                    .with_minimum_distance(0.5),
+            )
+            .unwrap()
+    );
     navigator.tick(&mut entity, &snapshot, false);
     assert!(entity.get_position().get_x() > 0.5);
 
@@ -362,15 +375,17 @@ fn navigator_preserves_active_path_until_replacement_promotes_on_tick() {
     entity.set_position(EntityPosition::new(0.5, 65.0, 0.5, 0.0, 0.0));
     let mut navigator = Navigator::default();
 
-    assert!(navigator
-        .set_path_to(
-            &snapshot,
-            entity.get_position(),
-            entity.get_bounding_box(),
-            true,
-            PathRequest::from(EntityPosition::new(3.5, 65.0, 0.5, 0.0, 0.0)),
-        )
-        .unwrap());
+    assert!(
+        navigator
+            .set_path_to(
+                &snapshot,
+                entity.get_position(),
+                entity.get_bounding_box(),
+                true,
+                PathRequest::from(EntityPosition::new(3.5, 65.0, 0.5, 0.0, 0.0)),
+            )
+            .unwrap()
+    );
     navigator.tick(&mut entity, &snapshot, false);
     let active_goal_before_replacement = navigator
         .get_nodes()
@@ -379,15 +394,17 @@ fn navigator_preserves_active_path_until_replacement_promotes_on_tick() {
         .unwrap()
         .get_position();
 
-    assert!(navigator
-        .set_path_to(
-            &snapshot,
-            entity.get_position(),
-            entity.get_bounding_box(),
-            true,
-            PathRequest::from(EntityPosition::new(5.5, 65.0, 0.5, 0.0, 0.0)),
-        )
-        .unwrap());
+    assert!(
+        navigator
+            .set_path_to(
+                &snapshot,
+                entity.get_position(),
+                entity.get_bounding_box(),
+                true,
+                PathRequest::from(EntityPosition::new(5.5, 65.0, 0.5, 0.0, 0.0)),
+            )
+            .unwrap()
+    );
     let active_goal_during_replacement = navigator
         .get_nodes()
         .unwrap()
@@ -419,15 +436,17 @@ fn navigator_waits_while_computing_path_is_terminating() {
     entity.set_position(EntityPosition::new(0.5, 65.0, 0.5, 0.0, 0.0));
     let mut navigator = Navigator::default();
 
-    assert!(navigator
-        .set_path_to(
-            &snapshot,
-            entity.get_position(),
-            entity.get_bounding_box(),
-            true,
-            PathRequest::from(EntityPosition::new(3.5, 65.0, 0.5, 0.0, 0.0)),
-        )
-        .unwrap());
+    assert!(
+        navigator
+            .set_path_to(
+                &snapshot,
+                entity.get_position(),
+                entity.get_bounding_box(),
+                true,
+                PathRequest::from(EntityPosition::new(3.5, 65.0, 0.5, 0.0, 0.0)),
+            )
+            .unwrap()
+    );
     navigator
         .get_path_mut()
         .unwrap()
@@ -448,15 +467,17 @@ fn navigator_uses_replaced_node_generator_and_preserves_best_effort_state() {
     let mut navigator = Navigator::default();
     navigator.set_node_generator(SingleBestEffortNodeGenerator);
 
-    assert!(navigator
-        .set_path_to(
-            &snapshot,
-            entity.get_position(),
-            entity.get_bounding_box(),
-            true,
-            PathRequest::from(EntityPosition::new(10.5, 65.0, 0.5, 0.0, 0.0)),
-        )
-        .unwrap());
+    assert!(
+        navigator
+            .set_path_to(
+                &snapshot,
+                entity.get_position(),
+                entity.get_bounding_box(),
+                true,
+                PathRequest::from(EntityPosition::new(10.5, 65.0, 0.5, 0.0, 0.0)),
+            )
+            .unwrap()
+    );
 
     assert_eq!(navigator.state(), PathState::BestEffort);
     assert_eq!(
@@ -479,17 +500,19 @@ fn path_generation_invalidates_repath_rooted_at_start() {
     let mut navigator = Navigator::default();
     navigator.set_node_generator(FrontierBudgetNodeGenerator);
 
-    assert!(navigator
-        .set_path_to(
-            &snapshot,
-            entity.get_position(),
-            entity.get_bounding_box(),
-            true,
-            PathRequest::from(EntityPosition::new(15.5, 65.0, 0.5, 0.0, 0.0))
-                .with_minimum_distance(0.5)
-                .with_maximum_distance(5.0),
-        )
-        .unwrap());
+    assert!(
+        navigator
+            .set_path_to(
+                &snapshot,
+                entity.get_position(),
+                entity.get_bounding_box(),
+                true,
+                PathRequest::from(EntityPosition::new(15.5, 65.0, 0.5, 0.0, 0.0))
+                    .with_minimum_distance(0.5)
+                    .with_maximum_distance(5.0),
+            )
+            .unwrap()
+    );
 
     assert_eq!(navigator.state(), PathState::Invalid);
     assert!(navigator.get_nodes().is_some_and(<[PathNode]>::is_empty));
@@ -503,15 +526,17 @@ fn navigator_recomputes_after_repath_current_node() {
     entity.set_position(EntityPosition::new(0.5, 65.0, 0.5, 0.0, 0.0));
     let mut navigator = Navigator::default();
 
-    assert!(navigator
-        .set_path_to(
-            &snapshot,
-            entity.get_position(),
-            entity.get_bounding_box(),
-            true,
-            PathRequest::from(EntityPosition::new(4.5, 65.0, 0.5, 0.0, 0.0)),
-        )
-        .unwrap());
+    assert!(
+        navigator
+            .set_path_to(
+                &snapshot,
+                entity.get_position(),
+                entity.get_bounding_box(),
+                true,
+                PathRequest::from(EntityPosition::new(4.5, 65.0, 0.5, 0.0, 0.0)),
+            )
+            .unwrap()
+    );
     navigator.tick(&mut entity, &snapshot, false);
     let path = navigator.get_path_mut().unwrap();
     path.set_state(PathState::Following);
@@ -536,15 +561,17 @@ fn navigator_marks_path_invalid_without_next_target() {
     entity.set_position(EntityPosition::new(0.5, 65.0, 0.5, 0.0, 0.0));
     let mut navigator = Navigator::default();
 
-    assert!(navigator
-        .set_path_to(
-            &snapshot,
-            entity.get_position(),
-            entity.get_bounding_box(),
-            true,
-            PathRequest::from(EntityPosition::new(4.5, 65.0, 0.5, 0.0, 0.0)),
-        )
-        .unwrap());
+    assert!(
+        navigator
+            .set_path_to(
+                &snapshot,
+                entity.get_position(),
+                entity.get_bounding_box(),
+                true,
+                PathRequest::from(EntityPosition::new(4.5, 65.0, 0.5, 0.0, 0.0)),
+            )
+            .unwrap()
+    );
     navigator.tick(&mut entity, &snapshot, false);
     let path = navigator.get_path_mut().unwrap();
     path.set_state(PathState::Following);
@@ -573,16 +600,18 @@ fn navigator_moves_toward_jump_node_before_executing_jump_like_minestom() {
         events: Arc::clone(&follower_events),
     });
 
-    assert!(navigator
-        .set_path_to(
-            &snapshot,
-            entity.get_position(),
-            entity.get_bounding_box(),
-            true,
-            PathRequest::from(EntityPosition::new(4.5, 66.0, 0.5, 0.0, 0.0))
-                .with_minimum_distance(0.25),
-        )
-        .unwrap());
+    assert!(
+        navigator
+            .set_path_to(
+                &snapshot,
+                entity.get_position(),
+                entity.get_bounding_box(),
+                true,
+                PathRequest::from(EntityPosition::new(4.5, 66.0, 0.5, 0.0, 0.0))
+                    .with_minimum_distance(0.25),
+            )
+            .unwrap()
+    );
     let path = navigator.get_path_mut().unwrap();
     path.set_state(PathState::Following);
     path.set_nodes(vec![
@@ -616,15 +645,17 @@ fn dead_entity_does_not_tick_navigation() {
     entity.set_position(EntityPosition::new(0.5, 65.0, 0.5, 0.0, 0.0));
     let start = entity.get_position();
     let mut navigator = Navigator::default();
-    assert!(navigator
-        .set_path_to(
-            &snapshot,
-            entity.get_position(),
-            entity.get_bounding_box(),
-            true,
-            PathRequest::from(EntityPosition::new(3.5, 65.0, 0.5, 0.0, 0.0)),
-        )
-        .unwrap());
+    assert!(
+        navigator
+            .set_path_to(
+                &snapshot,
+                entity.get_position(),
+                entity.get_bounding_box(),
+                true,
+                PathRequest::from(EntityPosition::new(3.5, 65.0, 0.5, 0.0, 0.0)),
+            )
+            .unwrap()
+    );
 
     navigator.tick(&mut entity, &snapshot, true);
 
@@ -658,11 +689,13 @@ fn creature_rejects_path_requests_before_world_assignment() {
         panic!("creature entity must preserve its subtype");
     };
 
-    assert!(creature
-        .set_path_to(PathRequest::from(EntityPosition::new(
-            3.5, 65.0, 0.5, 0.0, 0.0
-        )))
-        .unwrap());
+    assert!(
+        creature
+            .set_path_to(PathRequest::from(EntityPosition::new(
+                3.5, 65.0, 0.5, 0.0, 0.0
+            )))
+            .unwrap()
+    );
 }
 
 #[test]
@@ -685,9 +718,11 @@ fn entity_creature_set_path_to_owns_pathfinding_request() {
             panic!("creature entity must preserve its subtype");
         };
 
-        assert!(creature
-            .set_path_to(PathRequest::from(destination))
-            .unwrap());
+        assert!(
+            creature
+                .set_path_to(PathRequest::from(destination))
+                .unwrap()
+        );
     }
     world.tick();
     let Entity::Creature(creature) = world.entity_by_id_mut(creature_id).unwrap() else {
@@ -719,18 +754,79 @@ fn entity_creature_set_path_to_observes_blocks_placed_after_spawn() {
         panic!("creature entity must preserve its subtype");
     };
 
-    assert!(creature
-        .set_path_to(
-            PathRequest::from(EntityPosition::new(2.5, 65.0, 0.5, 0.0, 0.0))
-                .with_minimum_distance(0.35)
-        )
-        .unwrap());
-    assert!(creature
-        .get_navigator()
-        .get_nodes()
-        .unwrap()
-        .iter()
-        .any(|node| node.get_node_type() == PathNodeType::Jump));
+    assert!(
+        creature
+            .set_path_to(
+                PathRequest::from(EntityPosition::new(2.5, 65.0, 0.5, 0.0, 0.0))
+                    .with_minimum_distance(0.35)
+            )
+            .unwrap()
+    );
+    assert!(
+        creature
+            .get_navigator()
+            .get_nodes()
+            .unwrap()
+            .iter()
+            .any(|node| node.get_node_type() == PathNodeType::Jump)
+    );
+}
+#[test]
+fn vanilla_follower_reaches_slab_top_destination_without_edge_stall() {
+    let mut world = pathfinding_world();
+    (0..4)
+        .flat_map(|block_x| (0..4).map(move |block_z| (block_x, block_z)))
+        .for_each(|(block_x, block_z)| {
+            world
+                .set_block(BlockPosition::new(block_x, 65, block_z), Block::OAK_SLAB)
+                .unwrap();
+        });
+    let mut creature = EntityCreature::new(EntityType::ZOMBIE);
+    creature
+        .get_navigator_mut()
+        .set_node_generator(PreciseGroundNodeGenerator);
+    creature
+        .get_navigator_mut()
+        .set_node_follower(VanillaGroundNodeFollower::default());
+    creature.set_position(EntityPosition::new(5.5, 65.0, 1.5, 0.0, 0.0));
+    creature.set_on_ground(true);
+    let creature_id = creature.get_entity_id();
+    world.add_entity(Entity::Creature(creature));
+    let destination = EntityPosition::new(1.5, 65.5, 1.5, 0.0, 0.0);
+    {
+        let snapshot = world.update_snapshot();
+        let Entity::Creature(creature) = world.entity_by_id_mut(creature_id).unwrap() else {
+            panic!("creature entity must preserve its subtype");
+        };
+        assert!(
+            creature
+                .set_path_to_in_world(&snapshot, PathRequest::from(destination))
+                .unwrap()
+        );
+    }
+
+    for _ in 0..240 {
+        world.tick();
+        let Entity::Creature(creature) = world.entity_by_id(creature_id).unwrap() else {
+            panic!("creature entity must preserve its subtype");
+        };
+        if creature.get_position().get_distance_squared(destination)
+            < 0.4242640687119285_f64.powi(2)
+        {
+            return;
+        }
+    }
+
+    let Entity::Creature(creature) = world.entity_by_id(creature_id).unwrap() else {
+        panic!("creature entity must preserve its subtype");
+    };
+    panic!(
+        "vanilla follower stalled before reaching slab-top destination: position={:?}, velocity={:?}, state={:?}, nodes={:?}",
+        creature.get_position(),
+        creature.get_velocity(),
+        creature.get_navigator().state(),
+        creature.get_navigator().get_nodes()
+    );
 }
 #[test]
 fn world_tick_pathfinding_zombie_jumps_over_one_block_obstruction() {
@@ -756,23 +852,27 @@ fn world_tick_pathfinding_zombie_jumps_over_one_block_obstruction() {
     };
     let start_position = creature.get_position();
     let bounding_box = creature.get_bounding_box();
-    assert!(creature
-        .get_navigator_mut()
-        .set_path_to(
-            &snapshot,
-            start_position,
-            bounding_box,
-            true,
-            PathRequest::from(EntityPosition::new(2.5, 65.0, 0.5, 0.0, 0.0))
-                .with_minimum_distance(0.35),
-        )
-        .unwrap());
-    assert!(creature
-        .get_navigator()
-        .get_nodes()
-        .unwrap()
-        .iter()
-        .any(|node| node.get_node_type() == PathNodeType::Jump));
+    assert!(
+        creature
+            .get_navigator_mut()
+            .set_path_to(
+                &snapshot,
+                start_position,
+                bounding_box,
+                true,
+                PathRequest::from(EntityPosition::new(2.5, 65.0, 0.5, 0.0, 0.0))
+                    .with_minimum_distance(0.35),
+            )
+            .unwrap()
+    );
+    assert!(
+        creature
+            .get_navigator()
+            .get_nodes()
+            .unwrap()
+            .iter()
+            .any(|node| node.get_node_type() == PathNodeType::Jump)
+    );
 
     let mut crossed_obstruction_while_airborne = false;
     for _ in 0..80 {
@@ -832,18 +932,24 @@ fn ground_generator_emits_walk_fall_and_non_diagonal_jump_nodes() {
         EntityType::PLAYER.get_bounding_box(),
     );
 
-    assert!(nodes
-        .iter()
-        .any(|node| node.get_node_type() == PathNodeType::Walk));
+    assert!(
+        nodes
+            .iter()
+            .any(|node| node.get_node_type() == PathNodeType::Walk)
+    );
     assert!(nodes.iter().any(|node| {
         node.get_node_type() == PathNodeType::Walk && node.get_block_coordinates() == (7, 65, 7)
     }));
-    assert!(nodes
-        .iter()
-        .any(|node| node.get_node_type() == PathNodeType::Fall));
-    assert!(nodes
-        .iter()
-        .any(|node| node.get_node_type() == PathNodeType::Jump));
+    assert!(
+        nodes
+            .iter()
+            .any(|node| node.get_node_type() == PathNodeType::Fall)
+    );
+    assert!(
+        nodes
+            .iter()
+            .any(|node| node.get_node_type() == PathNodeType::Jump)
+    );
     assert!(!nodes.iter().any(|node| {
         node.get_node_type() == PathNodeType::Walk && node.get_block_coordinates() == (9, 65, 8)
     }));
@@ -897,7 +1003,7 @@ fn precise_ground_generator_uses_collision_shape_for_gravity_snap() {
 }
 
 #[test]
-fn precise_ground_generator_rejects_bottom_slab_walk_without_step_fallback() {
+fn precise_ground_generator_walks_onto_bottom_slab_with_step_fallback() {
     let mut world = pathfinding_world();
     world
         .set_block(BlockPosition::new(9, 65, 8), Block::STONE_SLAB)
@@ -918,11 +1024,14 @@ fn precise_ground_generator_rejects_bottom_slab_walk_without_step_fallback() {
         EntityType::ZOMBIE.get_bounding_box(),
     );
 
-    assert!(!nodes.iter().any(|node| {
-        node.get_node_type() == PathNodeType::Walk
-            && node.get_block_coordinates() == (9, 65, 8)
-            && (node.get_position().get_y() - 65.5).abs() < 0.000001
-    }));
+    assert!(
+        nodes.iter().any(|node| {
+            node.get_node_type() == PathNodeType::Walk
+                && node.get_block_coordinates() == (9, 65, 8)
+                && (node.get_position().get_y() - 65.5).abs() < 0.00001
+        }),
+        "precise nodes did not include bottom slab walk: {nodes:?}"
+    );
 }
 #[test]
 fn collision_sweep_allows_clear_horizontal_floor_travel() {
@@ -967,18 +1076,26 @@ fn flying_generator_emits_minestom_neighbor_shape() {
     );
 
     assert_eq!(nodes.len(), 26);
-    assert!(nodes
-        .iter()
-        .all(|node| node.get_node_type() == PathNodeType::Fly));
-    assert!(nodes
-        .iter()
-        .any(|node| node.get_block_coordinates() == (9, 70, 9)));
-    assert!(nodes
-        .iter()
-        .any(|node| node.get_block_coordinates() == (8, 71, 8)));
-    assert!(nodes
-        .iter()
-        .any(|node| node.get_block_coordinates() == (8, 69, 8)));
+    assert!(
+        nodes
+            .iter()
+            .all(|node| node.get_node_type() == PathNodeType::Fly)
+    );
+    assert!(
+        nodes
+            .iter()
+            .any(|node| node.get_block_coordinates() == (9, 70, 9))
+    );
+    assert!(
+        nodes
+            .iter()
+            .any(|node| node.get_block_coordinates() == (8, 71, 8))
+    );
+    assert!(
+        nodes
+            .iter()
+            .any(|node| node.get_block_coordinates() == (8, 69, 8))
+    );
 }
 
 #[test]
@@ -1290,17 +1407,19 @@ fn creature_owns_navigation_and_world_ticks_advance_it() {
     let initial_snapshot = world.update_snapshot();
     let initial_position = creature.get_position();
     let bounding_box = creature.get_bounding_box();
-    assert!(creature
-        .get_navigator_mut()
-        .set_path_to(
-            &initial_snapshot,
-            initial_position,
-            bounding_box,
-            true,
-            PathRequest::from(EntityPosition::new(4.5, 65.0, 0.5, 0.0, 0.0))
-                .with_minimum_distance(0.5),
-        )
-        .unwrap());
+    assert!(
+        creature
+            .get_navigator_mut()
+            .set_path_to(
+                &initial_snapshot,
+                initial_position,
+                bounding_box,
+                true,
+                PathRequest::from(EntityPosition::new(4.5, 65.0, 0.5, 0.0, 0.0))
+                    .with_minimum_distance(0.5),
+            )
+            .unwrap()
+    );
     let creature_id = creature.get_entity_id();
     world.add_entity(Entity::Creature(creature));
 
@@ -1316,17 +1435,19 @@ fn creature_owns_navigation_and_world_ticks_advance_it() {
     let start_x = creature.get_position().get_x();
     let start_position = creature.get_position();
     let bounding_box = creature.get_bounding_box();
-    assert!(creature
-        .get_navigator_mut()
-        .set_path_to(
-            &snapshot,
-            start_position,
-            bounding_box,
-            true,
-            PathRequest::from(EntityPosition::new(4.5, 65.0, 0.5, 0.0, 0.0))
-                .with_minimum_distance(0.5),
-        )
-        .unwrap());
+    assert!(
+        creature
+            .get_navigator_mut()
+            .set_path_to(
+                &snapshot,
+                start_position,
+                bounding_box,
+                true,
+                PathRequest::from(EntityPosition::new(4.5, 65.0, 0.5, 0.0, 0.0))
+                    .with_minimum_distance(0.5),
+            )
+            .unwrap()
+    );
 
     world.tick();
     world.tick();
@@ -1479,17 +1600,19 @@ fn minestom_follower_accepts_new_path_after_long_jump_landing() {
         };
         let start_position = creature.get_position();
         let bounding_box = creature.get_bounding_box();
-        assert!(creature
-            .get_navigator_mut()
-            .set_path_to(
-                &snapshot,
-                start_position,
-                bounding_box,
-                true,
-                PathRequest::from(EntityPosition::new(4.5, 66.0, 0.5, 0.0, 0.0))
-                    .with_minimum_distance(0.35),
-            )
-            .unwrap());
+        assert!(
+            creature
+                .get_navigator_mut()
+                .set_path_to(
+                    &snapshot,
+                    start_position,
+                    bounding_box,
+                    true,
+                    PathRequest::from(EntityPosition::new(4.5, 66.0, 0.5, 0.0, 0.0))
+                        .with_minimum_distance(0.35),
+                )
+                .unwrap()
+        );
     }
     for _ in 0..120 {
         world.tick();
@@ -1498,11 +1621,13 @@ fn minestom_follower_accepts_new_path_after_long_jump_landing() {
         let Entity::Creature(creature) = world.entity_by_id_mut(creature_id).unwrap() else {
             panic!("creature entity must preserve its subtype");
         };
-        assert!(creature
-            .set_path_to(PathRequest::from(EntityPosition::new(
-                0.5, 65.0, 0.5, 0.0, 0.0
-            )))
-            .unwrap());
+        assert!(
+            creature
+                .set_path_to(PathRequest::from(EntityPosition::new(
+                    0.5, 65.0, 0.5, 0.0, 0.0
+                )))
+                .unwrap()
+        );
     }
     world.tick();
     let Entity::Creature(creature) = world.entity_by_id(creature_id).unwrap() else {
@@ -1510,10 +1635,12 @@ fn minestom_follower_accepts_new_path_after_long_jump_landing() {
     };
 
     assert_ne!(creature.get_navigator().state(), PathState::Invalid);
-    assert!(creature
-        .get_navigator()
-        .get_nodes()
-        .is_some_and(|nodes| !nodes.is_empty()));
+    assert!(
+        creature
+            .get_navigator()
+            .get_nodes()
+            .is_some_and(|nodes| !nodes.is_empty())
+    );
 }
 #[test]
 fn ground_generator_treats_epsilon_above_ground_landing_as_flat_ground() {
@@ -1601,8 +1728,17 @@ enum PathfindingTraceScenarioKind {
     SingleBlock,
     BottomSlab,
     TopSlab,
-    Stair,
+    StairEast,
+    StairWest,
+    TopStairEast,
+    DoubleSlab,
+    Carpet,
+    OpenTrapdoor,
+    ClosedTrapdoor,
+    Fence,
+    Wall,
     TwoHighWall,
+    OneBlockGap,
     SlabDestination,
 }
 
@@ -1612,8 +1748,17 @@ impl PathfindingTraceScenarioKind {
         (Self::SingleBlock, "single_block"),
         (Self::BottomSlab, "bottom_slab"),
         (Self::TopSlab, "top_slab"),
-        (Self::Stair, "stair"),
+        (Self::StairEast, "stair_east"),
+        (Self::StairWest, "stair_west"),
+        (Self::TopStairEast, "top_stair_east"),
+        (Self::DoubleSlab, "double_slab"),
+        (Self::Carpet, "carpet"),
+        (Self::OpenTrapdoor, "open_trapdoor"),
+        (Self::ClosedTrapdoor, "closed_trapdoor"),
+        (Self::Fence, "fence"),
+        (Self::Wall, "wall"),
         (Self::TwoHighWall, "two_high_wall"),
+        (Self::OneBlockGap, "one_block_gap"),
         (Self::SlabDestination, "slab_destination"),
     ];
 
@@ -1623,8 +1768,17 @@ impl PathfindingTraceScenarioKind {
             Self::SingleBlock
             | Self::BottomSlab
             | Self::TopSlab
-            | Self::Stair
+            | Self::StairEast
+            | Self::StairWest
+            | Self::TopStairEast
+            | Self::DoubleSlab
+            | Self::Carpet
+            | Self::OpenTrapdoor
+            | Self::ClosedTrapdoor
+            | Self::Fence
+            | Self::Wall
             | Self::TwoHighWall => EntityPosition::new(4.5, 65.0, 0.5, 0.0, 0.0),
+            Self::OneBlockGap => EntityPosition::new(5.5, 65.0, 0.5, 0.0, 0.0),
             Self::SlabDestination => EntityPosition::new(1.5, 66.0, 1.5, 0.0, 0.0),
         }
     }
@@ -1663,12 +1817,76 @@ impl PathfindingTraceScenarioKind {
                     )
                     .unwrap();
             }
-            Self::Stair => {
+            Self::StairEast => {
                 world
                     .set_block_state(
                         BlockPosition::new(2, 65, 0),
                         block_state_with_property(Block::OAK_STAIRS, "facing", "east"),
                     )
+                    .unwrap();
+            }
+            Self::StairWest => {
+                world
+                    .set_block_state(
+                        BlockPosition::new(2, 65, 0),
+                        block_state_with_property(Block::OAK_STAIRS, "facing", "west"),
+                    )
+                    .unwrap();
+            }
+            Self::TopStairEast => {
+                world
+                    .set_block_state(
+                        BlockPosition::new(2, 65, 0),
+                        block_state_with_properties(
+                            Block::OAK_STAIRS,
+                            &[("facing", "east"), ("half", "top")],
+                        ),
+                    )
+                    .unwrap();
+            }
+            Self::DoubleSlab => {
+                world
+                    .set_block_state(
+                        BlockPosition::new(2, 65, 0),
+                        block_state_with_property(Block::STONE_SLAB, "type", "double"),
+                    )
+                    .unwrap();
+            }
+            Self::Carpet => {
+                world
+                    .set_block(BlockPosition::new(2, 65, 0), Block::WHITE_CARPET)
+                    .unwrap();
+            }
+            Self::OpenTrapdoor => {
+                world
+                    .set_block_state(
+                        BlockPosition::new(2, 65, 0),
+                        block_state_with_properties(
+                            Block::OAK_TRAPDOOR,
+                            &[("open", "true"), ("facing", "east")],
+                        ),
+                    )
+                    .unwrap();
+            }
+            Self::ClosedTrapdoor => {
+                world
+                    .set_block_state(
+                        BlockPosition::new(2, 65, 0),
+                        block_state_with_properties(
+                            Block::OAK_TRAPDOOR,
+                            &[("open", "false"), ("half", "bottom")],
+                        ),
+                    )
+                    .unwrap();
+            }
+            Self::Fence => {
+                world
+                    .set_block(BlockPosition::new(2, 65, 0), Block::OAK_FENCE)
+                    .unwrap();
+            }
+            Self::Wall => {
+                world
+                    .set_block(BlockPosition::new(2, 65, 0), Block::COBBLESTONE_WALL)
                     .unwrap();
             }
             Self::TwoHighWall => {
@@ -1679,15 +1897,20 @@ impl PathfindingTraceScenarioKind {
                     .set_block(BlockPosition::new(2, 66, 0), Block::STONE)
                     .unwrap();
             }
+            Self::OneBlockGap => {
+                world
+                    .set_block(BlockPosition::new(2, 65, 0), Block::STONE)
+                    .unwrap();
+                world
+                    .set_block(BlockPosition::new(4, 65, 0), Block::STONE)
+                    .unwrap();
+            }
             Self::SlabDestination => {
                 (0..4)
                     .flat_map(|block_x| (0..4).map(move |block_z| (block_x, block_z)))
                     .for_each(|(block_x, block_z)| {
                         world
-                            .set_block(
-                                BlockPosition::new(block_x, 65, block_z),
-                                Block::OAK_SLAB,
-                            )
+                            .set_block(BlockPosition::new(block_x, 65, block_z), Block::OAK_SLAB)
                             .unwrap();
                     });
             }
@@ -1721,8 +1944,8 @@ fn minestom_jar_is_locked_by_running_showcase(stderr: &str) -> bool {
     stderr.contains("Unable to delete file") && stderr.contains("minestom-dev.jar") && cfg!(windows)
 }
 
-fn minestom_reference_trace_from_running_showcase_classpath(
-) -> BTreeMap<String, PathfindingTraceScenario> {
+fn minestom_reference_trace_from_running_showcase_classpath()
+-> BTreeMap<String, PathfindingTraceScenario> {
     let output = Command::new("powershell")
         .arg("-NoProfile")
         .arg("-Command")
@@ -1950,6 +2173,16 @@ fn block_state_with_property(block: Block, property: &str, value: &str) -> Block
         .default_state()
         .with_property(property, value)
         .unwrap_or_else(|| panic!("{block:?} must support {property}={value}"))
+}
+
+fn block_state_with_properties(block: Block, properties: &[(&str, &str)]) -> BlockState {
+    properties
+        .iter()
+        .fold(block.default_state(), |block_state, (property, value)| {
+            block_state
+                .with_property(property, value)
+                .unwrap_or_else(|| panic!("{block:?} must support {property}={value}"))
+        })
 }
 
 fn parse_usize(value: &str, line: &str) -> usize {

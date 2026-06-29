@@ -20,15 +20,18 @@ pub fn simulate_movement(
     has_physics: bool,
     is_on_ground: bool,
     is_flying: bool,
+    step_height: f64,
     previous_physics_result: Option<EntityPhysicsResult>,
 ) -> EntityPhysicsResult {
     let collision = if has_physics {
-        collide_with_blocks(
+        collide_with_blocks_and_step(
             position,
             velocity_per_tick,
             bounding_box,
             world,
             previous_physics_result,
+            is_on_ground,
+            step_height,
         )
     } else {
         blockless_movement(position, velocity_per_tick)
@@ -73,6 +76,87 @@ pub fn simulate_collision(
     )
 }
 
+fn collide_with_blocks_and_step(
+    position: EntityPosition,
+    velocity_per_tick: Velocity,
+    bounding_box: EntityBoundingBox,
+    world: &WorldSnapshot,
+    previous_physics_result: Option<EntityPhysicsResult>,
+    is_on_ground: bool,
+    step_height: f64,
+) -> EntityPhysicsResult {
+    let collision = collide_with_blocks(
+        position,
+        velocity_per_tick,
+        bounding_box,
+        world,
+        previous_physics_result,
+    );
+    if step_height <= 0.0 {
+        return collision;
+    }
+
+    if !is_on_ground {
+        return collision;
+    }
+
+    if !collision.has_collision_x() && !collision.has_collision_z() {
+        return collision;
+    }
+
+    let horizontal_velocity = Velocity(Vector3d {
+        x: velocity_per_tick.0.x,
+        y: 0.0,
+        z: velocity_per_tick.0.z,
+    });
+    if vector_is_zero(horizontal_velocity.0) {
+        return collision;
+    }
+
+    let vertical_lift = Velocity(Vector3d {
+        x: 0.0,
+        y: step_height,
+        z: 0.0,
+    });
+    let lifted_collision = collide_with_blocks(position, vertical_lift, bounding_box, world, None);
+    if lifted_collision.has_collision_y() {
+        return collision;
+    }
+
+    let horizontal_collision = collide_with_blocks(
+        lifted_collision.get_new_position(),
+        horizontal_velocity,
+        bounding_box,
+        world,
+        None,
+    );
+    if horizontal_collision.has_collision_x() || horizontal_collision.has_collision_z() {
+        return collision;
+    }
+
+    let downward_collision = collide_with_blocks(
+        horizontal_collision.get_new_position(),
+        Velocity(Vector3d {
+            x: 0.0,
+            y: -step_height,
+            z: 0.0,
+        }),
+        bounding_box,
+        world,
+        None,
+    );
+    if !downward_collision.has_collision_y() {
+        return collision;
+    }
+
+    let stepped_position = downward_collision.get_new_position();
+    if stepped_position.get_y() <= position.get_y() {
+        return collision;
+    }
+
+    EntityPhysicsResult::without_collision(stepped_position, horizontal_velocity, velocity_per_tick)
+        .with_on_ground(true)
+}
 fn collide_with_blocks(
     position: EntityPosition,
     velocity_per_tick: Velocity,

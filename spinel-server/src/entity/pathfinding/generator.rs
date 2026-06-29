@@ -8,6 +8,7 @@ use std::collections::HashSet;
 
 const MAXIMUM_GROUND_FALL_DISTANCE: i32 = 5;
 const PRECISE_MOVEMENT_EPSILON: f64 = 0.000001;
+const PRECISE_MAXIMUM_STEP_HEIGHT: f64 = 0.6;
 
 pub trait NodeGenerator: Send {
     fn walkable(
@@ -285,7 +286,7 @@ fn horizontal_step_size(bounding_box: EntityBoundingBox) -> i32 {
     (bounding_box.get_width() / 2.0).floor().max(1.0) as i32
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 enum GroundNeighborStrategy {
     Normal,
     Precise,
@@ -308,6 +309,33 @@ impl GroundNeighborStrategy {
 
     const fn should_resnap_walk(self) -> bool {
         matches!(self, Self::Precise)
+    }
+
+    const fn walk_gravity_snap_position(self, position: EntityPosition) -> EntityPosition {
+        match self {
+            Self::Normal => position,
+            Self::Precise => position.get_offset(0.0, PRECISE_MAXIMUM_STEP_HEIGHT, 0.0),
+        }
+    }
+
+    fn can_walk_towards(
+        self,
+        generator: &dyn NodeGenerator,
+        world: &WorldSnapshot,
+        start: EntityPosition,
+        candidate: EntityPosition,
+        movement_target: EntityPosition,
+        bounding_box: EntityBoundingBox,
+    ) -> bool {
+        if generator.can_move_towards(world, start, movement_target, bounding_box) {
+            return true;
+        }
+
+        if self != Self::Precise {
+            return false;
+        }
+
+        precise_step_movement_has_no_collision(world, start, candidate, bounding_box)
     }
 }
 
@@ -357,7 +385,7 @@ fn ground_neighbors(
             let floor_candidate = if strategy.should_resnap_walk() {
                 let Some(resnapped_y) = generator.gravity_snap(
                     world,
-                    floor_candidate,
+                    strategy.walk_gravity_snap_position(floor_candidate),
                     bounding_box,
                     MAXIMUM_GROUND_FALL_DISTANCE,
                 ) else {
@@ -380,6 +408,7 @@ fn ground_neighbors(
                 current,
                 goal,
                 bounding_box,
+                strategy,
                 floor_candidate,
                 cost,
             ) {
@@ -434,6 +463,7 @@ fn create_ground_walk_node(
     current: &PathNode,
     goal: EntityPosition,
     bounding_box: EntityBoundingBox,
+    strategy: GroundNeighborStrategy,
     candidate: EntityPosition,
     cost: f64,
 ) -> Option<PathNode> {
@@ -462,7 +492,14 @@ fn create_ground_walk_node(
     } else {
         candidate
     };
-    if !generator.can_move_towards(world, current_position, movement_target, bounding_box) {
+    if !strategy.can_walk_towards(
+        generator,
+        world,
+        current_position,
+        candidate,
+        movement_target,
+        bounding_box,
+    ) {
         return None;
     }
     let candidate_node = path_node_with_parent(
@@ -543,6 +580,44 @@ fn movement_has_no_collision(
     });
     let collision = simulate_collision(start, movement, bounding_box, world, None);
     !collision.has_collision_x() && !collision.has_collision_y() && !collision.has_collision_z()
+}
+
+fn precise_step_movement_has_no_collision(
+    world: &WorldSnapshot,
+    start: EntityPosition,
+    end: EntityPosition,
+    bounding_box: EntityBoundingBox,
+) -> bool {
+    let vertical_delta = end.get_y() - start.get_y();
+    if vertical_delta <= PRECISE_MOVEMENT_EPSILON {
+        return false;
+    }
+
+    if vertical_delta > PRECISE_MAXIMUM_STEP_HEIGHT {
+        return false;
+    }
+
+    let raised_start = EntityPosition::new(
+        start.get_x(),
+        end.get_y(),
+        start.get_z(),
+        start.get_yaw(),
+        start.get_pitch(),
+    );
+    let collision_probe_start = start.get_offset(0.0, PRECISE_MOVEMENT_EPSILON, 0.0);
+    let collision_probe_raised_start = raised_start.get_offset(0.0, PRECISE_MOVEMENT_EPSILON, 0.0);
+    let collision_probe_end = end.get_offset(0.0, PRECISE_MOVEMENT_EPSILON, 0.0);
+    movement_has_no_collision(
+        world,
+        collision_probe_start,
+        collision_probe_raised_start,
+        bounding_box,
+    ) && movement_has_no_collision(
+        world,
+        collision_probe_raised_start,
+        collision_probe_end,
+        bounding_box,
+    )
 }
 
 fn footprint_positions(

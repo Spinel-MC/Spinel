@@ -5,7 +5,7 @@ use spinel::{
         MinecraftServer,
         entity::{
             Entity, EntityCreature, EntityId, EntityPosition, Player,
-            pathfinding::{PathRequest, VanillaGroundNodeFollower},
+            pathfinding::{PathRequest, PreciseGroundNodeGenerator, VanillaGroundNodeFollower},
         },
         world::{BlockPosition, World},
     },
@@ -88,6 +88,9 @@ impl EntityShowcase {
         let mut vanilla_zombie = Self::zombie(vanilla_zombie_position, "Vanilla Physics");
         vanilla_zombie
             .get_navigator_mut()
+            .set_node_generator(PreciseGroundNodeGenerator);
+        vanilla_zombie
+            .get_navigator_mut()
             .set_node_follower(VanillaGroundNodeFollower::default());
         let vanilla_zombie_id = vanilla_zombie.get_entity_id();
         if !vanilla_zombie.set_world(world) {
@@ -125,13 +128,7 @@ impl EntityShowcase {
         if minestom_zombie_id.is_none() && vanilla_zombie_id.is_none() {
             return false;
         }
-        let destination = EntityPosition::new(
-            f64::from(block_position.x) + 0.5,
-            f64::from(block_position.y) + 1.0,
-            f64::from(block_position.z) + 0.5,
-            0.0,
-            0.0,
-        );
+        let destination = Self::pathfinding_destination(world, block_position);
         let minestom_path_was_accepted = minestom_zombie_id
             .is_some_and(|zombie_id| Self::pathfind_zombie(world, zombie_id, destination));
         let vanilla_path_was_accepted = vanilla_zombie_id
@@ -139,6 +136,28 @@ impl EntityShowcase {
         minestom_path_was_accepted || vanilla_path_was_accepted
     }
 
+    fn pathfinding_destination(world: &mut World, block_position: BlockPosition) -> EntityPosition {
+        let destination_y = world
+            .block_state_at(block_position)
+            .ok()
+            .and_then(|block_state| {
+                block_state
+                    .collision_shape()
+                    .iter()
+                    .map(|shape| shape.max_y)
+                    .reduce(f64::max)
+            })
+            .map_or(f64::from(block_position.y) + 1.0, |maximum_shape_y| {
+                f64::from(block_position.y) + maximum_shape_y
+            });
+        EntityPosition::new(
+            f64::from(block_position.x) + 0.5,
+            destination_y,
+            f64::from(block_position.z) + 0.5,
+            0.0,
+            0.0,
+        )
+    }
     pub(super) fn zombie(position: EntityPosition, physics_name: &str) -> EntityCreature {
         let mut zombie = EntityCreature::new(EntityType::ZOMBIE);
         zombie.set_position(position);
