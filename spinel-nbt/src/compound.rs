@@ -17,6 +17,16 @@ impl NbtCompound {
         self.0.insert(name, value.into());
     }
 
+    pub fn put(mut self, name: impl Into<String>, value: impl Into<Nbt>) -> Self {
+        self.insert(name.into(), value);
+        self
+    }
+
+    pub fn put_mut(&mut self, name: impl Into<String>, value: impl Into<Nbt>) -> &mut Self {
+        self.insert(name.into(), value);
+        self
+    }
+
     pub fn remove(&mut self, name: &str) -> Option<Nbt> {
         self.0.remove(name)
     }

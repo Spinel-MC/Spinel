@@ -99,6 +99,20 @@ impl NbtWritable for NbtCompound {
 }
 
 impl Nbt {
+    pub fn list<T, I>(values: I) -> Self
+    where
+        T: Into<Nbt>,
+        I: IntoIterator<Item = T>,
+    {
+        Self::List(
+            values
+                .into_iter()
+                .map(Into::into)
+                .collect::<Vec<_>>()
+                .into_boxed_slice(),
+        )
+    }
+
     pub const fn get_type_id(&self) -> u8 {
         match self {
             Nbt::End => END_ID,

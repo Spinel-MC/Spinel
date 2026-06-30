@@ -1,6 +1,6 @@
 use crate::world::{
     Block, BlockComparison, BlockHandler, BlockHandlerDestroy, BlockHandlerHandle,
-    BlockHandlerPlacement, BlockHandlerRegistry, BlockHandlerTick, BlockInstance,
+    BlockHandlerPlacement, BlockHandlerRegistry, BlockHandlerTick, BlockInstance, BlockInstanceExt,
     BlockLookupCondition, BlockPosition, Chunk, ChunkPosition, StoredBlockInstance,
 };
 use spinel_nbt::{Nbt, NbtCompound, Tag, TagReadable};
@@ -37,6 +37,24 @@ fn block_instance_preserves_nbt_and_handler_through_property_changes() {
     assert_eq!(default_state.block_state(), Block::OAK_LOG.default_state());
     assert!(!default_state.has_nbt());
     assert!(default_state.handler().is_none());
+}
+
+#[test]
+fn block_type_extension_methods_create_block_instances() {
+    let nbt = NbtCompound::new().put("custom", "value");
+    let block_instance = Block::CHEST.with_nbt(nbt.clone());
+    let block_with_property = Block::OAK_LOG.with_property("axis", "x").unwrap();
+
+    assert_eq!(block_instance.block(), Block::CHEST);
+    assert_eq!(block_instance.nbt(), Some(&nbt));
+    assert_eq!(
+        Block::STONE.as_instance(),
+        BlockInstance::from(Block::STONE)
+    );
+    assert_eq!(
+        block_with_property.block_state().property("axis"),
+        Some("x")
+    );
 }
 
 #[test]

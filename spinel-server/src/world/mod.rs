@@ -44,7 +44,7 @@ pub use block_handler::{
     BlockHandler, BlockHandlerDestroy, BlockHandlerHandle, BlockHandlerInteraction,
     BlockHandlerPlacement, BlockHandlerRegistry, BlockHandlerTick, BlockHandlerTouch,
 };
-pub use block_instance::BlockInstance;
+pub use block_instance::{BlockInstance, BlockInstanceExt};
 pub use block_lookup_condition::BlockLookupCondition;
 pub use block_placement_rule::{
     BlockPlacementRule, BlockPlacementRuleRegistry, BlockPlacementState, BlockReplacement,

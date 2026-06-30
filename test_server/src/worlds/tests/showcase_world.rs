@@ -79,7 +79,7 @@ fn showcase_world_generation_preserves_showcase_sign_blocks() {
 
     assert_eq!(
         sign_text_messages(player_sign_block_entity.nbt.get("front_text").unwrap()),
-        vec!["Player", "Showcase", "Right click", ""]
+        vec!["", "", "", ""]
     );
     assert_eq!(
         sign_text_messages(player_sign_block_entity.nbt.get("back_text").unwrap()),

@@ -1,6 +1,6 @@
 use spinel::{
     nbt::{Nbt, NbtCompound},
-    server::world::{Block, BlockInstance, BlockPosition, Chunk, ChunkPosition, World},
+    server::world::{Block, BlockInstanceExt, BlockPosition, Chunk, ChunkPosition, World},
 };
 use std::io;
 
@@ -38,7 +38,7 @@ impl ShowcaseSigns {
             .for_each(|entry| {
                 chunk.set_block_instance(
                     entry.position,
-                    BlockInstance::from(Block::OAK_SIGN).with_nbt(Some(Self::sign_nbt(entry))),
+                    Block::OAK_SIGN.with_nbt(Self::sign_nbt(entry)),
                 );
             });
     }
@@ -58,7 +58,7 @@ impl ShowcaseSigns {
         let _ = world.load_chunk(chunk_position)?;
         world.set_block_instance(
             entry.position,
-            BlockInstance::from(Block::OAK_SIGN).with_nbt(Some(Self::sign_nbt(entry))),
+            Block::OAK_SIGN.with_nbt(Self::sign_nbt(entry)),
         )?;
         Ok(())
     }
@@ -89,44 +89,24 @@ impl ShowcaseSigns {
     }
 
     fn sign_nbt(entry: ShowcaseSignEntry) -> NbtCompound {
-        let mut compound = NbtCompound::new();
-        compound.insert(
-            "front_text".to_string(),
-            Nbt::Compound(Self::label_text_compound(entry.label)),
-        );
-        compound.insert(
-            "back_text".to_string(),
-            Nbt::Compound(NbtCompound::new().insert("messages", Nbt::List(Box::<Nbt>::from([Nbt::String(label.to_string()),])))),
-        );
-        compound.insert("is_waxed".to_string(), Nbt::Byte(1));
-        compound
+        NbtCompound::new()
+            .put("front_text", Self::blank_text_compound())
+            .put("back_text", Self::label_text_compound(entry.label))
+            .put("is_waxed", true)
     }
-
     fn label_text_compound(label: &str) -> NbtCompound {
-        Self::text_compound(Self::label_messages(label), true)
+        Self::text_compound(Nbt::list([label, "Showcase", "Right click", ""]), true)
     }
 
-    fn text_compound(messages: [Nbt; 4], has_glowing_text: bool) -> NbtCompound {
-        let mut compound = NbtCompound::new();
-        compound.insert("color".to_string(), Nbt::String("black".to_string()));
-        compound.insert(
-            "has_glowing_text".to_string(),
-            Nbt::Byte(if has_glowing_text { 1 } else { 0 }),
-        );
-        compound.insert(
-            "messages".to_string(),
-            Nbt::List(Box::<[Nbt]>::from(messages)),
-        );
-        compound
+    fn blank_text_compound() -> NbtCompound {
+        Self::text_compound(Nbt::list(["", "", "", ""]), false)
     }
 
-    fn label_messages(label: &str) -> [Nbt; 4] {
-        [
-            Nbt::String(label.to_string()),
-            Nbt::String("Showcase".to_string()),
-            Nbt::String("Right click".to_string()),
-            Nbt::String(String::new()),
-        ]
+    fn text_compound(messages: Nbt, has_glowing_text: bool) -> NbtCompound {
+        NbtCompound::new()
+            .put("color", "black")
+            .put("has_glowing_text", has_glowing_text)
+            .put("messages", messages)
     }
 }
 

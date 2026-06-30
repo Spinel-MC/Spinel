@@ -36,6 +36,37 @@ fn all_named_and_unnamed_nbt_tags_round_trip() {
 }
 
 #[test]
+fn nbt_compound_put_chains_primitive_conversions_and_lists() {
+    let compound = NbtCompound::new()
+        .put("name", "sign")
+        .put("enabled", true)
+        .put("count", 3i32)
+        .put("messages", Nbt::list(["first", "second"]));
+
+    assert_eq!(compound.get("name"), Some(&Nbt::String("sign".to_string())));
+    assert_eq!(compound.get("enabled"), Some(&Nbt::Byte(1)));
+    assert_eq!(compound.get("count"), Some(&Nbt::Int(3)));
+    assert_eq!(
+        compound.get("messages"),
+        Some(&Nbt::List(Box::new([
+            Nbt::String("first".to_string()),
+            Nbt::String("second".to_string())
+        ])))
+    );
+
+    let mut mutable_compound = NbtCompound::new();
+    mutable_compound
+        .put_mut("key", "value")
+        .put_mut("active", false);
+
+    assert_eq!(
+        mutable_compound.get("key"),
+        Some(&Nbt::String("value".to_string()))
+    );
+    assert_eq!(mutable_compound.get("active"), Some(&Nbt::Byte(0)));
+}
+
+#[test]
 fn invalid_nbt_data_returns_errors() {
     assert!(Nbt::read_unnamed(&mut [99u8].as_slice()).is_err());
     assert!(Nbt::read_unnamed(&mut [8u8, 0, 4, 0xff].as_slice()).is_err());

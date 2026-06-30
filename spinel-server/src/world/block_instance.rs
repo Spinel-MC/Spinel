@@ -219,3 +219,28 @@ impl From<BlockState> for BlockInstance {
         Self::new(block_state)
     }
 }
+
+pub trait BlockInstanceExt {
+    fn as_instance(self) -> BlockInstance;
+    fn with_nbt(self, nbt: NbtCompound) -> BlockInstance;
+    fn with_handler(self, handler: impl BlockHandler + 'static) -> BlockInstance;
+    fn with_property(self, property: &str, value: &str) -> Option<BlockInstance>;
+}
+
+impl BlockInstanceExt for Block {
+    fn as_instance(self) -> BlockInstance {
+        BlockInstance::from(self)
+    }
+
+    fn with_nbt(self, nbt: NbtCompound) -> BlockInstance {
+        BlockInstance::from(self).with_nbt(Some(nbt))
+    }
+
+    fn with_handler(self, handler: impl BlockHandler + 'static) -> BlockInstance {
+        BlockInstance::from(self).with_new_handler(handler)
+    }
+
+    fn with_property(self, property: &str, value: &str) -> Option<BlockInstance> {
+        BlockInstance::from(self).with_property(property, value)
+    }
+}
