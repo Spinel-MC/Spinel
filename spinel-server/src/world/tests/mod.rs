@@ -1,3 +1,4 @@
+mod anvil_chunk_loader;
 mod block_instance;
 mod chunk_cache;
 mod chunk_generation;

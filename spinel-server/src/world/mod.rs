@@ -1,3 +1,4 @@
+mod anvil;
 mod block_comparison;
 mod block_entity;
 mod block_handler;
@@ -38,6 +39,7 @@ mod world_manager;
 mod world_scheduler;
 mod world_snapshot;
 
+pub use anvil::AnvilChunkLoader;
 pub use block_comparison::BlockComparison;
 pub use block_entity::BlockEntity;
 pub use block_handler::{
