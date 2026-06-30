@@ -1,4 +1,5 @@
-use crate::world::{Chunk, ChunkPosition};
+use crate::world::{Chunk, ChunkPosition, World};
+use spinel_nbt::{NbtCompound, Taggable};
 use std::io;
 
 pub trait ChunkLoader: Send + Sync {
@@ -7,10 +8,13 @@ pub trait ChunkLoader: Send + Sync {
     fn save_chunks(&self, chunks: &[&Chunk]) -> io::Result<()> {
         chunks.iter().try_for_each(|chunk| self.save_chunk(chunk))
     }
-    fn load_world(&self) -> io::Result<()> {
+    fn load_world(&self, _world: &mut World) -> io::Result<()> {
         Ok(())
     }
-    fn save_world(&self) -> io::Result<()> {
+    fn save_world(&self, world: &World) -> io::Result<()> {
+        self.save_world_tags(WorldPersistentTags::from_world(world))
+    }
+    fn save_world_tags(&self, _world_tags: WorldPersistentTags) -> io::Result<()> {
         Ok(())
     }
     fn unload_chunk(&self, chunk: &mut Chunk) -> io::Result<()>;
@@ -19,6 +23,35 @@ pub trait ChunkLoader: Send + Sync {
     }
     fn supports_parallel_saving(&self) -> bool {
         false
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct WorldPersistentTags {
+    compound: NbtCompound,
+}
+
+impl WorldPersistentTags {
+    pub fn from_world(world: &World) -> Self {
+        Self {
+            compound: world.tag_handler().as_compound(),
+        }
+    }
+
+    pub fn from_compound(compound: NbtCompound) -> Self {
+        Self { compound }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.compound.is_empty()
+    }
+
+    pub fn into_compound(self) -> NbtCompound {
+        self.compound
+    }
+
+    pub fn get_compound(&self) -> &NbtCompound {
+        &self.compound
     }
 }
 

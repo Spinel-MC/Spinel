@@ -1,13 +1,14 @@
 use crate::world::anvil::region_file::RegionFile;
 use crate::world::{
     Biome, BlockEntity, BlockInstance, BlockLookupCondition, BlockPosition, Chunk, ChunkLoader,
-    ChunkPosition, ChunkSection,
+    ChunkPosition, ChunkSection, World, WorldPersistentTags,
 };
+use flate2::{Compression, read::GzDecoder, write::GzEncoder};
 use spinel_nbt::{Nbt, NbtCompound, Taggable};
 use spinel_registry::{Identifier, RegistryKey};
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fs;
-use std::io;
+use std::io::{self, Write};
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::{Arc, Mutex, MutexGuard};
@@ -18,6 +19,7 @@ const DATA_VERSION: i32 = 3953;
 
 pub struct AnvilChunkLoader {
     world_directory: PathBuf,
+    level_path: PathBuf,
     region_directory: PathBuf,
     file_creation_lock: Mutex<()>,
     loaded_region_files: Mutex<HashMap<String, Arc<Mutex<RegionFile>>>>,
@@ -27,9 +29,11 @@ pub struct AnvilChunkLoader {
 impl AnvilChunkLoader {
     pub fn new(world_directory: PathBuf) -> io::Result<Self> {
         let region_directory = world_directory.join("region");
+        let level_path = world_directory.join("level.dat");
         fs::create_dir_all(&region_directory)?;
         Ok(Self {
             world_directory,
+            level_path,
             region_directory,
             file_creation_lock: Mutex::new(()),
             loaded_region_files: Mutex::new(HashMap::new()),
@@ -103,6 +107,35 @@ impl AnvilChunkLoader {
 }
 
 impl ChunkLoader for AnvilChunkLoader {
+    fn load_world(&self, world: &mut World) -> io::Result<()> {
+        if !self.level_path.exists() {
+            return Ok(());
+        }
+        let level_file = fs::File::open(&self.level_path)?;
+        let mut decoder = GzDecoder::new(level_file);
+        let (_, world_nbt) = Nbt::read_from_stream(&mut decoder)?;
+        let Nbt::Compound(world_tags) = world_nbt else {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "Anvil level.dat root must be a compound.",
+            ));
+        };
+        fs::copy(&self.level_path, self.world_directory.join("level.dat_old"))?;
+        world.tag_handler_mut().update_content(world_tags);
+        Ok(())
+    }
+
+    fn save_world_tags(&self, world_tags: WorldPersistentTags) -> io::Result<()> {
+        if world_tags.is_empty() {
+            return Ok(());
+        }
+        fs::create_dir_all(&self.world_directory)?;
+        let level_file = fs::File::create(&self.level_path)?;
+        let mut encoder = GzEncoder::new(level_file, Compression::default());
+        Nbt::Compound(world_tags.into_compound()).write("", &mut encoder)?;
+        encoder.finish()?;
+        Ok(())
+    }
     fn load_chunk(&self, position: ChunkPosition) -> io::Result<Option<Chunk>> {
         if !self.world_directory.exists() {
             return Ok(None);

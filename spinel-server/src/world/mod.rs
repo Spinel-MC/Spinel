@@ -57,7 +57,7 @@ pub use block_size::BlockSize;
 pub use boss_bar::{BossBar, WorldBossBarColor, WorldBossBarOverlay};
 pub use chunk::{CHUNK_SECTION_SIZE, CHUNK_SIZE_X, CHUNK_SIZE_Z, Chunk, SetChunkBlockResult};
 pub use chunk_cache::ChunkCache;
-pub use chunk_loader::{ChunkLoader, NoopChunkLoader};
+pub use chunk_loader::{ChunkLoader, NoopChunkLoader, WorldPersistentTags};
 pub use chunk_position::ChunkPosition;
 pub use chunk_section::{
     ChunkSection, ChunkSectionBiomePalette, ChunkSectionBlockPalette, SetChunkSectionLightError,

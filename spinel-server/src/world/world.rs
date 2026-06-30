@@ -1051,12 +1051,13 @@ impl World {
         self.event_dispatcher = Some(server);
     }
 
-    pub fn load_world(&self) -> Result<()> {
-        self.chunk_loader.load_world()
+    pub fn load_world(&mut self) -> Result<()> {
+        let chunk_loader = self.chunk_loader.clone();
+        chunk_loader.load_world(self)
     }
 
     pub fn save_world(&self) -> Result<()> {
-        self.chunk_loader.save_world()
+        self.chunk_loader.save_world(self)
     }
 
     pub fn save_chunk(&self, position: ChunkPosition) -> Result<bool> {
@@ -1548,7 +1549,8 @@ impl World {
     pub fn save_world_future(&self) -> WorldIoTask {
         self.optional_io_task(self.chunk_loader.supports_parallel_saving(), {
             let chunk_loader = self.chunk_loader.clone();
-            move || chunk_loader.save_world()
+            let world_tags = crate::world::WorldPersistentTags::from_world(self);
+            move || chunk_loader.save_world_tags(world_tags)
         })
     }
 
