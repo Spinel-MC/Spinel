@@ -662,22 +662,47 @@ impl Chunk {
 
     pub(crate) fn replace_sections(&mut self, sections: Vec<ChunkSection>) {
         self.sections = Arc::new(sections);
+        self.rebuild_special_block_instances_from_sections();
         self.heightmaps_need_complete_refresh.set(true);
         self.invalidate();
     }
 
     pub(crate) fn merge_section_from_fork(&mut self, section_y: i32, fork_section: &ChunkSection) {
-        let Some(chunk_section) = Arc::make_mut(&mut self.sections)
+        let chunk_start_x = self.x() * CHUNK_SIZE_X;
+        let chunk_start_z = self.z() * CHUNK_SIZE_Z;
+        let section_start_y = section_y * CHUNK_SECTION_SIZE;
+        let Some(written_special_block_instances) = Arc::make_mut(&mut self.sections)
             .iter_mut()
             .find(|chunk_section| chunk_section.y == section_y)
+            .map(|chunk_section| {
+                chunk_section.merge_from_fork(fork_section);
+                fork_section
+                    .written_block_indices()
+                    .into_iter()
+                    .map(|block_index| {
+                        let position = section_block_position(
+                            block_index,
+                            chunk_start_x,
+                            section_start_y,
+                            chunk_start_z,
+                        );
+                        let block_instance = chunk_section
+                            .special_blocks()
+                            .get(&block_index)
+                            .copied()
+                            .map(BlockInstance::from);
+                        (position, block_instance)
+                    })
+                    .collect::<Vec<_>>()
+            })
         else {
             return;
         };
-        chunk_section.merge_from_fork(fork_section);
+
+        self.synchronize_special_block_instances(written_special_block_instances);
         self.heightmaps_need_complete_refresh.set(true);
         self.invalidate();
     }
-
     pub fn set_block_entity(&mut self, block_entity: BlockEntity) {
         if self.read_only {
             return;
@@ -887,6 +912,53 @@ impl Chunk {
         self.clear_invalidated();
     }
 
+    fn rebuild_special_block_instances_from_sections(&mut self) {
+        let chunk_start_x = self.x() * CHUNK_SIZE_X;
+        let chunk_start_z = self.z() * CHUNK_SIZE_Z;
+        let special_block_instances = self
+            .sections
+            .iter()
+            .flat_map(|section| {
+                section
+                    .special_blocks()
+                    .iter()
+                    .map(move |(block_index, block)| {
+                        let position = section_block_position(
+                            *block_index,
+                            chunk_start_x,
+                            section.y * CHUNK_SECTION_SIZE,
+                            chunk_start_z,
+                        );
+                        (position, Some(BlockInstance::from(*block)))
+                    })
+            })
+            .collect::<Vec<_>>();
+
+        self.block_instances.clear();
+        self.block_entities.clear();
+        self.tickable_blocks.clear();
+        self.synchronize_special_block_instances(special_block_instances);
+    }
+
+    fn synchronize_special_block_instances(
+        &mut self,
+        special_block_instances: Vec<(BlockPosition, Option<BlockInstance>)>,
+    ) {
+        special_block_instances
+            .into_iter()
+            .for_each(|(position, block_instance)| {
+                self.block_instances.remove(&position);
+                self.block_entities
+                    .retain(|block_entity| block_entity.position() != position);
+                self.tickable_blocks.remove(&position);
+                if let Some(block_instance) = block_instance {
+                    self.store_block_instance(position, block_instance.clone());
+                    self.synchronize_block_entity(position, &block_instance);
+                    self.update_tickable_block(position, &block_instance);
+                }
+            });
+    }
+
     fn heightmaps(&self) -> Vec<HeightmapEntry> {
         self.refresh_heightmaps_if_needed();
         ChunkHeightmaps::entries(
@@ -1001,6 +1073,21 @@ impl Chunk {
     }
 }
 
+fn section_block_position(
+    block_index: usize,
+    chunk_start_x: i32,
+    section_start_y: i32,
+    chunk_start_z: i32,
+) -> BlockPosition {
+    let local_x = (block_index & 15) as i32;
+    let local_z = ((block_index >> 4) & 15) as i32;
+    let local_y = ((block_index >> 8) & 15) as i32;
+    BlockPosition::new(
+        chunk_start_x + local_x,
+        section_start_y + local_y,
+        chunk_start_z + local_z,
+    )
+}
 impl Taggable for Chunk {
     fn tag_handler(&self) -> &TagHandler {
         &self.tag_handler

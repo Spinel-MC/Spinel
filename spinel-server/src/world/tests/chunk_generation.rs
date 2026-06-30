@@ -414,6 +414,26 @@ fn generator_special_blocks_are_cached_for_current_chunk_and_forks() {
 }
 
 #[test]
+fn generated_block_entity_blocks_are_serialized_as_chunk_block_entities() {
+    let registries = Registries::new_vanilla();
+    let mut world = World::new(Identifier::minecraft("test"));
+    world.set_generator(|unit| {
+        unit.modifier()
+            .set_block(BlockPosition::new(1, 4, 5), Block::OAK_SIGN);
+    });
+
+    let chunk = world.load_chunk(ChunkPosition::new(0, 0)).unwrap();
+    let chunk_data = chunk.data(&registries).unwrap();
+
+    assert_eq!(chunk_data.block_entities.len(), 1);
+    assert_eq!(
+        chunk_data.block_entities[0].block_entity_type,
+        BlockEntityType::Sign
+    );
+    assert_eq!(chunk_data.block_entities[0].packed_xz, 21);
+    assert_eq!(chunk_data.block_entities[0].y, 4);
+}
+#[test]
 fn chunk_block_entities_are_serialized() {
     let registries = Registries::new_vanilla();
     let mut chunk = crate::world::Chunk::new(ChunkPosition::new(0, 0));

@@ -4,7 +4,7 @@ use spinel::{
     registry::{Identifier, biome::Biome},
     server::{
         MinecraftServer,
-        world::{Block, BlockPosition},
+        world::{Block, BlockPosition, ChunkPosition},
     },
 };
 use std::io;
@@ -30,6 +30,12 @@ impl ShowcaseWorld {
             ));
         };
 
+        world.set_chunk_supplier(|position| {
+            let mut chunk = spinel::server::world::Chunk::new(position);
+            chunk.set_load_callback(ShowcaseSigns::install_on_chunk);
+            chunk
+        });
+
         world.set_generator(move |unit| {
             unit.modifier().fill_biome(Biome::PLAINS);
             unit.modifier().fill_biome(custom_biome_key.clone());
@@ -38,6 +44,7 @@ impl ShowcaseWorld {
             generate_showcase_blocks(unit);
         });
 
+        world.generate_chunk_result(ChunkPosition::new(0, 0))?;
         ShowcaseSigns::install(world)?;
 
         Ok(())
@@ -72,6 +79,11 @@ fn generate_showcase_blocks(unit: &mut spinel::server::world::GenerationUnit) {
             }
         }
     }
+
+    ShowcaseSigns::positions()
+        .into_iter()
+        .filter(|sign_position| generation_unit_contains_position(*sign_position, start, end))
+        .for_each(|sign_position| modifier.set_block(sign_position, Block::OAK_SIGN));
 }
 
 fn fill_terrain_surface(
@@ -133,4 +145,12 @@ fn pillar_block(x: i32, z: i32) -> Block {
         return Block::COPPER_BLOCK;
     }
     Block::LAPIS_BLOCK
+}
+
+fn generation_unit_contains_position(
+    position: BlockPosition,
+    start: BlockPosition,
+    end: BlockPosition,
+) -> bool {
+    position.x >= start.x && position.x < end.x && position.z >= start.z && position.z < end.z
 }

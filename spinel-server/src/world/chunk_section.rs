@@ -480,7 +480,7 @@ impl ChunkSection {
         }
     }
 
-    fn written_block_indices(&self) -> Vec<usize> {
+    pub(crate) fn written_block_indices(&self) -> Vec<usize> {
         match &self.block_writes {
             SectionBlockWrites::Complete => (0..CHUNK_SECTION_BLOCK_COUNT).collect(),
             SectionBlockWrites::Sparse(block_writes) => block_writes
