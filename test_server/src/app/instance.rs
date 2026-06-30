@@ -19,10 +19,7 @@ impl TestServer {
         let Some(server) = self.server() else {
             return;
         };
-        println!(
-            "Starting Spinel Server on {}:{}",
-            self.bind_address, self.port
-        );
+
         server.start(self.bind_address, self.port).await;
     }
 

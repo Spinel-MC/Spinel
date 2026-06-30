@@ -30,6 +30,14 @@ impl CommandArgument {
         Self::custom_parser(id, ArgumentParserType::String, "Word")
     }
 
+    pub fn game_mode(id: impl Into<String>) -> Self {
+        Self::custom_parser(id, ArgumentParserType::GameMode, "GameMode")
+    }
+
+    pub fn game_profile(id: impl Into<String>) -> Self {
+        Self::custom_parser(id, ArgumentParserType::GameProfile, "GameProfile")
+    }
+
     pub fn string_array(id: impl Into<String>) -> Self {
         Self::parser_with_remaining(id, ArgumentParserType::String, "StringArray")
     }
@@ -94,11 +102,21 @@ impl CommandArgument {
         Self::parser_with_space(id, ArgumentParserType::Vec2, "RelativeVec2")
     }
 
-    pub fn resource(id: impl Into<String>) -> Self {
-        Self::custom_parser(id, ArgumentParserType::Resource, "Resource")
+    pub fn resource(id: impl Into<String>, registry_identifier: impl Into<String>) -> Self {
+        Self::custom_registry_parser(
+            id,
+            ArgumentParserType::Resource,
+            "Resource",
+            registry_identifier,
+        )
     }
 
-    pub fn resource_or_tag(id: impl Into<String>) -> Self {
-        Self::custom_parser(id, ArgumentParserType::ResourceOrTag, "ResourceOrTag")
+    pub fn resource_or_tag(id: impl Into<String>, registry_identifier: impl Into<String>) -> Self {
+        Self::custom_registry_parser(
+            id,
+            ArgumentParserType::ResourceOrTag,
+            "ResourceOrTag",
+            registry_identifier,
+        )
     }
 }

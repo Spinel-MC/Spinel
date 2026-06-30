@@ -23,8 +23,9 @@ use crate::events::player_stop_sneaking::PlayerStopSneakingEvent;
 use crate::events::player_stop_sprinting::PlayerStopSprintingEvent;
 use crate::network::client::instance::Client;
 use crate::server::MinecraftServer;
-use crate::world::{Block, ChunkPosition};
+use crate::world::{Block, BlockPosition, ChunkPosition};
 use spinel_core::entity::game_mode::GameMode;
+use spinel_core::network::clientbound::play::acknowledge_block_change::AcknowledgeBlockChangePacket;
 use spinel_core::network::clientbound::play::set_camera::SetCameraPacket;
 use spinel_core::network::clientbound::play::set_player_inventory::SetPlayerInventoryPacket;
 use spinel_core::network::clientbound::play::sync_player_pos::SyncPlayerPositionPacket;
@@ -48,17 +49,19 @@ use spinel_core::network::serverbound::play::plugin_message::ServerboundPlayCust
 use spinel_core::network::serverbound::play::set_creative_mode_slot::SetCreativeModeSlotPacket;
 use spinel_core::network::serverbound::play::steer_boat::SteerBoatPacket;
 use spinel_core::network::serverbound::play::teleport_to_entity::TeleportToEntityPacket;
+use spinel_core::network::serverbound::play::use_item_on::UseItemOnPacket;
 use spinel_macros::event_listener;
 use spinel_network::types::entity_metadata::MetadataValue;
-use spinel_network::types::{Identifier, Slot, UntrustedSlot};
+use spinel_network::types::{Identifier, Position, Slot, UntrustedSlot};
 use spinel_network::{ConnectionState, DataType, PacketStruct, VarIntWrapper};
 use spinel_registry::data_components::vanilla_components::PIERCING_WEAPON;
 use spinel_registry::{EntityType, ItemStack, Material, PiercingWeapon};
 use spinel_utils::component::text::TextComponent;
-use std::io::{Cursor, Read};
+use std::io::{Cursor, ErrorKind, Read};
 use std::net::{IpAddr, Ipv4Addr, SocketAddr, TcpListener, TcpStream};
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Mutex, MutexGuard};
+use std::time::Duration;
 use uuid::Uuid;
 
 static LISTENER_PARITY_ENABLED: AtomicBool = AtomicBool::new(false);
@@ -849,6 +852,34 @@ fn failed_digging_correction_teleports_player_when_block_is_under_position() {
 }
 
 #[test]
+fn empty_hand_use_item_on_trapdoor_acknowledges_every_horizontal_face_without_side_packets() {
+    let _scope = ListenerParityScope::new();
+    let (mut server, mut client, mut peer_stream, world_uuid, _player_id) =
+        server_with_play_player(GameMode::Survival);
+    let trapdoor_position = BlockPosition::new(0, 64, 0);
+    {
+        let world = server.world_manager.world_mut(world_uuid).unwrap();
+        world.load_chunk(ChunkPosition::new(0, 0)).unwrap();
+        world
+            .set_block(trapdoor_position, Block::OAK_TRAPDOOR)
+            .unwrap();
+    }
+    attach_client_to_player(&mut server, &mut client);
+
+    for block_face in [2, 3, 4, 5] {
+        assert!(dispatch_packet(
+            &mut server,
+            &mut client,
+            use_item_on_packet(trapdoor_position, block_face, 500 + block_face),
+        ));
+        assert_eq!(
+            read_available_packet_ids(&mut peer_stream),
+            vec![AcknowledgeBlockChangePacket::get_id()]
+        );
+    }
+}
+
+#[test]
 fn player_command_listener_dispatches_action_events_after_state_changes() {
     let _scope = ListenerParityScope::new();
     let (mut server, mut client, _peer_stream, _world_uuid, _player_id) =
@@ -897,7 +928,6 @@ fn player_command_listener_dispatches_action_events_after_state_changes() {
     assert_eq!(LISTENER_PARITY_START_ELYTRA.load(Ordering::SeqCst), 1);
     assert_eq!(LISTENER_PARITY_LEAVE_BED.load(Ordering::SeqCst), 1);
 }
-
 #[test]
 fn player_status_listener_dispatches_stop_flying_with_elytra_after_landing() {
     let _scope = ListenerParityScope::new();
@@ -1401,6 +1431,54 @@ fn test_client_pair() -> (Client, TcpStream) {
     (Client::new(stream, addr), peer_stream)
 }
 
+fn use_item_on_packet(
+    block_position: BlockPosition,
+    block_face: i32,
+    sequence: i32,
+) -> UseItemOnPacket {
+    UseItemOnPacket {
+        hand: 0,
+        block_position: Position {
+            x: block_position.x,
+            y: block_position.y,
+            z: block_position.z,
+        },
+        block_face,
+        cursor_position_x: 0.5,
+        cursor_position_y: 0.5,
+        cursor_position_z: 0.5,
+        inside_block: false,
+        hit_world_border: false,
+        sequence,
+    }
+}
+
+fn read_available_packet_ids(peer_stream: &mut TcpStream) -> Vec<i32> {
+    peer_stream
+        .set_read_timeout(Some(Duration::from_millis(50)))
+        .unwrap();
+    let packet_ids =
+        std::iter::from_fn(|| read_packet_frame_before_timeout(peer_stream).map(|packet| packet.0))
+            .collect();
+    peer_stream.set_read_timeout(None).unwrap();
+    packet_ids
+}
+
+fn read_packet_frame_before_timeout(peer_stream: &mut TcpStream) -> Option<(i32, Vec<u8>)> {
+    let frame_length = match VarIntWrapper::decode(peer_stream) {
+        Ok(frame_length) => frame_length.0 as usize,
+        Err(error) if error.kind() == ErrorKind::WouldBlock => return None,
+        Err(error) if error.kind() == ErrorKind::TimedOut => return None,
+        Err(error) => panic!("failed to read packet frame length: {error}"),
+    };
+    let mut frame = vec![0; frame_length];
+    peer_stream.read_exact(&mut frame).unwrap();
+    let mut frame_cursor = Cursor::new(frame);
+    let packet_id = VarIntWrapper::decode(&mut frame_cursor).unwrap().0;
+    let payload_position = frame_cursor.position() as usize;
+    let frame = frame_cursor.into_inner();
+    Some((packet_id, frame[payload_position..].to_vec()))
+}
 fn read_packet_frame(peer_stream: &mut TcpStream) -> (i32, Vec<u8>) {
     let frame_length = VarIntWrapper::decode(peer_stream).unwrap().0 as usize;
     let mut frame = vec![0; frame_length];

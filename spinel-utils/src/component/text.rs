@@ -93,7 +93,17 @@ impl TextComponent {
     }
 
     pub fn to_ansi_string(&self) -> String {
-        self.to_plain_string()
+        let mut builder = String::new();
+        let mut terminal_has_ansi_codes = false;
+        self.write_ansi_string(&mut builder, &Style::empty(), &mut terminal_has_ansi_codes);
+        if terminal_has_ansi_codes {
+            builder.push_str("\x1b[0m");
+        }
+        builder
+    }
+
+    pub fn to_ansi(&self) -> String {
+        self.to_ansi_string()
     }
 
     pub fn to_nbt_compound(&self) -> spinel_nbt::NbtCompound {
@@ -120,6 +130,38 @@ impl TextComponent {
         for child in &self.extra {
             child.write_legacy_string(builder, &current_style);
         }
+    }
+
+    fn write_ansi_string(
+        &self,
+        builder: &mut String,
+        parent_style: &Style,
+        terminal_has_ansi_codes: &mut bool,
+    ) {
+        let current_style = parent_style.merge_with_parent(self);
+        let ansi_codes = current_style.to_ansi_codes();
+        if ansi_codes.is_empty() {
+            reset_ansi_style_if_needed(builder, terminal_has_ansi_codes);
+        } else {
+            if *terminal_has_ansi_codes {
+                builder.push_str("\x1b[0m");
+            }
+            builder.push_str(&ansi_codes);
+            *terminal_has_ansi_codes = true;
+        }
+        if let ComponentType::Text(text) = &self.content {
+            builder.push_str(text);
+        }
+        for child in &self.extra {
+            child.write_ansi_string(builder, &current_style, terminal_has_ansi_codes);
+        }
+    }
+}
+
+fn reset_ansi_style_if_needed(builder: &mut String, terminal_has_ansi_codes: &mut bool) {
+    if *terminal_has_ansi_codes {
+        builder.push_str("\x1b[0m");
+        *terminal_has_ansi_codes = false;
     }
 }
 

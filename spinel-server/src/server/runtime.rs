@@ -13,8 +13,7 @@ impl MinecraftServer {
     }
 
     async fn start_shared(server_arc: Arc<Mutex<Self>>, address: &str, port: u16) {
-        if Self::startup_cancelled(&server_arc) {
-            eprintln!("Server startup event was cancelled.");
+        if Self::startup_cancelled(&server_arc, address, port) {
             return;
         }
 
@@ -22,19 +21,16 @@ impl MinecraftServer {
             return;
         }
 
-        match start_tcp_listener(server_arc.clone(), address, port).await {
-            Ok(()) => println!("Server listener task completed normally."),
-            Err(error) => eprintln!("Server listener task failed: {}", error),
-        }
+        let _ = start_tcp_listener(server_arc.clone(), address, port).await;
 
         Self::stop_loop(&server_arc);
     }
 
-    fn startup_cancelled(server_arc: &Arc<Mutex<Self>>) -> bool {
+    fn startup_cancelled(server_arc: &Arc<Mutex<Self>>, address: &str, port: u16) -> bool {
         let Ok(mut server) = server_arc.lock() else {
             return true;
         };
-        server.on_startup()
+        server.on_startup(address, port)
     }
 
     fn start_loop(server_arc: &Arc<Mutex<Self>>) -> bool {

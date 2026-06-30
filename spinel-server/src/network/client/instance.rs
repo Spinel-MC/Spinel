@@ -122,7 +122,6 @@ impl Client {
             self.encoder.enable_encryption(key);
         }
         self.pending_encryption = Some(key.to_vec());
-        println!("Encryption enabled for client {} (writer)", self.addr);
     }
 
     pub fn set_compression(&mut self, threshold: i32) {
@@ -132,10 +131,6 @@ impl Client {
             self.encoder.set_compression(threshold);
         }
         self.pending_compression = Some(threshold);
-        println!(
-            "Compression set to {} for client {} (writer)",
-            threshold, self.addr
-        );
     }
 
     pub fn decode<T: DataType>(&mut self) -> io::Result<T> {

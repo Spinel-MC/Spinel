@@ -71,6 +71,20 @@ impl Style {
         codes
     }
 
+    pub fn to_ansi_codes(&self) -> String {
+        let mut codes = String::new();
+        if let Some(color) = &self.color {
+            if let Some(color_code) = color.to_ansi_foreground_code() {
+                codes.push_str(&color_code);
+            }
+        }
+        add_ansi_code(&mut codes, self.bold, "1");
+        add_ansi_code(&mut codes, self.italic, "3");
+        add_ansi_code(&mut codes, self.underlined, "4");
+        add_ansi_code(&mut codes, self.strikethrough, "9");
+        codes
+    }
+
     pub fn merge_with_parent(&self, child: &TextComponent) -> Style {
         Style {
             color: child.style.color.clone().or_else(|| self.color.clone()),
@@ -106,5 +120,13 @@ fn add_code(codes: &mut String, enabled: Option<bool>, code: char) {
     if enabled.unwrap_or(false) {
         codes.push('\u{00a7}');
         codes.push(code);
+    }
+}
+
+fn add_ansi_code(codes: &mut String, style_state: Option<bool>, code: &str) {
+    if style_state.unwrap_or(false) {
+        codes.push_str("\x1b[");
+        codes.push_str(code);
+        codes.push('m');
     }
 }

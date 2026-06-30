@@ -81,10 +81,7 @@ impl ServerListPingEventResponseData {
         }
 
         let description_json_value = self.description.as_ref().map(|description_component_ref| {
-            serde_json::to_value(description_component_ref).unwrap_or_else(|e| {
-                eprintln!("Error serializing description TextComponent: {}", e);
-                Value::Null
-            })
+            serde_json::to_value(description_component_ref).unwrap_or(Value::Null)
         });
         insert_if_some(&mut root_json_map, "description", description_json_value);
 

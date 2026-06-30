@@ -86,8 +86,8 @@ impl MinecraftServer {
         self.on_shutdown();
     }
 
-    pub fn on_startup(&mut self) -> bool {
-        let mut startup_event = StartupEvent::new();
+    pub fn on_startup(&mut self, bind_address: impl Into<String>, port: u16) -> bool {
+        let mut startup_event = StartupEvent::new(bind_address, port);
         startup_event.dispatch(self);
         startup_event.cancelled
     }

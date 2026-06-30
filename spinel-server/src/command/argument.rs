@@ -1,6 +1,7 @@
 use crate::command::{ArgumentCallback, SuggestionCallback, SuggestionType};
 use spinel_core::network::clientbound::play::commands::ArgumentParserType;
 use spinel_nbt::NbtCompound;
+use spinel_network::data_type::DataType;
 use spinel_registry::EntityType;
 
 #[derive(Clone)]
@@ -11,6 +12,7 @@ pub struct CommandArgument {
     callback: Option<ArgumentCallback>,
     suggestion_callback: Option<SuggestionCallback>,
     suggestion_type: Option<SuggestionType>,
+    registry_identifier: Option<String>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -31,6 +33,7 @@ pub enum CommandArgumentValue {
     EntityType(EntityType),
     RelativeVec3(RelativeVec3),
     NbtCompound(NbtCompound),
+    String(String),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -62,6 +65,7 @@ impl CommandArgument {
             callback: None,
             suggestion_callback: None,
             suggestion_type: Some(SuggestionType::SummonableEntities),
+            registry_identifier: None,
         }
     }
 
@@ -82,6 +86,7 @@ impl CommandArgument {
             callback: None,
             suggestion_callback: None,
             suggestion_type: None,
+            registry_identifier: None,
         }
     }
 
@@ -102,6 +107,7 @@ impl CommandArgument {
             callback: None,
             suggestion_callback: None,
             suggestion_type: None,
+            registry_identifier: None,
         }
     }
 
@@ -122,6 +128,29 @@ impl CommandArgument {
             callback: None,
             suggestion_callback: None,
             suggestion_type: None,
+            registry_identifier: None,
+        }
+    }
+
+    pub fn custom_registry_parser(
+        id: impl Into<String>,
+        parser: ArgumentParserType,
+        syntax_name: &'static str,
+        registry_identifier: impl Into<String>,
+    ) -> Self {
+        Self {
+            id: id.into(),
+            kind: CommandArgumentKind::Parser {
+                parser,
+                syntax_name,
+                allows_space: false,
+                uses_remaining_input: false,
+            },
+            default_value: None,
+            callback: None,
+            suggestion_callback: None,
+            suggestion_type: None,
+            registry_identifier: Some(registry_identifier.into()),
         }
     }
 
@@ -133,6 +162,7 @@ impl CommandArgument {
             callback: None,
             suggestion_callback: None,
             suggestion_type: None,
+            registry_identifier: None,
         }
     }
 
@@ -144,6 +174,7 @@ impl CommandArgument {
             callback: None,
             suggestion_callback: None,
             suggestion_type: None,
+            registry_identifier: None,
         }
     }
 
@@ -239,6 +270,49 @@ impl CommandArgument {
             .map(str::to_string)
     }
 
+    pub fn protocol_properties(&self) -> Vec<u8> {
+        match self.kind {
+            CommandArgumentKind::Parser {
+                parser: ArgumentParserType::String,
+                allows_space,
+                uses_remaining_input,
+                ..
+            } => vec![string_parser_mode(allows_space, uses_remaining_input)],
+            CommandArgumentKind::Parser {
+                parser:
+                    ArgumentParserType::Float
+                    | ArgumentParserType::Double
+                    | ArgumentParserType::Integer
+                    | ArgumentParserType::Long,
+                ..
+            } => vec![0],
+            CommandArgumentKind::Parser {
+                parser: ArgumentParserType::Entity,
+                ..
+            } => vec![0],
+            CommandArgumentKind::Parser {
+                parser: ArgumentParserType::Time,
+                ..
+            } => 0i32.to_be_bytes().to_vec(),
+            CommandArgumentKind::Parser {
+                parser:
+                    ArgumentParserType::ResourceOrTag
+                    | ArgumentParserType::ResourceOrTagKey
+                    | ArgumentParserType::Resource
+                    | ArgumentParserType::ResourceKey,
+                ..
+            } => self.registry_identifier_properties(),
+            _ => Vec::new(),
+        }
+    }
+
+    fn registry_identifier_properties(&self) -> Vec<u8> {
+        match &self.registry_identifier {
+            Some(registry_identifier) => encoded_protocol_string(registry_identifier),
+            None => Vec::new(),
+        }
+    }
+
     pub fn syntax_part(&self) -> String {
         match self.kind {
             CommandArgumentKind::EntityType => format!("EntityType<{}>", self.id),
@@ -311,4 +385,21 @@ impl From<RelativeVec3> for CommandArgumentValue {
     fn from(value: RelativeVec3) -> Self {
         Self::RelativeVec3(value)
     }
+}
+fn encoded_protocol_string(value: &str) -> Vec<u8> {
+    let mut bytes = Vec::new();
+    match value.to_string().encode(&mut bytes) {
+        Ok(()) => bytes,
+        Err(_) => Vec::new(),
+    }
+}
+
+fn string_parser_mode(allows_space: bool, uses_remaining_input: bool) -> u8 {
+    if uses_remaining_input {
+        return 2;
+    }
+    if allows_space {
+        return 1;
+    }
+    0
 }

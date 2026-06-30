@@ -11,7 +11,6 @@ fn on_finish_configuration(
     _packet: FinishConfigurationPacket,
     server: &mut MinecraftServer,
 ) -> bool {
-    println!("Client acknowledged finish configuration. Transitioning to Play state.");
     client.state = ConnectionState::Play;
     dispatch_play_packets(client, server).is_ok()
 }

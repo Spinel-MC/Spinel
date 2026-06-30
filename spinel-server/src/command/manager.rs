@@ -49,18 +49,24 @@ impl CommandManager {
 
     pub fn suggest(&self, sender_kind: CommandSenderKind, input: &str) -> Suggestion {
         let command_input = Self::normalized_suggestion_input(input);
+        let command_has_prefix = command_input.starts_with('/');
         let command_text = command_input.trim_start_matches('/');
         let command_ends_with_space = input.ends_with(char::is_whitespace);
         let command_parts = command_text.split_whitespace().collect::<Vec<_>>();
-        if command_parts.len() <= 1 && !command_ends_with_space {
-            return self.suggest_root_commands(command_text);
+        let mut suggestion = if command_parts.len() <= 1 && !command_ends_with_space {
+            self.suggest_root_commands(command_text)
+        } else {
+            self.suggest_command_arguments(
+                sender_kind,
+                command_text,
+                command_ends_with_space,
+                &command_parts,
+            )
+        };
+        if command_has_prefix {
+            suggestion.set_start(suggestion.start() + 1);
         }
-        self.suggest_command_arguments(
-            sender_kind,
-            command_text,
-            command_ends_with_space,
-            &command_parts,
-        )
+        suggestion
     }
 
     fn normalized_suggestion_input(input: &str) -> String {
@@ -234,10 +240,20 @@ impl CommandManager {
 
     fn append_command_node(&self, command: &Command, nodes: &mut Vec<CommandNode>) -> i32 {
         let command_node_index = nodes.len() as i32;
-        nodes.push(CommandNode::literal(command.name(), Vec::new(), false));
+        let command_has_literal_executor = command.default_executor().is_some()
+            || command
+                .syntaxes()
+                .iter()
+                .any(|syntax| syntax.arguments().is_empty());
+        nodes.push(CommandNode::literal(
+            command.name(),
+            Vec::new(),
+            command_has_literal_executor,
+        ));
         let syntax_children = command
             .syntaxes()
             .iter()
+            .filter(|syntax| !syntax.arguments().is_empty())
             .map(|syntax| self.append_argument_chain(syntax.arguments(), 0, nodes))
             .collect::<Vec<_>>();
         let subcommand_children = command
@@ -264,13 +280,15 @@ impl CommandManager {
         let node_is_executable = arguments[argument_index + 1..]
             .iter()
             .all(crate::command::CommandArgument::is_optional);
-        nodes.push(CommandNode::argument(
+        let mut node = CommandNode::argument(
             argument.id(),
             argument.parser(),
             Vec::new(),
             node_is_executable,
             argument.suggestions_type(),
-        ));
+        );
+        node.properties = argument.protocol_properties();
+        nodes.push(node);
         if has_next_argument {
             let child_index = self.append_argument_chain(arguments, argument_index + 1, nodes);
             nodes[node_index as usize].children = vec![child_index];

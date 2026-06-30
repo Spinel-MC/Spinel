@@ -63,13 +63,8 @@ impl<'a, 'b> ConfigurationCompletion<'a, 'b> {
 
         let mut event = AsyncPlayerConfigurationEvent::new(player, true);
         tokio::runtime::Handle::current().block_on(event.dispatch(self.server, self.client));
-        let username = event.player().username.clone();
         let Some(spawning_world) = event.spawning_world() else {
-            fail_player_join(
-                self.client,
-                self.server,
-                format!("{username} failed to join because no spawning world was set."),
-            );
+            fail_player_join(self.client, self.server);
             return None;
         };
 
@@ -128,14 +123,7 @@ fn place_player(
     player: Player,
 ) -> bool {
     if server.world_manager.world(spawning_world).is_none() {
-        fail_player_join(
-            client,
-            server,
-            format!(
-                "{} failed to join because the configured spawning world was not registered.",
-                player.username
-            ),
-        );
+        fail_player_join(client, server);
         return false;
     }
 
@@ -144,8 +132,7 @@ fn place_player(
         .add_entity(spawning_world, Entity::Player(player))
 }
 
-fn fail_player_join(client: &mut Client, server: &mut MinecraftServer, log_message: String) {
-    eprintln!("{log_message}");
+fn fail_player_join(client: &mut Client, server: &mut MinecraftServer) {
     let _ = server.kick(client, error_during_login());
 }
 

@@ -7,6 +7,13 @@ pub enum TextColor {
     Hex(String),
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct TextRgb {
+    red: u8,
+    green: u8,
+    blue: u8,
+}
+
 impl TextColor {
     pub fn from_named(color: NamedTextColor) -> Self {
         TextColor::Named(color)
@@ -21,6 +28,32 @@ impl TextColor {
             TextColor::Named(named) => named.to_legacy_code(),
             TextColor::Hex(_) => String::new(),
         }
+    }
+
+    pub fn to_ansi_foreground_code(&self) -> Option<String> {
+        let rgb = match self {
+            TextColor::Named(named) => named.to_rgb(),
+            TextColor::Hex(hex) => TextRgb::from_hex(hex)?,
+        };
+        Some(format!("\x1b[38;2;{};{};{}m", rgb.red, rgb.green, rgb.blue))
+    }
+}
+
+impl TextRgb {
+    pub const fn new(red: u8, green: u8, blue: u8) -> Self {
+        Self { red, green, blue }
+    }
+
+    pub fn from_hex(hex: &str) -> Option<Self> {
+        let normalized_hex = hex.strip_prefix('#').unwrap_or(hex);
+        if normalized_hex.len() != 6 {
+            return None;
+        }
+
+        let red = u8::from_str_radix(&normalized_hex[0..2], 16).ok()?;
+        let green = u8::from_str_radix(&normalized_hex[2..4], 16).ok()?;
+        let blue = u8::from_str_radix(&normalized_hex[4..6], 16).ok()?;
+        Some(Self::new(red, green, blue))
     }
 }
 
@@ -87,5 +120,26 @@ impl NamedTextColor {
             NamedTextColor::White => 'f',
         };
         format!("\u{00a7}{code}")
+    }
+
+    pub const fn to_rgb(self) -> TextRgb {
+        match self {
+            NamedTextColor::Black => TextRgb::new(0, 0, 0),
+            NamedTextColor::DarkBlue => TextRgb::new(0, 0, 170),
+            NamedTextColor::DarkGreen => TextRgb::new(0, 170, 0),
+            NamedTextColor::DarkAqua => TextRgb::new(0, 170, 170),
+            NamedTextColor::DarkRed => TextRgb::new(170, 0, 0),
+            NamedTextColor::DarkPurple => TextRgb::new(170, 0, 170),
+            NamedTextColor::Gold => TextRgb::new(255, 170, 0),
+            NamedTextColor::Gray => TextRgb::new(170, 170, 170),
+            NamedTextColor::DarkGray => TextRgb::new(85, 85, 85),
+            NamedTextColor::Blue => TextRgb::new(85, 85, 255),
+            NamedTextColor::Green => TextRgb::new(85, 255, 85),
+            NamedTextColor::Aqua => TextRgb::new(85, 255, 255),
+            NamedTextColor::Red => TextRgb::new(255, 85, 85),
+            NamedTextColor::LightPurple => TextRgb::new(255, 85, 255),
+            NamedTextColor::Yellow => TextRgb::new(255, 255, 85),
+            NamedTextColor::White => TextRgb::new(255, 255, 255),
+        }
     }
 }

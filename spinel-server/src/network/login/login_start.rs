@@ -29,11 +29,6 @@ impl<'a> LoginStartHandler<'a> {
     }
 
     fn handle(mut self, packet: LoginStartPacket) -> bool {
-        println!(
-            "Login sequence started for user '{}' ({})",
-            packet.name, packet.uuid
-        );
-
         let pre_login_event = self.dispatch_pre_login_event(&packet);
         if pre_login_event.cancelled {
             return true;
@@ -87,19 +82,9 @@ impl<'a> LoginStartHandler<'a> {
         authentication_artifacts: &LoginAuthenticationArtifacts,
     ) -> bool {
         let Some(login_metadata) = &mut self.client.login_metadata else {
-            println!(
-                "Error: Client {} sent Login Start Packet without prior Intention Packet.",
-                self.client.addr
-            );
-            if let Err(error) = self
+            let _ = self
                 .server
-                .kick(self.client, Component::text("Invalid login sequence."))
-            {
-                eprintln!(
-                    "Failed to send disconnect packet to {}: {}",
-                    self.client.addr, error
-                );
-            }
+                .kick(self.client, Component::text("Invalid login sequence."));
             return false;
         };
 
@@ -152,7 +137,6 @@ impl<'a> LoginStartHandler<'a> {
             return false;
         }
 
-        println!("Sent encryption request to {}.", self.client.addr);
         true
     }
 
@@ -168,7 +152,6 @@ impl<'a> LoginStartHandler<'a> {
             return false;
         }
 
-        println!("Sent Login Success to {} (offline mode).", self.client.addr);
         true
     }
 }

@@ -418,6 +418,10 @@ impl DataType for CommandNode {
             CommandNodeType::Argument => Some(ArgumentParserType::decode(reader)?),
             CommandNodeType::Root | CommandNodeType::Literal => None,
         };
+        let properties = match parser {
+            Some(parser) => read_argument_properties(reader, parser)?,
+            None => Vec::new(),
+        };
         let suggestions_type = if flags & COMMAND_NODE_HAS_SUGGESTION_TYPE != 0 {
             Some(String::decode(reader)?)
         } else {
@@ -429,9 +433,90 @@ impl DataType for CommandNode {
             redirected_node,
             name,
             parser,
-            properties: Vec::new(),
+            properties,
             suggestions_type,
         })
     }
 }
+
+fn read_argument_properties<R: Read>(
+    reader: &mut R,
+    parser: ArgumentParserType,
+) -> io::Result<Vec<u8>> {
+    match parser {
+        ArgumentParserType::Double => read_min_max_properties(reader, 8),
+        ArgumentParserType::Float | ArgumentParserType::Integer => {
+            read_min_max_properties(reader, 4)
+        }
+        ArgumentParserType::Long => read_min_max_properties(reader, 8),
+        ArgumentParserType::String => read_var_int_property(reader),
+        ArgumentParserType::Entity | ArgumentParserType::ScoreHolder => {
+            read_fixed_property(reader, 1)
+        }
+        ArgumentParserType::Time => read_fixed_property(reader, 4),
+        ArgumentParserType::ResourceOrTag
+        | ArgumentParserType::ResourceOrTagKey
+        | ArgumentParserType::Resource
+        | ArgumentParserType::ResourceKey => read_string_property(reader),
+        _ => Ok(Vec::new()),
+    }
+}
+
+fn read_min_max_properties<R: Read>(reader: &mut R, value_size: usize) -> io::Result<Vec<u8>> {
+    let mut properties = read_fixed_property(reader, 1)?;
+    let flags = properties[0];
+    if flags & 0x01 != 0 {
+        properties.extend(read_fixed_property(reader, value_size)?);
+    }
+    if flags & 0x02 != 0 {
+        properties.extend(read_fixed_property(reader, value_size)?);
+    }
+    Ok(properties)
+}
+
+fn read_string_property<R: Read>(reader: &mut R) -> io::Result<Vec<u8>> {
+    let mut properties = read_var_int_property(reader)?;
+    let string_length = decoded_var_int(&properties)? as usize;
+    let mut string_bytes = vec![0; string_length];
+    reader.read_exact(&mut string_bytes)?;
+    properties.extend(string_bytes);
+    Ok(properties)
+}
+
+fn read_var_int_property<R: Read>(reader: &mut R) -> io::Result<Vec<u8>> {
+    let mut bytes = Vec::new();
+    for _ in 0..5 {
+        let mut byte = [0; 1];
+        reader.read_exact(&mut byte)?;
+        bytes.push(byte[0]);
+        if byte[0] & 0x80 == 0 {
+            return Ok(bytes);
+        }
+    }
+    Err(io::Error::new(
+        io::ErrorKind::InvalidData,
+        "VarInt is too large",
+    ))
+}
+
+fn read_fixed_property<R: Read>(reader: &mut R, length: usize) -> io::Result<Vec<u8>> {
+    let mut properties = vec![0; length];
+    reader.read_exact(&mut properties)?;
+    Ok(properties)
+}
+
+fn decoded_var_int(bytes: &[u8]) -> io::Result<i32> {
+    let mut value = 0;
+    for (index, byte) in bytes.iter().enumerate() {
+        value |= i32::from(byte & 0x7F) << (7 * index);
+        if byte & 0x80 == 0 {
+            return Ok(value);
+        }
+    }
+    Err(io::Error::new(
+        io::ErrorKind::InvalidData,
+        "VarInt is incomplete",
+    ))
+}
+
 spinel_network::register_packet_codec!(CommandsPacket, spinel_network::Recipient::Client);

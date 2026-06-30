@@ -5,6 +5,9 @@ use spinel::{
 };
 
 #[event_listener(priority: Priority::High)]
-fn on_startup(_event: &mut StartupEvent, _server: &mut MinecraftServer) {
-    println!("Server is booting up...");
+fn on_startup(event: &mut StartupEvent, _server: &mut MinecraftServer) {
+    println!(
+        "Starting Spinel Server on {}:{}",
+        event.bind_address, event.port
+    );
 }

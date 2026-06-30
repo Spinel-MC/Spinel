@@ -25,32 +25,22 @@ impl<'a> EncryptionResponseHandler<'a> {
 
     fn handle(mut self, packet: EncryptionResponsePacket) -> bool {
         let Some(login_metadata) = self.load_login_metadata() else {
-            return self.kick_for_invalid_login_sequence(format!(
-                "Error: Login metadata not found for {}. Client state: {:?}",
-                self.client.addr, self.client.state
-            ));
+            return self.kick_for_invalid_login_sequence();
         };
 
-        let Some(shared_secret) = self.decrypt_payload(
-            &login_metadata.private_key,
-            &packet.keybytes,
-            "shared secret",
-        ) else {
+        let Some(shared_secret) =
+            self.decrypt_payload(&login_metadata.private_key, &packet.keybytes)
+        else {
             return true;
         };
-        let Some(verify_token) = self.decrypt_payload(
-            &login_metadata.private_key,
-            &packet.encrypted_challenge,
-            "verify token",
-        ) else {
+        let Some(verify_token) =
+            self.decrypt_payload(&login_metadata.private_key, &packet.encrypted_challenge)
+        else {
             return true;
         };
 
         if verify_token != login_metadata.expected_verify_token {
-            return self.kick_for_invalid_login_sequence(format!(
-                "Client {} failed verification (verify token mismatch).",
-                self.client.addr
-            ));
+            return self.kick_for_invalid_login_sequence();
         }
 
         self.complete_login(login_metadata, &shared_secret)
@@ -73,17 +63,13 @@ impl<'a> EncryptionResponseHandler<'a> {
         &mut self,
         private_key: &RsaPrivateKey,
         encrypted_bytes: &[i8],
-        payload_name: &str,
     ) -> Option<Vec<u8>> {
         let encrypted_bytes: Vec<u8> = encrypted_bytes.iter().map(|&byte| byte as u8).collect();
         private_key
             .decrypt(Pkcs1v15Encrypt, &encrypted_bytes)
             .ok()
             .or_else(|| {
-                self.kick_for_invalid_login_sequence(format!(
-                    "Failed to decrypt {} for {}.",
-                    payload_name, self.client.addr
-                ));
+                self.kick_for_invalid_login_sequence();
                 None
             })
     }
@@ -93,7 +79,6 @@ impl<'a> EncryptionResponseHandler<'a> {
         login_metadata: VerifiedLoginMetadata,
         shared_secret: &[u8],
     ) -> bool {
-        println!("Client {} successfully verified.", self.client.addr);
         self.client.enable_encryption(shared_secret);
 
         if self
@@ -104,24 +89,13 @@ impl<'a> EncryptionResponseHandler<'a> {
             return false;
         }
 
-        println!(
-            "Login success for client {}. Waiting for Login Acknowledge.",
-            self.client.addr
-        );
         true
     }
 
-    fn kick_for_invalid_login_sequence(&mut self, log_message: String) -> bool {
-        println!("{}", log_message);
-        if let Err(error) = self
+    fn kick_for_invalid_login_sequence(&mut self) -> bool {
+        let _ = self
             .server
-            .kick(self.client, Component::text("Invalid login sequence."))
-        {
-            eprintln!(
-                "Failed to send disconnect packet to {}: {}",
-                self.client.addr, error
-            );
-        }
+            .kick(self.client, Component::text("Invalid login sequence."));
         true
     }
 }

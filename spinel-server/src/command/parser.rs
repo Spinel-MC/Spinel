@@ -116,7 +116,11 @@ impl CommandParser {
             CommandArgumentKind::EntityType => Self::parse_entity_type(input),
             CommandArgumentKind::RelativeVec3 => Self::parse_relative_vec3(input),
             CommandArgumentKind::NbtCompound => Self::parse_nbt_compound(input),
-            CommandArgumentKind::Parser { .. } => None,
+            CommandArgumentKind::Parser {
+                allows_space,
+                uses_remaining_input,
+                ..
+            } => Self::parse_parser_argument(input, allows_space, uses_remaining_input),
         }
     }
 
@@ -172,6 +176,32 @@ impl CommandParser {
             remaining_input: "",
         })
     }
+
+    fn parse_parser_argument(
+        input: &str,
+        allows_space: bool,
+        uses_remaining_input: bool,
+    ) -> Option<ParsedArgument<'_>> {
+        let trimmed_input = input.trim_start();
+        if trimmed_input.is_empty() {
+            return None;
+        }
+        let (raw_input, remaining_input) = if uses_remaining_input {
+            (trimmed_input, "")
+        } else if allows_space {
+            next_quoted_or_word(trimmed_input)
+        } else {
+            next_word(trimmed_input)
+        };
+        if raw_input.is_empty() {
+            return None;
+        }
+        Some(ParsedArgument {
+            raw_input: raw_input.to_string(),
+            value: CommandArgumentValue::String(raw_input.to_string()),
+            remaining_input,
+        })
+    }
 }
 
 impl<'a> ParsedCommand<'a> {
@@ -200,6 +230,18 @@ struct ParsedArgument<'a> {
 
 fn next_word(input: &str) -> (&str, &str) {
     input.split_once(char::is_whitespace).unwrap_or((input, ""))
+}
+
+fn next_quoted_or_word(input: &str) -> (&str, &str) {
+    let Some(quoted_input) = input.strip_prefix('"') else {
+        return next_word(input);
+    };
+    let Some(closing_quote_index) = quoted_input.find('"') else {
+        return (input, "");
+    };
+    let raw_input = &quoted_input[..closing_quote_index];
+    let remaining_input = &quoted_input[closing_quote_index + 1..];
+    (raw_input, remaining_input)
 }
 
 fn parse_coordinate(input: &str) -> Option<RelativeCoordinate> {

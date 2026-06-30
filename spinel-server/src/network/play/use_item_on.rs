@@ -51,25 +51,27 @@ fn on_use_item_on(
     }
     let player = unsafe { &mut *event_input.player };
     let item_stack = player.get_item_in_hand(event_input.hand);
-    if let Some(block) = item_stack.material().block() {
-        let block_state = item_stack.get_or(BLOCK_STATE, ItemBlockState::default());
-        let default_block_state = DataComponentMap::default().get_or(
-            &item_stack.material().prototype(),
-            BLOCK_STATE,
-            ItemBlockState::default(),
-        );
-        return place_block(
-            event_input.player,
-            event_input.block_position,
-            event_input.block_face,
-            block_state.apply(block),
-            block_state == default_block_state,
-            event_input.cursor_position,
-            event_input.hand,
-            packet.sequence,
-            server,
-            client,
-        );
+    if !item_stack.is_air() {
+        if let Some(block) = item_stack.material().block() {
+            let block_state = item_stack.get_or(BLOCK_STATE, ItemBlockState::default());
+            let default_block_state = DataComponentMap::default().get_or(
+                &item_stack.material().prototype(),
+                BLOCK_STATE,
+                ItemBlockState::default(),
+            );
+            return place_block(
+                event_input.player,
+                event_input.block_position,
+                event_input.block_face,
+                block_state.apply(block),
+                block_state == default_block_state,
+                event_input.cursor_position,
+                event_input.hand,
+                packet.sequence,
+                server,
+                client,
+            );
+        }
     }
     let mut item_on_block_event = PlayerUseItemOnBlockEvent::new(
         event_input.player,
@@ -80,11 +82,7 @@ fn on_use_item_on(
         event_input.block_face,
     );
     item_on_block_event.dispatch(server, client);
-    AcknowledgeBlockChangePacket {
-        sequence: packet.sequence,
-    }
-    .dispatch(client)
-    .is_ok()
+    acknowledge_block_change(packet.sequence, client)
 }
 
 fn place_block(

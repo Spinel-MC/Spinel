@@ -18,10 +18,7 @@ impl ShowcaseWorld {
                 Identifier::minecraft("custom_biome"),
                 ExampleBiome {}.into(),
             )
-            .map_err(|error| {
-                eprintln!("Could not register custom biome: {error:?}");
-                io::Error::other(format!("{error:?}"))
-            })?;
+            .map_err(|error| io::Error::other(format!("{error:?}")))?;
 
         let world_id = server
             .world_manager

@@ -95,21 +95,16 @@ impl MinecraftServer {
         reason: impl Into<TextComponent>,
     ) -> io::Result<()> {
         let reason = reason.into();
-        let reason_text = reason.to_plain_string();
         let client_address = client.addr;
         let kick_result = client.kick(reason);
-        println!("Kicked client {client_address}: {reason_text}");
         self.handle_connection_closed_with_client(client_address, client);
         kick_result
     }
 
     fn remove_closed_connection(&mut self, address: SocketAddr) {
         DisconnectionEvent::new(address).dispatch(self);
-        if let Err(error) = self.world_manager.remove_entity_by_addr(&address) {
-            eprintln!("Failed to despawn disconnected player {address}: {error}");
-        }
+        let _ = self.world_manager.remove_entity_by_addr(&address);
         self.connection_manager.remove_connection(&address);
-        println!("Removed connection {address}");
     }
 
     fn dispatch_player_disconnect_event_with_client(

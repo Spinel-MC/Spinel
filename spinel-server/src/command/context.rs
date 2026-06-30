@@ -63,6 +63,13 @@ impl CommandContext {
         self.raw_arguments.get(argument_id).map(String::as_str)
     }
 
+    pub fn string(&self, argument_id: &str) -> Option<&str> {
+        match self.arguments.get(argument_id) {
+            Some(CommandArgumentValue::String(value)) => Some(value.as_str()),
+            _ => None,
+        }
+    }
+
     pub fn relative_vec3(&self, argument_id: &str) -> Option<RelativeVec3> {
         match self.arguments.get(argument_id) {
             Some(CommandArgumentValue::RelativeVec3(position)) => Some(*position),

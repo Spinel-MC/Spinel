@@ -82,6 +82,17 @@ fn parser_reads_nested_nbt_compound_argument_shape() {
 }
 
 #[test]
+fn parser_reads_word_argument_raw_context() {
+    let command = Command::new("gamemode")
+        .with_syntax(unused_executor, vec![CommandArgument::game_mode("mode")]);
+    let commands = [command];
+
+    let parsed_command = valid_command(CommandParser::parse(&commands, "gamemode survival"));
+
+    assert_eq!(parsed_command.context().raw("mode"), Some("survival"));
+    assert_eq!(parsed_command.context().string("mode"), Some("survival"));
+}
+#[test]
 fn parser_executes_nested_subcommand_with_shared_root_prefix() {
     let command = Command::new("showcase")
         .with_subcommand(Command::new("player").with_default_executor(unused_executor));

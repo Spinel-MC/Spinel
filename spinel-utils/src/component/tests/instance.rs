@@ -45,3 +45,41 @@ fn component_serializes_to_nbt_without_runtime_todos() {
     );
     assert!(matches!(nbt.get("extra"), Some(Nbt::List(_))));
 }
+
+#[test]
+fn component_writes_named_color_to_ansi() {
+    let component =
+        TextComponent::literal_with_color("joined", TextColor::from_named(NamedTextColor::Yellow));
+
+    assert_eq!(component.to_ansi(), "\x1b[38;2;255;255;85mjoined\x1b[0m");
+}
+
+#[test]
+fn component_writes_hex_color_to_ansi() {
+    let component = TextComponent::literal_with_color("custom", TextColor::from_hex("#12abEF"));
+
+    assert_eq!(component.to_ansi(), "\x1b[38;2;18;171;239mcustom\x1b[0m");
+}
+
+#[test]
+fn component_writes_plain_text_to_ansi_without_reset() {
+    let component = TextComponent::literal("plain");
+
+    assert_eq!(component.to_ansi(), "plain");
+}
+
+#[test]
+fn component_resets_ansi_before_unstyled_sibling() {
+    let component = TextComponent::text("")
+        .append(TextComponent::literal_with_color(
+            "styled",
+            TextColor::from_named(NamedTextColor::Red),
+        ))
+        .append("plain")
+        .build();
+
+    assert_eq!(
+        component.to_ansi(),
+        "\x1b[38;2;255;85;85mstyled\x1b[0mplain"
+    );
+}

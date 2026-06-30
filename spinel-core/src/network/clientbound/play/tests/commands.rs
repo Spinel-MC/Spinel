@@ -51,3 +51,63 @@ fn commands_packet_matches_minestom_argument_node_shape() {
         Some(ArgumentParserType::ResourceLocation)
     );
 }
+
+#[test]
+fn commands_packet_decodes_minestom_argument_property_bytes() {
+    let packet = CommandsPacket {
+        nodes: vec![
+            CommandNode::root((1..=6).collect()),
+            argument_node("word", ArgumentParserType::String, vec![0]),
+            argument_node("integer", ArgumentParserType::Integer, integer_properties()),
+            argument_node("double", ArgumentParserType::Double, double_properties()),
+            argument_node("entity", ArgumentParserType::Entity, vec![3]),
+            argument_node(
+                "time",
+                ArgumentParserType::Time,
+                20i32.to_be_bytes().to_vec(),
+            ),
+            argument_node(
+                "resource",
+                ArgumentParserType::Resource,
+                encoded_string("minecraft:block"),
+            ),
+        ],
+        root_index: 0,
+    };
+    let mut payload = Vec::new();
+
+    packet.encode(&mut payload).unwrap();
+    let decoded_packet = CommandsPacket::decode(&mut payload.as_slice()).unwrap();
+
+    assert_eq!(decoded_packet.nodes, packet.nodes);
+}
+
+fn argument_node(
+    argument_name: &str,
+    parser: ArgumentParserType,
+    properties: Vec<u8>,
+) -> CommandNode {
+    let mut command_node = CommandNode::argument(argument_name, parser, Vec::new(), true, None);
+    command_node.properties = properties;
+    command_node
+}
+
+fn integer_properties() -> Vec<u8> {
+    let mut properties = vec![3];
+    properties.extend(1i32.to_be_bytes());
+    properties.extend(64i32.to_be_bytes());
+    properties
+}
+
+fn double_properties() -> Vec<u8> {
+    let mut properties = vec![3];
+    properties.extend(1.25f64.to_be_bytes());
+    properties.extend(64.5f64.to_be_bytes());
+    properties
+}
+
+fn encoded_string(value: &str) -> Vec<u8> {
+    let mut bytes = Vec::new();
+    value.to_string().encode(&mut bytes).unwrap();
+    bytes
+}

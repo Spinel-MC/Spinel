@@ -30,11 +30,9 @@ impl ServerSocketRuntime {
         port: u16,
     ) -> Result<(), Error> {
         let listener = TcpListener::bind(format!("{}:{}", address, port)).await?;
-        println!("Listening on {}:{}", address, port);
 
         loop {
             let (stream, addr) = listener.accept().await?;
-            println!("New connection from: {}", addr);
             tokio::spawn(Self::handle_client_connection(
                 server_arc.clone(),
                 stream,
@@ -52,7 +50,7 @@ impl ServerSocketRuntime {
             return;
         };
 
-        if Self::connection_cancelled(&server_arc, client.clone(), addr) {
+        if Self::connection_cancelled(&server_arc, client.clone()) {
             return;
         }
 
@@ -68,13 +66,11 @@ impl ServerSocketRuntime {
     fn connection_cancelled(
         server_arc: &Arc<Mutex<MinecraftServer>>,
         client: Arc<Mutex<Client>>,
-        addr: SocketAddr,
     ) -> bool {
         let Ok(mut server) = server_arc.lock() else {
             return true;
         };
         if server.on_connection(client) {
-            println!("Connection cancelled for {}", addr);
             return true;
         }
 
@@ -155,7 +151,6 @@ impl ServerSocketRuntime {
         connection_status: Arc<AtomicBool>,
         addr: SocketAddr,
     ) {
-        println!("Client loop started for: {}", addr);
         let mut decoder = spinel_network::decoder::PacketDecoder::new();
 
         loop {

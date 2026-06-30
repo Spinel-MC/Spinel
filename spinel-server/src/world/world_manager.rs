@@ -6,11 +6,12 @@ use crate::world::{
     BlockHandlerPlacement, BlockPosition, Chunk, ChunkLoadTicket, ChunkLoader, ChunkPosition,
     SharedWorld, World, WorldHandle,
 };
+use spinel_core::network::clientbound::play::player_info_update::PlayerInfoUpdatePacket;
 use spinel_network::types::{ClientInformation, Identifier};
 use spinel_registry::dimension_type::DimensionType;
 use spinel_registry::{Registries, RegistryKey};
 use spinel_utils::component::text::TextComponent;
-use std::collections::VecDeque;
+use std::collections::{HashSet, VecDeque};
 use std::io;
 use std::net::SocketAddr;
 use uuid::Uuid;
@@ -22,6 +23,7 @@ pub struct WorldManager {
     pending_player_world_transitions: VecDeque<PendingPlayerWorldTransition>,
     completed_player_world_transitions: Vec<u64>,
     next_player_world_transition_id: u64,
+    listed_player_uuids: HashSet<Uuid>,
 }
 
 #[derive(Clone)]
@@ -50,6 +52,7 @@ impl WorldManager {
             pending_player_world_transitions: VecDeque::new(),
             completed_player_world_transitions: Vec::new(),
             next_player_world_transition_id: 0,
+            listed_player_uuids: HashSet::new(),
         }
     }
 
@@ -806,6 +809,7 @@ impl WorldManager {
             world.world_mut().use_server_event_dispatcher(server_ptr);
             world.world_mut().tick_with_registries(registries);
         });
+        let _ = self.synchronize_online_player_tab_list();
     }
 
     pub(crate) fn remove_entity_by_addr(&mut self, addr: &SocketAddr) -> io::Result<()> {
@@ -1305,6 +1309,67 @@ impl WorldManager {
             return Err(io::Error::new(io::ErrorKind::NotFound, "Player not found."));
         };
         world.refresh_player_settings(client, settings)
+    }
+
+    fn synchronize_online_player_tab_list(&mut self) -> io::Result<()> {
+        let online_player_packets = self.online_player_info_packets();
+        let online_player_uuids = online_player_packets
+            .iter()
+            .map(|(player_uuid, _)| *player_uuid)
+            .collect::<HashSet<_>>();
+        let joined_player_uuids = online_player_packets
+            .iter()
+            .filter(|(player_uuid, _)| !self.listed_player_uuids.contains(player_uuid))
+            .map(|(player_uuid, _)| *player_uuid)
+            .collect::<Vec<_>>();
+        let joined_player_packets = online_player_packets
+            .iter()
+            .filter(|(player_uuid, _)| joined_player_uuids.contains(player_uuid))
+            .map(|(_, packet)| packet.clone())
+            .collect::<Vec<_>>();
+        let all_online_player_packets = online_player_packets
+            .iter()
+            .map(|(_, packet)| packet.clone())
+            .collect::<Vec<_>>();
+        let removed_player_uuids = self
+            .listed_player_uuids
+            .difference(&online_player_uuids)
+            .copied()
+            .collect::<Vec<_>>();
+
+        if joined_player_packets.is_empty() && removed_player_uuids.is_empty() {
+            return Ok(());
+        }
+
+        self.worlds.iter_mut().try_for_each(|world| {
+            joined_player_packets
+                .iter()
+                .cloned()
+                .try_for_each(|packet| {
+                    world.dispatch_player_info_update_to_online_players(packet)
+                })?;
+            world.dispatch_player_info_updates_to_players(
+                &joined_player_uuids,
+                &all_online_player_packets,
+            )?;
+            removed_player_uuids
+                .iter()
+                .copied()
+                .try_for_each(|player_uuid| {
+                    world.dispatch_player_info_remove_to_online_players(player_uuid)
+                })
+        })?;
+        self.listed_player_uuids = online_player_uuids;
+        Ok(())
+    }
+
+    fn online_player_info_packets(&self) -> Vec<(Uuid, PlayerInfoUpdatePacket)> {
+        self.worlds
+            .iter()
+            .flat_map(World::players)
+            .filter(|player| player.has_entered_world() && player.is_online())
+            .map(|player| (player.get_uuid(), player.get_player_info_packet()))
+            .collect()
     }
 }
 

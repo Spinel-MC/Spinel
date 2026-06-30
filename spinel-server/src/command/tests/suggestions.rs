@@ -16,13 +16,18 @@ fn command_manager_suggests_roots_and_argument_callbacks_like_minestom_tab_compl
 
     let root_suggestions = command_manager.suggest(CommandSenderKind::Player, "/sp");
     let argument_suggestions = command_manager.suggest(CommandSenderKind::Player, "/teleport A");
+    let trailing_space_suggestions =
+        command_manager.suggest(CommandSenderKind::Player, "/teleport ");
 
-    assert_eq!(root_suggestions.start(), 0);
+    assert_eq!(root_suggestions.start(), 1);
     assert_eq!(root_suggestions.length(), 2);
     assert_eq!(root_suggestions.entries()[0].entry(), "spawn");
-    assert_eq!(argument_suggestions.start(), "teleport ".len());
+    assert_eq!(argument_suggestions.start(), "/teleport ".len());
     assert_eq!(argument_suggestions.length(), 1);
     assert_eq!(argument_suggestions.entries()[0].entry(), "Alex");
+    assert_eq!(trailing_space_suggestions.start(), "/teleport ".len());
+    assert_eq!(trailing_space_suggestions.length(), 0);
+    assert_eq!(trailing_space_suggestions.entries()[0].entry(), "Alex");
 }
 
 fn custom_argument_with_suggestions(id: &str) -> CommandArgument {

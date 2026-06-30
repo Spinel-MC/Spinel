@@ -4152,12 +4152,9 @@ impl World {
         viewed_entity_id: EntityId,
         viewer_player_id: EntityId,
     ) -> Result<()> {
-        let Some((viewed_entity_type, viewed_entity_uuid)) = self
-            .entity_by_id(viewed_entity_id)
-            .map(|entity| (entity.get_entity_type(), entity.get_uuid()))
-        else {
+        if self.entity_by_id(viewed_entity_id).is_none() {
             return Ok(());
-        };
+        }
         let Some(client) =
             self.entity_by_id_mut(viewer_player_id)
                 .and_then(|entity| match entity {
@@ -4167,9 +4164,6 @@ impl World {
         else {
             return Ok(());
         };
-        if viewed_entity_type == EntityType::PLAYER {
-            PlayerInfoRemovePacket::new(viewed_entity_uuid).dispatch(client)?;
-        }
         RemoveEntitiesPacket::new(vec![viewed_entity_id.get_value()]).dispatch(client)
     }
 
@@ -4456,6 +4450,7 @@ impl World {
         player_addresses.into_iter().for_each(|address| {
             let _ = self.send_pending_chunks_for_player_address(address, registries);
         });
+        let _ = self.unload_chunks_without_online_viewers();
         item_use_completions.into_iter().for_each(|completion| {
             let _ = self.finish_player_item_use(completion);
         });
@@ -6019,6 +6014,92 @@ impl World {
             return Err(Error::new(ErrorKind::NotFound, "Player not found."));
         };
         self.refresh_visibility_for_entity(joining_player_id)
+    }
+
+    pub(crate) fn dispatch_player_info_update_to_online_players(
+        &mut self,
+        packet: PlayerInfoUpdatePacket,
+    ) -> Result<()> {
+        self.entities
+            .iter_mut()
+            .filter_map(|entity| match entity {
+                Entity::Player(player) if player.has_entered_world() && player.is_online() => {
+                    Some(player)
+                }
+                _ => None,
+            })
+            .filter_map(Player::get_client_mut)
+            .try_for_each(|client| packet.clone().dispatch(client))
+    }
+
+    pub(crate) fn dispatch_player_info_updates_to_players(
+        &mut self,
+        player_uuids: &[Uuid],
+        packets: &[PlayerInfoUpdatePacket],
+    ) -> Result<()> {
+        self.entities
+            .iter_mut()
+            .filter_map(|entity| match entity {
+                Entity::Player(player)
+                    if player.has_entered_world()
+                        && player.is_online()
+                        && player_uuids.contains(&player.get_uuid()) =>
+                {
+                    Some(player)
+                }
+                _ => None,
+            })
+            .filter_map(Player::get_client_mut)
+            .try_for_each(|client| {
+                packets
+                    .iter()
+                    .cloned()
+                    .try_for_each(|packet| packet.dispatch(client))
+            })
+    }
+
+    pub(crate) fn dispatch_player_info_remove_to_online_players(
+        &mut self,
+        player_uuid: Uuid,
+    ) -> Result<()> {
+        self.entities
+            .iter_mut()
+            .filter_map(|entity| match entity {
+                Entity::Player(player) if player.has_entered_world() && player.is_online() => {
+                    Some(player)
+                }
+                _ => None,
+            })
+            .filter_map(Player::get_client_mut)
+            .try_for_each(|client| PlayerInfoRemovePacket::new(player_uuid).dispatch(client))
+    }
+
+    fn unload_chunks_without_online_viewers(&mut self) -> Result<usize> {
+        let unload_positions = self
+            .chunks
+            .keys()
+            .copied()
+            .filter(|position| !self.chunk_has_online_viewer(*position))
+            .collect::<Vec<_>>();
+        let mut unloaded_chunk_count = 0;
+        for position in unload_positions {
+            if self.unload_chunk(position)? {
+                unloaded_chunk_count += 1;
+            }
+        }
+        Ok(unloaded_chunk_count)
+    }
+
+    fn chunk_has_online_viewer(&self, position: ChunkPosition) -> bool {
+        let player_chunk = PlayerChunk::new(position.x, position.z);
+        self.entities.iter().any(|entity| match entity {
+            Entity::Player(player) => {
+                player.has_entered_world()
+                    && player.is_online()
+                    && player.has_chunk_loaded_by_client(player_chunk, self.view_distance)
+            }
+            _ => false,
+        })
     }
 
     pub(crate) fn dispatch_player_spawn(
