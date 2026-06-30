@@ -14,8 +14,17 @@ fn on_command_suggestions(
     packet: CommandSuggestionsRequestPacket,
     server: &mut MinecraftServer,
 ) -> bool {
-    let sender_kind = crate::command::CommandSender::Player(client).kind();
-    let suggestion = server.command_manager.suggest(sender_kind, &packet.text);
+    let permission_level = server
+        .world_manager
+        .player_pointer_for_client(client)
+        .map(|player| unsafe { &*player }.get_permission_level())
+        .unwrap_or_default();
+    let condition_context = crate::command::CommandConditionContext::player(permission_level);
+    let suggestion = server.command_manager.suggest_for_source_with_server(
+        Some(server),
+        condition_context,
+        &packet.text,
+    );
     let response = CommandSuggestionsPacket {
         transaction_id: packet.transaction_id,
         start: suggestion.start() as i32,

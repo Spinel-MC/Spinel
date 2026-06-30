@@ -1,6 +1,7 @@
 use crate::command::{
-    Command, CommandExecutionResult, CommandParseResult, CommandParser, CommandResult,
-    CommandResultType, CommandSender, CommandSenderKind, Suggestion, SuggestionEntry,
+    Command, CommandConditionContext, CommandExecutionResult, CommandParseResult, CommandParser,
+    CommandResult, CommandResultType, CommandSender, CommandSenderKind, Suggestion,
+    SuggestionEntry,
 };
 use crate::events::player_command::PlayerCommandEvent;
 use crate::network::client::instance::Client;
@@ -48,16 +49,34 @@ impl CommandManager {
     }
 
     pub fn suggest(&self, sender_kind: CommandSenderKind, input: &str) -> Suggestion {
+        self.suggest_for_source(CommandConditionContext::from(sender_kind), input)
+    }
+
+    pub fn suggest_for_source(
+        &self,
+        condition_context: CommandConditionContext,
+        input: &str,
+    ) -> Suggestion {
+        self.suggest_for_source_with_server(None, condition_context, input)
+    }
+
+    pub fn suggest_for_source_with_server(
+        &self,
+        server: Option<&MinecraftServer>,
+        condition_context: CommandConditionContext,
+        input: &str,
+    ) -> Suggestion {
         let command_input = Self::normalized_suggestion_input(input);
         let command_has_prefix = command_input.starts_with('/');
         let command_text = command_input.trim_start_matches('/');
         let command_ends_with_space = input.ends_with(char::is_whitespace);
         let command_parts = command_text.split_whitespace().collect::<Vec<_>>();
         let mut suggestion = if command_parts.len() <= 1 && !command_ends_with_space {
-            self.suggest_root_commands(command_text)
+            self.suggest_root_commands(condition_context, command_text)
         } else {
             self.suggest_command_arguments(
-                sender_kind,
+                server,
+                condition_context,
                 command_text,
                 command_ends_with_space,
                 &command_parts,
@@ -73,16 +92,15 @@ impl CommandManager {
         input.to_string()
     }
 
-    fn suggest_root_commands(&self, typed_command_name: &str) -> Suggestion {
-        let typed_command_start = 0;
-        let typed_command_length = typed_command_name.len();
-        let mut suggestion = Suggestion::new(
-            typed_command_name,
-            typed_command_start,
-            typed_command_length,
-        );
+    fn suggest_root_commands(
+        &self,
+        condition_context: CommandConditionContext,
+        typed_command_name: &str,
+    ) -> Suggestion {
+        let mut suggestion = Suggestion::new(typed_command_name, 0, typed_command_name.len());
         self.commands
             .iter()
+            .filter(|command| Self::command_condition_allows(command, condition_context, None))
             .flat_map(Command::names)
             .filter(|command_name| command_name.starts_with(typed_command_name))
             .map(SuggestionEntry::new)
@@ -92,7 +110,8 @@ impl CommandManager {
 
     fn suggest_command_arguments(
         &self,
-        sender_kind: CommandSenderKind,
+        server: Option<&MinecraftServer>,
+        condition_context: CommandConditionContext,
         command_text: &str,
         command_ends_with_space: bool,
         command_parts: &[&str],
@@ -101,6 +120,9 @@ impl CommandManager {
         let Some(command) = self.command(command_name) else {
             return Suggestion::new(command_text, command_text.len(), 0);
         };
+        if !Self::command_condition_allows(command, condition_context, Some(command_text)) {
+            return Suggestion::new(command_text, command_text.len(), 0);
+        }
         let current_argument_index = if command_ends_with_space {
             command_parts.len().saturating_sub(1)
         } else {
@@ -122,11 +144,14 @@ impl CommandManager {
         command
             .syntaxes()
             .iter()
+            .filter(|syntax| {
+                Self::syntax_condition_allows(syntax, condition_context, Some(command_text))
+            })
             .filter_map(|syntax| syntax.arguments().get(current_argument_index))
             .filter_map(crate::command::CommandArgument::suggestion_callback)
             .for_each(|callback| {
                 let context = crate::command::CommandContext::empty(command_text);
-                callback(sender_kind, &context, &mut suggestion);
+                callback(server, condition_context, &context, &mut suggestion);
             });
         suggestion
     }
@@ -180,7 +205,7 @@ impl CommandManager {
         client: &mut Client,
         parsed_command: &mut crate::command::ParsedCommand<'_>,
     ) -> CommandResult {
-        let sender_kind = CommandSender::Player(client).kind();
+        let condition_context = Self::condition_context_for_client(server, client);
         if let Some(global_listener) = parsed_command.command().global_listener() {
             global_listener(
                 server,
@@ -189,7 +214,7 @@ impl CommandManager {
             );
         }
         if let Some(command_condition) = parsed_command.command().condition() {
-            if !command_condition(sender_kind, Some(parsed_command.context().input())) {
+            if !command_condition(condition_context, Some(parsed_command.context().input())) {
                 return CommandResult::from_execution_result(
                     parsed_command,
                     CommandExecutionResult::precondition_failed(),
@@ -198,7 +223,7 @@ impl CommandManager {
         }
         if let Some(syntax) = parsed_command.syntax() {
             if let Some(syntax_condition) = syntax.condition() {
-                if !syntax_condition(sender_kind, Some(parsed_command.context().input())) {
+                if !syntax_condition(condition_context, Some(parsed_command.context().input())) {
                     return CommandResult::from_execution_result(
                         parsed_command,
                         CommandExecutionResult::precondition_failed(),
@@ -225,11 +250,19 @@ impl CommandManager {
     }
 
     pub fn declare_commands_packet(&self) -> CommandsPacket {
+        self.declare_commands_packet_for_source(CommandConditionContext::server())
+    }
+
+    pub fn declare_commands_packet_for_source(
+        &self,
+        condition_context: CommandConditionContext,
+    ) -> CommandsPacket {
         let mut nodes = vec![CommandNode::root(Vec::new())];
         let root_children = self
             .commands
             .iter()
-            .map(|command| self.append_command_node(command, &mut nodes))
+            .filter(|command| Self::command_condition_allows(command, condition_context, None))
+            .map(|command| self.append_command_node(command, condition_context, &mut nodes))
             .collect::<Vec<_>>();
         nodes[0].children = root_children;
         CommandsPacket {
@@ -238,13 +271,18 @@ impl CommandManager {
         }
     }
 
-    fn append_command_node(&self, command: &Command, nodes: &mut Vec<CommandNode>) -> i32 {
+    fn append_command_node(
+        &self,
+        command: &Command,
+        condition_context: CommandConditionContext,
+        nodes: &mut Vec<CommandNode>,
+    ) -> i32 {
         let command_node_index = nodes.len() as i32;
         let command_has_literal_executor = command.default_executor().is_some()
-            || command
-                .syntaxes()
-                .iter()
-                .any(|syntax| syntax.arguments().is_empty());
+            || command.syntaxes().iter().any(|syntax| {
+                syntax.arguments().is_empty()
+                    && Self::syntax_condition_allows(syntax, condition_context, None)
+            });
         nodes.push(CommandNode::literal(
             command.name(),
             Vec::new(),
@@ -254,12 +292,16 @@ impl CommandManager {
             .syntaxes()
             .iter()
             .filter(|syntax| !syntax.arguments().is_empty())
+            .filter(|syntax| Self::syntax_condition_allows(syntax, condition_context, None))
             .map(|syntax| self.append_argument_chain(syntax.arguments(), 0, nodes))
             .collect::<Vec<_>>();
         let subcommand_children = command
             .subcommands()
             .iter()
-            .map(|subcommand| self.append_command_node(subcommand, nodes))
+            .filter(|subcommand| {
+                Self::command_condition_allows(subcommand, condition_context, None)
+            })
+            .map(|subcommand| self.append_command_node(subcommand, condition_context, nodes))
             .collect::<Vec<_>>();
         nodes[command_node_index as usize].children = syntax_children
             .into_iter()
@@ -294,6 +336,39 @@ impl CommandManager {
             nodes[node_index as usize].children = vec![child_index];
         }
         node_index
+    }
+
+    fn condition_context_for_client(
+        server: &mut MinecraftServer,
+        client: &Client,
+    ) -> CommandConditionContext {
+        let Some(player) = server.world_manager.player_pointer_for_client(client) else {
+            return CommandConditionContext::player(0);
+        };
+        let permission_level = unsafe { &*player }.get_permission_level();
+        CommandConditionContext::player(permission_level)
+    }
+
+    fn command_condition_allows(
+        command: &Command,
+        condition_context: CommandConditionContext,
+        input: Option<&str>,
+    ) -> bool {
+        command
+            .condition()
+            .map(|condition| condition(condition_context, input))
+            .unwrap_or(true)
+    }
+
+    fn syntax_condition_allows(
+        syntax: &crate::command::CommandSyntax,
+        condition_context: CommandConditionContext,
+        input: Option<&str>,
+    ) -> bool {
+        syntax
+            .condition()
+            .map(|condition| condition(condition_context, input))
+            .unwrap_or(true)
     }
 }
 

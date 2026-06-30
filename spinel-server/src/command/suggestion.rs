@@ -1,6 +1,8 @@
-use crate::command::{CommandContext, CommandSenderKind};
+use crate::command::{CommandConditionContext, CommandContext};
+use crate::server::MinecraftServer;
 
-pub type SuggestionCallback = fn(CommandSenderKind, &CommandContext, &mut Suggestion);
+pub type SuggestionCallback =
+    fn(Option<&MinecraftServer>, CommandConditionContext, &CommandContext, &mut Suggestion);
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Suggestion {

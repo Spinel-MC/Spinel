@@ -1,7 +1,7 @@
 use super::super::manager::CommandManager;
 use crate::command::{
-    Command, CommandArgument, CommandArgumentValue, CommandExecutionResult, CommandSender,
-    RelativeVec3,
+    Command, CommandArgument, CommandArgumentValue, CommandConditionContext,
+    CommandExecutionResult, CommandSender, RelativeVec3,
 };
 use crate::server::MinecraftServer;
 use spinel_core::network::clientbound::play::commands::{
@@ -163,6 +163,21 @@ fn command_manager_declares_minestom_argument_node_properties() {
     );
 }
 
+#[test]
+fn command_manager_filters_declared_commands_by_source_condition() {
+    let mut command_manager = CommandManager::new();
+    command_manager.register(Command::new("help"));
+    command_manager.register(Command::new("op").with_condition(requires_admin));
+
+    let ordinary_packet =
+        command_manager.declare_commands_packet_for_source(CommandConditionContext::player(0));
+    let admin_packet =
+        command_manager.declare_commands_packet_for_source(CommandConditionContext::player(3));
+
+    assert!(root_command_exists(&ordinary_packet, "help"));
+    assert!(!root_command_exists(&ordinary_packet, "op"));
+    assert!(root_command_exists(&admin_packet, "op"));
+}
 fn spawn_command() -> Command {
     Command::new("spawn").with_syntax(
         unused_executor,
@@ -215,4 +230,18 @@ fn unused_executor(
     _context: &mut crate::command::CommandContext,
 ) -> CommandExecutionResult {
     CommandExecutionResult::success()
+}
+
+fn root_command_exists(commands_packet: &CommandsPacket, command_name: &str) -> bool {
+    commands_packet.nodes[commands_packet.root_index as usize]
+        .children
+        .iter()
+        .copied()
+        .any(|node_index| {
+            commands_packet.nodes[node_index as usize].name.as_deref() == Some(command_name)
+        })
+}
+
+fn requires_admin(condition_context: CommandConditionContext, _input: Option<&str>) -> bool {
+    condition_context.permission_level() >= 3
 }

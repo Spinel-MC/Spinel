@@ -21,7 +21,7 @@ pub use argument::{
 };
 pub use callback::{ArgumentCallback, ArgumentSyntaxException};
 pub use command::{Command, CommandExecutor, GlobalCommandListener};
-pub use condition::CommandCondition;
+pub use condition::{CommandCondition, CommandConditionContext};
 pub use context::CommandContext;
 pub use data::CommandData;
 pub use manager::CommandManager;

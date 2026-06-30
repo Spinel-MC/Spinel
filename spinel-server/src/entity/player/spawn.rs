@@ -674,6 +674,14 @@ fn server_commands_packet(client: &mut Client) -> io::Result<()> {
     else {
         return Ok(());
     };
-    let commands_packet: CommandsPacket = server.command_manager.declare_commands_packet();
+    let permission_level = server
+        .world_manager
+        .player_pointer_for_client(client)
+        .map(|player| unsafe { &*player }.get_permission_level())
+        .unwrap_or_default();
+    let condition_context = crate::command::CommandConditionContext::player(permission_level);
+    let commands_packet: CommandsPacket = server
+        .command_manager
+        .declare_commands_packet_for_source(condition_context);
     commands_packet.dispatch(client)
 }

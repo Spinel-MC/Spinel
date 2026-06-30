@@ -1,6 +1,6 @@
 use crate::command::{
-    Command, CommandArgument, CommandContext, CommandExecutionResult, CommandManager,
-    CommandSender, CommandSenderKind, Suggestion, SuggestionEntry,
+    Command, CommandArgument, CommandConditionContext, CommandContext, CommandExecutionResult,
+    CommandManager, CommandSender, CommandSenderKind, Suggestion, SuggestionEntry,
 };
 use crate::server::MinecraftServer;
 use spinel_core::network::clientbound::play::commands::ArgumentParserType;
@@ -30,6 +30,21 @@ fn command_manager_suggests_roots_and_argument_callbacks_like_minestom_tab_compl
     assert_eq!(trailing_space_suggestions.entries()[0].entry(), "Alex");
 }
 
+#[test]
+fn command_manager_filters_root_suggestions_by_source_condition() {
+    let mut command_manager = CommandManager::new();
+    command_manager.register(Command::new("op").with_condition(requires_admin));
+    command_manager.register(Command::new("tell"));
+
+    let ordinary_suggestions =
+        command_manager.suggest_for_source(CommandConditionContext::player(0), "/");
+    let admin_suggestions =
+        command_manager.suggest_for_source(CommandConditionContext::player(3), "/");
+
+    assert!(!suggestion_has_entry(&ordinary_suggestions, "op"));
+    assert!(suggestion_has_entry(&ordinary_suggestions, "tell"));
+    assert!(suggestion_has_entry(&admin_suggestions, "op"));
+}
 fn custom_argument_with_suggestions(id: &str) -> CommandArgument {
     let mut argument = CommandArgument::custom_parser(id, ArgumentParserType::String, "String");
     argument.set_suggestion_callback(suggest_players);
@@ -37,7 +52,8 @@ fn custom_argument_with_suggestions(id: &str) -> CommandArgument {
 }
 
 fn suggest_players(
-    _sender_kind: CommandSenderKind,
+    _server: Option<&MinecraftServer>,
+    _condition_context: CommandConditionContext,
     _context: &CommandContext,
     suggestion: &mut Suggestion,
 ) {
@@ -50,4 +66,15 @@ fn unused_executor(
     _context: &mut CommandContext,
 ) -> CommandExecutionResult {
     CommandExecutionResult::success()
+}
+
+fn suggestion_has_entry(suggestion: &Suggestion, entry: &str) -> bool {
+    suggestion
+        .entries()
+        .iter()
+        .any(|suggestion_entry| suggestion_entry.entry() == entry)
+}
+
+fn requires_admin(condition_context: CommandConditionContext, _input: Option<&str>) -> bool {
+    condition_context.permission_level() >= 3
 }
