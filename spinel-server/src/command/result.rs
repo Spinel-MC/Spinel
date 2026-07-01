@@ -1,4 +1,6 @@
 use crate::command::{CommandData, ParsedCommand};
+use spinel_utils::component::color::{NamedTextColor, TextColor};
+use spinel_utils::component::text::TextComponent;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct CommandResult {
@@ -77,6 +79,38 @@ impl CommandResult {
 
     pub const fn packet_listener_result(&self) -> bool {
         matches!(self.result_type, CommandResultType::Success)
+    }
+
+    pub fn feedback_components(&self) -> Vec<TextComponent> {
+        match self.result_type {
+            CommandResultType::Unknown => vec![
+                TextComponent::translatable("command.unknown.command").build(),
+                Self::command_context_component(&self.input),
+            ],
+            CommandResultType::InvalidSyntax => vec![
+                TextComponent::translatable("command.unknown.argument").build(),
+                Self::command_context_component(&self.input),
+            ],
+            CommandResultType::Success | CommandResultType::Cancelled => Vec::new(),
+        }
+    }
+
+    fn command_context_component(input: &str) -> TextComponent {
+        TextComponent::text("")
+            .color(TextColor::from_named(NamedTextColor::Gray))
+            .append(
+                TextComponent::text(input)
+                    .color(TextColor::from_named(NamedTextColor::Red))
+                    .underlined(true)
+                    .build(),
+            )
+            .append(
+                TextComponent::translatable("command.context.here")
+                    .color(TextColor::from_named(NamedTextColor::Red))
+                    .italic(true)
+                    .build(),
+            )
+            .build()
     }
 }
 

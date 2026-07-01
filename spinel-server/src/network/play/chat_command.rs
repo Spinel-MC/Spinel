@@ -1,3 +1,4 @@
+use crate::command::CommandResult;
 use crate::network::client::instance::Client;
 use crate::server::MinecraftServer;
 use spinel_core::network::serverbound::play::chat_command::ChatCommandPacket;
@@ -28,5 +29,15 @@ pub(crate) fn execute_chat_command(
     let command_manager = std::mem::take(&mut server.command_manager);
     let command_result = command_manager.execute(server, client, command);
     server.command_manager = command_manager;
+    send_command_feedback(player, &command_result);
     command_result.packet_listener_result()
+}
+
+fn send_command_feedback(player: *mut crate::entity::Player, command_result: &CommandResult) {
+    command_result
+        .feedback_components()
+        .into_iter()
+        .for_each(|feedback_component| {
+            let _ = unsafe { &mut *player }.send_system_message(feedback_component);
+        });
 }
