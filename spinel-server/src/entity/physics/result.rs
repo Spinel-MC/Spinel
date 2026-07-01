@@ -28,14 +28,6 @@ pub struct EntitySweepResult {
     collision_shape: Option<&'static [BlockShapeBox]>,
     collision_shape_position: Option<BlockPosition>,
 }
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct EntityBoundingBoxSweepResult {
-    ratio: f64,
-    normal: Vector3d,
-    collision_point: Option<Vector3d>,
-    collision_shape: Option<spinel_registry::EntityBoundingBox>,
-    collision_shape_position: Option<Vector3d>,
-}
 
 impl EntityPhysicsResult {
     pub const fn new(
@@ -222,56 +214,5 @@ impl EntitySweepResult {
 
     pub const fn get_collision_shape_position(self) -> Option<BlockPosition> {
         self.collision_shape_position
-    }
-}
-
-impl EntityBoundingBoxSweepResult {
-    pub const fn no_collision() -> Self {
-        Self {
-            ratio: f64::MAX,
-            normal: Vector3d {
-                x: 0.0,
-                y: 0.0,
-                z: 0.0,
-            },
-            collision_point: None,
-            collision_shape: None,
-            collision_shape_position: None,
-        }
-    }
-
-    pub const fn get_ratio(self) -> f64 {
-        self.ratio
-    }
-
-    pub const fn get_normal(self) -> Vector3d {
-        self.normal
-    }
-
-    pub const fn get_collision_point(self) -> Option<Vector3d> {
-        self.collision_point
-    }
-
-    pub const fn get_collision_shape(self) -> Option<spinel_registry::EntityBoundingBox> {
-        self.collision_shape
-    }
-
-    pub const fn get_collision_shape_position(self) -> Option<Vector3d> {
-        self.collision_shape_position
-    }
-
-    pub(crate) fn set_collision(
-        &mut self,
-        ratio: f64,
-        normal: Vector3d,
-        collision_point: Vector3d,
-        collision_shape: spinel_registry::EntityBoundingBox,
-        collision_shape_position: Vector3d,
-    ) {
-        self.ratio = ratio;
-        self.normal = normal;
-        self.collision_point = Some(collision_point);
-        self.collision_shape = Some(collision_shape);
-        self.collision_shape_position = Some(collision_shape_position);
     }
 }

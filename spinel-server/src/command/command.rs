@@ -84,17 +84,24 @@ impl Command {
             .for_each(|command| self.add_subcommand(command));
     }
 
-    pub fn with_syntax(
-        mut self,
-        executor: CommandExecutor,
-        arguments: Vec<CommandArgument>,
-    ) -> Self {
+    pub fn with_syntax<I, A>(mut self, executor: CommandExecutor, arguments: I) -> Self
+    where
+        I: IntoIterator<Item = A>,
+        A: Into<CommandArgument>,
+    {
         self.add_syntax(executor, arguments);
         self
     }
 
-    pub fn add_syntax(&mut self, executor: CommandExecutor, arguments: Vec<CommandArgument>) {
-        self.syntaxes.push(CommandSyntax::new(executor, arguments));
+    pub fn add_syntax<I, A>(&mut self, executor: CommandExecutor, arguments: I)
+    where
+        I: IntoIterator<Item = A>,
+        A: Into<CommandArgument>,
+    {
+        self.syntaxes.push(CommandSyntax::new(
+            executor,
+            arguments.into_iter().map(Into::into).collect(),
+        ));
     }
 
     pub fn add_conditional_syntax(

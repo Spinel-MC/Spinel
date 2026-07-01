@@ -5,12 +5,12 @@ use crate::entity::physics::{EntityPhysicsResult, knockback_velocity, simulate_m
 use crate::entity::player::BelowNameTag;
 use crate::entity::player::ChunkUpdateLimitChecker;
 use crate::entity::player::PendingResourcePacks;
-use crate::entity::player::PlayerMeta;
 use crate::entity::player::PlayerViewerSnapshot;
 use crate::entity::player::chunks::PlayerChunk;
 use crate::entity::player::input::PlayerInputs;
 use crate::entity::player::position::PlayerPosition;
 use crate::entity::player::skin::PlayerSkin;
+use crate::entity::player::{PlayerMeta, PlayerMetaRef};
 use crate::entity::{
     Damage, EntityCollisionRules, EntityId, EntityIdentity, EntityLeash, EntityPointers,
     EntityPosition, EntitySynchronization, EntityTeleport, EntityView, EquipmentSlot, LivingState,
@@ -1236,6 +1236,10 @@ impl Player {
     pub const fn get_identity(&self) -> EntityIdentity {
         EntityIdentity::new(self.uuid)
     }
+    pub const fn get_entity_meta(&self) -> PlayerMetaRef<'_> {
+        PlayerMetaRef::new(self)
+    }
+
     pub fn get_entity_meta_mut(&mut self) -> PlayerMeta<'_> {
         PlayerMeta::new(self)
     }

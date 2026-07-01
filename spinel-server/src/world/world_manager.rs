@@ -781,6 +781,31 @@ impl WorldManager {
         world.save_chunks()
     }
 
+    pub fn save_loaded_chunks(&mut self) -> io::Result<usize> {
+        let mut saved_chunk_count = 0;
+        for world in &mut self.worlds {
+            saved_chunk_count += world.chunks().count();
+            world.save_chunks()?;
+        }
+        for shared_world in &mut self.shared_worlds {
+            saved_chunk_count += shared_world.world().chunks().count();
+            shared_world.world_mut().save_chunks()?;
+        }
+        Ok(saved_chunk_count)
+    }
+
+    pub fn loaded_chunk_count(&self) -> usize {
+        self.worlds
+            .iter()
+            .map(|world| world.chunks().count())
+            .chain(
+                self.shared_worlds
+                    .iter()
+                    .map(|shared_world| shared_world.world().chunks().count()),
+            )
+            .sum()
+    }
+
     pub fn generate_chunk_for_world(
         &mut self,
         world_uuid: Uuid,
@@ -902,6 +927,14 @@ impl WorldManager {
         self.worlds
             .iter_mut()
             .find_map(|world| world.player_pointer_by_addr(address))
+    }
+
+    pub(crate) fn player_has_entered_world_for_client_address(&self, address: &SocketAddr) -> bool {
+        self.worlds
+            .iter()
+            .chain(self.shared_worlds.iter().map(SharedWorld::world))
+            .filter_map(|world| world.player_by_addr(address))
+            .any(Player::has_entered_world)
     }
 
     pub(crate) fn loaded_block_for_client(

@@ -1,3 +1,4 @@
+pub mod gamemode_command;
 mod instance;
 pub mod kill;
 pub mod showcase;

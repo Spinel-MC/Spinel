@@ -24,6 +24,40 @@ pub trait ChunkLoader: Send + Sync {
     fn supports_parallel_saving(&self) -> bool {
         false
     }
+    fn drain_failures(&self) -> Vec<ChunkLoaderFailure> {
+        Vec::new()
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ChunkLoaderOperation {
+    LoadWorld,
+    LoadChunk,
+    GenerateChunk,
+    SaveWorld,
+    SaveChunk,
+    UnloadChunk,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ChunkLoaderFailure {
+    pub operation: ChunkLoaderOperation,
+    pub chunk_position: Option<ChunkPosition>,
+    pub message: String,
+}
+
+impl ChunkLoaderFailure {
+    pub fn new(
+        operation: ChunkLoaderOperation,
+        chunk_position: Option<ChunkPosition>,
+        message: String,
+    ) -> Self {
+        Self {
+            operation,
+            chunk_position,
+            message,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

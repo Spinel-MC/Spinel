@@ -10,8 +10,11 @@ use std::io::{Error, ErrorKind};
 use std::net::{Shutdown, SocketAddr};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
 use tokio::net::{TcpListener, TcpStream};
 use tokio::task;
+
+const LISTENER_STOP_POLL_INTERVAL: Duration = Duration::from_millis(50);
 
 pub async fn start_tcp_listener(
     server_arc: Arc<Mutex<MinecraftServer>>,
@@ -30,15 +33,40 @@ impl ServerSocketRuntime {
         port: u16,
     ) -> Result<(), Error> {
         let listener = TcpListener::bind(format!("{}:{}", address, port)).await?;
+        Self::dispatch_server_started(&server_arc, address, port);
 
-        loop {
-            let (stream, addr) = listener.accept().await?;
+        while Self::server_is_running(&server_arc) {
+            let accept_result =
+                tokio::time::timeout(LISTENER_STOP_POLL_INTERVAL, listener.accept()).await;
+            let Ok(accept_result) = accept_result else {
+                continue;
+            };
+            let (stream, addr) = accept_result?;
+            if !Self::server_is_running(&server_arc) {
+                break;
+            }
             tokio::spawn(Self::handle_client_connection(
                 server_arc.clone(),
                 stream,
                 addr,
             ));
         }
+
+        Ok(())
+    }
+
+    fn dispatch_server_started(server_arc: &Arc<Mutex<MinecraftServer>>, address: &str, port: u16) {
+        let Ok(mut server) = server_arc.lock() else {
+            return;
+        };
+        server.on_started(address, port);
+    }
+
+    fn server_is_running(server_arc: &Arc<Mutex<MinecraftServer>>) -> bool {
+        server_arc
+            .lock()
+            .map(|server| server.is_ticking.load(Ordering::SeqCst))
+            .unwrap_or(false)
     }
 
     async fn handle_client_connection(

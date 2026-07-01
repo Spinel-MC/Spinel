@@ -5,6 +5,7 @@ mod chunk_generation;
 mod chunk_heightmaps;
 mod chunk_lifecycle;
 mod chunk_lighting;
+mod chunk_loader_errors;
 mod chunk_memory;
 mod chunk_section;
 mod entity_attack;

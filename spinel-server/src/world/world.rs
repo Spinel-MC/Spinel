@@ -7,6 +7,7 @@ use crate::entity::{
     TimedPotionEffect,
 };
 use crate::events::add_entity_to_world::AddEntityToWorldEvent;
+use crate::events::chunk_loader_error::ChunkLoaderErrorEvent;
 use crate::events::entity_attack::EntityAttackEvent;
 use crate::events::entity_damage::EntityDamageEvent;
 use crate::events::entity_death::EntityDeathEvent;
@@ -52,9 +53,9 @@ use crate::world::{
     BlockHandlerPlacement, BlockHandlerRegistry, BlockHandlerTouch, BlockInstance,
     BlockLookupCondition, BlockPlacementRule, BlockPlacementRuleRegistry, BlockPlacementState,
     BlockPosition, BlockReplacement, BlockSize, BlockState, BlockUpdateState, BossBar, Chunk,
-    ChunkLoader, ChunkPosition, EntityTracker, EntityTrackerTarget, ExplosionSupplier,
-    GenerationUnit, NoopChunkLoader, Weather, WorldBorder, WorldEventNode, WorldIdentity,
-    WorldPointers, WorldScheduler, WorldSnapshot, WorldSoundEmitter,
+    ChunkLoader, ChunkLoaderFailure, ChunkLoaderOperation, ChunkPosition, EntityTracker,
+    EntityTrackerTarget, ExplosionSupplier, GenerationUnit, NoopChunkLoader, Weather, WorldBorder,
+    WorldEventNode, WorldIdentity, WorldPointers, WorldScheduler, WorldSnapshot, WorldSoundEmitter,
 };
 use spinel_core::entity::game_mode::GameMode;
 use spinel_core::network::clientbound::play::block_action::BlockActionPacket;
@@ -109,6 +110,7 @@ use spinel_utils::component::Component;
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::io::{Error, ErrorKind, Result};
 use std::net::SocketAddr;
+use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, mpsc};
 use std::thread::JoinHandle;
@@ -148,20 +150,18 @@ pub struct WorldIoTask {
 
 struct CompletedChunkLoad {
     ticket: ChunkLoadTicket,
-    prepared_chunk_load: Result<PreparedChunkLoad>,
-}
-
-struct PendingPlayerEntry {
-    client: usize,
-    ticks_per_second: u32,
-    chunks: Vec<PlayerChunk>,
-    chunk_load_tickets: Vec<ChunkLoadTicket>,
+    prepared_chunk_load: std::result::Result<PreparedChunkLoad, PreparedChunkLoadFailure>,
 }
 
 struct PreparedChunkLoad {
     chunk: Chunk,
     generation_forks: Vec<GenerationFork>,
     requires_generation_completion: bool,
+}
+
+struct PreparedChunkLoadFailure {
+    operation: ChunkLoaderOperation,
+    error: Error,
 }
 
 impl ChunkSupplier {
@@ -350,10 +350,16 @@ pub struct World {
     async_chunk_loads: HashMap<ChunkPosition, ChunkLoadTicket>,
     completed_chunk_load_sender: mpsc::Sender<CompletedChunkLoad>,
     completed_chunk_load_receiver: mpsc::Receiver<CompletedChunkLoad>,
-    prepared_chunk_loads: HashMap<u64, (ChunkLoadTicket, Result<PreparedChunkLoad>)>,
+    prepared_chunk_loads: HashMap<
+        u64,
+        (
+            ChunkLoadTicket,
+            std::result::Result<PreparedChunkLoad, PreparedChunkLoadFailure>,
+        ),
+    >,
     next_chunk_load_ticket_id: u64,
     player_chunk_load_waiters: HashMap<ChunkPosition, Vec<SocketAddr>>,
-    pending_player_entries: HashMap<SocketAddr, PendingPlayerEntry>,
+
     pending_entity_visibility_refreshes: VecDeque<EntityId>,
     pending_entity_visibility_refresh_keys: HashSet<EntityId>,
     generator: Option<Arc<dyn Generator + Send + Sync>>,
@@ -406,7 +412,7 @@ impl World {
             prepared_chunk_loads: HashMap::new(),
             next_chunk_load_ticket_id: 0,
             player_chunk_load_waiters: HashMap::new(),
-            pending_player_entries: HashMap::new(),
+
             pending_entity_visibility_refreshes: VecDeque::new(),
             pending_entity_visibility_refresh_keys: HashSet::new(),
             generator: None,
@@ -1510,9 +1516,14 @@ impl World {
             requires_generation_completion,
         } = match prepared_chunk_load {
             Ok(prepared_chunk_load) => prepared_chunk_load,
-            Err(error) => {
+            Err(failure) => {
                 self.player_chunk_load_waiters.remove(&ticket.position);
-                return Err(error);
+                self.dispatch_chunk_loader_error_event(ChunkLoaderFailure::new(
+                    failure.operation,
+                    Some(ticket.position),
+                    failure.error.to_string(),
+                ));
+                return Err(failure.error);
             }
         };
         chunk.set_world(self.uuid);
@@ -1628,6 +1639,31 @@ impl World {
             let _ = self.dispatch_packet_to_chunk_viewers(position, packet);
         });
         ticked_block_count
+    }
+
+    fn dispatch_chunk_loader_failures(&mut self) {
+        if self.event_dispatcher.is_none() {
+            return;
+        }
+        self.chunk_loader
+            .drain_failures()
+            .into_iter()
+            .for_each(|failure| self.dispatch_chunk_loader_error_event(failure));
+    }
+
+    fn dispatch_chunk_loader_error_event(&mut self, failure: ChunkLoaderFailure) {
+        let Some(server_ptr) = self.event_dispatcher else {
+            return;
+        };
+        let server = unsafe { &mut *(server_ptr as *mut crate::server::MinecraftServer) };
+        let world = self as *mut World;
+        ChunkLoaderErrorEvent::new(
+            world,
+            failure.operation,
+            failure.chunk_position,
+            failure.message,
+        )
+        .dispatch(server);
     }
 
     fn dispatch_world_chunk_load_event(&mut self, position: ChunkPosition) {
@@ -2860,33 +2896,8 @@ impl World {
             Some(player) => player.spawn_chunks(self.view_distance),
             None => Vec::new(),
         };
-        let chunk_load_tickets = chunks
-            .iter()
-            .copied()
-            .map(ChunkPosition::from)
-            .map(|position| self.load_optional_chunk_future(position))
-            .collect::<Result<Vec<_>>>()?
-            .into_iter()
-            .flatten()
-            .collect::<Vec<_>>();
-        let all_chunks_are_loaded = chunks
-            .iter()
-            .copied()
-            .map(ChunkPosition::from)
-            .all(|position| self.is_chunk_loaded(position));
-        if all_chunks_are_loaded {
-            return self.finish_player_entry(client, ticks_per_second, registries, chunks);
-        }
-        self.pending_player_entries.insert(
-            client.addr,
-            PendingPlayerEntry {
-                client: client as *mut Client as usize,
-                ticks_per_second,
-                chunks,
-                chunk_load_tickets,
-            },
-        );
-        Ok(())
+        self.schedule_initial_player_chunk_loads(client.addr, &chunks)?;
+        self.finish_player_entry(client, ticks_per_second, registries, chunks)
     }
 
     fn finish_player_entry(
@@ -4445,8 +4456,9 @@ impl World {
         entity_touches
             .into_iter()
             .for_each(|(entity_id, position)| self.touch_entity_blocks(entity_id, position));
+        self.dispatch_chunk_loader_failures();
         let _ = self.process_completed_chunk_loads();
-        let _ = self.process_pending_player_entries(registries);
+
         let _ = self.process_pending_entity_visibility_refreshes();
         self.tick_chunks(self.world_age as u64);
         player_addresses.into_iter().for_each(|address| {
@@ -7327,6 +7339,28 @@ impl World {
         generation_result.map(|_| true)
     }
 
+    fn schedule_initial_player_chunk_loads(
+        &mut self,
+        player_address: SocketAddr,
+        chunks: &[PlayerChunk],
+    ) -> Result<()> {
+        for chunk in chunks {
+            let position = ChunkPosition::from(*chunk);
+            if self.is_chunk_loaded(position) {
+                continue;
+            }
+            let Some(ticket) = self.load_optional_chunk_future(position)? else {
+                continue;
+            };
+            self.player_chunk_load_waiters
+                .entry(position)
+                .or_default()
+                .push(player_address);
+            let _ = self.complete_chunk_load(&ticket)?;
+        }
+        Ok(())
+    }
+
     fn schedule_player_chunk_loads(
         &mut self,
         player_address: SocketAddr,
@@ -7382,38 +7416,6 @@ impl World {
             .collect::<Vec<_>>();
         for ticket in completed_tickets {
             self.complete_chunk_load(&ticket)?;
-        }
-        Ok(())
-    }
-
-    fn process_pending_player_entries(&mut self, registries: &Registries) -> Result<()> {
-        let pending_entries = self
-            .pending_player_entries
-            .iter()
-            .map(|(player_address, pending_entry)| {
-                (*player_address, pending_entry.chunk_load_tickets.clone())
-            })
-            .collect::<Vec<_>>();
-        for (player_address, chunk_load_tickets) in pending_entries {
-            let mut all_chunk_loads_are_complete = true;
-            for ticket in chunk_load_tickets {
-                if !self.complete_chunk_load(&ticket)? {
-                    all_chunk_loads_are_complete = false;
-                }
-            }
-            if !all_chunk_loads_are_complete {
-                continue;
-            }
-            let Some(pending_entry) = self.pending_player_entries.remove(&player_address) else {
-                continue;
-            };
-            let client = unsafe { &mut *(pending_entry.client as *mut Client) };
-            self.finish_player_entry(
-                client,
-                pending_entry.ticks_per_second,
-                registries,
-                pending_entry.chunks,
-            )?;
         }
         Ok(())
     }
@@ -7577,13 +7579,21 @@ impl World {
         let completed_chunk_load_sender = self.completed_chunk_load_sender.clone();
         let executor_ticket = ticket.clone();
         ChunkLoadingExecutor::global().execute(move || {
-            let prepared_chunk_load = prepare_chunk_load(
-                position,
-                chunk_loader,
-                chunk_supplier,
-                generator,
-                synchronously_loaded_chunk,
-            );
+            let prepared_chunk_load = catch_unwind(AssertUnwindSafe(|| {
+                prepare_chunk_load(
+                    position,
+                    chunk_loader,
+                    chunk_supplier,
+                    generator,
+                    synchronously_loaded_chunk,
+                )
+            }))
+            .unwrap_or_else(|panic_payload| {
+                Err(PreparedChunkLoadFailure {
+                    operation: ChunkLoaderOperation::LoadChunk,
+                    error: Error::other(chunk_loading_panic_message(panic_payload)),
+                })
+            });
             let _ = completed_chunk_load_sender.send(CompletedChunkLoad {
                 ticket: executor_ticket,
                 prepared_chunk_load,
@@ -7692,10 +7702,15 @@ fn prepare_chunk_load(
     chunk_supplier: ChunkSupplier,
     generator: Option<Arc<dyn Generator + Send + Sync>>,
     synchronously_loaded_chunk: Option<Option<Chunk>>,
-) -> Result<PreparedChunkLoad> {
+) -> std::result::Result<PreparedChunkLoad, PreparedChunkLoadFailure> {
     let loaded_chunk = match synchronously_loaded_chunk {
         Some(loaded_chunk) => loaded_chunk,
-        None => chunk_loader.load_chunk(position)?,
+        None => chunk_loader
+            .load_chunk(position)
+            .map_err(|error| PreparedChunkLoadFailure {
+                operation: ChunkLoaderOperation::LoadChunk,
+                error,
+            })?,
     };
     let mut chunk = match loaded_chunk {
         Some(mut chunk) => {
@@ -7706,7 +7721,14 @@ fn prepare_chunk_load(
     };
     let requires_generation_completion = chunk.requires_generation_completion();
     let generation_forks = match (chunk.requires_generation(), generator) {
-        (true, Some(generator)) => generate_chunk(&mut chunk, generator.as_ref())?,
+        (true, Some(generator)) => {
+            generate_chunk(&mut chunk, generator.as_ref()).map_err(|error| {
+                PreparedChunkLoadFailure {
+                    operation: ChunkLoaderOperation::GenerateChunk,
+                    error,
+                }
+            })?
+        }
         _ => Vec::new(),
     };
     Ok(PreparedChunkLoad {
@@ -7714,6 +7736,16 @@ fn prepare_chunk_load(
         generation_forks,
         requires_generation_completion,
     })
+}
+
+fn chunk_loading_panic_message(panic_payload: Box<dyn std::any::Any + Send>) -> String {
+    if let Some(message) = panic_payload.downcast_ref::<String>() {
+        return message.clone();
+    }
+    if let Some(message) = panic_payload.downcast_ref::<&'static str>() {
+        return (*message).to_string();
+    }
+    "Chunk loading worker panicked without a string message.".to_string()
 }
 
 fn generate_chunk(

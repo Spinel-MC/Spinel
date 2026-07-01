@@ -1,6 +1,7 @@
 use crate::command::CommandManager;
 use crate::entity::player::QueuedPlayerPacket;
 use crate::entity::{Player, PlayerHand};
+use crate::events::server_started::ServerStartedEvent;
 use crate::events::shutdown::ShutdownEvent;
 use crate::events::signal::{ServerSignal, SignalEvent};
 use crate::events::startup::StartupEvent;
@@ -29,6 +30,8 @@ pub struct MinecraftServer {
     pub ticks_per_second: u32,
     pub current_tick: u64,
     pub is_ticking: Arc<AtomicBool>,
+    restart_requested: AtomicBool,
+    stop_requested: AtomicBool,
     pub enforce_entity_interaction_range: bool,
     scheduler: Scheduler,
     packet_router: PacketRouter,
@@ -48,6 +51,8 @@ impl MinecraftServer {
             ticks_per_second: DEFAULT_TICKS_PER_SECOND,
             current_tick: 0,
             is_ticking: Arc::new(AtomicBool::new(false)),
+            restart_requested: AtomicBool::new(false),
+            stop_requested: AtomicBool::new(false),
             enforce_entity_interaction_range: true,
             scheduler: Scheduler::new(),
             packet_router: PacketRouter::new(),
@@ -82,14 +87,49 @@ impl MinecraftServer {
     }
 
     pub fn stop(&mut self) {
+        self.stop_requested.store(false, Ordering::SeqCst);
         self.is_ticking.store(false, Ordering::SeqCst);
         self.on_shutdown();
+    }
+
+    pub fn stop_after_current_tick(&mut self) {
+        self.stop_requested.store(true, Ordering::SeqCst);
+    }
+
+    pub fn restart(&mut self) {
+        self.restart_requested.store(true, Ordering::SeqCst);
+        self.stop();
+    }
+
+    pub fn restart_after_current_tick(&mut self) {
+        self.restart_requested.store(true, Ordering::SeqCst);
+        self.stop_after_current_tick();
+    }
+
+    pub(crate) fn process_lifecycle_request(&mut self) {
+        if !self.stop_requested.swap(false, Ordering::SeqCst) {
+            return;
+        }
+        self.stop();
+    }
+
+    pub fn restart_was_requested(&self) -> bool {
+        self.restart_requested.load(Ordering::SeqCst)
+    }
+
+    pub(crate) fn clear_restart_request(&mut self) {
+        self.restart_requested.store(false, Ordering::SeqCst);
     }
 
     pub fn on_startup(&mut self, bind_address: impl Into<String>, port: u16) -> bool {
         let mut startup_event = StartupEvent::new(bind_address, port);
         startup_event.dispatch(self);
         startup_event.cancelled
+    }
+
+    pub fn on_started(&mut self, bind_address: impl Into<String>, port: u16) {
+        let mut server_started_event = ServerStartedEvent::new(bind_address, port);
+        server_started_event.dispatch(self);
     }
 
     pub fn on_shutdown(&mut self) {

@@ -22,7 +22,7 @@ impl MinecraftServer {
             .connection_manager
             .clients()
             .into_iter()
-            .map(Self::tick_connection)
+            .map(|client| self.tick_connection(client))
             .collect::<Vec<_>>();
 
         connection_tick_outcomes
@@ -141,7 +141,7 @@ impl MinecraftServer {
         Some(connection_event)
     }
 
-    fn tick_connection(client: Arc<Mutex<Client>>) -> ConnectionTickOutcome {
+    fn tick_connection(&self, client: Arc<Mutex<Client>>) -> ConnectionTickOutcome {
         let Ok(mut client) = client.lock() else {
             return ConnectionTickOutcome::Active;
         };
@@ -153,6 +153,12 @@ impl MinecraftServer {
             return ConnectionTickOutcome::TimedOut(client.addr);
         }
         if client.state != ConnectionState::Play {
+            return ConnectionTickOutcome::Active;
+        }
+        if !self
+            .world_manager
+            .player_has_entered_world_for_client_address(&client.addr)
+        {
             return ConnectionTickOutcome::Active;
         }
         let _ = client.flush_outbound_packets();

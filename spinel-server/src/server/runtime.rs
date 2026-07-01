@@ -9,10 +9,16 @@ const MAX_TICK_CATCH_UP: u32 = 5;
 impl MinecraftServer {
     pub async fn start(self, address: &str, port: u16) {
         let server_arc = Arc::new(Mutex::new(self));
-        Self::start_shared(server_arc, address, port).await;
+        loop {
+            Self::clear_shared_restart_request(&server_arc);
+            Self::start_shared(server_arc.clone(), address, port).await;
+            if !Self::shared_restart_was_requested(&server_arc) {
+                return;
+            }
+        }
     }
 
-    async fn start_shared(server_arc: Arc<Mutex<Self>>, address: &str, port: u16) {
+    pub(crate) async fn start_shared(server_arc: Arc<Mutex<Self>>, address: &str, port: u16) {
         if Self::startup_cancelled(&server_arc, address, port) {
             return;
         }
@@ -49,6 +55,19 @@ impl MinecraftServer {
         if let Ok(server) = server_arc.lock() {
             server.is_ticking.store(false, Ordering::SeqCst);
         }
+    }
+
+    fn clear_shared_restart_request(server_arc: &Arc<Mutex<Self>>) {
+        if let Ok(mut server) = server_arc.lock() {
+            server.clear_restart_request();
+        }
+    }
+
+    fn shared_restart_was_requested(server_arc: &Arc<Mutex<Self>>) -> bool {
+        server_arc
+            .lock()
+            .map(|server| server.restart_was_requested())
+            .unwrap_or(false)
     }
 
     fn run(server_arc: Arc<Mutex<Self>>) {
@@ -113,5 +132,6 @@ impl MinecraftServer {
         self.world_manager.tick(&self.registries, server_ptr);
         self.scheduler().process_tick_end();
         self.flush_outbound_packets();
+        self.process_lifecycle_request();
     }
 }

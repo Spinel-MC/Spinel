@@ -1,14 +1,16 @@
 use crate::world::anvil::region_file::RegionFile;
 use crate::world::{
     Biome, BlockEntity, BlockInstance, BlockLookupCondition, BlockPosition, Chunk, ChunkLoader,
-    ChunkPosition, ChunkSection, World, WorldPersistentTags,
+    ChunkLoaderFailure, ChunkLoaderOperation, ChunkPosition, ChunkSection, World,
+    WorldPersistentTags,
 };
 use flate2::{Compression, read::GzDecoder, write::GzEncoder};
 use spinel_nbt::{Nbt, NbtCompound, Taggable};
 use spinel_registry::{Identifier, RegistryKey};
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
 use std::fs;
-use std::io::{self, Write};
+use std::io;
+use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::{Arc, Mutex, MutexGuard};
@@ -24,6 +26,7 @@ pub struct AnvilChunkLoader {
     file_creation_lock: Mutex<()>,
     loaded_region_files: Mutex<HashMap<String, Arc<Mutex<RegionFile>>>>,
     loaded_chunks_by_region: Mutex<HashMap<(i32, i32), HashSet<(i32, i32)>>>,
+    failures: Mutex<VecDeque<ChunkLoaderFailure>>,
 }
 
 impl AnvilChunkLoader {
@@ -38,6 +41,7 @@ impl AnvilChunkLoader {
             file_creation_lock: Mutex::new(()),
             loaded_region_files: Mutex::new(HashMap::new()),
             loaded_chunks_by_region: Mutex::new(HashMap::new()),
+            failures: Mutex::new(VecDeque::new()),
         })
     }
 
@@ -104,68 +108,118 @@ impl AnvilChunkLoader {
         lock_mutex(&self.loaded_region_files)?.remove(&region_file_name);
         Ok(())
     }
+
+    fn report_failure(
+        &self,
+        operation: ChunkLoaderOperation,
+        chunk_position: Option<ChunkPosition>,
+        error: &io::Error,
+    ) {
+        let failure = ChunkLoaderFailure::new(operation, chunk_position, error.to_string());
+        match self.failures.lock() {
+            Ok(mut failures) => failures.push_back(failure),
+            Err(poisoned_failures) => poisoned_failures.into_inner().push_back(failure),
+        }
+    }
 }
 
 impl ChunkLoader for AnvilChunkLoader {
     fn load_world(&self, world: &mut World) -> io::Result<()> {
-        if !self.level_path.exists() {
-            return Ok(());
+        let load_result = (|| {
+            if !self.level_path.exists() {
+                return Ok(());
+            }
+            let level_file = fs::File::open(&self.level_path)?;
+            let mut decoder = GzDecoder::new(level_file);
+            let (_, world_nbt) = Nbt::read_from_stream(&mut decoder)?;
+            let Nbt::Compound(world_tags) = world_nbt else {
+                return Err(io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    "Anvil level.dat root must be a compound.",
+                ));
+            };
+            fs::copy(&self.level_path, self.world_directory.join("level.dat_old"))?;
+            world.tag_handler_mut().update_content(world_tags);
+            Ok(())
+        })();
+        if let Err(error) = load_result {
+            self.report_failure(ChunkLoaderOperation::LoadWorld, None, &error);
         }
-        let level_file = fs::File::open(&self.level_path)?;
-        let mut decoder = GzDecoder::new(level_file);
-        let (_, world_nbt) = Nbt::read_from_stream(&mut decoder)?;
-        let Nbt::Compound(world_tags) = world_nbt else {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "Anvil level.dat root must be a compound.",
-            ));
-        };
-        fs::copy(&self.level_path, self.world_directory.join("level.dat_old"))?;
-        world.tag_handler_mut().update_content(world_tags);
         Ok(())
     }
 
     fn save_world_tags(&self, world_tags: WorldPersistentTags) -> io::Result<()> {
-        if world_tags.is_empty() {
-            return Ok(());
+        let save_result = (|| {
+            if world_tags.is_empty() {
+                return Ok(());
+            }
+            fs::create_dir_all(&self.world_directory)?;
+            let level_file = fs::File::create(&self.level_path)?;
+            let mut encoder = GzEncoder::new(level_file, Compression::default());
+            Nbt::Compound(world_tags.into_compound()).write("", &mut encoder)?;
+            encoder.finish()?;
+            Ok(())
+        })();
+        if let Err(error) = save_result {
+            self.report_failure(ChunkLoaderOperation::SaveWorld, None, &error);
         }
-        fs::create_dir_all(&self.world_directory)?;
-        let level_file = fs::File::create(&self.level_path)?;
-        let mut encoder = GzEncoder::new(level_file, Compression::default());
-        Nbt::Compound(world_tags.into_compound()).write("", &mut encoder)?;
-        encoder.finish()?;
         Ok(())
     }
+
     fn load_chunk(&self, position: ChunkPosition) -> io::Result<Option<Chunk>> {
-        if !self.world_directory.exists() {
-            return Ok(None);
+        let load_result = catch_unwind(AssertUnwindSafe(|| {
+            if !self.world_directory.exists() {
+                return Ok(None);
+            }
+            let Some(region_file) = self.get_region_file(position, RegionFileCreation::Existing)?
+            else {
+                return Ok(None);
+            };
+            let Some(chunk_data) =
+                lock_mutex(&region_file)?.read_chunk_data(position.x, position.z)?
+            else {
+                return Ok(None);
+            };
+            let chunk = decode_chunk(position, chunk_data)?;
+            self.record_loaded_chunk(position)?;
+            Ok(Some(chunk))
+        }));
+        match load_result {
+            Ok(Ok(chunk)) => Ok(chunk),
+            Ok(Err(error)) => {
+                self.report_failure(ChunkLoaderOperation::LoadChunk, Some(position), &error);
+                Ok(None)
+            }
+            Err(panic_payload) => {
+                let error = io::Error::other(anvil_panic_message(panic_payload));
+                self.report_failure(ChunkLoaderOperation::LoadChunk, Some(position), &error);
+                Ok(None)
+            }
         }
-        let Some(region_file) = self.get_region_file(position, RegionFileCreation::Existing)?
-        else {
-            return Ok(None);
-        };
-        let Some(chunk_data) = lock_mutex(&region_file)?.read_chunk_data(position.x, position.z)?
-        else {
-            return Ok(None);
-        };
-        let chunk = decode_chunk(position, chunk_data)?;
-        self.record_loaded_chunk(position)?;
-        Ok(Some(chunk))
     }
 
     fn save_chunk(&self, chunk: &Chunk) -> io::Result<()> {
         let position = ChunkPosition::from(chunk);
-        let region_file = self
-            .get_region_file(position, RegionFileCreation::Create)?
-            .ok_or_else(|| io::Error::other("Anvil region file was not opened."))?;
-        lock_mutex(&region_file)?.write_chunk_data(position.x, position.z, chunk_nbt(chunk))?;
-        self.record_loaded_chunk(position)
+        let save_result = (|| {
+            let region_file = self
+                .get_region_file(position, RegionFileCreation::Create)?
+                .ok_or_else(|| io::Error::other("Anvil region file was not opened."))?;
+            lock_mutex(&region_file)?.write_chunk_data(position.x, position.z, chunk_nbt(chunk))?;
+            self.record_loaded_chunk(position)
+        })();
+        if let Err(error) = save_result {
+            self.report_failure(ChunkLoaderOperation::SaveChunk, Some(position), &error);
+        }
+        Ok(())
     }
 
     fn unload_chunk(&self, chunk: &mut Chunk) -> io::Result<()> {
         let position = ChunkPosition::from(&*chunk);
         chunk.unload();
-        self.unload_region_if_empty(position)
+        if let Err(error) = self.unload_region_if_empty(position) {
+            self.report_failure(ChunkLoaderOperation::UnloadChunk, Some(position), &error);
+        }
+        Ok(())
     }
 
     fn supports_parallel_loading(&self) -> bool {
@@ -175,6 +229,13 @@ impl ChunkLoader for AnvilChunkLoader {
     fn supports_parallel_saving(&self) -> bool {
         true
     }
+
+    fn drain_failures(&self) -> Vec<ChunkLoaderFailure> {
+        match self.failures.lock() {
+            Ok(mut failures) => failures.drain(..).collect(),
+            Err(poisoned_failures) => poisoned_failures.into_inner().drain(..).collect(),
+        }
+    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -183,6 +244,15 @@ enum RegionFileCreation {
     Create,
 }
 
+fn anvil_panic_message(panic_payload: Box<dyn std::any::Any + Send>) -> String {
+    if let Some(message) = panic_payload.downcast_ref::<String>() {
+        return message.clone();
+    }
+    if let Some(message) = panic_payload.downcast_ref::<&'static str>() {
+        return (*message).to_string();
+    }
+    "Anvil chunk loading panicked without a string message.".to_string()
+}
 fn decode_chunk(position: ChunkPosition, mut chunk_data: NbtCompound) -> io::Result<Chunk> {
     let mut chunk = Chunk::new_with_generation(position, false);
     if chunk_has_full_status(&chunk_data) {

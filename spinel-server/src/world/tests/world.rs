@@ -932,7 +932,7 @@ fn stored_chunk_skips_generation_and_generation_callback() {
 }
 
 #[test]
-fn enter_player_loads_the_initial_spawn_view_without_one_chunk_per_tick_throttling() {
+fn enter_player_queues_the_initial_spawn_view_without_blocking_on_chunk_loads() {
     let generation_callback_count = Arc::new(AtomicUsize::new(0));
     let registries = Registries::new_vanilla();
     let (mut client, _peer_stream) = test_client_pair();
@@ -954,9 +954,14 @@ fn enter_player_loads_the_initial_spawn_view_without_one_chunk_per_tick_throttli
         .len();
 
     world.enter_player(&mut client, 20, &registries).unwrap();
-    world.tick_with_registries(&registries);
 
-    assert_eq!(world.chunks().count(), initial_spawn_chunk_count);
+    assert!(
+        world
+            .player_by_addr(&client.addr)
+            .unwrap()
+            .has_entered_world()
+    );
+    assert!(world.chunks().count() < initial_spawn_chunk_count);
 }
 
 #[test]

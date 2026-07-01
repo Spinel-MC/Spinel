@@ -2,6 +2,7 @@ pub use spinel_events::*;
 
 pub mod add_entity_to_world;
 pub mod advancement_tab;
+pub mod chunk_loader_error;
 pub mod connection;
 pub mod creative_inventory_action;
 pub mod disconnection;
@@ -96,6 +97,7 @@ pub mod projectile_collide_with_entity;
 pub mod projectile_uncollide;
 pub mod remove_entity_from_world;
 pub mod server_list_ping;
+pub mod server_started;
 pub mod shutdown;
 pub mod signal;
 pub mod startup;

@@ -58,7 +58,9 @@ fn command_manager_declares_default_executor_literal_as_executable() {
 #[test]
 fn command_manager_declares_empty_syntax_literal_as_executable() {
     let mut command_manager = CommandManager::new();
-    command_manager.register(Command::new("restart").with_syntax(unused_executor, Vec::new()));
+    command_manager.register(
+        Command::new("restart").with_syntax(unused_executor, Vec::<CommandArgument>::new()),
+    );
 
     let commands_packet = command_manager.declare_commands_packet();
     let command_node = root_command_node(&commands_packet, "restart");

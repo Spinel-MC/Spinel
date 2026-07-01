@@ -1,8 +1,8 @@
 use crate::entity::metadata::{
     AxolotlVariant, CopperGolemState, CopperGolemWeatherState, CreeperState, EntityMetaCast,
-    FoxVariant, HorseVariant, LlamaVariant, MetadataHolder, MooshroomVariant, PandaGene,
-    ParrotColor, PufferfishState, RabbitVariant, SalmonSize, SnifferState, SpellcasterIllagerSpell,
-    TropicalFishPattern, TropicalFishVariant, VillagerData, definitions,
+    EntityMetaRef, FoxVariant, HorseVariant, LlamaVariant, MetadataHolder, MooshroomVariant,
+    PandaGene, ParrotColor, PufferfishState, RabbitVariant, SalmonSize, SnifferState,
+    SpellcasterIllagerSpell, TropicalFishPattern, TropicalFishVariant, VillagerData, definitions,
 };
 use crate::entity::physics::{
     EntityMovement, EntityMovementPacket, EntityPhysicsResult, knockback_velocity,
@@ -242,6 +242,10 @@ impl GenericEntity {
 
     pub const fn get_metadata_mut(&mut self) -> &mut MetadataHolder {
         &mut self.metadata
+    }
+
+    pub const fn get_entity_meta(&self) -> EntityMetaRef<'_> {
+        EntityMetaRef::new(self)
     }
 
     pub fn get_entity_meta_mut(&mut self) -> EntityMetaCast<'_> {
@@ -2454,23 +2458,6 @@ impl GenericEntity {
         self.metadata.set(
             &definitions::phantom::get_size(),
             MetadataValue::VarInt(size),
-        );
-    }
-
-    pub(crate) fn get_guardian_target_entity_id(&self) -> i32 {
-        match self
-            .metadata
-            .get_value(&definitions::guardian::get_target_entity_id())
-        {
-            MetadataValue::VarInt(entity_id) => entity_id,
-            _ => 0,
-        }
-    }
-
-    pub(crate) fn set_guardian_target_entity_id(&mut self, entity_id: i32) {
-        self.metadata.set(
-            &definitions::guardian::get_target_entity_id(),
-            MetadataValue::VarInt(entity_id),
         );
     }
 

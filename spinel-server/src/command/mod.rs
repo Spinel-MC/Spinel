@@ -1,4 +1,5 @@
 mod argument;
+mod argument_facade;
 mod argument_type;
 mod callback;
 mod command;
@@ -19,6 +20,7 @@ pub use argument::{
     CommandArgument, CommandArgumentKind, CommandArgumentValue, CoordinateType, RelativeCoordinate,
     RelativeVec3,
 };
+pub use argument_facade::ArgumentType;
 pub use callback::{ArgumentCallback, ArgumentSyntaxException};
 pub use command::{Command, CommandExecutor, GlobalCommandListener};
 pub use condition::{CommandCondition, CommandConditionContext};

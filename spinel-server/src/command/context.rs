@@ -63,6 +63,10 @@ impl CommandContext {
         self.raw_arguments.get(argument_id).map(String::as_str)
     }
 
+    pub fn get(&self, argument_id: &str) -> Option<&CommandArgumentValue> {
+        self.arguments.get(argument_id)
+    }
+
     pub fn string(&self, argument_id: &str) -> Option<&str> {
         match self.arguments.get(argument_id) {
             Some(CommandArgumentValue::String(value)) => Some(value.as_str()),

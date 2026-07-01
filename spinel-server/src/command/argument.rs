@@ -13,6 +13,7 @@ pub struct CommandArgument {
     suggestion_callback: Option<SuggestionCallback>,
     suggestion_type: Option<SuggestionType>,
     registry_identifier: Option<String>,
+    entity_selector_flags: u8,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -66,6 +67,7 @@ impl CommandArgument {
             suggestion_callback: None,
             suggestion_type: Some(SuggestionType::SummonableEntities),
             registry_identifier: None,
+            entity_selector_flags: 0,
         }
     }
 
@@ -87,6 +89,7 @@ impl CommandArgument {
             suggestion_callback: None,
             suggestion_type: None,
             registry_identifier: None,
+            entity_selector_flags: 0,
         }
     }
 
@@ -108,6 +111,7 @@ impl CommandArgument {
             suggestion_callback: None,
             suggestion_type: None,
             registry_identifier: None,
+            entity_selector_flags: 0,
         }
     }
 
@@ -129,6 +133,7 @@ impl CommandArgument {
             suggestion_callback: None,
             suggestion_type: None,
             registry_identifier: None,
+            entity_selector_flags: 0,
         }
     }
 
@@ -151,6 +156,7 @@ impl CommandArgument {
             suggestion_callback: None,
             suggestion_type: None,
             registry_identifier: Some(registry_identifier.into()),
+            entity_selector_flags: 0,
         }
     }
 
@@ -163,6 +169,7 @@ impl CommandArgument {
             suggestion_callback: None,
             suggestion_type: None,
             registry_identifier: None,
+            entity_selector_flags: 0,
         }
     }
 
@@ -175,6 +182,7 @@ impl CommandArgument {
             suggestion_callback: None,
             suggestion_type: None,
             registry_identifier: None,
+            entity_selector_flags: 0,
         }
     }
 
@@ -209,6 +217,11 @@ impl CommandArgument {
     pub fn set_suggestion_callback(&mut self, callback: SuggestionCallback) -> &mut Self {
         self.suggestion_callback = Some(callback);
         self.suggestion_type = Some(SuggestionType::AskServer);
+        self
+    }
+
+    pub fn set_entity_selector_flags(&mut self, flags: u8) -> &mut Self {
+        self.entity_selector_flags = flags;
         self
     }
 
@@ -289,7 +302,7 @@ impl CommandArgument {
             CommandArgumentKind::Parser {
                 parser: ArgumentParserType::Entity,
                 ..
-            } => vec![0],
+            } => vec![self.entity_selector_flags],
             CommandArgumentKind::Parser {
                 parser: ArgumentParserType::Time,
                 ..
