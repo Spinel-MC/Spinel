@@ -7,6 +7,9 @@ pub mod play;
 pub mod socket;
 pub mod status;
 
+pub use crate::server::{
+    GlobalPacketHandler, PacketHandler, PacketHandlerEntry, ServerPacketHandler,
+};
 pub use client::instance::Client;
 pub use spinel_network::types::{
     Array, Position, Slot, VarInt, VarLong, chunk::ChunkData, light::LightData,

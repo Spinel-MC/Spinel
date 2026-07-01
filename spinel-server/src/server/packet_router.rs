@@ -91,10 +91,20 @@ impl PacketRouter {
             Some(payload) => payload,
             None => return true,
         };
-        if assigned_packet_listeners.is_empty() && generic_packet_listeners.is_empty() {
+        let has_registered_packet_handlers = server
+            .global_packet_handler
+            .has_listener_for(client.state, packet_id);
+        if assigned_packet_listeners.is_empty()
+            && generic_packet_listeners.is_empty()
+            && !has_registered_packet_handlers
+        {
             return true;
         }
         client.payload_cursor = Some(Cursor::new(payload));
+
+        server
+            .global_packet_handler
+            .dispatch(client, packet_id, server_pointer);
 
         for packet_listener in assigned_packet_listeners {
             if let Some(payload_cursor) = client.payload_cursor.as_mut() {

@@ -10,7 +10,7 @@ use crate::network::connection_manager::ConnectionManager;
 use crate::registry_cache::RegistryCache;
 use crate::scheduler::{Scheduler, Task, TaskSchedule};
 use crate::server::packet_router::PacketRouter;
-use crate::server::{EventHandler, GlobalEventHandler};
+use crate::server::{EventHandler, GlobalEventHandler, GlobalPacketHandler, PacketHandler};
 use crate::world::WorldManager;
 use spinel_network::ConnectionState;
 use spinel_network::types::ClientInformation;
@@ -37,6 +37,7 @@ pub struct MinecraftServer {
     scheduler: Scheduler,
     packet_router: PacketRouter,
     pub(crate) global_event_handler: GlobalEventHandler,
+    pub(crate) global_packet_handler: GlobalPacketHandler,
 }
 
 impl MinecraftServer {
@@ -59,6 +60,7 @@ impl MinecraftServer {
             scheduler: Scheduler::new(),
             packet_router: PacketRouter::new(),
             global_event_handler: GlobalEventHandler::new(),
+            global_packet_handler: GlobalPacketHandler::new(),
         }
     }
 
@@ -72,6 +74,14 @@ impl MinecraftServer {
 
     pub fn register_event_handler(&mut self, event_handler: impl EventHandler) {
         event_handler.register_event_handlers(&mut self.global_event_handler);
+    }
+
+    pub fn get_global_packet_handler(&mut self) -> &mut GlobalPacketHandler {
+        &mut self.global_packet_handler
+    }
+
+    pub fn register_packet_handler(&mut self, packet_handler: impl PacketHandler) {
+        packet_handler.register_packet_handlers(&mut self.global_packet_handler);
     }
 
     pub fn schedule_next_tick(&mut self, callback: impl FnMut() + Send + 'static) -> Task {
@@ -163,6 +173,9 @@ impl MinecraftServer {
 
     pub fn has_listener_for(&self, packet_id: i32, state: &ConnectionState) -> bool {
         self.packet_router.has_listener_for(packet_id, state)
+            || self
+                .global_packet_handler
+                .has_listener_for(*state, packet_id)
     }
 
     pub fn has_codec_for(&self, packet_id: i32, state: ConnectionState) -> bool {

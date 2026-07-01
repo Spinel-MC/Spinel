@@ -91,7 +91,20 @@ pub fn packet_dispatcher(attr: TokenStream, item: TokenStream) -> TokenStream {
 
 #[proc_macro_attribute]
 pub fn packet_listener(attr: TokenStream, item: TokenStream) -> TokenStream {
-    let input_fn = parse_macro_input!(item as ItemFn);
+    let parsed_item = parse_macro_input!(item as Item);
+    match parsed_item {
+        Item::Fn(input_fn) => function_packet_listener(attr, input_fn),
+        Item::Impl(input_impl) => server::packet::handler::generate(input_impl).into(),
+        invalid_item => syn::Error::new_spanned(
+            invalid_item,
+            "#[packet_listener] can only be used on a function or impl block",
+        )
+        .to_compile_error()
+        .into(),
+    }
+}
+
+fn function_packet_listener(attr: TokenStream, input_fn: ItemFn) -> TokenStream {
     let packet_attrs = parse_macro_input!(attr as AttrsParser);
     let context_arg = input_fn
         .sig
@@ -130,6 +143,11 @@ pub fn packet_listener(attr: TokenStream, item: TokenStream) -> TokenStream {
         client::packet::listener::generate(packet_attrs, input_fn, *context_type, *connection_type)
             .into()
     }
+}
+
+#[proc_macro_attribute]
+pub fn packet_handler(_attr: TokenStream, item: TokenStream) -> TokenStream {
+    item
 }
 
 #[proc_macro]
