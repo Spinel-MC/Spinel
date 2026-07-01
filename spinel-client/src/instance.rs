@@ -620,3 +620,7 @@ impl Default for MinecraftClient {
         Self::new()
     }
 }
+
+impl<E: spinel_events::Event + 'static> spinel_events::EventContext<E> for MinecraftClient {
+    fn dispatch_registered_event(&mut self, _event: &mut E) {}
+}

@@ -69,11 +69,15 @@ pub fn event_dispatcher_logic(attr: TokenStream, item: TokenStream) -> TokenStre
         quote! {}
     };
 
-    let dispatch_fn_header =
-        quote! { pub #async_keyword fn dispatch<C>(&mut self, context: &mut C, #connection_param) };
+    let dispatch_fn_header = quote! {
+        pub #async_keyword fn dispatch<C>(&mut self, context: &mut C, #connection_param)
+        where
+            C: #event_lib_path::EventContext<Self>,
+    };
 
     let dispatch_body = quote! {
         #setup_connection_ptr
+        context.dispatch_registered_event(self);
 
         fn resolve_ambiguous_module(
             unqualified_name: &str,

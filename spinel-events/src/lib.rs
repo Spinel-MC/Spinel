@@ -6,6 +6,10 @@ pub trait Event {
     const NAME: &'static str;
 }
 
+pub trait EventContext<E: Event + 'static> {
+    fn dispatch_registered_event(&mut self, event: &mut E);
+}
+
 pub struct ListenerFn {
     pub call: fn(event: *mut (), server: *mut ()),
 }

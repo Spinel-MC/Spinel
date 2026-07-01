@@ -4,7 +4,7 @@ mod server;
 
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{FnArg, ItemFn, PatType, Type, parse_macro_input};
+use syn::{FnArg, Item, ItemFn, PatType, Type, parse_macro_input};
 
 use common::parsers::{AttrsParser, EventAttrParser};
 
@@ -17,7 +17,20 @@ pub fn event_dispatcher(attr: TokenStream, item: TokenStream) -> TokenStream {
 
 #[proc_macro_attribute]
 pub fn event_listener(attr: TokenStream, item: TokenStream) -> TokenStream {
-    let input_fn = parse_macro_input!(item as ItemFn);
+    let parsed_item = parse_macro_input!(item as Item);
+    match parsed_item {
+        Item::Fn(input_fn) => function_event_listener(attr, input_fn),
+        Item::Impl(input_impl) => server::event_handler::generate(input_impl).into(),
+        invalid_item => syn::Error::new_spanned(
+            invalid_item,
+            "#[event_listener] can only be used on a function or impl block",
+        )
+        .to_compile_error()
+        .into(),
+    }
+}
+
+fn function_event_listener(attr: TokenStream, input_fn: ItemFn) -> TokenStream {
     let event_attrs = parse_macro_input!(attr as EventAttrParser);
 
     // Determine context based on the second argument (context arg)
@@ -58,6 +71,11 @@ pub fn event_listener(attr: TokenStream, item: TokenStream) -> TokenStream {
     } else {
         client::event::generate(event_attrs, input_fn, event_struct_full_path, *context_type).into()
     }
+}
+
+#[proc_macro_attribute]
+pub fn event_handler(_attr: TokenStream, item: TokenStream) -> TokenStream {
+    item
 }
 
 #[proc_macro_attribute]

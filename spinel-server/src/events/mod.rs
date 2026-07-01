@@ -1,3 +1,4 @@
+pub use crate::server::{EventHandler, EventHandlerEntry, GlobalEventHandler, ServerEventHandler};
 pub use spinel_events::*;
 
 pub mod add_entity_to_world;

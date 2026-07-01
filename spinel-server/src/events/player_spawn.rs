@@ -19,15 +19,27 @@ impl PlayerSpawnEvent {
         }
     }
 
-    pub fn player(&mut self) -> &mut Player {
+    pub fn get_player(&mut self) -> &mut Player {
         unsafe { &mut *self.player }
     }
 
-    pub fn world(&mut self) -> &mut World {
+    pub fn get_world(&mut self) -> &mut World {
         unsafe { &mut *self.world }
     }
 
-    pub fn first_spawn(&self) -> bool {
+    pub fn is_first_spawn(&self) -> bool {
         self.first_spawn
+    }
+
+    pub fn player(&mut self) -> &mut Player {
+        self.get_player()
+    }
+
+    pub fn world(&mut self) -> &mut World {
+        self.get_world()
+    }
+
+    pub fn first_spawn(&self) -> bool {
+        self.is_first_spawn()
     }
 }

@@ -10,6 +10,7 @@ use crate::network::connection_manager::ConnectionManager;
 use crate::registry_cache::RegistryCache;
 use crate::scheduler::{Scheduler, Task, TaskSchedule};
 use crate::server::packet_router::PacketRouter;
+use crate::server::{EventHandler, GlobalEventHandler};
 use crate::world::WorldManager;
 use spinel_network::ConnectionState;
 use spinel_network::types::ClientInformation;
@@ -35,6 +36,7 @@ pub struct MinecraftServer {
     pub enforce_entity_interaction_range: bool,
     scheduler: Scheduler,
     packet_router: PacketRouter,
+    pub(crate) global_event_handler: GlobalEventHandler,
 }
 
 impl MinecraftServer {
@@ -56,11 +58,20 @@ impl MinecraftServer {
             enforce_entity_interaction_range: true,
             scheduler: Scheduler::new(),
             packet_router: PacketRouter::new(),
+            global_event_handler: GlobalEventHandler::new(),
         }
     }
 
     pub fn scheduler(&mut self) -> &mut Scheduler {
         &mut self.scheduler
+    }
+
+    pub fn get_global_event_handler(&mut self) -> &mut GlobalEventHandler {
+        &mut self.global_event_handler
+    }
+
+    pub fn register_event_handler(&mut self, event_handler: impl EventHandler) {
+        event_handler.register_event_handlers(&mut self.global_event_handler);
     }
 
     pub fn schedule_next_tick(&mut self, callback: impl FnMut() + Send + 'static) -> Task {
