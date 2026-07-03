@@ -5,10 +5,12 @@ use spinel_registry::EntityType;
 
 #[test]
 fn world_border_and_entity_collision_reject_block_placement_like_minestom() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
-    world
-        .set_world_border(WorldBorder::new(4.0, 0.0, 0.0, 0, 0, 4).unwrap())
-        .unwrap();
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
+    world.set_world_border(WorldBorder::new(4.0, 0.0, 0.0, 0, 0, 4).unwrap());
     let mut entity = GenericEntity::new(EntityType::ZOMBIE);
     entity.set_position(EntityPosition::new(0.5, 64.0, 0.5, 0.0, 0.0));
 
@@ -22,7 +24,11 @@ fn world_border_and_entity_collision_reject_block_placement_like_minestom() {
 }
 #[test]
 fn flush_entity_top_does_not_reject_block_placement_above_it() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let mut entity = GenericEntity::new(EntityType::ZOMBIE);
     entity.set_position(EntityPosition::new(0.5, 64.05, 0.5, 0.0, 0.0));
     entity.set_bounding_box_dimensions(0.6, 1.95, 0.6);

@@ -26,7 +26,11 @@ use uuid::Uuid;
 
 #[test]
 fn manual_viewer_add_requires_an_active_entity_and_rejects_self_view() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let inactive_entity = Entity::new(EntityType::ZOMBIE);
     let inactive_entity_id = inactive_entity.get_entity_id();
     let mut viewer_client = queued_client();
@@ -46,7 +50,11 @@ fn manual_viewer_add_requires_an_active_entity_and_rejects_self_view() {
 
 #[test]
 fn manual_viewer_add_and_remove_match_minestom_packets_and_no_op_edges() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let mut viewer_client = queued_client();
     let viewer = entered_player(&mut viewer_client, "Viewer");
     let viewer_id = viewer.get_entity_id();
@@ -114,7 +122,11 @@ fn manual_viewer_add_and_remove_match_minestom_packets_and_no_op_edges() {
 
 #[test]
 fn viewable_rule_update_refreshes_automatic_visibility_immediately() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let mut viewer_client = queued_client();
     let viewer = entered_player(&mut viewer_client, "Viewer");
     let viewer_id = viewer.get_entity_id();
@@ -170,7 +182,11 @@ fn viewable_rule_update_refreshes_automatic_visibility_immediately() {
 
 #[test]
 fn viewer_rule_update_refreshes_player_automatic_visibility_immediately() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let mut viewer_client = queued_client();
     let viewer = entered_player(&mut viewer_client, "Viewer");
     let viewer_id = viewer.get_entity_id();
@@ -226,7 +242,11 @@ fn viewer_rule_update_refreshes_player_automatic_visibility_immediately() {
 
 #[test]
 fn automatic_visibility_removes_stale_viewer_relationship_after_entity_moves_out_of_range() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let mut viewer_client = queued_client();
     let viewer = entered_player(&mut viewer_client, "Viewer");
     let target = Entity::new(EntityType::ZOMBIE);
@@ -269,7 +289,11 @@ fn automatic_visibility_removes_stale_viewer_relationship_after_entity_moves_out
 
 #[test]
 fn player_spawn_snapshot_sends_living_packets_in_minestom_order() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let mut viewer_client = queued_client();
     let viewer = entered_player(&mut viewer_client, "Viewer");
     let mut target = entered_player_without_client("Target");
@@ -305,7 +329,11 @@ fn player_spawn_snapshot_sends_living_packets_in_minestom_order() {
 
 #[test]
 fn vanished_player_refresh_removes_player_info_before_entity_removal() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let mut viewer_client = queued_client();
     let viewer = entered_player(&mut viewer_client, "Viewer");
     let target = entered_player_without_client("Target");
@@ -329,7 +357,11 @@ fn vanished_player_refresh_removes_player_info_before_entity_removal() {
 
 #[test]
 fn skin_refresh_replays_player_to_current_viewers_only() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let mut viewer_client = queued_client();
     let mut far_client = queued_client();
     let viewer = entered_player(&mut viewer_client, "Viewer");
@@ -372,7 +404,11 @@ fn skin_refresh_replays_player_to_current_viewers_only() {
 
 #[test]
 fn add_entity_defers_spawn_packets_until_pending_visibility_refresh() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let mut viewer_client = queued_client();
     let viewer = entered_player(&mut viewer_client, "Viewer");
     let target = Entity::new(EntityType::ZOMBIE);
@@ -403,7 +439,11 @@ fn add_entity_defers_spawn_packets_until_pending_visibility_refresh() {
 
 #[test]
 fn joining_player_receives_existing_generic_entity_replay_packets() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let mut target = Entity::new(EntityType::ZOMBIE);
     target.set_position(EntityPosition::new(1.0, 64.0, 1.0, 0.0, 0.0));
     let target_id = target.get_entity_id();
@@ -427,7 +467,11 @@ fn joining_player_receives_existing_generic_entity_replay_packets() {
 
 #[test]
 fn second_player_receives_first_player_relative_movement_packet() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let mut moving_client = queued_client();
     let mut viewer_client = queued_client();
     let mut moving_player = entered_player(&mut moving_client, "Moving");
@@ -472,7 +516,11 @@ fn second_player_receives_first_player_relative_movement_packet() {
 
 #[test]
 fn tracker_scopes_chunk_and_entity_packets_to_actual_viewers() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let mut viewer_client = queued_client();
     let mut far_client = queued_client();
     let mut viewer = entered_player(&mut viewer_client, "Viewer");

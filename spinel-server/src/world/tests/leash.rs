@@ -12,7 +12,11 @@ use uuid::Uuid;
 
 #[test]
 fn set_leash_holder_updates_both_sides_and_sends_attach_packet() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let mut viewer_client = queued_client();
     let viewer = entered_player(&mut viewer_client);
     let holder = GenericEntity::new(EntityType::PIG);
@@ -64,7 +68,11 @@ fn set_leash_holder_updates_both_sides_and_sends_attach_packet() {
 
 #[test]
 fn removing_a_leash_holder_detaches_every_leashed_entity() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let holder = GenericEntity::new(EntityType::PIG);
     let holder_id = holder.get_entity_id();
     let leashed = GenericEntity::new(EntityType::COW);
@@ -83,7 +91,11 @@ fn removing_a_leash_holder_detaches_every_leashed_entity() {
 
 #[test]
 fn viewer_spawn_and_removal_emit_leash_attach_and_detach_side_effects() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let mut viewer_client = queued_client();
     let viewer = entered_player(&mut viewer_client);
     let holder = GenericEntity::new(EntityType::PIG);

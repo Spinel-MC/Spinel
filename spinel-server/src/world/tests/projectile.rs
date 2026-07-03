@@ -94,7 +94,11 @@ fn projectile_shoot_event_can_mutate_power_and_cancel_the_shot() {
     reset_projectile_event_state();
     let mut server = MinecraftServer::new();
     let server_ptr = &mut server as *mut MinecraftServer as usize;
-    let mut world = World::new(Identifier::minecraft("projectile_shoot"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("projectile_shoot"),
+    );
     world.use_server_event_dispatcher(server_ptr);
     let mut shooter = GenericEntity::new(EntityType::ZOMBIE);
     shooter.set_position(EntityPosition::new(0.0, 64.0, 0.0, 0.0, 0.0));
@@ -143,7 +147,11 @@ fn projectile_tick_samples_its_path_and_sticks_in_a_solid_block() {
     reset_projectile_event_state();
     let mut server = MinecraftServer::new();
     let server_ptr = &mut server as *mut MinecraftServer as usize;
-    let mut world = World::new(Identifier::minecraft("projectile_collision"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("projectile_collision"),
+    );
     world.use_server_event_dispatcher(server_ptr);
     world
         .set_block(BlockPosition::new(1, 64, 0), Block::STONE)
@@ -195,7 +203,11 @@ fn shared_projectile_collision_listener_can_cancel_concrete_block_collision() {
     reset_projectile_event_state();
     let mut server = MinecraftServer::new();
     let server_ptr = &mut server as *mut MinecraftServer as usize;
-    let mut world = World::new(Identifier::minecraft("shared_projectile_collision"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("shared_projectile_collision"),
+    );
     world.use_server_event_dispatcher(server_ptr);
     world
         .set_block(BlockPosition::new(1, 64, 0), Block::STONE)
@@ -232,7 +244,11 @@ fn stuck_projectile_uncollides_after_its_block_is_removed() {
     reset_projectile_event_state();
     let mut server = MinecraftServer::new();
     let server_ptr = &mut server as *mut MinecraftServer as usize;
-    let mut world = World::new(Identifier::minecraft("projectile_uncollision"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("projectile_uncollision"),
+    );
     world.use_server_event_dispatcher(server_ptr);
     let collision_block = BlockPosition::new(1, 64, 0);
     world.set_block(collision_block, Block::STONE).unwrap();
@@ -274,7 +290,11 @@ fn projectile_tick_emits_entity_collision_for_living_targets() {
     reset_projectile_event_state();
     let mut server = MinecraftServer::new();
     let server_ptr = &mut server as *mut MinecraftServer as usize;
-    let mut world = World::new(Identifier::minecraft("projectile_entity_collision"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("projectile_entity_collision"),
+    );
     world.use_server_event_dispatcher(server_ptr);
     world
         .load_chunk(crate::world::ChunkPosition::new(0, 0))

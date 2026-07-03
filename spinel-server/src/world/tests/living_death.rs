@@ -34,7 +34,11 @@ fn living_death_listener(event: &mut EntityDeathEvent, _server: &mut MinecraftSe
 
 #[test]
 fn world_kill_entity_sends_death_status_and_applies_generic_death_state_once() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let mut viewer_client = queued_client();
     let mut viewer = Player::new(
         Uuid::new_v4(),
@@ -98,7 +102,11 @@ fn world_kill_entity_dispatches_entity_death_event_after_living_state_changes() 
 
 #[test]
 fn world_kill_entity_applies_player_dying_pose_and_dead_state_once() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let player = Player::new(
         Uuid::new_v4(),
         "DeathPlayer".to_owned(),
@@ -120,7 +128,7 @@ fn server_with_living_entity() -> MinecraftServer {
     let mut server = MinecraftServer::new();
     let world_uuid = server
         .world_manager
-        .create_world(Identifier::minecraft("overworld"));
+        .create_world(spinel_registry::dimension_type::DimensionType::OVERWORLD);
     server
         .world_manager
         .world_mut(world_uuid)

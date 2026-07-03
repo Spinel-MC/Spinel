@@ -5,7 +5,7 @@ use crate::server::MinecraftServer;
 use spinel_core::network::clientbound::play::entity_velocity::EntityVelocityPacket;
 use spinel_macros::event_listener;
 use spinel_network::ConnectionState;
-use spinel_network::types::{Identifier, Vector3d, Velocity};
+use spinel_network::types::{Vector3d, Velocity};
 use spinel_registry::EntityType;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr, TcpListener};
 use std::sync::Mutex;
@@ -127,7 +127,7 @@ fn world_set_player_velocity_sends_packet_to_the_player() {
     let mut server = MinecraftServer::new();
     let world_uuid = server
         .world_manager
-        .create_world(Identifier::minecraft("overworld"));
+        .create_world(spinel_registry::dimension_type::DimensionType::OVERWORLD);
     let mut player_client = Box::new(queued_client());
     let mut player = Player::new(
         Uuid::new_v4(),
@@ -169,7 +169,7 @@ fn velocity_server() -> (MinecraftServer, Box<Client>, EntityId) {
     let mut server = MinecraftServer::new();
     let world_uuid = server
         .world_manager
-        .create_world(Identifier::minecraft("overworld"));
+        .create_world(spinel_registry::dimension_type::DimensionType::OVERWORLD);
     let mut viewer_client = Box::new(queued_client());
     let mut viewer = Player::new(
         Uuid::new_v4(),

@@ -24,7 +24,11 @@ fn living_pickup_listener(event: &mut PickupItemEvent, _server: &mut MinecraftSe
 
 #[test]
 fn generic_living_pickup_refreshes_cooldown_sends_removal_and_unregisters_item() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let living_entity = positioned_living_entity();
     let living_entity_id = living_entity.get_entity_id();
     let item_entity = positioned_item_entity();
@@ -58,7 +62,7 @@ fn cancelled_living_pickup_preserves_item_entity() {
     let mut server = MinecraftServer::new();
     let world_uuid = server
         .world_manager
-        .create_world(Identifier::minecraft("overworld"));
+        .create_world(spinel_registry::dimension_type::DimensionType::OVERWORLD);
     let server_ptr = &mut server as *mut MinecraftServer as usize;
     let world = server.world_manager.world_mut(world_uuid).unwrap();
     world.use_server_event_dispatcher(server_ptr);
@@ -76,7 +80,11 @@ fn cancelled_living_pickup_preserves_item_entity() {
 
 #[test]
 fn player_pickup_rejects_item_not_visible_to_player() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let player = positioned_player(25565);
     let item_entity = positioned_item_entity();
     let item_entity_id = item_entity.get_entity_id();
@@ -90,7 +98,11 @@ fn player_pickup_rejects_item_not_visible_to_player() {
 
 #[test]
 fn player_pickup_sends_collect_packet_and_removes_visible_item() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let mut viewer_client = queued_client();
     let mut player = positioned_player(viewer_client.addr.port());
     player.set_client(&mut viewer_client);

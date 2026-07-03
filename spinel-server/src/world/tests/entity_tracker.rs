@@ -7,7 +7,11 @@ use uuid::Uuid;
 
 #[test]
 fn tracker_registration_indexes_players_and_generic_entities() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let player = Player::new(
         Uuid::new_v4(),
         "TrackerPlayer".to_string(),
@@ -51,7 +55,11 @@ fn tracker_registration_indexes_players_and_generic_entities() {
 
 #[test]
 fn tracker_movement_updates_chunk_membership() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let entity = positioned_entity(EntityType::ZOMBIE, 1.0, 64.0, 1.0);
     let entity_id = entity.get_entity_id();
 
@@ -68,7 +76,11 @@ fn tracker_movement_updates_chunk_membership() {
 
 #[test]
 fn nearby_entity_queries_filter_by_distance() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let near_entity = positioned_entity(EntityType::ZOMBIE, 3.0, 64.0, 4.0);
     let near_entity_id = near_entity.get_entity_id();
     let far_entity = positioned_entity(EntityType::ZOMBIE, 40.0, 64.0, 40.0);
@@ -85,7 +97,11 @@ fn nearby_entity_queries_filter_by_distance() {
 
 #[test]
 fn chunk_range_queries_include_entities_in_chunk_square() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let center_entity = positioned_entity(EntityType::ZOMBIE, 1.0, 64.0, 1.0);
     let adjacent_entity = positioned_entity(EntityType::ZOMBIE, 18.0, 64.0, 1.0);
     let outside_entity = positioned_entity(EntityType::ZOMBIE, 48.0, 64.0, 1.0);
@@ -107,7 +123,11 @@ fn chunk_range_queries_include_entities_in_chunk_square() {
 
 #[test]
 fn item_and_experience_orb_targets_use_vanilla_entity_types() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let item = positioned_entity(EntityType::ITEM, 1.0, 64.0, 1.0);
     let item_id = item.get_entity_id();
     let mut experience_orb = ExperienceOrb::new(1);
@@ -132,7 +152,11 @@ fn item_and_experience_orb_targets_use_vanilla_entity_types() {
 
 #[test]
 fn creature_queries_include_living_generic_entities_only() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let player = Player::new(
         Uuid::new_v4(),
         "CreatureFilter".to_string(),
@@ -159,7 +183,11 @@ fn creature_queries_include_living_generic_entities_only() {
 
 #[test]
 fn chunk_load_and_unload_manage_tracker_partitions_and_generic_entities() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let chunk_position = ChunkPosition::new(0, 0);
     let entity = positioned_entity(EntityType::ZOMBIE, 1.0, 64.0, 1.0);
     let entity_id = entity.get_entity_id();
@@ -179,7 +207,11 @@ fn chunk_load_and_unload_manage_tracker_partitions_and_generic_entities() {
 
 #[test]
 fn viewable_chunk_players_returns_players_in_world_view_distance() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     world.set_view_distance(2);
     let close_player = positioned_player("CloseViewer", local_address(3), 16.0, 64.0, 16.0);
     let close_player_id = close_player.get_entity_id();

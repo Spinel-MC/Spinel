@@ -109,7 +109,7 @@ fn chunk_load_event_observes_cached_generated_chunk_after_generation_callback() 
     let mut server = MinecraftServer::new();
     let world_uuid = server
         .world_manager
-        .create_world(Identifier::minecraft("chunk_lifecycle_load"));
+        .create_world(spinel_registry::dimension_type::DimensionType::OVERWORLD);
     *CHUNK_LIFECYCLE_WORLD.lock().unwrap() = Some(world_uuid);
     CHUNK_LIFECYCLE_SEQUENCE.lock().unwrap().clear();
     let server_ptr = &mut server as *mut MinecraftServer as usize;
@@ -145,7 +145,7 @@ fn chunk_unload_orders_forget_event_cache_removal_state_and_loader_hook() {
     let mut server = MinecraftServer::new();
     let world_uuid = server
         .world_manager
-        .create_world(Identifier::minecraft("chunk_lifecycle_unload"));
+        .create_world(spinel_registry::dimension_type::DimensionType::OVERWORLD);
     let mut client = queued_client();
     let mut player = Player::new(Uuid::new_v4(), "ChunkViewer".to_owned(), 0, client.addr);
     player.set_client(&mut client);
@@ -172,8 +172,11 @@ fn chunk_unload_orders_forget_event_cache_removal_state_and_loader_hook() {
 
 #[test]
 fn explicit_teleport_chunks_finish_loading_before_position_sync() {
-    let mut failing_world =
-        crate::world::World::new(Identifier::minecraft("failing_teleport_chunks"));
+    let mut failing_world = crate::world::World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("failing_teleport_chunks"),
+    );
     let mut failing_client = queued_client();
     let failing_player_uuid = Uuid::new_v4();
     let mut failing_player = Player::new(
@@ -206,7 +209,11 @@ fn explicit_teleport_chunks_finish_loading_before_position_sync() {
     assert!(failing_client.queued_outbound_packet_ids().is_empty());
 
     let loaded_positions = Arc::new(Mutex::new(Vec::new()));
-    let mut world = crate::world::World::new(Identifier::minecraft("teleport_chunks"));
+    let mut world = crate::world::World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("teleport_chunks"),
+    );
     let mut client = queued_client();
     let player_uuid = Uuid::new_v4();
     let mut player = Player::new(player_uuid, "Teleport".to_owned(), 0, client.addr);

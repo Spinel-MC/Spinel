@@ -34,8 +34,12 @@ fn item_merge_test_listener(event: &mut EntityItemMergeEvent, _server: &mut Mine
 
 #[test]
 fn item_entities_merge_similar_stacks_and_reject_overfilled_results() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
-    world.set_world_age(10).unwrap();
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
+    world.set_world_age(10);
     let source_id = add_item(&mut world, Material::DIAMOND, 5, 0.0);
     let merged_id = add_item(&mut world, Material::DIAMOND, 6, 0.5);
     let overfilled_source_id = add_item(&mut world, Material::EMERALD, 40, 10.0);
@@ -56,12 +60,12 @@ fn item_merge_event_can_cancel_and_mutate_the_result() {
     let mut server = MinecraftServer::new();
     let world_uuid = server
         .world_manager
-        .create_world(Identifier::minecraft("overworld"));
+        .create_world(spinel_registry::dimension_type::DimensionType::OVERWORLD);
     let source_id;
     let merged_id;
     {
         let world = server.world_manager.world_mut(world_uuid).unwrap();
-        world.set_world_age(10).unwrap();
+        world.set_world_age(10);
         source_id = add_item(world, Material::DIAMOND, 2, 0.0);
         merged_id = add_item(world, Material::DIAMOND, 3, 0.5);
     }
@@ -79,7 +83,7 @@ fn item_merge_event_can_cancel_and_mutate_the_result() {
     ITEM_MERGE_TEST_CANCELLED.store(false, Ordering::SeqCst);
     ITEM_MERGE_TEST_MUTATES_RESULT.store(true, Ordering::SeqCst);
     ITEM_MERGE_EVENT_ENTITY_ACCESSOR_MATCHED.store(false, Ordering::SeqCst);
-    world.set_world_age(20).unwrap();
+    world.set_world_age(20);
 
     world.tick_with_registries(&Registries::new_vanilla());
 

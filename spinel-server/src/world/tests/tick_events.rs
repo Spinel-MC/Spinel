@@ -4,7 +4,7 @@ use crate::events::world_tick::WorldTickEvent;
 use crate::events::world_tick_end::WorldTickEndEvent;
 use crate::server::MinecraftServer;
 use spinel_macros::event_listener;
-use spinel_network::types::Identifier;
+
 use spinel_registry::{EntityType, Registries};
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -92,7 +92,7 @@ fn world_tick_events_surround_world_tick_work() {
     let mut server = MinecraftServer::new();
     let world_uuid = server
         .world_manager
-        .create_world(Identifier::minecraft("overworld"));
+        .create_world(spinel_registry::dimension_type::DimensionType::OVERWORLD);
     *INSTANCE_TICK_EVENT_TEST_WORLD.lock().unwrap() = Some(world_uuid);
     server
         .world_manager

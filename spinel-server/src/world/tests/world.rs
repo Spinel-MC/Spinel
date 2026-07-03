@@ -178,7 +178,11 @@ fn read_available_packet_frames(peer_stream: &mut TcpStream) -> Vec<(i32, Vec<u8
 }
 
 fn world_with_entered_player(client: &mut Client) -> World {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let mut player = Player::new(Uuid::nil(), "Player".to_string(), 0, client.addr);
     player.set_client(client);
     player.assign_world(world.uuid());
@@ -201,7 +205,11 @@ fn configuration_player_inventory_changes_wait_for_play_login() {
     let registries = Registries::new_vanilla();
     let (mut client, mut peer_stream) = test_client_pair();
     client.state = ConnectionState::Configuration;
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let mut player = Player::new(Uuid::nil(), "Player".to_string(), 0, client.addr);
     player.set_client(&mut client);
     assert!(
@@ -221,7 +229,11 @@ fn configuration_player_inventory_changes_wait_for_play_login() {
 }
 #[test]
 fn optional_chunk_load_respects_auto_chunk_loading_like_minestom() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let chunk_position = ChunkPosition::new(2, 3);
 
     world.enable_auto_chunk_load(false);
@@ -237,7 +249,11 @@ fn optional_chunk_load_respects_auto_chunk_loading_like_minestom() {
 
 #[test]
 fn chunk_unload_missing_chunk_is_minestom_noop() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
 
     assert!(!world.unload_chunk(ChunkPosition::new(4, 5)).unwrap());
 }
@@ -526,7 +542,11 @@ fn chunk_unload_and_entity_removal_packets_are_scoped_to_actual_viewers() {
     let (mut non_viewer_client, _non_viewer_peer) = test_client_pair();
     viewer_client.enable_outbound_packet_queue();
     non_viewer_client.enable_outbound_packet_queue();
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let chunk_position = ChunkPosition::new(2, 0);
     let mut viewer = Player::new(Uuid::new_v4(), "Viewer".to_string(), 0, viewer_client.addr);
     let mut non_viewer = Player::new(
@@ -692,7 +712,11 @@ fn rapid_forward_reverse_stop_loads_and_lights_the_standing_chunk() {
     client.enable_outbound_packet_queue();
     let registries = Registries::new_vanilla();
     let destination_chunk = ChunkPosition::new(10, 0);
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     world.set_view_distance(1);
     let mut player = Player::new(Uuid::nil(), "Player".to_string(), 0, client.addr);
     player.set_client(&mut client);
@@ -882,7 +906,11 @@ fn player_move_event_triggred_teleport_stops_original_movement() {
 
 #[test]
 fn chunk_loader_errors_propagate_through_fallible_load_api() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     world.set_chunk_loader(FailingChunkLoader);
 
     let load_error = match world.load_chunk(ChunkPosition::new(1, 1)) {
@@ -896,7 +924,11 @@ fn chunk_loader_errors_propagate_through_fallible_load_api() {
 
 #[test]
 fn loader_miss_uses_world_chunk_supplier_like_minestom() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     world.set_chunk_supplier(|_| Chunk::new(ChunkPosition::new(7, -9)));
 
     let chunk = world.load_chunk(ChunkPosition::new(1, 1)).unwrap();
@@ -915,7 +947,11 @@ fn loader_miss_uses_world_chunk_supplier_like_minestom() {
 #[test]
 fn stored_chunk_skips_generation_and_generation_callback() {
     let generation_callback_count = Arc::new(AtomicUsize::new(0));
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     world.set_chunk_loader(StoredChunkLoader {
         generation_callback_count: Arc::clone(&generation_callback_count),
     });
@@ -936,7 +972,11 @@ fn enter_player_queues_the_initial_spawn_view_without_blocking_on_chunk_loads() 
     let generation_callback_count = Arc::new(AtomicUsize::new(0));
     let registries = Registries::new_vanilla();
     let (mut client, _peer_stream) = test_client_pair();
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     world.set_view_distance(1);
     world.set_chunk_loader(StoredChunkLoader {
         generation_callback_count,
@@ -968,7 +1008,11 @@ fn enter_player_queues_the_initial_spawn_view_without_blocking_on_chunk_loads() 
 fn enter_player_waits_for_loaded_chunks_before_sending_initial_chunk_batch() {
     let registries = Registries::new_vanilla();
     let (mut client, mut peer_stream) = test_client_pair();
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     world.add_entity(Entity::Player(Player::new(
         Uuid::new_v4(),
         "ChunkQueue".to_string(),
@@ -1026,7 +1070,11 @@ fn enter_player_waits_for_loaded_chunks_before_sending_initial_chunk_batch() {
 fn explicit_generator_runs_for_loaded_non_generating_chunk() {
     let generation_callback_count = Arc::new(AtomicUsize::new(0));
     let supplier_callback_count = Arc::clone(&generation_callback_count);
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     world.set_chunk_supplier(move |position| {
         let callback_count = Arc::clone(&supplier_callback_count);
         let mut chunk = Chunk::new_with_generation(position, false);
@@ -1063,7 +1111,11 @@ fn explicit_generator_runs_for_loaded_non_generating_chunk() {
 fn generation_errors_propagate_through_fallible_chunk_load_api() {
     let generation_callback_count = Arc::new(AtomicUsize::new(0));
     let supplier_callback_count = Arc::clone(&generation_callback_count);
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     world.set_chunk_supplier(move |position| {
         let callback_count = Arc::clone(&supplier_callback_count);
         let mut chunk = Chunk::new(position);
@@ -1261,7 +1313,11 @@ fn empty_chunk_light_data_uses_empty_section_masks_like_minestom() {
 #[test]
 fn default_generated_chunk_uses_dynamic_chunk_empty_light_masks() {
     let registries = Registries::new_vanilla();
-    let mut world = World::new(Identifier::minecraft("dynamic_chunk_default"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("dynamic_chunk_default"),
+    );
     world.set_generator(|unit| {
         unit.modifier().fill_height(0, 4, Block::STONE);
     });
@@ -1285,7 +1341,11 @@ fn default_generated_chunk_uses_dynamic_chunk_empty_light_masks() {
 #[test]
 fn lighting_chunk_supplier_preserves_full_light_data() {
     let registries = Registries::new_vanilla();
-    let mut world = World::new(Identifier::minecraft("lighting_chunk_supplier"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("lighting_chunk_supplier"),
+    );
     world.set_chunk_supplier(Chunk::new_lighting);
     world.set_generator(|unit| {
         unit.modifier().fill_height(0, 4, Block::STONE);
@@ -1306,7 +1366,11 @@ fn lighting_chunk_supplier_preserves_full_light_data() {
 
 #[test]
 fn added_entities_record_their_current_world_membership() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let world_uuid = world.uuid;
     let entity = Entity::new(EntityType::ZOMBIE);
 
@@ -1324,7 +1388,8 @@ fn world_dimension_registration_and_void_api_match_minestom_world_surface() {
     let cached_dimension_type = DimensionType::builder()
         .vertical_bounds(-32, 256, 128)
         .build();
-    let world = World::new_with_dimension(
+    let world = World::new_with_cached_dimension_type(
+        uuid::Uuid::new_v4(),
         Identifier::minecraft("the_nether"),
         dimension_type.clone(),
         cached_dimension_type,
@@ -1340,7 +1405,11 @@ fn world_dimension_registration_and_void_api_match_minestom_world_surface() {
 
 #[test]
 fn world_entity_and_player_lookup_api_matches_minestom_world_surface() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let generic_entity = Entity::new(EntityType::ZOMBIE);
     let generic_entity_id = generic_entity.get_entity_id();
     let generic_entity_uuid = generic_entity.get_uuid();
@@ -1370,7 +1439,11 @@ fn world_entity_and_player_lookup_api_matches_minestom_world_surface() {
 
 #[test]
 fn world_chunk_and_block_api_match_loaded_chunk_semantics() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let chunk_position = ChunkPosition::new(0, 0);
 
     assert_eq!(world.uuid(), world.uuid);
@@ -1409,7 +1482,11 @@ fn world_chunk_and_block_api_match_loaded_chunk_semantics() {
 
 #[test]
 fn world_time_api_matches_minestom_defaults_and_validation() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
 
     assert_eq!(world.world_age(), 0);
     assert_eq!(world.time(), 0);
@@ -1420,8 +1497,8 @@ fn world_time_api_matches_minestom_defaults_and_validation() {
     assert_eq!(world.time_packet().time, 0);
     assert!(world.time_packet().tick_day_time);
 
-    world.set_world_age(40).unwrap();
-    world.set_time(6000).unwrap();
+    world.set_world_age(40);
+    world.set_time(6000);
     world.set_time_rate(0).unwrap();
     world.set_time_synchronization_ticks(0).unwrap();
     world.set_view_distance(12);
@@ -1438,7 +1515,11 @@ fn world_time_api_matches_minestom_defaults_and_validation() {
 
 #[test]
 fn world_tick_advances_time_like_minestom() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
 
     world.tick();
 

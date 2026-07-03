@@ -506,7 +506,11 @@ impl TargetSelector for FixedTarget {
 }
 
 fn ai_world() -> World {
-    let mut world = World::new(Identifier::minecraft("ai"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("ai"),
+    );
     world.load_chunk(ChunkPosition::new(0, 0)).unwrap();
     for block_x in 0..16 {
         for block_z in 0..16 {

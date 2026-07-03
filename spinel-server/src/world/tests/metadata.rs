@@ -10,7 +10,11 @@ use uuid::Uuid;
 
 #[test]
 fn world_tick_automatically_broadcasts_dirty_generic_entity_metadata() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let mut viewer_client = queued_client();
     let viewer = entered_player(&mut viewer_client);
     let target = GenericEntity::new(EntityType::ZOMBIE);

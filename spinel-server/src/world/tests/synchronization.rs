@@ -21,7 +21,11 @@ use uuid::Uuid;
 
 #[test]
 fn world_tick_sends_scheduled_position_then_velocity_and_preserves_interval() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let mut viewer_client = queued_client();
     let viewer = entered_player(&mut viewer_client);
     let mut target = GenericEntity::new(EntityType::ZOMBIE);
@@ -58,7 +62,11 @@ fn world_tick_sends_scheduled_position_then_velocity_and_preserves_interval() {
 
 #[test]
 fn scheduled_position_synchronization_delta_uses_displacement_from_last_synchronized_position() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let mut viewer_client = queued_client();
     let viewer = entered_player(&mut viewer_client);
     let mut target = GenericEntity::new(EntityType::ZOMBIE);
@@ -101,7 +109,11 @@ fn scheduled_position_synchronization_delta_uses_displacement_from_last_synchron
 
 #[test]
 fn scheduled_position_synchronization_is_suppressed_for_passengers() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let mut viewer_client = queued_client();
     let viewer = entered_player(&mut viewer_client);
     let vehicle = GenericEntity::new(EntityType::PIG);
@@ -125,7 +137,11 @@ fn scheduled_position_synchronization_is_suppressed_for_passengers() {
 
 #[test]
 fn ordinary_physics_movement_sends_relative_packet_for_non_synchronization_only_entity() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     world
         .load_chunk(crate::world::ChunkPosition::new(0, 0))
         .unwrap();
@@ -155,7 +171,11 @@ fn ordinary_physics_movement_sends_relative_packet_for_non_synchronization_only_
 
 #[test]
 fn creature_pathfinding_tick_sends_body_and_head_rotation_to_viewers() {
-    let mut world = World::new(Identifier::minecraft("pathfinding_synchronization"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("pathfinding_synchronization"),
+    );
     world.load_chunk(ChunkPosition::new(0, 0)).unwrap();
     for block_x in 0..=5 {
         world
@@ -199,7 +219,11 @@ fn creature_pathfinding_tick_sends_body_and_head_rotation_to_viewers() {
 
 #[test]
 fn creature_pathfinding_jump_sends_velocity_after_minestom_ground_collision_tick() {
-    let mut world = World::new(Identifier::minecraft("pathfinding_jump_velocity"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("pathfinding_jump_velocity"),
+    );
     world.load_chunk(ChunkPosition::new(0, 0)).unwrap();
     for block_x in 0..=3 {
         world
@@ -272,7 +296,11 @@ fn creature_pathfinding_jump_sends_velocity_after_minestom_ground_collision_tick
 }
 #[test]
 fn synchronization_only_entity_suppresses_ordinary_physics_movement_packet() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     world
         .load_chunk(crate::world::ChunkPosition::new(0, 0))
         .unwrap();
@@ -307,7 +335,11 @@ fn synchronization_only_entity_suppresses_ordinary_physics_movement_packet() {
 
 #[test]
 fn switch_entity_type_resends_entity_to_existing_viewers_in_minestom_order() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let mut viewer_client = queued_client();
     let viewer = entered_player(&mut viewer_client);
     let target = GenericEntity::new(EntityType::ZOMBIE);
@@ -335,7 +367,11 @@ fn switch_entity_type_resends_entity_to_existing_viewers_in_minestom_order() {
 
 #[test]
 fn switch_player_visual_entity_type_uses_entity_destroy_and_spawn_without_player_list_packets() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let mut viewer_client = queued_client();
     let viewer = entered_player(&mut viewer_client);
     let target = Player::new(

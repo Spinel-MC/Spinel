@@ -135,8 +135,10 @@ fn world_manager_cancelled_transfer_keeps_entity_in_source_world() {
     let mut server = MinecraftServer::new();
     let server_ptr = &mut server as *mut MinecraftServer as usize;
     let mut worlds = WorldManager::new();
-    let source_world = worlds.create_world(Identifier::minecraft("transfer_cancel_source"));
-    let target_world = worlds.create_world(Identifier::minecraft("transfer_cancel_target"));
+    let source_world =
+        worlds.create_world(spinel_registry::dimension_type::DimensionType::OVERWORLD);
+    let target_world =
+        worlds.create_world(spinel_registry::dimension_type::DimensionType::OVERWORLD);
     let entity = Entity::Generic(GenericEntity::new(EntityType::ZOMBIE));
     let entity_id = entity.get_entity_id();
     assert!(worlds.add_entity(source_world, entity));
@@ -176,7 +178,11 @@ fn world_manager_cancelled_transfer_keeps_entity_in_source_world() {
 }
 
 fn event_world(name: &str, server: &mut MinecraftServer) -> World {
-    let mut world = World::new(Identifier::minecraft(name));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft(name),
+    );
     world.use_server_event_dispatcher(server as *mut MinecraftServer as usize);
     world
 }

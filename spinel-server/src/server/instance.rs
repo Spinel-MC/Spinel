@@ -41,6 +41,10 @@ pub struct MinecraftServer {
 }
 
 impl MinecraftServer {
+    pub fn get_world_manager(&mut self) -> &mut WorldManager {
+        &mut self.world_manager
+    }
+
     pub fn new() -> Self {
         let registries = Registries::new_vanilla();
         let registry_cache = RegistryCache::new(&registries);

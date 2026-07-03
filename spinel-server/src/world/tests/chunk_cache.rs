@@ -4,7 +4,11 @@ use spinel_network::types::Identifier;
 
 #[test]
 fn point_position_chunk_access_matches_minestom_overloads() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let block_position = BlockPosition::new(-1, 64, 16);
     let entity_position = EntityPosition::new(-0.1, 64.0, 16.9, 0.0, 0.0);
     let optional_position = EntityPosition::new(32.0, 64.0, 32.0, 0.0, 0.0);
@@ -26,7 +30,11 @@ fn point_position_chunk_access_matches_minestom_overloads() {
 
 #[test]
 fn batch_optional_load_reports_loaded_positions_and_propagates_policy() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let positions = [ChunkPosition::new(0, 0), ChunkPosition::new(1, 0)];
 
     world.enable_auto_chunk_load(false);
@@ -38,7 +46,11 @@ fn batch_optional_load_reports_loaded_positions_and_propagates_policy() {
 
 #[test]
 fn retrieve_chunk_reuses_current_chunk_and_resolves_neighbors() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let current_position = ChunkPosition::new(0, 0);
     let neighbor_position = ChunkPosition::new(1, 0);
     world.load_chunk(current_position).unwrap();
@@ -65,7 +77,11 @@ fn retrieve_chunk_reuses_current_chunk_and_resolves_neighbors() {
 
 #[test]
 fn chunk_cache_switches_chunks_and_uses_configured_default_for_missing_neighbors() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let current_position = ChunkPosition::new(0, 0);
     let neighbor_position = ChunkPosition::new(1, 0);
     world.load_chunk(current_position).unwrap();
@@ -93,7 +109,11 @@ fn chunk_cache_switches_chunks_and_uses_configured_default_for_missing_neighbors
 
 #[test]
 fn unload_chunk_accepts_chunk_identity_without_moving_cache_ownership() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let position = ChunkPosition::new(2, -3);
     world.load_chunk(position).unwrap();
     let detached_chunk = world.chunk(position).unwrap().copy_for_position(position);

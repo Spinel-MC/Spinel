@@ -54,7 +54,7 @@ use spinel_core::network::serverbound::play::teleport_to_entity::TeleportToEntit
 use spinel_core::network::serverbound::play::use_item_on::UseItemOnPacket;
 use spinel_macros::event_listener;
 use spinel_network::types::entity_metadata::MetadataValue;
-use spinel_network::types::{Identifier, Position, Slot, UntrustedSlot};
+use spinel_network::types::{Position, Slot, UntrustedSlot};
 use spinel_network::{ConnectionState, DataType, PacketStruct, VarIntWrapper};
 use spinel_registry::data_components::vanilla_components::PIERCING_WEAPON;
 use spinel_registry::{EntityType, ItemStack, Material, PiercingWeapon};
@@ -1414,7 +1414,7 @@ fn server_with_play_player(
     client.state = ConnectionState::Play;
     let world_uuid = server
         .world_manager
-        .create_world(Identifier::minecraft("overworld"));
+        .create_world(spinel_registry::dimension_type::DimensionType::OVERWORLD);
     let mut player = Player::new(Uuid::nil(), "Listener".to_string(), 0, client.addr);
     player.set_game_mode(game_mode);
     player.mark_entered_world();

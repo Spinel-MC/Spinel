@@ -4,7 +4,7 @@ use crate::network::client::instance::Client;
 use crate::server::MinecraftServer;
 use spinel_core::network::clientbound::play::disconnect::PlayDisconnectPacket;
 use spinel_macros::event_listener;
-use spinel_network::types::Identifier;
+
 use spinel_network::{ConnectionState, DataType, PacketDecoder, VarIntWrapper};
 use spinel_utils::component::Component;
 use std::io::Cursor;
@@ -40,7 +40,7 @@ fn player_disconnect_event_fires_before_player_is_removed_from_world() {
     let player_uuid = Uuid::new_v4();
     let world_uuid = server
         .world_manager
-        .create_world(Identifier::minecraft("overworld"));
+        .create_world(spinel_registry::dimension_type::DimensionType::OVERWORLD);
     let player = Player::new(player_uuid, "Disconnecting".to_string(), 0, client_address);
     server
         .world_manager

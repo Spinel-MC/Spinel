@@ -3,11 +3,11 @@ use crate::entity::{Entity, EntityId, EntityPosition, PlayerChunk};
 use crate::entity::{Player, PlayerHand};
 use crate::network::client::instance::Client;
 use crate::world::{
-    BlockHandlerPlacement, BlockPosition, Chunk, ChunkLoadTicket, ChunkLoader, ChunkPosition,
-    SharedWorld, World, WorldHandle,
+    BlockHandlerPlacement, BlockPosition, Chunk, ChunkLoadTicket, ChunkPosition, SharedWorld,
+    World, WorldHandle,
 };
 use spinel_core::network::clientbound::play::player_info_update::PlayerInfoUpdatePacket;
-use spinel_network::types::{ClientInformation, Identifier};
+use spinel_network::types::ClientInformation;
 use spinel_registry::dimension_type::DimensionType;
 use spinel_registry::{Registries, RegistryKey};
 use spinel_utils::component::text::TextComponent;
@@ -56,47 +56,8 @@ impl WorldManager {
         }
     }
 
-    pub fn create_world(&mut self, name: Identifier) -> Uuid {
-        let world = World::new(name);
-        let world_uuid = world.uuid;
-        self.register_world(world);
-        world_uuid
-    }
-
-    pub fn create_world_with_loader(
-        &mut self,
-        name: Identifier,
-        chunk_loader: impl ChunkLoader + 'static,
-    ) -> Uuid {
-        let mut world = World::new(name);
-        world.set_chunk_loader(chunk_loader);
-        let world_uuid = world.uuid;
-        self.register_world(world);
-        world_uuid
-    }
-
-    pub fn create_world_with_dimension(
-        &mut self,
-        dimension_type: RegistryKey<DimensionType>,
-        cached_dimension_type: DimensionType,
-    ) -> Uuid {
-        self.create_world_with_dimension_and_loader(
-            dimension_type,
-            cached_dimension_type,
-            crate::world::NoopChunkLoader,
-        )
-    }
-
-    pub fn create_world_with_dimension_and_loader(
-        &mut self,
-        dimension_type: RegistryKey<DimensionType>,
-        cached_dimension_type: DimensionType,
-        chunk_loader: impl ChunkLoader + 'static,
-    ) -> Uuid {
-        let dimension_name = dimension_type.key().clone();
-        let mut world =
-            World::new_with_dimension(dimension_name, dimension_type, cached_dimension_type);
-        world.set_chunk_loader(chunk_loader);
+    pub fn create_world(&mut self, dimension_type: RegistryKey<DimensionType>) -> Uuid {
+        let world = World::new(Uuid::new_v4(), dimension_type);
         let world_uuid = world.uuid;
         self.register_world(world);
         world_uuid
@@ -118,7 +79,14 @@ impl WorldManager {
                 "Source world is not registered.",
             ));
         }
-        let shared_world = SharedWorld::new(source_world, World::new(source.name().clone()));
+        let shared_world = SharedWorld::new(
+            source_world,
+            World::new_with_dimension_name(
+                Uuid::new_v4(),
+                source.get_dimension_type().clone(),
+                source.dimension_name().clone(),
+            ),
+        );
         let shared_world_uuid = shared_world.uuid();
         self.register_shared_world(shared_world)?;
         Ok(shared_world_uuid)
@@ -146,6 +114,22 @@ impl WorldManager {
         let copied_world_uuid = copied_world.uuid();
         self.register_world(copied_world);
         Ok(copied_world_uuid)
+    }
+
+    pub fn get_worlds(&self) -> &[World] {
+        self.worlds()
+    }
+
+    pub fn get_world(&self, world_uuid: Uuid) -> Option<&World> {
+        self.world(world_uuid)
+    }
+
+    pub fn get_world_mut(&mut self, world_uuid: Uuid) -> Option<&mut World> {
+        self.world_mut(world_uuid)
+    }
+
+    pub fn get_shared_world(&self, world_uuid: Uuid) -> Option<&SharedWorld> {
+        self.shared_world(world_uuid)
     }
 
     pub fn world_uuids(&self) -> Vec<Uuid> {

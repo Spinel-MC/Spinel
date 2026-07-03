@@ -1,6 +1,6 @@
 use super::super::world_manager::WorldManager;
 use crate::entity::{Entity, EntityPosition, GenericEntity};
-use crate::world::{Chunk, ChunkLoader, ChunkPosition};
+use crate::world::{Chunk, ChunkLoader, ChunkPosition, World};
 use spinel_network::types::Identifier;
 use spinel_registry::EntityType;
 use spinel_registry::dimension_type::DimensionType;
@@ -25,20 +25,27 @@ impl ChunkLoader for ManagerTestChunkLoader {
 #[test]
 fn world_manager_create_and_register_worlds_match_minestom_world_manager_surface() {
     let mut worlds = WorldManager::new();
-    let first_world = worlds.create_world(Identifier::minecraft("overworld"));
-    let second_world =
-        worlds.create_world_with_loader(Identifier::minecraft("custom"), ManagerTestChunkLoader);
-    let nether_world = worlds.create_world_with_dimension(
-        DimensionType::THE_NETHER,
+    let first_world = worlds.create_world(DimensionType::OVERWORLD);
+    let mut custom_world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("custom"),
+    );
+    custom_world.set_chunk_loader(ManagerTestChunkLoader);
+    let second_world = custom_world.uuid();
+    worlds.register_world(custom_world);
+    let nether_world = worlds.create_world(DimensionType::THE_NETHER);
+    let mut end_world_instance = World::new_with_cached_dimension_type(
+        uuid::Uuid::new_v4(),
+        Identifier::minecraft("the_end"),
+        DimensionType::THE_END,
         DimensionType::builder()
             .vertical_bounds(-32, 256, 128)
             .build(),
     );
-    let end_world = worlds.create_world_with_dimension_and_loader(
-        DimensionType::THE_END,
-        DimensionType::default(),
-        ManagerTestChunkLoader,
-    );
+    end_world_instance.set_chunk_loader(ManagerTestChunkLoader);
+    let end_world = end_world_instance.uuid();
+    worlds.register_world(end_world_instance);
 
     assert_eq!(worlds.worlds().len(), 4);
     assert!(
@@ -68,8 +75,10 @@ fn world_manager_create_and_register_worlds_match_minestom_world_manager_surface
 #[test]
 fn world_manager_add_passenger_moves_passenger_to_vehicle_world_first() {
     let mut worlds = WorldManager::new();
-    let vehicle_world = worlds.create_world(Identifier::minecraft("overworld"));
-    let passenger_world = worlds.create_world(Identifier::minecraft("the_nether"));
+    let vehicle_world =
+        worlds.create_world(spinel_registry::dimension_type::DimensionType::OVERWORLD);
+    let passenger_world =
+        worlds.create_world(spinel_registry::dimension_type::DimensionType::OVERWORLD);
     let mut vehicle = GenericEntity::new(EntityType::PIG);
     vehicle.set_position(EntityPosition::new(12.0, 70.0, 8.0, 0.0, 0.0));
     let vehicle_id = vehicle.get_entity_id();

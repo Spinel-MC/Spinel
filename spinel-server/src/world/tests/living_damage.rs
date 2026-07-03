@@ -128,7 +128,11 @@ fn world_damage_entity_cancellation_does_not_store_last_damage_or_reduce_health(
 
 #[test]
 fn world_damage_entity_uses_player_additional_hearts_before_health_damage() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let mut player = Player::new(
         Uuid::new_v4(),
         "DamagePlayer".to_owned(),
@@ -168,7 +172,11 @@ fn world_damage_entity_uses_player_additional_hearts_before_health_damage() {
 
 #[test]
 fn world_damage_entity_dispatches_damage_event_packet_to_current_viewers() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let mut viewer_client = queued_client();
     let mut viewer = Player::new(
         Uuid::new_v4(),
@@ -226,7 +234,11 @@ fn world_damage_entity_dispatches_damage_event_packet_to_current_viewers() {
 
 #[test]
 fn lethal_world_damage_runs_living_death_after_damage_and_sound_packets() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let mut viewer_client = queued_client();
     let mut viewer = Player::new(
         Uuid::new_v4(),
@@ -270,7 +282,7 @@ fn server_with_living_entity() -> MinecraftServer {
     let mut server = MinecraftServer::new();
     let world_uuid = server
         .world_manager
-        .create_world(Identifier::minecraft("overworld"));
+        .create_world(spinel_registry::dimension_type::DimensionType::OVERWORLD);
     server
         .world_manager
         .world_mut(world_uuid)

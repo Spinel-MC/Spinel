@@ -13,7 +13,11 @@ use uuid::Uuid;
 
 #[test]
 fn add_passenger_reparents_and_updates_both_entity_sides() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let previous_vehicle = positioned_entity(EntityType::COW, 0.0, 64.0, 0.0);
     let previous_vehicle_id = previous_vehicle.get_entity_id();
     let vehicle = positioned_entity(EntityType::PIG, 10.0, 70.0, 12.0);
@@ -61,7 +65,11 @@ fn add_passenger_reparents_and_updates_both_entity_sides() {
 
 #[test]
 fn passenger_relation_rejects_self_and_immediate_vehicle_cycle() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let vehicle = positioned_entity(EntityType::PIG, 0.0, 64.0, 0.0);
     let vehicle_id = vehicle.get_entity_id();
     let passenger = positioned_entity(EntityType::ZOMBIE, 0.0, 64.0, 0.0);
@@ -76,7 +84,11 @@ fn passenger_relation_rejects_self_and_immediate_vehicle_cycle() {
 
 #[test]
 fn remove_passenger_clears_both_entity_sides_and_is_idempotent() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let vehicle = positioned_entity(EntityType::PIG, 0.0, 64.0, 0.0);
     let vehicle_id = vehicle.get_entity_id();
     let passenger = positioned_entity(EntityType::ZOMBIE, 0.0, 64.0, 0.0);
@@ -102,7 +114,11 @@ fn remove_passenger_clears_both_entity_sides_and_is_idempotent() {
 
 #[test]
 fn taking_an_entity_detaches_its_vehicle_and_passenger_relations() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let vehicle = positioned_entity(EntityType::PIG, 0.0, 64.0, 0.0);
     let vehicle_id = vehicle.get_entity_id();
     let passenger = positioned_entity(EntityType::ZOMBIE, 0.0, 64.0, 0.0);
@@ -121,7 +137,11 @@ fn taking_an_entity_detaches_its_vehicle_and_passenger_relations() {
 
 #[test]
 fn taking_a_passenger_removes_it_from_its_vehicle() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let vehicle = positioned_entity(EntityType::PIG, 0.0, 64.0, 0.0);
     let vehicle_id = vehicle.get_entity_id();
     let passenger = positioned_entity(EntityType::ZOMBIE, 0.0, 64.0, 0.0);
@@ -143,7 +163,11 @@ fn taking_a_passenger_removes_it_from_its_vehicle() {
 
 #[test]
 fn passenger_mutation_sends_vehicle_packet_before_passenger_position_sync() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let mut viewer_client = queued_client();
     let viewer = entered_player(&mut viewer_client);
     let vehicle = positioned_entity(EntityType::PIG, 0.0, 64.0, 0.0);
@@ -178,7 +202,11 @@ fn passenger_mutation_sends_vehicle_packet_before_passenger_position_sync() {
 
 #[test]
 fn vehicle_movement_recursively_refreshes_passenger_chain_positions() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let vehicle = positioned_entity(EntityType::PIG, 0.0, 64.0, 0.0);
     let vehicle_id = vehicle.get_entity_id();
     let passenger = positioned_entity(EntityType::ZOMBIE, 0.0, 64.0, 0.0);
@@ -231,7 +259,11 @@ fn vehicle_movement_recursively_refreshes_passenger_chain_positions() {
 
 #[test]
 fn direct_world_position_mutation_recursively_refreshes_passenger_chain_positions() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let vehicle = positioned_entity(EntityType::PIG, 0.0, 64.0, 0.0);
     let vehicle_id = vehicle.get_entity_id();
     let passenger = positioned_entity(EntityType::ZOMBIE, 0.0, 64.0, 0.0);
@@ -276,7 +308,11 @@ fn direct_world_position_mutation_recursively_refreshes_passenger_chain_position
 
 #[test]
 fn reparenting_a_vehicle_with_existing_passengers_refreshes_the_whole_chain() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let vehicle = positioned_entity(EntityType::PIG, 20.0, 70.0, 10.0);
     let vehicle_id = vehicle.get_entity_id();
     let passenger = positioned_entity(EntityType::ZOMBIE, 0.0, 64.0, 0.0);
@@ -320,7 +356,11 @@ fn reparenting_a_vehicle_with_existing_passengers_refreshes_the_whole_chain() {
 
 #[test]
 fn visibility_spawns_passenger_chain_before_reverse_passenger_packets() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let mut viewer_client = queued_client();
     let viewer = entered_player(&mut viewer_client);
     let viewer_id = viewer.get_entity_id();
@@ -379,7 +419,11 @@ fn visibility_spawns_passenger_chain_before_reverse_passenger_packets() {
 
 #[test]
 fn visibility_hides_vehicle_and_passenger_chain_recursively() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let mut viewer_client = queued_client();
     let viewer = entered_player(&mut viewer_client);
     let viewer_id = viewer.get_entity_id();

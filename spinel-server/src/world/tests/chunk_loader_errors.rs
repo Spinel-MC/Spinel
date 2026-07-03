@@ -50,7 +50,11 @@ fn asynchronous_chunk_loader_failure_dispatches_world_event() {
     let _test_lock = CHUNK_LOADER_ERROR_TEST_LOCK.lock().unwrap();
     CHUNK_LOADER_ERROR_EVENTS.lock().unwrap().clear();
     let mut server = MinecraftServer::new();
-    let mut world = World::new(Identifier::minecraft("chunk_loader_error_test"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("chunk_loader_error_test"),
+    );
     world.set_event_dispatcher(&mut server as *mut MinecraftServer as usize);
     world.set_chunk_loader(FailingParallelChunkLoader);
     let position = ChunkPosition::new(7, -4);

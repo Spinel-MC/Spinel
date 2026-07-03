@@ -231,9 +231,7 @@ fn navigator_rejects_unloaded_and_out_of_border_targets() {
         Err(SetPathToError::TargetChunkUnloaded { target }) if target == unloaded_goal
     ));
 
-    world
-        .set_world_border(WorldBorder::DEFAULT.with_center(100_000_000.0, 100_000_000.0))
-        .unwrap();
+    world.set_world_border(WorldBorder::DEFAULT.with_center(100_000_000.0, 100_000_000.0));
     let loaded_goal = EntityPosition::new(5.5, 65.0, 0.5, 0.0, 0.0);
     assert!(matches!(
         navigator.set_path_to(
@@ -1483,9 +1481,7 @@ fn perfect_planner_rejects_unloaded_border_and_dimension_bounds() {
     assert_eq!(unloaded.expanded_states, 0);
 
     let mut bordered_world = pathfinding_world();
-    bordered_world
-        .set_world_border(WorldBorder::new(2.0, 0.0, 0.0, 0, 0, 2).unwrap())
-        .unwrap();
+    bordered_world.set_world_border(WorldBorder::new(2.0, 0.0, 0.0, 0, 0, 2).unwrap());
     let bordered_snapshot = bordered_world.update_snapshot();
     let outside_border = planner.plan(PerfectPathRequest {
         world: &bordered_snapshot,
@@ -1503,7 +1499,8 @@ fn perfect_planner_rejects_unloaded_border_and_dimension_bounds() {
     assert_eq!(outside_border.expanded_states, 0);
 
     let dimension = DimensionType::builder().vertical_bounds(0, 10, 10).build();
-    let mut short_world = World::new_with_dimension(
+    let mut short_world = World::new_with_cached_dimension_type(
+        uuid::Uuid::new_v4(),
         Identifier::minecraft("short_dimension"),
         DimensionType::OVERWORLD,
         dimension,
@@ -2263,7 +2260,11 @@ fn pathfinding_world_in_chunk_range(
     minimum_chunk_z: i32,
     maximum_chunk_z: i32,
 ) -> World {
-    let mut world = World::new(Identifier::minecraft("pathfinding"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("pathfinding"),
+    );
     world.set_chunk_supplier(|chunk_position| {
         let mut chunk = Chunk::new_with_generation(chunk_position, false);
         let floor_section = chunk.section_mut(4).unwrap();

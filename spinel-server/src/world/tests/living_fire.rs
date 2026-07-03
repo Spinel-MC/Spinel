@@ -3,7 +3,7 @@ use crate::events::entity_fire_extinguish::EntityFireExtinguishEvent;
 use crate::events::entity_set_fire::EntitySetFireEvent;
 use crate::server::MinecraftServer;
 use spinel_macros::event_listener;
-use spinel_network::types::Identifier;
+
 use spinel_registry::{EntityType, Registries};
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::sync::Mutex;
@@ -158,7 +158,7 @@ fn server_with_living_entity() -> MinecraftServer {
     let mut server = MinecraftServer::new();
     let world_uuid = server
         .world_manager
-        .create_world(Identifier::minecraft("overworld"));
+        .create_world(spinel_registry::dimension_type::DimensionType::OVERWORLD);
     server
         .world_manager
         .world_mut(world_uuid)
@@ -171,7 +171,7 @@ fn server_with_player() -> MinecraftServer {
     let mut server = MinecraftServer::new();
     let world_uuid = server
         .world_manager
-        .create_world(Identifier::minecraft("overworld"));
+        .create_world(spinel_registry::dimension_type::DimensionType::OVERWORLD);
     server
         .world_manager
         .world_mut(world_uuid)

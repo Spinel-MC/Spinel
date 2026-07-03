@@ -4,7 +4,7 @@ use crate::server::MinecraftServer;
 use spinel_network::ConnectionState;
 use spinel_network::DataType;
 use spinel_network::VarIntWrapper;
-use spinel_network::types::Identifier;
+
 use std::io::{ErrorKind, Read};
 use std::net::{IpAddr, Ipv4Addr, SocketAddr, TcpListener, TcpStream};
 use std::sync::{Arc, Mutex};
@@ -17,7 +17,7 @@ fn play_state_connection_does_not_send_keep_alive_before_player_enters_world() {
     let mut server = MinecraftServer::new();
     let world_uuid = server
         .world_manager
-        .create_world(Identifier::minecraft("overworld"));
+        .create_world(spinel_registry::dimension_type::DimensionType::OVERWORLD);
     let player = Player::new(Uuid::new_v4(), "Pending".to_string(), 0, client.addr);
     client.state = ConnectionState::Play;
     server

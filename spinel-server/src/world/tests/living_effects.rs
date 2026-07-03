@@ -9,7 +9,7 @@ use spinel_core::network::clientbound::play::entity_effect::EntityEffectPacket;
 use spinel_core::network::clientbound::play::remove_entity_effect::RemoveEntityEffectPacket;
 use spinel_macros::event_listener;
 use spinel_network::ConnectionState;
-use spinel_network::types::{Identifier, Particle};
+use spinel_network::types::Particle;
 use spinel_registry::{EntityType, MobEffect, Registries};
 use std::net::{IpAddr, Ipv4Addr, SocketAddr, TcpListener};
 use std::sync::Mutex;
@@ -327,7 +327,7 @@ fn server_with_living_entity_and_viewer() -> (MinecraftServer, EntityId, Box<Cli
     let mut server = MinecraftServer::new();
     let world_uuid = server
         .world_manager
-        .create_world(Identifier::minecraft("overworld"));
+        .create_world(spinel_registry::dimension_type::DimensionType::OVERWORLD);
     let mut viewer_client = Box::new(queued_client());
     let mut viewer = Player::new(
         Uuid::new_v4(),

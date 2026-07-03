@@ -167,7 +167,8 @@ fn skylight_shaft_reopens_after_occluder_removal() {
 #[test]
 fn dimensions_without_skylight_keep_sky_light_empty() {
     let dimension = DimensionType::builder().skylight(false).build();
-    let mut world = World::new_with_dimension(
+    let mut world = World::new_with_cached_dimension_type(
+        uuid::Uuid::new_v4(),
         Identifier::minecraft("no_skylight"),
         DimensionType::OVERWORLD,
         dimension,
@@ -386,7 +387,11 @@ fn queued_client() -> Client {
 }
 
 fn lighting_world(identifier: &str) -> World {
-    let mut world = World::new(Identifier::minecraft(identifier));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft(identifier),
+    );
     world.set_chunk_supplier(Chunk::new_lighting);
     world
 }

@@ -390,10 +390,32 @@ pub struct World {
 }
 
 impl World {
-    pub fn new(name: Identifier) -> Self {
+    pub fn new(uuid: Uuid, dimension_type: RegistryKey<DimensionType>) -> Self {
+        Self::new_with_cached_dimension_type(
+            uuid,
+            dimension_type.key().clone(),
+            dimension_type,
+            DimensionType::default(),
+        )
+    }
+
+    pub fn new_with_dimension_name(
+        uuid: Uuid,
+        dimension_type: RegistryKey<DimensionType>,
+        dimension_name: Identifier,
+    ) -> Self {
+        Self::new_with_cached_dimension_type(
+            uuid,
+            dimension_name,
+            dimension_type,
+            DimensionType::default(),
+        )
+    }
+
+    fn new_base(uuid: Uuid, name: Identifier) -> Self {
         let (completed_chunk_load_sender, completed_chunk_load_receiver) = mpsc::channel();
         Self {
-            uuid: Uuid::new_v4(),
+            uuid,
             name: name.clone(),
             entities: Vec::new(),
             entity_tracker: EntityTracker::new(),
@@ -443,7 +465,8 @@ impl World {
         }
     }
 
-    pub fn new_with_dimension(
+    pub(crate) fn new_with_cached_dimension_type(
+        uuid: Uuid,
         name: Identifier,
         dimension_type: RegistryKey<DimensionType>,
         cached_dimension_type: DimensionType,
@@ -451,7 +474,7 @@ impl World {
         Self {
             dimension_type,
             cached_dimension_type,
-            ..Self::new(name.clone())
+            ..Self::new_base(uuid, name.clone())
         }
     }
 
@@ -499,18 +522,18 @@ impl World {
         self.world_age
     }
 
-    pub fn set_world_age(&mut self, world_age: i64) -> Result<()> {
+    pub fn set_world_age(&mut self, world_age: i64) {
         self.world_age = world_age;
-        self.broadcast_time()
+        let _ = self.broadcast_time();
     }
 
     pub const fn time(&self) -> i64 {
         self.time
     }
 
-    pub fn set_time(&mut self, time: i64) -> Result<()> {
+    pub fn set_time(&mut self, time: i64) {
         self.time = time;
-        self.broadcast_time()
+        let _ = self.broadcast_time();
     }
 
     pub const fn time_rate(&self) -> i32 {
@@ -598,7 +621,8 @@ impl World {
     }
 
     pub fn copy(&self) -> Self {
-        let mut copied_world = Self::new_with_dimension(
+        let mut copied_world = Self::new_with_cached_dimension_type(
+            Uuid::new_v4(),
             self.name.clone(),
             self.dimension_type.clone(),
             self.cached_dimension_type.clone(),
@@ -711,8 +735,8 @@ impl World {
         })
     }
 
-    pub fn set_world_border(&mut self, world_border: WorldBorder) -> Result<()> {
-        self.set_world_border_with_transition(world_border, 0)
+    pub fn set_world_border(&mut self, world_border: WorldBorder) {
+        let _ = self.set_world_border_with_transition(world_border, 0);
     }
 
     pub fn set_world_border_with_transition(
@@ -879,11 +903,10 @@ impl World {
         self.weather
     }
 
-    pub fn set_weather(&mut self, weather: Weather) -> Result<()> {
+    pub fn set_weather(&mut self, weather: Weather) {
         self.weather = weather;
         self.remaining_rain_transition_ticks = self.default_rain_transition_ticks(weather);
         self.remaining_thunder_transition_ticks = self.default_thunder_transition_ticks(weather);
-        Ok(())
     }
 
     pub fn set_weather_with_transition(

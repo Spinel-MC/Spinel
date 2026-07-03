@@ -8,7 +8,7 @@ use spinel_core::network::clientbound::play::set_equipment::SetEquipmentPacket;
 use spinel_core::network::clientbound::play::update_attributes::UpdateAttributesPacket;
 use spinel_macros::event_listener;
 use spinel_network::ConnectionState;
-use spinel_network::types::Identifier;
+
 use spinel_registry::{EntityType, ItemStack, Material};
 use std::net::{IpAddr, Ipv4Addr, SocketAddr, TcpListener};
 use std::sync::Mutex;
@@ -32,7 +32,7 @@ fn world_set_entity_equipment_applies_event_mutation_and_sends_equipment_then_at
     let mut server = MinecraftServer::new();
     let world_uuid = server
         .world_manager
-        .create_world(Identifier::minecraft("overworld"));
+        .create_world(spinel_registry::dimension_type::DimensionType::OVERWORLD);
     let mut viewer_client = queued_client();
     let mut viewer = Player::new(
         Uuid::new_v4(),
@@ -90,7 +90,7 @@ fn world_set_player_held_slot_updates_self_attributes_and_viewer_equipment() {
     let mut server = MinecraftServer::new();
     let world_uuid = server
         .world_manager
-        .create_world(Identifier::minecraft("overworld"));
+        .create_world(spinel_registry::dimension_type::DimensionType::OVERWORLD);
     let mut player_client = queued_client();
     let mut viewer_client = queued_client();
     let mut player = Player::new(

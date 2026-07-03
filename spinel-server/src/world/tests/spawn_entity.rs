@@ -6,7 +6,11 @@ use spinel_registry::EntityType;
 
 #[test]
 fn world_spawn_entity_delegates_summon_nbt_to_the_entity_owner() {
-    let mut world = World::new(Identifier::minecraft("summon_nbt"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("summon_nbt"),
+    );
     world.load_chunk(ChunkPosition::new(0, 0)).unwrap();
     let nbt = parse_snbt_compound(
         r#"{Pos:[4.5d,72.0d,6.5d],Rotation:[45.0f,10.0f],CustomName:'{"text":"Spawned"}',Glowing:1b,Small:1b}"#,

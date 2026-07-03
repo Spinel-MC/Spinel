@@ -42,7 +42,11 @@ fn generator_generate_all_visits_units_in_input_order() {
 fn chunk_load_callback_observes_cached_world_membership_and_completed_generation() {
     let observed_lifecycle = Arc::new(Mutex::new(Vec::new()));
     let supplier_lifecycle = Arc::clone(&observed_lifecycle);
-    let mut world = World::new(Identifier::minecraft("test"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("test"),
+    );
     world.set_chunk_supplier(move |position| {
         let generation_lifecycle = Arc::clone(&supplier_lifecycle);
         let load_lifecycle = Arc::clone(&supplier_lifecycle);
@@ -74,7 +78,11 @@ fn chunk_load_callback_observes_cached_world_membership_and_completed_generation
 #[test]
 fn biome_write_changes_one_quart_cell() {
     let registries = Registries::new_vanilla();
-    let mut world = World::new(Identifier::minecraft("test"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("test"),
+    );
     world.set_generator(|unit| {
         unit.modifier()
             .set_biome(BlockPosition::new(0, 0, 0), Biome::BADLANDS);
@@ -95,7 +103,11 @@ fn biome_write_changes_one_quart_cell() {
 #[test]
 fn unregistered_biome_key_fails_chunk_serialization() {
     let registries = Registries::new_vanilla();
-    let mut world = World::new(Identifier::minecraft("test"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("test"),
+    );
     world.set_generator(|unit| {
         unit.modifier().set_biome(
             BlockPosition::new(0, 0, 0),
@@ -111,7 +123,11 @@ fn unregistered_biome_key_fails_chunk_serialization() {
 #[test]
 fn fork_into_unloaded_neighbor_applies_when_neighbor_loads() {
     let registries = Registries::new_vanilla();
-    let mut world = World::new(Identifier::minecraft("test"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("test"),
+    );
     world.set_generator(|unit| {
         if unit.absolute_start().x != 0 {
             return;
@@ -137,7 +153,11 @@ fn fork_into_unloaded_neighbor_applies_when_neighbor_loads() {
 fn generation_callback_observes_generator_and_pending_fork_output() {
     let observed_blocks = Arc::new(Mutex::new(Vec::new()));
     let callback_observed_blocks = Arc::clone(&observed_blocks);
-    let mut world = World::new(Identifier::minecraft("test"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("test"),
+    );
     world.set_chunk_supplier(move |position| {
         let callback_observed_blocks = Arc::clone(&callback_observed_blocks);
         let mut chunk = Chunk::new(position);
@@ -179,7 +199,11 @@ fn generation_callback_observes_generator_and_pending_fork_output() {
 #[test]
 fn generated_blocks_prime_chunk_heightmaps() {
     let registries = Registries::new_vanilla();
-    let mut world = World::new(Identifier::minecraft("test"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("test"),
+    );
     world.set_generator(|unit| {
         unit.modifier().fill_height(-64, 0, Block::BEDROCK);
     });
@@ -198,7 +222,11 @@ fn generated_blocks_prime_chunk_heightmaps() {
 
 #[test]
 fn generated_heightmap_matches_minestom_top_block_edge() {
-    let mut world = World::new(Identifier::minecraft("test"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("test"),
+    );
     world.set_generator(|unit| {
         unit.modifier().fill_height(0, 40, Block::STONE);
     });
@@ -213,7 +241,11 @@ fn generated_heightmap_matches_minestom_top_block_edge() {
 
 #[test]
 fn generated_heightmap_refreshes_after_top_block_place_and_remove() {
-    let mut world = World::new(Identifier::minecraft("test"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("test"),
+    );
     world.set_generator(|unit| {
         unit.modifier().fill_height(0, 40, Block::STONE);
     });
@@ -249,7 +281,11 @@ fn generated_heightmap_refreshes_after_top_block_place_and_remove() {
 #[test]
 fn dynamic_fork_uses_written_block_bounds() {
     let registries = Registries::new_vanilla();
-    let mut world = World::new(Identifier::minecraft("test"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("test"),
+    );
     world.set_generator(|unit| {
         if unit.absolute_start().x != 0 {
             return;
@@ -269,7 +305,11 @@ fn dynamic_fork_uses_written_block_bounds() {
 #[test]
 fn dynamic_fork_resizes_by_section_and_merges_sparse_writes() {
     let registries = Registries::new_vanilla();
-    let mut world = World::new(Identifier::minecraft("test"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("test"),
+    );
     world.set_generator(|unit| {
         if unit.absolute_start().x != 0 {
             return;
@@ -291,7 +331,11 @@ fn dynamic_fork_resizes_by_section_and_merges_sparse_writes() {
 #[test]
 fn section_block_count_tracks_air_transitions() {
     let registries = Registries::new_vanilla();
-    let mut world = World::new(Identifier::minecraft("test"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("test"),
+    );
     world.set_generator(|unit| {
         unit.modifier()
             .set_block(BlockPosition::new(0, 0, 0), Block::BEDROCK);
@@ -312,7 +356,11 @@ fn section_block_count_tracks_air_transitions() {
 #[test]
 fn set_all_and_set_all_relative_write_generated_blocks() {
     let registries = Registries::new_vanilla();
-    let mut world = World::new(Identifier::minecraft("test"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("test"),
+    );
     world.set_generator(|unit| {
         unit.modifier().set_all_relative(|x, y, z| {
             if x == y && y == z {
@@ -336,7 +384,11 @@ fn set_all_and_set_all_relative_write_generated_blocks() {
 
 #[test]
 fn biome_writes_in_forks_fail_clearly() {
-    let mut world = World::new(Identifier::minecraft("test"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("test"),
+    );
     world.set_generator(|unit| {
         unit.fork(
             BlockPosition::new(16, 0, 0),
@@ -352,7 +404,11 @@ fn biome_writes_in_forks_fail_clearly() {
 
 #[test]
 fn generation_biome_area_section_and_relative_writes_match_minestom_shape() {
-    let mut world = World::new(Identifier::minecraft("test"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("test"),
+    );
     world.set_generator(|unit| {
         let mut modifier = unit.modifier();
         modifier.fill_biome_area(
@@ -382,7 +438,11 @@ fn generation_biome_area_section_and_relative_writes_match_minestom_shape() {
 
 #[test]
 fn generator_special_blocks_are_cached_for_current_chunk_and_forks() {
-    let mut world = World::new(Identifier::minecraft("test"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("test"),
+    );
     world.set_generator(|unit| {
         if unit.absolute_start().x != 0 {
             return;
@@ -416,7 +476,11 @@ fn generator_special_blocks_are_cached_for_current_chunk_and_forks() {
 #[test]
 fn generated_block_entity_blocks_are_serialized_as_chunk_block_entities() {
     let registries = Registries::new_vanilla();
-    let mut world = World::new(Identifier::minecraft("test"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("test"),
+    );
     world.set_generator(|unit| {
         unit.modifier()
             .set_block(BlockPosition::new(1, 4, 5), Block::OAK_SIGN);
@@ -512,7 +576,11 @@ fn block_change_to_non_block_entity_block_removes_stored_block_entity() {
 #[ignore]
 fn measure_chunk_generation_packet_and_light_cost() {
     let registries = Registries::new_vanilla();
-    let mut world = World::new(Identifier::minecraft("bench"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("bench"),
+    );
     world.set_generator(|unit| {
         unit.modifier().fill_height(-64, 64, Block::STONE);
     });
@@ -575,7 +643,11 @@ fn measure_chunk_generation_packet_and_light_cost() {
 #[test]
 #[ignore]
 fn measure_set_all_relative_chunk_generation_cost() {
-    let mut world = World::new(Identifier::minecraft("bench"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("bench"),
+    );
     world.set_generator(|unit| {
         unit.modifier()
             .set_all_relative(|relative_x, relative_y, relative_z| {
@@ -605,7 +677,11 @@ fn measure_set_all_relative_chunk_generation_cost() {
 
 #[test]
 fn showcase_bulk_generation_matches_per_coordinate_surface_behavior() {
-    let mut world = World::new(Identifier::minecraft("showcase_parity"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("showcase_parity"),
+    );
     world.set_generator(generate_showcase_benchmark_blocks);
 
     for chunk_x in -1..=1 {
@@ -636,7 +712,11 @@ fn showcase_bulk_generation_matches_per_coordinate_surface_behavior() {
 #[test]
 #[ignore]
 fn showcase_chunk_packet_construction_stays_within_tick_budget() {
-    let mut world = World::new(Identifier::minecraft("showcase_packet_bench"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("showcase_packet_bench"),
+    );
     world.set_generator(generate_showcase_benchmark_blocks);
     let registries = Registries::new_vanilla();
     let chunk_positions = (-4..=4)
@@ -673,7 +753,11 @@ fn showcase_chunk_packet_construction_stays_within_tick_budget() {
 #[test]
 #[ignore]
 fn showcase_generator_exceeds_live_debug_throughput_floor() {
-    let mut world = World::new(Identifier::minecraft("showcase_bench"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("showcase_bench"),
+    );
     world.set_generator(|unit| {
         generate_showcase_benchmark_blocks(unit);
     });
@@ -703,7 +787,11 @@ fn measure_showcase_chunk_pipeline_at_flight_scale() {
     const CHUNK_COUNT: usize = 6_000;
     const WINDOW_SIZE: usize = 500;
 
-    let mut world = World::new(Identifier::minecraft("showcase_flight_scale"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("showcase_flight_scale"),
+    );
     world.set_generator(generate_showcase_benchmark_blocks);
     let registries = Registries::new_vanilla();
     let chunk_positions = (0..CHUNK_COUNT)

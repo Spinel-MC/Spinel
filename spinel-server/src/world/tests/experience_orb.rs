@@ -31,7 +31,11 @@ fn experience_pickup_listener(event: &mut PickupExperienceEvent, _server: &mut M
 
 #[test]
 fn experience_orb_spawn_count_and_world_query_use_the_dedicated_owner() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let position = EntityPosition::new(3.0, 64.0, 5.0, 0.0, 0.0);
 
     let entity_id = world.spawn_experience_orb(12, position).unwrap();
@@ -53,7 +57,11 @@ fn experience_orb_spawn_count_and_world_query_use_the_dedicated_owner() {
 
 #[test]
 fn changing_experience_count_removes_and_respawns_the_orb_for_existing_viewers() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let mut viewer_client = queued_client();
     let viewer = entered_player(&mut viewer_client, "Viewer", 0.0);
     let viewer_id = viewer.get_entity_id();
@@ -106,8 +114,12 @@ fn changing_experience_count_removes_and_respawns_the_orb_for_existing_viewers()
 
 #[test]
 fn experience_orb_targets_the_nearest_player_and_applies_attraction() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
-    world.set_world_age(100).unwrap();
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
+    world.set_world_age(100);
     let player = positioned_player("Target", 4.0);
     let player_id = player.get_entity_id();
     let experience_orb_id = world
@@ -125,8 +137,12 @@ fn experience_orb_targets_the_nearest_player_and_applies_attraction() {
 
 #[test]
 fn nearest_spectator_isselected_then_cleared_without_falling_back_to_another_player() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
-    world.set_world_age(100).unwrap();
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
+    world.set_world_age(100);
     let mut spectator = positioned_player("Spectator", 2.0);
     spectator.set_game_mode(GameMode::Spectator);
     let normal_player = positioned_player("Normal", 4.0);
@@ -178,7 +194,7 @@ fn pickup_event_cancellation_and_player_cooldown_match_minestom() {
     let mut server = MinecraftServer::new();
     let world_uuid = server
         .world_manager
-        .create_world(Identifier::minecraft("overworld"));
+        .create_world(spinel_registry::dimension_type::DimensionType::OVERWORLD);
     let server_ptr = &mut server as *mut MinecraftServer as usize;
     let world = server.world_manager.world_mut(world_uuid).unwrap();
     world.use_server_event_dispatcher(server_ptr);

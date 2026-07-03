@@ -90,7 +90,7 @@ fn world_player_teleport_dispatches_immutable_event_before_state_mutation() {
     let mut server = MinecraftServer::new();
     let world_uuid = server
         .world_manager
-        .create_world(Identifier::minecraft("overworld"));
+        .create_world(spinel_registry::dimension_type::DimensionType::OVERWORLD);
     let player_uuid = Uuid::new_v4();
     let mut player = Player::new(
         player_uuid,
@@ -156,7 +156,7 @@ fn world_generic_entity_teleport_updates_viewers_after_event_and_state_change() 
     let mut server = MinecraftServer::new();
     let world_uuid = server
         .world_manager
-        .create_world(Identifier::minecraft("overworld"));
+        .create_world(spinel_registry::dimension_type::DimensionType::OVERWORLD);
     let mut viewer_client = queued_client();
     let mut viewer = Player::new(
         Uuid::new_v4(),
@@ -223,7 +223,11 @@ fn world_generic_entity_teleport_updates_viewers_after_event_and_state_change() 
 
 #[test]
 fn entity_teleport_future_applies_state_only_when_completed() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let previous_position = EntityPosition::new(1.0, 64.0, 1.0, 10.0, 20.0);
     let destination = EntityPosition::new(8.0, 70.0, 9.0, 30.0, 40.0);
     let mut entity = GenericEntity::new(EntityType::ZOMBIE);
@@ -263,7 +267,11 @@ fn entity_teleport_future_applies_state_only_when_completed() {
 
 #[test]
 fn entity_teleport_future_waits_for_parallel_destination_chunk_loading() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let can_finish = Arc::new(AtomicBool::new(false));
     world.set_chunk_loader(DeferredTeleportChunkLoader {
         can_finish: Arc::clone(&can_finish),

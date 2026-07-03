@@ -42,7 +42,11 @@ use uuid::Uuid;
 
 #[test]
 fn world_and_chunk_tags_match_minestom_tag_handler_surface() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let mut chunk = Chunk::new(ChunkPosition::new(0, 0));
     let world_score = Tag::<i32>::integer("world_score");
     let chunk_score = Tag::<i32>::integer("chunk_score");
@@ -60,13 +64,17 @@ fn world_and_chunk_tags_match_minestom_tag_handler_surface() {
 
 #[test]
 fn world_scheduler_runs_next_tick_before_time_and_tick_end_after_world_work() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
 
     world.schedule_next_tick(|world| {
-        world.set_world_age(40).unwrap();
+        world.set_world_age(40);
     });
     world.schedule_tick_end(|world| {
-        world.set_time(200).unwrap();
+        world.set_time(200);
     });
     world.tick();
 
@@ -78,7 +86,11 @@ fn world_scheduler_runs_next_tick_before_time_and_tick_end_after_world_work() {
 
 #[test]
 fn world_event_node_dispatches_world_scoped_callbacks() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let event_count = Arc::new(AtomicUsize::new(0));
     let listener_count = event_count.clone();
 
@@ -93,7 +105,11 @@ fn world_event_node_dispatches_world_scoped_callbacks() {
 
 #[test]
 fn section_invalidation_marks_light_and_clears_chunk_packet_cache() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let registries = Registries::new_vanilla();
     let chunk_position = ChunkPosition::new(0, 0);
 
@@ -118,7 +134,11 @@ fn section_invalidation_marks_light_and_clears_chunk_packet_cache() {
 
 #[test]
 fn world_light_reads_match_loaded_chunk_and_missing_chunk_edges() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
 
     assert_eq!(world.block_light(BlockPosition::new(0, 64, 0)), 0);
     assert_eq!(world.sky_light(BlockPosition::new(0, 64, 0)), 0);
@@ -131,7 +151,11 @@ fn world_light_reads_match_loaded_chunk_and_missing_chunk_edges() {
 
 #[test]
 fn world_entity_line_of_sight_matches_minestom_entity_raycast_surface() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let mut source = Entity::new(EntityType::ZOMBIE);
     let mut target = Entity::new(EntityType::ZOMBIE);
     let source_id = source.get_entity_id();
@@ -174,7 +198,11 @@ fn world_entity_line_of_sight_matches_minestom_entity_raycast_surface() {
 
 #[test]
 fn invalidated_light_relights_before_reading_levels() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let lit_position = BlockPosition::new(0, 64, 0);
     let solid_position = BlockPosition::new(1, 64, 0);
     let chunk_position = ChunkPosition::new(0, 0);
@@ -196,7 +224,11 @@ fn invalidated_light_relights_before_reading_levels() {
 
 #[test]
 fn block_action_requires_loaded_chunk_and_targets_chunk_viewers() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let position = BlockPosition::new(0, 64, 0);
 
     assert!(world.send_block_action(position, 1, 2).is_err());
@@ -208,12 +240,14 @@ fn block_action_requires_loaded_chunk_and_targets_chunk_viewers() {
 
 #[test]
 fn world_weather_api_updates_weather_state() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
 
     assert_eq!(world.weather(), Weather::CLEAR);
-    world
-        .set_weather(Weather::new(0.75, 0.25).unwrap())
-        .unwrap();
+    world.set_weather(Weather::new(0.75, 0.25).unwrap());
 
     assert_eq!(world.weather().rain_level(), 0.75);
     assert_eq!(world.weather().thunder_level(), 0.25);
@@ -248,7 +282,11 @@ fn weather_validates_levels_and_matches_minestom_immutable_updates() {
 
 #[test]
 fn world_weather_transition_ticks_follow_minestom_overload() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
 
     assert!(
         world
@@ -269,7 +307,11 @@ fn world_weather_transition_ticks_follow_minestom_overload() {
 
 #[test]
 fn world_set_biome_loads_chunk_updates_palette_and_timestamp() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let position = BlockPosition::new(-1, 64, -1);
     let chunk_position = ChunkPosition::new(-1, -1);
     let previous_change_time = world.last_block_change_time();
@@ -284,7 +326,11 @@ fn world_set_biome_loads_chunk_updates_palette_and_timestamp() {
 
 #[test]
 fn world_block_lookup_conditions_match_minestom_cached_and_none_edges() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let position = BlockPosition::new(1, 64, 1);
     let chunk_position = ChunkPosition::new(0, 0);
 
@@ -313,7 +359,11 @@ fn world_block_lookup_conditions_match_minestom_cached_and_none_edges() {
 
 #[test]
 fn world_chunk_loader_getter_exposes_assigned_loader_without_mutable_ownership() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
 
     world.set_chunk_loader(CountingUnloadLoader {
         unload_count: Arc::new(AtomicUsize::new(0)),
@@ -326,7 +376,11 @@ fn world_chunk_loader_getter_exposes_assigned_loader_without_mutable_ownership()
 #[test]
 fn future_chunk_loads_share_in_flight_ticket_and_remove_it_after_completion() {
     let load_count = Arc::new(AtomicUsize::new(0));
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let chunk_position = ChunkPosition::new(2, 3);
     world.set_chunk_loader(ParallelTrackingLoader {
         load_count: load_count.clone(),
@@ -349,7 +403,11 @@ fn future_chunk_loads_share_in_flight_ticket_and_remove_it_after_completion() {
 
 #[test]
 fn future_chunk_load_does_not_block_while_generator_runs() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     world.set_generator(|_| {
         std::thread::sleep(std::time::Duration::from_millis(200));
     });
@@ -366,7 +424,11 @@ fn future_chunk_load_does_not_block_while_generator_runs() {
 
 #[test]
 fn future_chunk_load_failure_removes_in_flight_entry_and_propagates_error() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let chunk_position = ChunkPosition::new(2, 3);
     world.set_chunk_loader(ParallelTrackingLoader {
         load_count: Arc::new(AtomicUsize::new(0)),
@@ -391,7 +453,11 @@ fn future_chunk_load_failure_removes_in_flight_entry_and_propagates_error() {
 
 #[test]
 fn optional_future_chunk_load_respects_auto_chunk_load_disabled() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
 
     world.enable_auto_chunk_load(false);
 
@@ -408,7 +474,11 @@ fn future_chunk_load_and_save_follow_loader_parallel_flags() {
     let load_thread = Arc::new(std::sync::Mutex::new(None));
     let save_thread = Arc::new(std::sync::Mutex::new(None));
     let save_count = Arc::new(AtomicUsize::new(0));
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let caller_thread = std::thread::current().id();
     world.set_chunk_loader(ParallelTrackingLoader {
         load_count: Arc::new(AtomicUsize::new(0)),
@@ -431,7 +501,11 @@ fn future_chunk_load_and_save_follow_loader_parallel_flags() {
 fn non_parallel_loader_runs_on_caller_before_async_chunk_completion() {
     let load_thread = Arc::new(std::sync::Mutex::new(None));
     let save_thread = Arc::new(std::sync::Mutex::new(None));
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let caller_thread = std::thread::current().id();
     world.set_chunk_loader(SynchronousTrackingLoader {
         load_thread: load_thread.clone(),
@@ -453,7 +527,11 @@ fn non_parallel_loader_runs_on_caller_before_async_chunk_completion() {
 
 #[test]
 fn world_border_api_matches_minestom_initialize_packet_surface() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let border = WorldBorder::new(128.0, 4.0, -8.0, 6, 20, 256).unwrap();
     let mut client = test_client();
     client.state = ConnectionState::Play;
@@ -468,7 +546,7 @@ fn world_border_api_matches_minestom_initialize_packet_surface() {
     player.mark_entered_world();
     world.add_entity(Entity::Player(player));
 
-    world.set_world_border(border).unwrap();
+    world.set_world_border(border);
 
     let packet = world.create_initialize_world_border_packet();
     assert_eq!(world.get_world_border(), border);
@@ -487,7 +565,11 @@ fn world_border_api_matches_minestom_initialize_packet_surface() {
 
 #[test]
 fn world_play_sound_except_sends_positioned_sound_to_all_but_excluded_player() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let excluded_uuid = Uuid::new_v4();
     let included_uuid = Uuid::new_v4();
     let mut excluded_client = test_client();
@@ -538,7 +620,11 @@ fn world_play_sound_except_sends_positioned_sound_to_all_but_excluded_player() {
 
 #[test]
 fn world_play_sound_except_emitter_delegates_self_emitter_per_player() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let excluded_uuid = Uuid::new_v4();
     let included_uuid = Uuid::new_v4();
     let mut excluded_client = test_client();
@@ -589,7 +675,11 @@ fn world_play_sound_except_emitter_delegates_self_emitter_per_player() {
 
 #[test]
 fn world_boss_bar_api_tracks_unique_bars_and_dispatches_show_hide_packets() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let mut client = test_client();
     client.state = ConnectionState::Play;
     client.enable_outbound_packet_queue();
@@ -625,7 +715,11 @@ fn world_boss_bar_api_tracks_unique_bars_and_dispatches_show_hide_packets() {
 
 #[test]
 fn world_explosion_supplier_get_set_and_clear_match_minestom_surface() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let center = EntityPosition::new(1.0, 2.0, 3.0, 0.0, 0.0);
 
     assert!(world.explosion_supplier().is_none());
@@ -647,7 +741,11 @@ fn world_explosion_supplier_get_set_and_clear_match_minestom_surface() {
 
 #[test]
 fn world_explode_requires_supplier_like_minestom_state_branch() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let error = world
         .explode(EntityPosition::new(1.0, 2.0, 3.0, 0.0, 0.0), 4.0)
         .unwrap_err();
@@ -657,7 +755,11 @@ fn world_explode_requires_supplier_like_minestom_state_branch() {
 
 #[test]
 fn world_explosion_supplier_receives_additional_data() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let observed_data = Arc::new(AtomicBool::new(false));
     let supplier = DataAwareExplosionSupplier {
         observed_data: observed_data.clone(),
@@ -679,7 +781,11 @@ fn world_explosion_supplier_receives_additional_data() {
 
 #[test]
 fn world_explode_prepares_removes_blocks_sends_packet_and_runs_hooks() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let chunk_position = ChunkPosition::new(0, 0);
     let block_position = BlockPosition::new(1, 64, 1);
     let post_explosion_count = Arc::new(AtomicUsize::new(0));
@@ -739,7 +845,11 @@ fn world_explode_prepares_removes_blocks_sends_packet_and_runs_hooks() {
 
 #[test]
 fn block_handler_place_destroy_and_chunk_tick_follow_minestom_owner_flow() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let handler_counts = Arc::new(BlockHandlerCounts::default());
     let block_position = BlockPosition::new(1, 64, 1);
     let player = Player::new(
@@ -801,7 +911,11 @@ fn block_handler_place_destroy_and_chunk_tick_follow_minestom_owner_flow() {
 
 #[test]
 fn block_handler_interaction_routes_through_world_owner_before_item_use() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let handler_counts = Arc::new(BlockHandlerCounts::default());
     let block_position = BlockPosition::new(1, 64, 1);
     let player = Player::new(
@@ -837,7 +951,11 @@ fn block_handler_interaction_routes_through_world_owner_before_item_use() {
 
 #[test]
 fn block_handler_touch_routes_from_world_entity_tick() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let handler_counts = Arc::new(BlockHandlerCounts::default());
     let block_position = BlockPosition::new(1, 64, 1);
     let mut entity = Entity::new(EntityType::ZOMBIE);
@@ -861,7 +979,11 @@ fn block_handler_touch_routes_from_world_entity_tick() {
 
 #[test]
 fn block_handler_place_block_requires_loaded_chunk_like_minestom() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let block_position = BlockPosition::new(1, 64, 1);
 
     assert!(!world.place_block(BlockHandlerPlacement::new(
@@ -874,7 +996,11 @@ fn block_handler_place_block_requires_loaded_chunk_like_minestom() {
 
 #[test]
 fn block_placement_rule_changes_placed_block_only_when_updates_are_enabled() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let block_position = BlockPosition::new(1, 64, 1);
     world.load_chunk(ChunkPosition::new(0, 0)).unwrap();
     world.register_block_placement_rule(ReplaceOnPlaceRule {
@@ -905,7 +1031,11 @@ fn block_placement_rule_changes_placed_block_only_when_updates_are_enabled() {
 
 #[test]
 fn block_handler_placement_preserves_non_default_block_state() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let block_position = BlockPosition::new(1, 64, 1);
     let block_state = Block::OAK_LOG
         .default_state()
@@ -925,7 +1055,11 @@ fn block_handler_placement_preserves_non_default_block_state() {
 
 #[test]
 fn block_replacement_uses_generated_flags_and_registered_self_replacement_rules() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     world.register_block_placement_rule(SelfReplaceableRule {
         source_block: Block::STONE,
     });
@@ -944,7 +1078,11 @@ fn block_replacement_uses_generated_flags_and_registered_self_replacement_rules(
 
 #[test]
 fn neighbor_block_placement_rules_recompute_six_neighbors_until_max_update_distance() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let changed_position = BlockPosition::new(1, 64, 1);
     let first_neighbor = BlockPosition::new(2, 64, 1);
     let second_neighbor = BlockPosition::new(3, 64, 1);
@@ -971,7 +1109,11 @@ fn neighbor_block_placement_rules_recompute_six_neighbors_until_max_update_dista
 
 #[test]
 fn block_mutation_dispatches_world_block_update_event_and_refreshes_timestamp() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let event_count = Arc::new(AtomicUsize::new(0));
     let listener_count = event_count.clone();
     let block_position = BlockPosition::new(1, 64, 1);
@@ -991,7 +1133,11 @@ fn block_mutation_dispatches_world_block_update_event_and_refreshes_timestamp() 
 
 #[test]
 fn world_tick_clears_changed_block_recursion_guard() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let block_position = BlockPosition::new(1, 64, 1);
 
     world.set_block(block_position, Block::STONE).unwrap();
@@ -1003,7 +1149,11 @@ fn world_tick_clears_changed_block_recursion_guard() {
 
 #[test]
 fn block_entity_data_packet_is_sent_to_chunk_viewers_after_block_entity_capable_write() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let chunk_position = ChunkPosition::new(0, 0);
     let block_position = BlockPosition::new(1, 64, 1);
     let mut client = test_client();
@@ -1035,7 +1185,11 @@ fn block_entity_data_packet_is_sent_to_chunk_viewers_after_block_entity_capable_
 
 #[test]
 fn block_entity_refresh_sends_special_block_data_for_failed_digging_resync() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let mut client = test_client();
     client.state = ConnectionState::Play;
     client.enable_outbound_packet_queue();
@@ -1064,7 +1218,11 @@ fn block_entity_refresh_sends_special_block_data_for_failed_digging_resync() {
 
 #[test]
 fn block_entity_data_follows_the_written_block_value_and_is_removed_on_break() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let block_position = BlockPosition::new(1, 64, 1);
     let chunk_position = ChunkPosition::new(0, 0);
     let player = Player::new(
@@ -1130,7 +1288,11 @@ fn block_entity_data_follows_the_written_block_value_and_is_removed_on_break() {
 
 #[test]
 fn block_entity_packet_uses_registry_type_and_handler_client_tag_filter() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let chunk_position = ChunkPosition::new(0, 0);
     let block_position = BlockPosition::new(1, 64, 1);
     let mut client = test_client();
@@ -1193,7 +1355,11 @@ fn block_entity_packet_uses_registry_type_and_handler_client_tag_filter() {
 
 #[test]
 fn place_block_sends_block_update_to_all_chunk_viewers() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let chunk_position = ChunkPosition::new(0, 0);
     let block_position = BlockPosition::new(1, 64, 1);
     let mut first_client = test_client();
@@ -1253,7 +1419,11 @@ fn place_block_sends_block_update_to_all_chunk_viewers() {
 
 #[test]
 fn break_block_sends_destroy_effect_to_chunk_viewers_except_breaker() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let chunk_position = ChunkPosition::new(0, 0);
     let block_position = BlockPosition::new(1, 64, 1);
     let mut breaker_client = test_client();
@@ -1313,7 +1483,11 @@ fn break_block_sends_destroy_effect_to_chunk_viewers_except_breaker() {
 
 #[test]
 fn world_identity_and_pointers_resolve_world_uuid_like_minestom() {
-    let world = World::new(Identifier::minecraft("overworld"));
+    let world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
 
     assert_eq!(world.identity().uuid(), world.uuid());
     assert_eq!(world.pointers().uuid(), world.uuid());
@@ -1322,7 +1496,11 @@ fn world_identity_and_pointers_resolve_world_uuid_like_minestom() {
 
 #[test]
 fn chunk_world_membership_and_viewer_chunk_send_match_minestom_chunk_api() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let registries = Registries::new_vanilla();
     let chunk_position = ChunkPosition::new(0, 0);
     let player = Player::new(
@@ -1356,7 +1534,11 @@ fn chunk_world_membership_and_viewer_chunk_send_match_minestom_chunk_api() {
 
 #[test]
 fn chunk_unload_removes_players_and_generic_entities_in_unloaded_chunk() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let chunk_position = ChunkPosition::new(0, 0);
     let generic_entity = Entity::new(EntityType::ZOMBIE);
     let generic_entity_id = generic_entity.get_entity_id();
@@ -1387,7 +1569,11 @@ fn chunk_unload_removes_players_and_generic_entities_in_unloaded_chunk() {
 fn world_manager_unregister_world_unloads_chunks_and_removes_registration() {
     let unload_count = Arc::new(AtomicUsize::new(0));
     let mut worlds = WorldManager::new();
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     world.set_chunk_loader(CountingUnloadLoader {
         unload_count: unload_count.clone(),
     });
@@ -1411,7 +1597,11 @@ fn world_manager_unregister_world_unloads_chunks_and_removes_registration() {
 fn world_manager_register_and_unregister_dispatch_world_events_in_order() {
     let event_order = Arc::new(std::sync::Mutex::new(Vec::new()));
     let mut worlds = WorldManager::new();
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let world_uuid = world.uuid();
     let register_order = event_order.clone();
     let unregister_order = event_order.clone();
@@ -1434,7 +1624,7 @@ fn world_manager_register_and_unregister_dispatch_world_events_in_order() {
 #[test]
 fn world_manager_unregister_world_rejects_online_players() {
     let mut worlds = WorldManager::new();
-    let world_uuid = worlds.create_world(Identifier::minecraft("overworld"));
+    let world_uuid = worlds.create_world(spinel_registry::dimension_type::DimensionType::OVERWORLD);
     let mut client = test_client();
     let mut player = Player::new(
         Uuid::nil(),
@@ -1459,7 +1649,7 @@ fn world_manager_resolves_entity_world_handle_through_world_collection() {
     let mut server = MinecraftServer::new();
     let world_uuid = server
         .world_manager
-        .create_world(Identifier::minecraft("overworld"));
+        .create_world(spinel_registry::dimension_type::DimensionType::OVERWORLD);
     let entity = Entity::new(spinel_registry::EntityType::ZOMBIE);
     let entity_id = entity.get_entity_id();
     server.world_manager.add_entity(world_uuid, entity);
@@ -1556,8 +1746,10 @@ impl ChunkLoader for SynchronousTrackingLoader {
 #[test]
 fn generic_entity_set_world_moves_between_worlds_after_target_chunk_load() {
     let mut worlds = WorldManager::new();
-    let first_world = worlds.create_world(Identifier::minecraft("first"));
-    let second_world = worlds.create_world(Identifier::minecraft("second"));
+    let first_world =
+        worlds.create_world(spinel_registry::dimension_type::DimensionType::OVERWORLD);
+    let second_world =
+        worlds.create_world(spinel_registry::dimension_type::DimensionType::OVERWORLD);
     let entity = Entity::new(EntityType::ZOMBIE);
     let entity_id = entity.get_entity_id();
     let target_position = EntityPosition::new(32.0, 70.0, -16.0, 90.0, 45.0);
@@ -1592,9 +1784,12 @@ fn generic_entity_set_world_moves_between_worlds_after_target_chunk_load() {
 #[test]
 fn generic_entity_set_world_point_and_default_position_match_minestom_overloads() {
     let mut worlds = WorldManager::new();
-    let first_world = worlds.create_world(Identifier::minecraft("first"));
-    let second_world = worlds.create_world(Identifier::minecraft("second"));
-    let third_world = worlds.create_world(Identifier::minecraft("third"));
+    let first_world =
+        worlds.create_world(spinel_registry::dimension_type::DimensionType::OVERWORLD);
+    let second_world =
+        worlds.create_world(spinel_registry::dimension_type::DimensionType::OVERWORLD);
+    let third_world =
+        worlds.create_world(spinel_registry::dimension_type::DimensionType::OVERWORLD);
     let mut entity = Entity::new(EntityType::ZOMBIE);
     let entity_id = entity.get_entity_id();
     entity.set_position(EntityPosition::new(1.0, 64.0, 1.0, 15.0, 30.0));
@@ -1623,10 +1818,10 @@ fn player_set_world_rejects_same_world_and_completes_on_next_manager_tick() {
     let mut server = MinecraftServer::new();
     let first_world = server
         .world_manager
-        .create_world(Identifier::minecraft("first"));
+        .create_world(spinel_registry::dimension_type::DimensionType::OVERWORLD);
     let second_world = server
         .world_manager
-        .create_world(Identifier::minecraft("second"));
+        .create_world(spinel_registry::dimension_type::DimensionType::OVERWORLD);
     server
         .world_manager
         .world_mut(second_world)
@@ -1695,7 +1890,7 @@ fn inactive_player_set_world_default_uses_respawn_point() {
     let mut server = MinecraftServer::new();
     let target_world = server
         .world_manager
-        .create_world(Identifier::minecraft("target"));
+        .create_world(spinel_registry::dimension_type::DimensionType::OVERWORLD);
     server
         .world_manager
         .world_mut(target_world)
@@ -1755,10 +1950,10 @@ fn player_set_world_future_completes_after_spawn_packets_and_viewer_refresh() {
     let mut server = MinecraftServer::new();
     let first_world = server
         .world_manager
-        .create_world(Identifier::minecraft("first"));
+        .create_world(spinel_registry::dimension_type::DimensionType::OVERWORLD);
     let second_world = server
         .world_manager
-        .create_world(Identifier::minecraft("second"));
+        .create_world(spinel_registry::dimension_type::DimensionType::OVERWORLD);
     server
         .world_manager
         .world_mut(second_world)
@@ -1875,10 +2070,10 @@ fn same_dimension_player_set_world_does_not_send_respawn_packet() {
     let mut server = MinecraftServer::new();
     let first_world = server
         .world_manager
-        .create_world(Identifier::minecraft("same_dimension"));
+        .create_world(spinel_registry::dimension_type::DimensionType::OVERWORLD);
     let second_world = server
         .world_manager
-        .create_world(Identifier::minecraft("same_dimension"));
+        .create_world(spinel_registry::dimension_type::DimensionType::OVERWORLD);
     server
         .world_manager
         .world_mut(second_world)
@@ -1888,8 +2083,7 @@ fn same_dimension_player_set_world_does_not_send_respawn_packet() {
         .world_manager
         .world_mut(second_world)
         .unwrap()
-        .set_weather(Weather::THUNDER)
-        .unwrap();
+        .set_weather(Weather::THUNDER);
     let mut client = test_client();
     client.state = ConnectionState::Play;
     client.enable_outbound_packet_queue();
@@ -1932,7 +2126,8 @@ fn same_dimension_player_set_world_does_not_send_respawn_packet() {
 #[test]
 fn shared_world_registration_linking_and_chunk_delegation_match_minestom_shape() {
     let mut worlds = WorldManager::new();
-    let source_world = worlds.create_world(Identifier::minecraft("source"));
+    let source_world =
+        worlds.create_world(spinel_registry::dimension_type::DimensionType::OVERWORLD);
     let shared_world = worlds.create_shared_world(source_world).unwrap();
     let chunk_position = ChunkPosition::new(3, -2);
 
@@ -1990,7 +2185,8 @@ fn shared_world_registration_linking_and_chunk_delegation_match_minestom_shape()
 #[test]
 fn world_copy_preserves_loaded_chunks_tags_dimension_and_source_world() {
     let mut worlds = WorldManager::new();
-    let source_world = worlds.create_world(Identifier::minecraft("source"));
+    let source_world =
+        worlds.create_world(spinel_registry::dimension_type::DimensionType::OVERWORLD);
     let chunk_position = ChunkPosition::new(1, -1);
     let block_position = BlockPosition::new(17, 64, -1);
     let copied_marker = Tag::<i32>::integer("copied_marker");
@@ -2020,7 +2216,8 @@ fn world_copy_preserves_loaded_chunks_tags_dimension_and_source_world() {
 #[test]
 fn world_manager_worlds_include_normal_and_shared_worlds_as_owned_snapshot() {
     let mut worlds = WorldManager::new();
-    let source_world = worlds.create_world(Identifier::minecraft("source"));
+    let source_world =
+        worlds.create_world(spinel_registry::dimension_type::DimensionType::OVERWORLD);
     let shared_world = worlds.create_shared_world(source_world).unwrap();
     let world_uuids = worlds.world_uuids();
 
@@ -2034,7 +2231,7 @@ fn linked_shared_world_same_chunk_player_transition_skips_chunk_refresh() {
     let mut server = MinecraftServer::new();
     let source_world = server
         .world_manager
-        .create_world(Identifier::minecraft("source"));
+        .create_world(spinel_registry::dimension_type::DimensionType::OVERWORLD);
     let shared_world = server
         .world_manager
         .create_shared_world(source_world)
@@ -2080,7 +2277,11 @@ fn linked_shared_world_same_chunk_player_transition_skips_chunk_refresh() {
 
 #[test]
 fn world_snapshot_preserves_world_chunk_entity_and_tag_state_after_mutation() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let world_tag = Tag::<i32>::integer("snapshot_world");
     let chunk_tag = Tag::<i32>::integer("snapshot_chunk");
     let chunk_position = ChunkPosition::new(0, 0);
@@ -2120,7 +2321,11 @@ fn world_snapshot_preserves_world_chunk_entity_and_tag_state_after_mutation() {
 
 #[test]
 fn unchanged_world_snapshots_share_chunk_section_storage_until_mutation() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let chunk_position = ChunkPosition::new(0, 0);
     let block_position = BlockPosition::new(1, 64, 1);
     world.load_chunk(chunk_position).unwrap();
@@ -2158,7 +2363,11 @@ fn unchanged_world_snapshots_share_chunk_section_storage_until_mutation() {
 
 #[test]
 fn completed_chunk_load_ticket_remains_complete_without_world_history() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let chunk_position = ChunkPosition::new(0, 0);
     let ticket = world.load_chunk_future(chunk_position).unwrap();
 

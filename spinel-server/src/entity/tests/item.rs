@@ -43,7 +43,11 @@ fn item_entity_owns_stack_metadata_and_pickup_delay() {
 
 #[test]
 fn item_entity_landing_synchronizes_position_and_velocity_immediately() {
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     world
         .set_block(BlockPosition::new(0, 63, 0), Block::STONE)
         .unwrap();

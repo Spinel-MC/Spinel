@@ -1233,7 +1233,7 @@ fn server_queues_play_packets_for_player_tick_instead_of_dispatching_immediately
     client.state = ConnectionState::Play;
     let world_uuid = server
         .world_manager
-        .create_world(Identifier::minecraft("overworld"));
+        .create_world(spinel_registry::dimension_type::DimensionType::OVERWORLD);
     let mut player = Player::new(Uuid::nil(), "Player".to_string(), 0, client.addr);
     player.set_client(&mut client);
     assert!(
@@ -2805,7 +2805,11 @@ fn player_look_at_and_face_position_apis_send_minestom_face_player_packets() {
 fn player_debug_subscriptions_and_vehicle_state_match_minestom_listener_surface() {
     let (client, _peer_stream) = test_client_pair();
     let mut worlds = WorldManager::new();
-    let world = World::new(Identifier::minecraft("overworld"));
+    let world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let world_uuid = world.uuid();
     let mut player = Player::new(Uuid::nil(), "Player".to_string(), 0, client.addr);
     let mut vehicle = GenericEntity::new(EntityType::MINECART);

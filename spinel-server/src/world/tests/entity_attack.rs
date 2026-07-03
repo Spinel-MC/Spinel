@@ -100,7 +100,11 @@ fn entity_creature_attack_with_swing_swings_main_hand_before_dispatching_attack_
 }
 
 fn event_world(name: &str, server: &mut MinecraftServer) -> World {
-    let mut world = World::new(Identifier::minecraft(name));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft(name),
+    );
     world.use_server_event_dispatcher(server as *mut MinecraftServer as usize);
     world
 }

@@ -44,7 +44,11 @@ fn player_pose_fit_ignores_missing_chunks_like_minestom() {
 fn world_with_player_without_loaded_chunks() -> (World, Client, Uuid, TcpStream) {
     let (client, peer_stream) = test_client_pair();
     let player_uuid = Uuid::new_v4();
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     let mut player = Player::new(player_uuid, "Pose".to_owned(), 0, client.addr);
     player.mark_entered_world();
     world.add_entity(Entity::Player(player));
@@ -54,7 +58,11 @@ fn world_with_player_without_loaded_chunks() -> (World, Client, Uuid, TcpStream)
 fn world_with_player_at_fractional_y() -> (World, Client, Uuid, TcpStream) {
     let (mut client, peer_stream) = test_client_pair();
     let player_uuid = Uuid::new_v4();
-    let mut world = World::new(Identifier::minecraft("overworld"));
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
     world.load_chunk(ChunkPosition::new(0, 0)).unwrap();
     let mut player = Player::new(player_uuid, "Pose".to_owned(), 0, client.addr);
     player.mark_entered_world();

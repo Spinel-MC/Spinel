@@ -85,6 +85,6 @@ pub use world::{ChunkLoadTicket, ChunkSupplier, EntityTeleportTicket, World, Wor
 pub use world_border::WorldBorder;
 pub use world_event_node::WorldEventNode;
 pub use world_handle::WorldHandle;
-pub use world_manager::WorldManager;
+pub use world_manager::{PlayerWorldTransitionTicket, WorldManager};
 pub use world_scheduler::WorldScheduler;
 pub use world_snapshot::{ChunkSnapshot, WorldSnapshot};
