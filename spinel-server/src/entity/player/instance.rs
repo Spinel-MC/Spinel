@@ -784,10 +784,27 @@ impl Player {
             SetExperiencePacket::new(0.0, 0, 0).dispatch(client)?;
             self.refresh_abilities()?;
         }
-        let respawn_position = self.dispatch_player_respawn_event();
+        let respawn_point = self.dispatch_player_respawn_event();
+        let respawn_position = EntityPosition::new(
+            respawn_point.x,
+            respawn_point.y,
+            respawn_point.z,
+            respawn_point.yaw,
+            respawn_point.pitch,
+        );
         self.living.revive();
         self.refresh_pose();
-        self.position = PlayerPosition::from(respawn_position);
+        self.position = PlayerPosition::from(respawn_point);
+        self.synchronize_position_after_teleport(
+            respawn_position,
+            Vector3d {
+                x: 0.0,
+                y: 0.0,
+                z: 0.0,
+            },
+            TeleportFlags::absolute(),
+            false,
+        )?;
         Ok(true)
     }
 

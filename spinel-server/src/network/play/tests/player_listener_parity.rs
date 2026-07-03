@@ -1,5 +1,5 @@
 use crate::entity::metadata::definitions;
-use crate::entity::{Entity, EntityId, EntityPosition, GenericEntity, Player};
+use crate::entity::{Entity, EntityId, EntityPosition, GenericEntity, Player, PlayerSpawnPoint};
 use crate::events::creative_inventory_action::CreativeInventoryActionEvent;
 use crate::events::entity_attack::EntityAttackEvent;
 use crate::events::item_drop::ItemDropEvent;
@@ -26,6 +26,7 @@ use crate::server::MinecraftServer;
 use crate::world::{Block, BlockPosition, ChunkPosition};
 use spinel_core::entity::game_mode::GameMode;
 use spinel_core::network::clientbound::play::acknowledge_block_change::AcknowledgeBlockChangePacket;
+use spinel_core::network::clientbound::play::respawn::RespawnPacket;
 use spinel_core::network::clientbound::play::set_camera::SetCameraPacket;
 use spinel_core::network::clientbound::play::set_player_inventory::SetPlayerInventoryPacket;
 use spinel_core::network::clientbound::play::sync_player_pos::SyncPlayerPositionPacket;
@@ -33,6 +34,7 @@ use spinel_core::network::clientbound::play::system_chat::SystemChatPacket;
 use spinel_core::network::serverbound::play::change_game_mode::ChangeGameModePacket;
 use spinel_core::network::serverbound::play::chat::ChatPacket;
 use spinel_core::network::serverbound::play::chat_command_signed::SignedCommandChatPacket;
+use spinel_core::network::serverbound::play::client_command::ClientCommandPacket;
 use spinel_core::network::serverbound::play::interact::{InteractAction, InteractPacket};
 use spinel_core::network::serverbound::play::move_player_pos::MovePlayerPosPacket;
 use spinel_core::network::serverbound::play::move_player_pos_rot::MovePlayerPosRotPacket;
@@ -1012,6 +1014,42 @@ fn player_loaded_listener_dispatches_after_client_loaded_packet() {
     ));
 
     assert_eq!(LISTENER_PARITY_LOADED.load(Ordering::SeqCst), 1);
+}
+
+#[test]
+fn client_command_perform_respawn_respawns_dead_player() {
+    let _scope = ListenerParityScope::new();
+    let (mut server, mut client, mut peer_stream, _world_uuid, _player_id) =
+        server_with_play_player(GameMode::Survival);
+    attach_client_to_player(&mut server, &mut client);
+    player_for_client(&mut server, &client)
+        .set_respawn_point(PlayerSpawnPoint::new(0.0, 4.0, 0.0, 0.0, 0.0));
+
+    player_for_client(&mut server, &client).kill().unwrap();
+    let _death_packet = read_packet_frame(&mut peer_stream);
+
+    assert!(player_for_client(&mut server, &client).is_dead());
+    assert!(dispatch_packet(
+        &mut server,
+        &mut client,
+        ClientCommandPacket {
+            action: ClientCommandPacket::PERFORM_RESPAWN,
+        }
+    ));
+
+    let (respawn_packet_id, _payload) =
+        read_packet_frame_with_id(&mut peer_stream, RespawnPacket::get_id());
+    let (_sync_position_packet_id, sync_position_payload) =
+        read_packet_frame_with_id(&mut peer_stream, SyncPlayerPositionPacket::get_id());
+    let sync_position_packet =
+        SyncPlayerPositionPacket::decode(&mut sync_position_payload.as_slice()).unwrap();
+
+    assert_eq!(respawn_packet_id, RespawnPacket::get_id());
+    assert_eq!(sync_position_packet.x, 0.0);
+    assert_eq!(sync_position_packet.y, 4.0);
+    assert_eq!(sync_position_packet.z, 0.0);
+    assert!(!player_for_client(&mut server, &client).is_dead());
+    assert_eq!(player_for_client(&mut server, &client).get_health(), 20.0);
 }
 
 #[test]
