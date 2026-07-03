@@ -24,6 +24,7 @@ use spinel_core::network::clientbound::play::game_event::{GameEvent, GameEventPa
 use spinel_core::network::clientbound::play::initialize_world_border::InitializeWorldBorderPacket;
 use spinel_core::network::clientbound::play::login_play::LoginPlayPacket;
 use spinel_core::network::clientbound::play::player_abilities::PlayerAbilitiesPacket;
+use spinel_core::network::clientbound::play::player_combat_kill::PlayerCombatKillPacket;
 use spinel_core::network::clientbound::play::player_info_remove::PlayerInfoRemovePacket;
 use spinel_core::network::clientbound::play::player_info_update::{
     PlayerInfoActions, PlayerInfoUpdatePacket,
@@ -1309,11 +1310,14 @@ fn player_kill_sets_dead_state_and_sends_death_screen_without_dropping_items() {
 
     player.kill().unwrap();
 
-    let (packet_id, _payload) = read_packet_frame(&mut peer_stream);
+    let (packet_id, payload) = read_packet_frame(&mut peer_stream);
+    let death_packet = PlayerCombatKillPacket::decode(&mut payload.as_slice()).unwrap();
+    assert_eq!(packet_id, PlayerCombatKillPacket::get_id());
     assert_eq!(
-        packet_id,
-        spinel_core::network::clientbound::play::player_combat_kill::PlayerCombatKillPacket::get_id(
-        )
+        death_packet.message,
+        TextComponent::translatable("death.attack.generic")
+            .argument(TextComponent::literal("Player"))
+            .build()
     );
     assert!(player.is_dead());
     assert_eq!(

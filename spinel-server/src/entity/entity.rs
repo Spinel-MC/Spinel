@@ -8,6 +8,7 @@ use crate::entity::identity::{EntityId, EntityPointers};
 use crate::entity::item::ItemEntity;
 use crate::entity::player::Player;
 use crate::entity::projectile::ProjectileEntity;
+use crate::permission::{PermissionHandler, PermissionSet};
 use crate::scheduler::{ContextScheduler, Task, TaskSchedule};
 use crate::world::World;
 use spinel_core::network::clientbound::play::attach_entity::AttachEntityPacket;
@@ -642,6 +643,30 @@ impl Entity {
             Self::Item(entity) => entity.get_attach_entity_packet(),
             Self::Player(player) => player.get_attach_entity_packet(),
             Self::Projectile(entity) => entity.get_attach_entity_packet(),
+        }
+    }
+}
+
+impl PermissionHandler for Entity {
+    fn get_permission_set(&self) -> &PermissionSet {
+        match self {
+            Self::Creature(entity) => entity.get_permission_set(),
+            Self::ExperienceOrb(entity) => entity.get_permission_set(),
+            Self::Generic(entity) => entity.get_permission_set(),
+            Self::Item(entity) => entity.get_permission_set(),
+            Self::Player(player) => player.get_permission_set(),
+            Self::Projectile(entity) => entity.get_permission_set(),
+        }
+    }
+
+    fn get_permission_set_mut(&mut self) -> &mut PermissionSet {
+        match self {
+            Self::Creature(entity) => entity.get_permission_set_mut(),
+            Self::ExperienceOrb(entity) => entity.get_permission_set_mut(),
+            Self::Generic(entity) => entity.get_permission_set_mut(),
+            Self::Item(entity) => entity.get_permission_set_mut(),
+            Self::Player(player) => player.get_permission_set_mut(),
+            Self::Projectile(entity) => entity.get_permission_set_mut(),
         }
     }
 }

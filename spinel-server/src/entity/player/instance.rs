@@ -25,6 +25,7 @@ use crate::events::player_respawn::PlayerRespawnEvent;
 use crate::events::player_swap_item::PlayerSwapItemEvent;
 use crate::inventory::{ClickPreprocessor, Inventory, PlayerInventory};
 use crate::network::client::instance::Client;
+use crate::permission::{PermissionHandler, PermissionSet};
 use crate::scheduler::{ContextScheduler, Task, TaskSchedule};
 use crate::scoreboard::Team;
 use crate::world::{BossBar, ChunkPosition, WorldHandle, WorldSnapshot};
@@ -200,6 +201,7 @@ pub struct Player {
     pub(super) pending_chunk_count: f32,
     scheduler: ContextScheduler<Player>,
     view: EntityView,
+    permissions: PermissionSet,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -378,6 +380,7 @@ impl Player {
             pending_chunk_count: 0.0,
             scheduler: ContextScheduler::new(),
             view: EntityView::new(entity_id),
+            permissions: PermissionSet::new(),
         }
     }
 
@@ -733,21 +736,17 @@ impl Player {
             y: 0.0,
             z: 0.0,
         });
+        let generic_death_message = self.build_generic_death_message();
         let default_death_text = self
             .living
             .get_last_damage()
             .and_then(Damage::build_death_screen_text)
-            .unwrap_or_else(|| TextComponent::literal("Killed by poor programming."));
+            .unwrap_or_else(|| generic_death_message.clone());
         let default_chat_message = self
             .living
             .get_last_damage()
             .and_then(|damage| damage.build_death_message(self.get_username()))
-            .unwrap_or_else(|| {
-                TextComponent::literal(format!(
-                    "{} was killed by poor programming.",
-                    self.get_username()
-                ))
-            });
+            .unwrap_or(generic_death_message);
         let (death_text, chat_message) =
             self.dispatch_player_death_event(default_death_text, default_chat_message);
         let entity_id = self.entity_id.get_value();
@@ -763,6 +762,12 @@ impl Player {
             self.set_death_location(self.get_position());
         }
         Ok(())
+    }
+
+    fn build_generic_death_message(&self) -> TextComponent {
+        TextComponent::translatable("death.attack.generic")
+            .argument(TextComponent::literal(self.get_username()))
+            .build()
     }
 
     pub fn respawn(&mut self) -> io::Result<bool> {
@@ -3330,5 +3335,15 @@ impl PlayerHand {
             1 => Some(Self::Off),
             _ => None,
         }
+    }
+}
+
+impl PermissionHandler for Player {
+    fn get_permission_set(&self) -> &PermissionSet {
+        &self.permissions
+    }
+
+    fn get_permission_set_mut(&mut self) -> &mut PermissionSet {
+        &mut self.permissions
     }
 }

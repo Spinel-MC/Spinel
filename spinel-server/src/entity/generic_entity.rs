@@ -14,6 +14,7 @@ use crate::entity::{
     EntityTeleportRequest, EntityView, EquipmentSlot, LivingState, PlayerHand, TimedPotionEffect,
 };
 use crate::network::client::instance::Client;
+use crate::permission::{PermissionHandler, PermissionSet};
 use crate::scheduler::{ContextScheduler, Task, TaskSchedule};
 use crate::scoreboard::Team;
 use crate::world::{ChunkPosition, WorldSnapshot};
@@ -90,6 +91,7 @@ pub struct GenericEntity {
     expired_effects: Vec<TimedPotionEffect>,
     falling_block_state: i32,
     fishing_hook_owner_entity_id: Option<EntityId>,
+    permissions: PermissionSet,
 }
 
 enum MovementSynchronizationTiming {
@@ -159,6 +161,7 @@ impl GenericEntity {
             expired_effects: Vec::new(),
             falling_block_state: spinel_registry::vanilla_world_blocks::Block::STONE.state_id(),
             fishing_hook_owner_entity_id: None,
+            permissions: PermissionSet::new(),
         }
     }
 
@@ -5300,4 +5303,14 @@ fn boxes_intersect(
         && first_end.y >= second_start.y
         && first_start.z <= second_end.z
         && first_end.z >= second_start.z
+}
+
+impl PermissionHandler for GenericEntity {
+    fn get_permission_set(&self) -> &PermissionSet {
+        &self.permissions
+    }
+
+    fn get_permission_set_mut(&mut self) -> &mut PermissionSet {
+        &mut self.permissions
+    }
 }
