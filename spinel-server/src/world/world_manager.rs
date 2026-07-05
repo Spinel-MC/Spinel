@@ -22,6 +22,7 @@ pub struct WorldManager {
     inactive_players: Vec<Player>,
     pending_player_world_transitions: VecDeque<PendingPlayerWorldTransition>,
     completed_player_world_transitions: Vec<u64>,
+    failed_player_world_transitions: Vec<PlayerWorldTransitionFailure>,
     next_player_world_transition_id: u64,
     listed_player_uuids: HashSet<Uuid>,
 }
@@ -38,6 +39,12 @@ struct PendingPlayerWorldTransition {
     chunk_load_tickets: Vec<ChunkLoadTicket>,
 }
 
+struct PlayerWorldTransitionFailure {
+    id: u64,
+    kind: io::ErrorKind,
+    message: String,
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct PlayerWorldTransitionTicket {
     id: u64,
@@ -51,6 +58,7 @@ impl WorldManager {
             inactive_players: Vec::new(),
             pending_player_world_transitions: VecDeque::new(),
             completed_player_world_transitions: Vec::new(),
+            failed_player_world_transitions: Vec::new(),
             next_player_world_transition_id: 0,
             listed_player_uuids: HashSet::new(),
         }
@@ -378,11 +386,12 @@ impl WorldManager {
                 .iter()
                 .copied()
                 .map(ChunkPosition::from)
-                .map(|position| target_world.load_optional_chunk_future(position))
-                .collect::<io::Result<Vec<_>>>()?
-                .into_iter()
-                .flatten()
-                .collect()
+                .try_for_each(|position| {
+                    target_world
+                        .load_optional_chunk_future(position)
+                        .map(|_| ())
+                })?;
+            Vec::new()
         } else {
             Vec::new()
         };
@@ -405,6 +414,27 @@ impl WorldManager {
         self.completed_player_world_transitions.contains(&ticket.id)
     }
 
+    pub fn player_world_transition_result(
+        &mut self,
+        ticket: PlayerWorldTransitionTicket,
+    ) -> Option<io::Result<()>> {
+        if let Some(completed_index) = self
+            .completed_player_world_transitions
+            .iter()
+            .position(|transition_id| *transition_id == ticket.id)
+        {
+            self.completed_player_world_transitions
+                .remove(completed_index);
+            return Some(Ok(()));
+        }
+        let failure_index = self
+            .failed_player_world_transitions
+            .iter()
+            .position(|failure| failure.id == ticket.id)?;
+        let failure = self.failed_player_world_transitions.remove(failure_index);
+        Some(Err(io::Error::new(failure.kind, failure.message)))
+    }
+
     fn next_player_world_transition_ticket(&mut self) -> PlayerWorldTransitionTicket {
         self.next_player_world_transition_id += 1;
         PlayerWorldTransitionTicket {
@@ -423,7 +453,16 @@ impl WorldManager {
         let mut transitions = VecDeque::new();
         std::mem::swap(&mut transitions, &mut self.pending_player_world_transitions);
         while let Some(transition) = transitions.pop_front() {
-            self.process_pending_player_world_transition(transition, registries)?;
+            let transition_id = transition.id;
+            if let Err(error) = self.process_pending_player_world_transition(transition, registries)
+            {
+                self.failed_player_world_transitions
+                    .push(PlayerWorldTransitionFailure {
+                        id: transition_id,
+                        kind: error.kind(),
+                        message: error.to_string(),
+                    });
+            }
         }
         Ok(())
     }
@@ -453,14 +492,22 @@ impl WorldManager {
             self.completed_player_world_transitions.push(transition.id);
             return Ok(());
         }
-        if let Some((player_id, player_uuid)) = self
-            .world(current_world.unwrap_or(transition.target_world))
-            .and_then(|world| world.player_by_uuid(transition.player_uuid))
-            .map(|player| (player.get_entity_id(), player.get_uuid()))
-        {
-            self.world_mut(current_world.unwrap())
-                .unwrap()
-                .send_player_remove_to_viewers(player_id, player_uuid)?;
+        if self.player_transition_is_cancelled(
+            transition.player_uuid,
+            current_world,
+            transition.target_world,
+        )? {
+            return Err(io::ErrorKind::Interrupted.into());
+        }
+        if let Some(current_world) = current_world {
+            let source_world = self
+                .world_mut(current_world)
+                .ok_or(io::ErrorKind::NotFound)?;
+            let player_id = source_world
+                .player_by_uuid(transition.player_uuid)
+                .map(Player::get_entity_id)
+                .ok_or(io::ErrorKind::NotFound)?;
+            source_world.send_player_remove_to_viewers(player_id, transition.player_uuid)?;
         }
         let Some(mut player) = self.take_transition_player(transition.player_uuid, current_world)
         else {
@@ -478,6 +525,12 @@ impl WorldManager {
             .world(transition.target_world)
             .map(|world| world.get_dimension_type().clone())
             .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "Target world not found."))?;
+        let target_dimension_type_id = registries
+            .dynamic_registry_id(
+                &spinel_registry::DIMENSION_TYPE_REGISTRY,
+                target_dimension_type.key(),
+            )
+            .ok_or(io::ErrorKind::NotFound)?;
         let current_world_name =
             current_world.and_then(|world| self.world(world).map(|world| world.name().clone()));
         let target_time_packet = self
@@ -492,6 +545,18 @@ impl WorldManager {
             .world(transition.target_world)
             .map(World::weather)
             .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "Target world not found."))?;
+        let dimension_is_unchanged = current_world_name
+            .as_ref()
+            .is_some_and(|current_world_name| current_world_name == &target_world_name);
+        if transition.should_refresh_chunks && dimension_is_unchanged {
+            let client_ptr = player
+                .get_client_mut()
+                .filter(|client| client.state == spinel_network::ConnectionState::Play)
+                .map(|client| client as *mut Client);
+            if let Some(client_ptr) = client_ptr {
+                player.forget_world_chunks(unsafe { &mut *client_ptr })?;
+            }
+        }
         let _ = player.set_world_position(
             transition.position,
             target_view_distance,
@@ -500,38 +565,35 @@ impl WorldManager {
         let chunks = transition.chunks.clone();
         player.set_dimension_type(target_dimension_type);
         let first_spawn = !player.has_entered_world();
-        if transition.should_refresh_chunks {
-            let client_ptr = player
-                .get_client_mut()
-                .filter(|client| client.state == spinel_network::ConnectionState::Play)
-                .map(|client| client as *mut Client);
-            if let Some(client_ptr) = client_ptr {
-                let dimension_change = current_world_name
-                    .as_ref()
-                    .is_some_and(|current_world_name| current_world_name != &target_world_name);
-                player.spawn_after_world_transition(
-                    unsafe { &mut *client_ptr },
-                    target_world_name,
-                    chunks.clone(),
-                    target_time_packet,
-                    target_world_border_packet,
-                    target_weather,
-                    first_spawn,
-                    dimension_change,
-                    transition.should_refresh_chunks,
-                )?;
-            }
-        }
-        if transition.should_refresh_chunks {
-            chunks.into_iter().for_each(|chunk| {
-                player.send_loaded_chunk_position(chunk);
-            });
-        }
+        let player_address = player.addr;
         let target_world = self
             .world_mut(transition.target_world)
-            .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "Target world not found."))?;
-        let player_address = player.addr;
-        target_world.add_entity(Entity::Player(player));
+            .ok_or(io::ErrorKind::NotFound)?;
+        target_world.add_entity_after_world_event(Entity::Player(player));
+        let player = target_world
+            .player_by_addr_mut(&player_address)
+            .ok_or(io::ErrorKind::NotFound)?;
+        let client_ptr = player
+            .get_client_mut()
+            .filter(|client| client.state == spinel_network::ConnectionState::Play)
+            .map(|client| client as *mut Client);
+        if let Some(client_ptr) = client_ptr {
+            let dimension_change = current_world_name
+                .as_ref()
+                .is_some_and(|current_world_name| current_world_name != &target_world_name);
+            player.spawn_after_world_transition(
+                unsafe { &mut *client_ptr },
+                target_world_name,
+                target_dimension_type_id,
+                chunks.clone(),
+                target_time_packet,
+                target_world_border_packet,
+                target_weather,
+                first_spawn,
+                dimension_change,
+                transition.should_refresh_chunks,
+            )?;
+        }
         if let Some(client_ptr) = target_world
             .player_by_addr_mut(&player_address)
             .and_then(Player::get_client_mut)
@@ -584,6 +646,46 @@ impl WorldManager {
                 respawn_point.pitch,
             )
         })
+    }
+
+    fn player_transition_is_cancelled(
+        &mut self,
+        player_uuid: Uuid,
+        current_world: Option<Uuid>,
+        target_world: Uuid,
+    ) -> io::Result<bool> {
+        let Some(current_world) = current_world else {
+            let player_index = self
+                .inactive_players
+                .iter()
+                .position(|player| player.get_uuid() == player_uuid)
+                .ok_or(io::ErrorKind::NotFound)?;
+            let player = self.inactive_players.remove(player_index);
+            let mut player_entity = Entity::Player(player);
+            let target_world = self
+                .world_mut_ptr(target_world)
+                .ok_or(io::ErrorKind::NotFound)?;
+            let is_cancelled = unsafe { &mut *target_world }
+                .dispatch_add_entity_to_world_event(&mut player_entity);
+            let player = match player_entity {
+                Entity::Player(player) => player,
+                _ => return Err(io::ErrorKind::InvalidData.into()),
+            };
+            self.inactive_players.push(player);
+            return Ok(is_cancelled);
+        };
+        let source_world = self
+            .world_mut_ptr(current_world)
+            .ok_or(io::ErrorKind::NotFound)?;
+        let target_world = self
+            .world_mut_ptr(target_world)
+            .ok_or(io::ErrorKind::NotFound)?;
+        let source_world = unsafe { &mut *source_world };
+        let target_world = unsafe { &mut *target_world };
+        let player = source_world
+            .entity_by_uuid_mut(player_uuid)
+            .ok_or(io::ErrorKind::NotFound)?;
+        Ok(target_world.dispatch_add_entity_to_world_event(player))
     }
 
     fn take_transition_player(

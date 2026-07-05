@@ -328,6 +328,7 @@ fn first_spawn_inventory_sync_waits_until_client_starts_waiting_for_chunks() {
         .spawn_after_world_transition(
             &mut client,
             Identifier::minecraft("overworld"),
+            0,
             vec![PlayerChunk::new(0, 0)],
             SetTimePacket::new(42, 18000, true),
             WorldBorder::DEFAULT.initialize_packet(WorldBorder::DEFAULT.diameter(), 0),

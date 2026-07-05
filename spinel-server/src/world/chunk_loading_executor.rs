@@ -29,11 +29,7 @@ impl ChunkLoadingExecutor {
         (0..worker_count).for_each(|_| {
             let task_receiver = task_receiver.clone();
             std::thread::spawn(move || {
-                while let Ok(task) = task_receiver
-                    .lock()
-                    .map_err(|_| ())
-                    .and_then(|receiver| receiver.recv().map_err(|_| ()))
-                {
+                while let Ok(task) = receive_chunk_loading_task(&task_receiver) {
                     task();
                 }
             });
@@ -41,4 +37,10 @@ impl ChunkLoadingExecutor {
 
         Self { task_sender }
     }
+}
+
+fn receive_chunk_loading_task(
+    task_receiver: &Mutex<mpsc::Receiver<ChunkLoadingTask>>,
+) -> Result<ChunkLoadingTask, ()> {
+    task_receiver.lock().map_err(|_| ())?.recv().map_err(|_| ())
 }

@@ -11,20 +11,23 @@ use spinel_core::network::clientbound::play::chunk_batch_finished::ChunkBatchFin
 use spinel_core::network::clientbound::play::chunk_batch_start::ChunkBatchStartPacket;
 use spinel_core::network::clientbound::play::chunk_data::ChunkDataAndUpdateLightPacket;
 use spinel_core::network::clientbound::play::commands::CommandsPacket;
+use spinel_core::network::clientbound::play::entity_status::EntityStatusPacket;
 use spinel_core::network::clientbound::play::forget_level_chunk::ForgetLevelChunkPacket;
 use spinel_core::network::clientbound::play::game_event::{GameEvent, GameEventPacket};
 use spinel_core::network::clientbound::play::initialize_world_border::InitializeWorldBorderPacket;
 use spinel_core::network::clientbound::play::login_play::LoginPlayPacket;
 use spinel_core::network::clientbound::play::respawn::RespawnPacket;
+use spinel_core::network::clientbound::play::server_difficulty::ServerDifficultyPacket;
 use spinel_core::network::clientbound::play::set_chunk_cache_center::SetChunkCacheCenterPacket;
 use spinel_core::network::clientbound::play::set_default_spawn_position::SetDefaultSpawnPositionPacket;
+use spinel_core::network::clientbound::play::set_experience::SetExperiencePacket;
 use spinel_core::network::clientbound::play::set_health::SetHealthPacket;
 use spinel_core::network::clientbound::play::set_held_slot::SetHeldSlotPacket;
 use spinel_core::network::clientbound::play::set_time::SetTimePacket;
 use spinel_core::network::clientbound::play::sync_player_pos::{
     SyncPlayerPositionPacket, SyncPlayerPositionSpec,
 };
-use spinel_network::types::{GlobalPos, Identifier};
+use spinel_network::types::{GlobalPos, Identifier, Position};
 use std::io;
 
 impl Player {
@@ -119,6 +122,7 @@ impl Player {
         &mut self,
         client: &mut Client,
         world_name: Identifier,
+        dimension_type_id: i32,
         chunks: Vec<PlayerChunk>,
         time_packet: SetTimePacket,
         world_border_packet: InitializeWorldBorderPacket,
@@ -129,7 +133,40 @@ impl Player {
     ) -> io::Result<()> {
         self.prepare_world_spawn(world_name.clone());
         if dimension_change {
-            RespawnPacket::new(self.get_game_mode(), world_name.clone()).dispatch(client)?;
+            let mut respawn_packet = RespawnPacket::new(self.get_game_mode(), world_name.clone());
+            respawn_packet.common_player_spawn_info.dimension_type = dimension_type_id;
+            respawn_packet.common_player_spawn_info.is_flat = false;
+            respawn_packet.common_player_spawn_info.last_death_location =
+                self.get_death_location().map(|death_location| GlobalPos {
+                    dimension: death_location.get_dimension().clone(),
+                    position: Position {
+                        x: death_location.get_position().get_x().floor() as i32,
+                        y: death_location.get_position().get_y().floor() as i32,
+                        z: death_location.get_position().get_z().floor() as i32,
+                    },
+                });
+            respawn_packet.common_player_spawn_info.portal_cooldown = self.get_portal_cooldown();
+            respawn_packet.dispatch(client)?;
+            GameEventPacket::from(GameEvent::StartWaitingForLevelChunks).dispatch(client)?;
+            ServerDifficultyPacket::normal(false).dispatch(client)?;
+            SetHealthPacket::new(
+                self.get_health(),
+                self.get_food(),
+                self.get_food_saturation(),
+            )
+            .dispatch(client)?;
+            SetExperiencePacket::new(
+                self.get_experience(),
+                self.get_experience_level(),
+                self.get_total_experience(),
+            )
+            .dispatch(client)?;
+            EntityStatusPacket {
+                entity_id: self.get_entity_id().get_value(),
+                status: (24 + self.get_permission_level()) as i8,
+            }
+            .dispatch(client)?;
+            self.get_abilities_packet().dispatch(client)?;
         }
         world_border_packet.dispatch(client)?;
         SetTimePacket::new(
@@ -452,9 +489,10 @@ impl Player {
         .dispatch(client)
     }
 
-    fn sync_position(&self, client: &mut Client) -> io::Result<()> {
+    fn sync_position(&mut self, client: &mut Client) -> io::Result<()> {
+        let teleport_id = self.get_next_teleport_id();
         SyncPlayerPositionPacket::new(SyncPlayerPositionSpec {
-            teleport_id: 0,
+            teleport_id,
             x: self.position.x,
             y: self.position.y,
             z: self.position.z,
@@ -604,6 +642,11 @@ impl Player {
         self.needs_chunk_position_sync = true;
         self.target_chunks_per_tick = 9.0;
         self.pending_chunk_count = 0.0;
+    }
+
+    pub(crate) fn forget_world_chunks(&mut self, client: &mut Client) -> io::Result<()> {
+        let loaded_chunks = self.client_sent_chunks.iter().copied().collect();
+        self.forget_chunks(client, loaded_chunks)
     }
 
     fn forget_chunks(&mut self, client: &mut Client, chunks: Vec<PlayerChunk>) -> io::Result<()> {

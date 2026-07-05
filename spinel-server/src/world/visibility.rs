@@ -653,20 +653,35 @@ impl World {
             })
     }
 
-    pub(crate) fn send_player_remove_to_viewers(
-        &mut self,
-        player_id: EntityId,
-        _player_uuid: Uuid,
-    ) -> Result<()> {
-        self.hide_entity_from_all_viewers(player_id)
-    }
-
     pub(crate) fn synchronize_player_visibility(&mut self, client: &mut Client) -> Result<()> {
         let Some(joining_player_id) = self.player_by_addr(&client.addr).map(Player::get_entity_id)
         else {
             return Err(Error::new(ErrorKind::NotFound, "Player not found."));
         };
         self.refresh_visibility_for_entity(joining_player_id)
+    }
+
+    pub(crate) fn send_player_remove_to_viewers(
+        &mut self,
+        player_id: EntityId,
+        player_uuid: Uuid,
+    ) -> Result<()> {
+        let viewer_ids = self
+            .entity_by_id(player_id)
+            .map(Entity::get_viewers)
+            .unwrap_or_default();
+        viewer_ids.into_iter().try_for_each(|viewer_id| {
+            let Some(client) = self
+                .entity_by_id_mut(viewer_id)
+                .and_then(|entity| match entity {
+                    Entity::Player(player) => player.get_client_mut(),
+                    _ => None,
+                })
+            else {
+                return Ok(());
+            };
+            PlayerInfoRemovePacket::new(player_uuid).dispatch(client)
+        })
     }
 
     pub(crate) fn dispatch_player_info_update_to_online_players(

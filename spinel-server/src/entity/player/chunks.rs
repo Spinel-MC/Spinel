@@ -35,13 +35,25 @@ impl PlayerChunk {
     }
 
     pub(crate) fn surrounding(self, view_distance: i32) -> Vec<Self> {
-        (-view_distance..=view_distance)
-            .flat_map(|chunk_x_offset| {
-                (-view_distance..=view_distance).map(move |chunk_z_offset| {
-                    Self::new(self.x + chunk_x_offset, self.z + chunk_z_offset)
-                })
-            })
-            .collect()
+        let view_distance = view_distance.max(0);
+        let diameter = view_distance * 2 + 1;
+        let mut chunks = Vec::with_capacity((diameter * diameter) as usize);
+        chunks.push(self);
+        for radius in 1..=view_distance {
+            (-radius..=radius).for_each(|chunk_x_offset| {
+                chunks.push(Self::new(self.x + chunk_x_offset, self.z - radius));
+            });
+            (-radius + 1..=radius).for_each(|chunk_z_offset| {
+                chunks.push(Self::new(self.x + radius, self.z + chunk_z_offset));
+            });
+            (-radius..radius).rev().for_each(|chunk_x_offset| {
+                chunks.push(Self::new(self.x + chunk_x_offset, self.z + radius));
+            });
+            (-radius + 1..radius).rev().for_each(|chunk_z_offset| {
+                chunks.push(Self::new(self.x - radius, self.z + chunk_z_offset));
+            });
+        }
+        chunks
     }
 
     pub(crate) fn arriving_chunks(self, previous_chunk: Self, view_distance: i32) -> Vec<Self> {

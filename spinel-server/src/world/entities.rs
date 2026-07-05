@@ -95,22 +95,15 @@ impl World {
     }
 
     pub(crate) fn take_player_by_uuid(&mut self, player_uuid: Uuid) -> Option<Player> {
-        let entity_index = self.entities.iter().position(|entity| match entity {
-            Entity::Player(player) => player.get_uuid() == player_uuid,
-            Entity::Creature(_) => false,
-            Entity::ExperienceOrb(_) => false,
-            Entity::Generic(_) => false,
-            Entity::Item(_) => false,
-            Entity::Projectile(_) => false,
+        let player_id = self.entities.iter().find_map(|entity| match entity {
+            Entity::Player(player) if player.get_uuid() == player_uuid => {
+                Some(entity.get_entity_id())
+            }
+            _ => None,
         })?;
-        let player_id = self.entities[entity_index].get_entity_id();
-        self.detach_entity_passenger_relations(player_id);
-        self.detach_leashed_entities(player_id);
-        let _ = self.hide_entity_from_all_viewers(player_id);
-        let Entity::Player(player) = self.entities.remove(entity_index) else {
+        let Entity::Player(player) = self.take_entity_from_world(player_id)? else {
             return None;
         };
-        self.entity_tracker.unregister(player.get_entity_id());
         Some(player)
     }
 
@@ -149,6 +142,12 @@ impl World {
     pub fn entity_by_uuid(&self, entity_uuid: Uuid) -> Option<&Entity> {
         self.entities
             .iter()
+            .find(|entity| entity.get_uuid() == entity_uuid)
+    }
+
+    pub(crate) fn entity_by_uuid_mut(&mut self, entity_uuid: Uuid) -> Option<&mut Entity> {
+        self.entities
+            .iter_mut()
             .find(|entity| entity.get_uuid() == entity_uuid)
     }
 

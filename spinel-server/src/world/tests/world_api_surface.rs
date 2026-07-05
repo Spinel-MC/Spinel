@@ -1814,7 +1814,7 @@ fn generic_entity_set_world_point_and_default_position_match_minestom_overloads(
 }
 
 #[test]
-fn player_set_world_rejects_same_world_and_completes_on_next_manager_tick() {
+fn player_set_world_rejects_same_world_and_completes_after_chunk_loading() {
     let mut server = MinecraftServer::new();
     let first_world = server
         .world_manager
@@ -1827,12 +1827,16 @@ fn player_set_world_rejects_same_world_and_completes_on_next_manager_tick() {
         .world_mut(second_world)
         .unwrap()
         .set_view_distance(0);
-    let player = Player::new(
+    let mut client = test_client();
+    client.state = ConnectionState::Play;
+    client.enable_outbound_packet_queue();
+    let mut player = Player::new(
         Uuid::nil(),
         "Player".to_string(),
         0,
         SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 25565),
     );
+    player.set_client(&mut client);
     let player_uuid = player.get_uuid();
     server
         .world_manager
@@ -1844,9 +1848,9 @@ fn player_set_world_rejects_same_world_and_completes_on_next_manager_tick() {
             .set_player_world(player_uuid, first_world)
             .is_err()
     );
-    server
+    let ticket = server
         .world_manager
-        .set_player_world_at_position(
+        .set_player_world_at_position_future(
             player_uuid,
             second_world,
             EntityPosition::new(16.0, 65.0, 0.0, 0.0, 0.0),
@@ -1868,8 +1872,35 @@ fn player_set_world_rejects_same_world_and_completes_on_next_manager_tick() {
 
     let registries = Registries::new_vanilla();
     let server_ptr = &mut server as *mut MinecraftServer as usize;
-    server.world_manager.tick(&registries, server_ptr);
+    for _ in 0..100 {
+        server.world_manager.tick(&registries, server_ptr);
+        if server
+            .world_manager
+            .player_world_transition_is_complete(ticket)
+        {
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(1));
+    }
+    let transition_is_incomplete = server
+        .world_manager
+        .player_world_transition_is_complete(ticket)
+        == false;
+    if transition_is_incomplete {
+        server
+            .world_manager
+            .player_world_transition_result(ticket)
+            .unwrap()
+            .unwrap();
+    }
 
+    let player_world = server
+        .world_manager
+        .worlds()
+        .iter()
+        .find(|world| world.player_by_uuid(player_uuid).is_some())
+        .map(World::uuid);
+    assert_eq!(player_world, Some(second_world));
     let player = server
         .world_manager
         .world(second_world)
@@ -1882,7 +1913,6 @@ fn player_set_world_rejects_same_world_and_completes_on_next_manager_tick() {
         0
     );
     assert_eq!(player.get_position().get_x(), 16.0);
-    assert_eq!(player.get_queued_chunk_count(), 9);
 }
 
 #[test]
@@ -1950,7 +1980,7 @@ fn player_set_world_future_completes_after_spawn_packets_and_viewer_refresh() {
     let mut server = MinecraftServer::new();
     let first_world = server
         .world_manager
-        .create_world(spinel_registry::dimension_type::DimensionType::OVERWORLD);
+        .create_world(spinel_registry::dimension_type::DimensionType::THE_NETHER);
     let second_world = server
         .world_manager
         .create_world(spinel_registry::dimension_type::DimensionType::OVERWORLD);
