@@ -3,8 +3,7 @@ use crate::entity::{Entity, EntityId, EntityPosition, PlayerChunk};
 use crate::entity::{Player, PlayerHand};
 use crate::network::client::instance::Client;
 use crate::world::{
-    BlockHandlerPlacement, BlockPosition, Chunk, ChunkLoadTicket, ChunkPosition, SharedWorld,
-    World, WorldHandle,
+    BlockHandlerPlacement, BlockPosition, Chunk, ChunkPosition, SharedWorld, World, WorldHandle,
 };
 use spinel_core::network::clientbound::play::player_info_update::PlayerInfoUpdatePacket;
 use spinel_network::types::ClientInformation;
@@ -36,7 +35,6 @@ struct PendingPlayerWorldTransition {
     position: EntityPosition,
     should_refresh_chunks: bool,
     chunks: Vec<PlayerChunk>,
-    chunk_load_tickets: Vec<ChunkLoadTicket>,
 }
 
 struct PlayerWorldTransitionFailure {
@@ -378,23 +376,12 @@ impl WorldManager {
         } else {
             Vec::new()
         };
-        let chunk_load_tickets = if should_refresh_chunks {
+        if should_refresh_chunks {
             let target_world = self
                 .world_mut(target_world)
                 .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "World not found."))?;
-            chunks
-                .iter()
-                .copied()
-                .map(ChunkPosition::from)
-                .try_for_each(|position| {
-                    target_world
-                        .load_optional_chunk_future(position)
-                        .map(|_| ())
-                })?;
-            Vec::new()
-        } else {
-            Vec::new()
-        };
+            target_world.load_chunk_result(chunk_position_for_entity(position))?;
+        }
         let ticket = self.next_player_world_transition_ticket();
         self.pending_player_world_transitions
             .push_back(PendingPlayerWorldTransition {
@@ -405,7 +392,6 @@ impl WorldManager {
                 position,
                 should_refresh_chunks,
                 chunks,
-                chunk_load_tickets,
             });
         Ok(ticket)
     }
@@ -472,21 +458,6 @@ impl WorldManager {
         transition: PendingPlayerWorldTransition,
         registries: &Registries,
     ) -> io::Result<()> {
-        if transition.should_refresh_chunks {
-            let target_world = self
-                .world_mut(transition.target_world)
-                .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "World not found."))?;
-            let mut all_chunk_loads_are_complete = true;
-            for ticket in &transition.chunk_load_tickets {
-                if !target_world.complete_chunk_load(ticket)? {
-                    all_chunk_loads_are_complete = false;
-                }
-            }
-            if !all_chunk_loads_are_complete {
-                self.pending_player_world_transitions.push_back(transition);
-                return Ok(());
-            }
-        }
         let current_world = transition.current_world;
         if current_world == Some(transition.target_world) {
             self.completed_player_world_transitions.push(transition.id);
@@ -570,6 +541,7 @@ impl WorldManager {
             .world_mut(transition.target_world)
             .ok_or(io::ErrorKind::NotFound)?;
         target_world.add_entity_after_world_event(Entity::Player(player));
+        target_world.schedule_player_chunk_loads(player_address, &chunks)?;
         let player = target_world
             .player_by_addr_mut(&player_address)
             .ok_or(io::ErrorKind::NotFound)?;
@@ -933,6 +905,12 @@ impl WorldManager {
         self.worlds
             .iter_mut()
             .find_map(|world| world.player_by_addr_mut(&client.addr))
+    }
+
+    pub fn get_player_mut(&mut self, player_uuid: Uuid) -> Option<&mut Player> {
+        self.worlds
+            .iter_mut()
+            .find_map(|world| world.player_by_uuid_mut(player_uuid))
     }
 
     pub(crate) fn player_pointer_for_client(&mut self, client: &Client) -> Option<*mut Player> {

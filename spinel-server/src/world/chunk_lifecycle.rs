@@ -593,7 +593,7 @@
         Ok(())
     }
 
-    fn schedule_player_chunk_loads(
+    pub(super) fn schedule_player_chunk_loads(
         &mut self,
         player_address: SocketAddr,
         chunks: &[PlayerChunk],
@@ -604,14 +604,13 @@
                 self.queue_loaded_chunk_for_player(player_address, *chunk);
                 continue;
             }
-            let Some(ticket) = self.load_optional_chunk_future(position)? else {
+            if self.load_optional_chunk_future(position)?.is_none() {
                 continue;
-            };
+            }
             self.player_chunk_load_waiters
                 .entry(position)
                 .or_default()
                 .push(player_address);
-            let _ = self.complete_chunk_load(&ticket)?;
         }
         Ok(())
     }

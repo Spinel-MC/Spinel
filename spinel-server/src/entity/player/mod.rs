@@ -22,6 +22,7 @@ mod skin;
 mod spawn;
 mod spawn_point;
 mod viewer_snapshot;
+mod world_transition;
 
 pub use below_name_tag::BelowNameTag;
 pub(crate) use chunk_update_limit_checker::ChunkUpdateLimitChecker;

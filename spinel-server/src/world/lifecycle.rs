@@ -1,4 +1,9 @@
 impl World {
+    pub fn get_handle(&self) -> Option<crate::world::WorldHandle> {
+        self.event_dispatcher
+            .map(|server| crate::world::WorldHandle::new(server, self.uuid))
+    }
+
     pub fn new(uuid: Uuid, dimension_type: RegistryKey<DimensionType>) -> Self {
         Self::new_with_cached_dimension_type(
             uuid,
