@@ -20,6 +20,7 @@ mod entity_tracker;
 mod explosion;
 mod generator;
 mod identity;
+mod instance;
 mod relative_block_position;
 mod section_palette;
 mod section_palette_encoding;
@@ -30,7 +31,6 @@ mod stored_block_instance;
 #[cfg(test)]
 mod tests;
 mod weather;
-mod world;
 mod world_border;
 mod world_event_node;
 mod world_handle;
@@ -70,6 +70,7 @@ pub use generator::{
     FallibleGenerator, GenerateChunkError, GenerationUnit, Generator, UnitModifier, UnitWriteError,
 };
 pub use identity::{WorldIdentity, WorldPointers};
+pub use instance::{ChunkLoadTicket, ChunkSupplier, EntityTeleportTicket, World, WorldIoTask};
 pub use relative_block_position::RelativeBlockPosition;
 pub use section_palette::SectionPalette;
 pub use section_position::SectionPosition;
@@ -81,7 +82,6 @@ pub use spinel_registry::{
 };
 pub use stored_block_instance::StoredBlockInstance;
 pub use weather::{Weather, WeatherCreationError};
-pub use world::{ChunkLoadTicket, ChunkSupplier, EntityTeleportTicket, World, WorldIoTask};
 pub use world_border::WorldBorder;
 pub use world_event_node::WorldEventNode;
 pub use world_handle::WorldHandle;

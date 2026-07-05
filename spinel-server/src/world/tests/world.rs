@@ -1,4 +1,4 @@
-use super::super::world::World;
+use super::super::instance::World;
 use crate::entity::{Entity, EntityId, EntityPosition, Player, PlayerChunk};
 use crate::events::player_move::PlayerMoveEvent;
 use crate::network::client::instance::Client;
