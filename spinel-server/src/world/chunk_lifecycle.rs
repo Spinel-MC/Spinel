@@ -604,13 +604,14 @@
                 self.queue_loaded_chunk_for_player(player_address, *chunk);
                 continue;
             }
-            if self.load_optional_chunk_future(position)?.is_none() {
+            let Some(ticket) = self.load_optional_chunk_future(position)? else {
                 continue;
-            }
+            };
             self.player_chunk_load_waiters
                 .entry(position)
                 .or_default()
                 .push(player_address);
+            let _ = self.complete_chunk_load(&ticket)?;
         }
         Ok(())
     }
@@ -774,6 +775,27 @@
         } else {
             Some(chunk_loader.load_chunk(position)?)
         };
+        if !supports_parallel_loading {
+            let prepared_chunk_load = catch_unwind(AssertUnwindSafe(|| {
+                prepare_chunk_load(
+                    position,
+                    chunk_loader,
+                    chunk_supplier,
+                    generator,
+                    synchronously_loaded_chunk,
+                )
+            }))
+            .unwrap_or_else(|panic_payload| {
+                Err(PreparedChunkLoadFailure {
+                    operation: ChunkLoaderOperation::LoadChunk,
+                    error: Error::other(chunk_loading_panic_message(panic_payload)),
+                })
+            });
+            self.prepared_chunk_loads
+                .insert(ticket.id, (ticket.clone(), prepared_chunk_load));
+            self.async_chunk_loads.insert(position, ticket.clone());
+            return Ok(Some(ticket));
+        }
         let completed_chunk_load_sender = self.completed_chunk_load_sender.clone();
         let executor_ticket = ticket.clone();
         ChunkLoadingExecutor::global().execute(move || {

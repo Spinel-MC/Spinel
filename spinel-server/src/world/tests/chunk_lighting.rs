@@ -213,6 +213,26 @@ fn bulk_relight_returns_all_loaded_affected_chunks() {
 }
 
 #[test]
+fn requested_relight_keeps_unrelated_invalidated_chunks_pending() {
+    let mut world = lighting_world("requested_relight_scope");
+    let requested = ChunkPosition::new(0, 0);
+    let neighbor = ChunkPosition::new(1, 0);
+    let unrelated = ChunkPosition::new(10, 10);
+    world.load_chunk(requested).unwrap();
+    world.load_chunk(neighbor).unwrap();
+    world.load_chunk(unrelated).unwrap();
+    world.load_chunk(requested).unwrap().invalidate_section(4);
+    world.load_chunk(unrelated).unwrap().invalidate_section(4);
+
+    let mut affected = world.relight_chunks(&[requested]);
+    affected.sort_by_key(|position| (position.x, position.z));
+
+    assert_eq!(affected, vec![requested, neighbor]);
+    assert!(!world.chunk(requested).unwrap().lighting_is_invalidated());
+    assert!(world.chunk(unrelated).unwrap().lighting_is_invalidated());
+}
+
+#[test]
 fn block_change_coalesces_delayed_light_updates_for_loaded_neighbor_chunks() {
     let mut world = lighting_world("overworld");
     let affected_positions = (-1..=1)

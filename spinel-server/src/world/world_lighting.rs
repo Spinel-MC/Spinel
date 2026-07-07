@@ -1,7 +1,7 @@
 use crate::world::{
     BlockFaceDirection, BlockPosition, BlockShapeBox, BlockState, Chunk, ChunkPosition,
 };
-use std::collections::{HashMap, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque};
 
 const SECTION_SIZE: i32 = 16;
 
@@ -14,21 +14,31 @@ impl WorldLighting {
         requested_positions: Option<&[ChunkPosition]>,
     ) -> Vec<ChunkPosition> {
         let affected_positions = Self::affected_positions(chunks, requested_positions);
+        let affected_position_set = affected_positions.iter().copied().collect::<HashSet<_>>();
         let occlusion_maps = if has_skylight {
             chunks
                 .iter_mut()
-                .filter(|(_, chunk)| chunk.is_loaded() && chunk.is_lighting_chunk())
+                .filter(|(position, chunk)| {
+                    affected_position_set.contains(position)
+                        && chunk.is_loaded()
+                        && chunk.is_lighting_chunk()
+                })
                 .map(|(position, chunk)| (*position, *chunk.sky_occlusion_map()))
                 .collect()
         } else {
             HashMap::new()
         };
-        let block_light = Self::block_light(chunks);
-        let sky_light = Self::sky_light(chunks, &occlusion_maps);
+        let block_light = Self::block_light(chunks, &affected_position_set);
+        let sky_light = Self::sky_light(chunks, &affected_position_set, &occlusion_maps);
 
         chunks
-            .values_mut()
-            .filter(|chunk| chunk.is_loaded() && chunk.is_lighting_chunk())
+            .iter_mut()
+            .filter(|(position, chunk)| {
+                affected_position_set.contains(position)
+                    && chunk.is_loaded()
+                    && chunk.is_lighting_chunk()
+            })
+            .map(|(_, chunk)| chunk)
             .for_each(Chunk::clear_light);
         block_light.into_iter().for_each(|(position, level)| {
             if let Some(chunk) = chunks
@@ -47,19 +57,32 @@ impl WorldLighting {
             }
         });
         chunks
-            .values_mut()
-            .filter(|chunk| chunk.is_loaded() && chunk.is_lighting_chunk())
+            .iter_mut()
+            .filter(|(position, chunk)| {
+                affected_position_set.contains(position)
+                    && chunk.is_loaded()
+                    && chunk.is_lighting_chunk()
+            })
+            .map(|(_, chunk)| chunk)
             .for_each(Chunk::validate_light);
         affected_positions
     }
 
-    fn block_light(chunks: &HashMap<ChunkPosition, Chunk>) -> HashMap<BlockPosition, u8> {
+    fn block_light(
+        chunks: &HashMap<ChunkPosition, Chunk>,
+        affected_positions: &HashSet<ChunkPosition>,
+    ) -> HashMap<BlockPosition, u8> {
         let mut light = HashMap::new();
         let mut propagation = VecDeque::new();
 
         chunks
-            .values()
-            .filter(|chunk| chunk.is_loaded() && chunk.is_lighting_chunk())
+            .iter()
+            .filter(|(position, chunk)| {
+                affected_positions.contains(position)
+                    && chunk.is_loaded()
+                    && chunk.is_lighting_chunk()
+            })
+            .map(|(_, chunk)| chunk)
             .for_each(|chunk| {
                 Self::chunk_positions(chunk).for_each(|position| {
                     let level = chunk.block_state(position).light_emission();
@@ -71,7 +94,7 @@ impl WorldLighting {
                 });
             });
 
-        Self::propagate(chunks, light, propagation)
+        Self::propagate(chunks, affected_positions, light, propagation)
     }
 
     fn affected_positions(
@@ -106,14 +129,20 @@ impl WorldLighting {
 
     fn sky_light(
         chunks: &HashMap<ChunkPosition, Chunk>,
+        affected_positions: &HashSet<ChunkPosition>,
         occlusion_maps: &HashMap<ChunkPosition, [i32; 256]>,
     ) -> HashMap<BlockPosition, u8> {
         let mut light = HashMap::new();
         let mut propagation = VecDeque::new();
 
         chunks
-            .values()
-            .filter(|chunk| chunk.is_loaded() && chunk.is_lighting_chunk())
+            .iter()
+            .filter(|(position, chunk)| {
+                affected_positions.contains(position)
+                    && chunk.is_loaded()
+                    && chunk.is_lighting_chunk()
+            })
+            .map(|(_, chunk)| chunk)
             .for_each(|chunk| {
                 let maximum_y = chunk.max_section() * SECTION_SIZE - 1;
                 let Some(occlusion_map) =
@@ -136,11 +165,12 @@ impl WorldLighting {
                 });
             });
 
-        Self::propagate(chunks, light, propagation)
+        Self::propagate(chunks, affected_positions, light, propagation)
     }
 
     fn propagate(
         chunks: &HashMap<ChunkPosition, Chunk>,
+        affected_positions: &HashSet<ChunkPosition>,
         mut light: HashMap<BlockPosition, u8>,
         mut propagation: VecDeque<(BlockPosition, u8)>,
     ) -> HashMap<BlockPosition, u8> {
@@ -148,12 +178,13 @@ impl WorldLighting {
             if level <= 1 {
                 continue;
             }
-            let Some(current_state) = Self::state(chunks, position) else {
+            let Some(current_state) = Self::state(chunks, affected_positions, position) else {
                 continue;
             };
             Direction::ALL.into_iter().for_each(|direction| {
                 let target_position = direction.offset(position);
-                let Some(target_state) = Self::state(chunks, target_position) else {
+                let Some(target_state) = Self::state(chunks, affected_positions, target_position)
+                else {
                     return;
                 };
                 let next_level = level - 1;
@@ -175,10 +206,15 @@ impl WorldLighting {
 
     fn state(
         chunks: &HashMap<ChunkPosition, Chunk>,
+        affected_positions: &HashSet<ChunkPosition>,
         position: BlockPosition,
     ) -> Option<BlockState> {
+        let chunk_position = ChunkPosition::from(position);
+        if !affected_positions.contains(&chunk_position) {
+            return None;
+        }
         chunks
-            .get(&ChunkPosition::from(position))
+            .get(&chunk_position)
             .filter(|chunk| chunk.is_loaded() && chunk.is_lighting_chunk())
             .map(|chunk| chunk.block_state(position))
     }
