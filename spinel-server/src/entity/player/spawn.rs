@@ -459,6 +459,7 @@ impl Player {
         self.forget_chunks(client, transition.departing)?;
         self.load_chunks(client, chunk_packets)?;
         self.chunks_loaded_by_client = transition.next;
+        self.chunk_queue_requires_sorting = true;
         self.loaded_chunk = transition.next;
         Ok(())
     }
@@ -473,6 +474,7 @@ impl Player {
         SetChunkCacheCenterPacket::new(transition.next.x, transition.next.z).dispatch(client)?;
         self.forget_chunks(client, transition.departing)?;
         self.chunks_loaded_by_client = transition.next;
+        self.chunk_queue_requires_sorting = true;
         self.loaded_chunk = transition.next;
         Ok(())
     }
@@ -536,11 +538,13 @@ impl Player {
     fn queue_chunk(&mut self, chunk: PlayerChunk) {
         self.chunk_queue
             .push_back(QueuedPlayerChunk::from_chunk(chunk));
+        self.chunk_queue_requires_sorting = true;
     }
 
     pub fn send_chunk(&mut self, chunk_packet: ChunkDataAndUpdateLightPacket) {
         let queued_chunk = QueuedPlayerChunk::new(chunk_packet);
         self.chunk_queue.push_back(queued_chunk);
+        self.chunk_queue_requires_sorting = true;
     }
 
     pub fn send_loaded_chunk(&mut self, chunk: &Chunk) -> bool {
@@ -583,7 +587,7 @@ impl Player {
         if self.chunk_queue.is_empty() || self.chunk_batch_lead >= self.max_chunk_batch_lead {
             return Ok(());
         }
-        self.sort_queued_chunks_by_distance();
+        self.sort_queued_chunks_by_distance_when_required();
         self.pending_chunk_count =
             (self.pending_chunk_count + self.target_chunks_per_tick).min(64.0);
         if self.pending_chunk_count < 1.0 {
@@ -621,15 +625,25 @@ impl Player {
 
     fn discard_pending_chunk_delivery(&mut self) {
         self.chunk_queue.clear();
+        self.chunk_queue_requires_sorting = false;
         self.pending_chunk_count = 0.0;
         self.chunk_batch_lead = 0;
     }
 
-    fn sort_queued_chunks_by_distance(&mut self) {
+    fn sort_queued_chunks_by_distance_when_required(&mut self) {
+        if !self.chunk_queue_requires_sorting {
+            return;
+        }
+
         let chunks_loaded_by_client = self.chunks_loaded_by_client;
         self.chunk_queue
             .make_contiguous()
             .sort_by_key(|queued_chunk| queued_chunk.chunk.distance_to(chunks_loaded_by_client));
+        self.chunk_queue_requires_sorting = false;
+        #[cfg(test)]
+        {
+            self.chunk_queue_sort_count += 1;
+        }
     }
 
     pub fn get_queued_chunk_count(&self) -> usize {
@@ -639,6 +653,7 @@ impl Player {
     pub(crate) fn reset_chunk_queue(&mut self) {
         self.chunk_queue.clear();
         self.client_sent_chunks.clear();
+        self.chunk_queue_requires_sorting = false;
         self.needs_chunk_position_sync = true;
         self.target_chunks_per_tick = 9.0;
         self.pending_chunk_count = 0.0;

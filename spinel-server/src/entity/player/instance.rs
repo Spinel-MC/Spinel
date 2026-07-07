@@ -194,6 +194,9 @@ pub struct Player {
     pub(super) pending_resource_packs: PendingResourcePacks,
     pub(super) chunk_queue: VecDeque<QueuedPlayerChunk>,
     pub(super) client_sent_chunks: HashSet<PlayerChunk>,
+    pub(super) chunk_queue_requires_sorting: bool,
+    #[cfg(test)]
+    pub(super) chunk_queue_sort_count: usize,
     pub(super) needs_chunk_position_sync: bool,
     pub(super) max_chunk_batch_lead: i32,
     pub(super) chunk_batch_lead: i32,
@@ -373,6 +376,9 @@ impl Player {
             pending_resource_packs: PendingResourcePacks::new(),
             chunk_queue: VecDeque::new(),
             client_sent_chunks: HashSet::new(),
+            chunk_queue_requires_sorting: false,
+            #[cfg(test)]
+            chunk_queue_sort_count: 0,
             needs_chunk_position_sync: true,
             max_chunk_batch_lead: 1,
             chunk_batch_lead: 0,

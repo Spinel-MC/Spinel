@@ -410,6 +410,38 @@ fn queued_chunk_batch_finished_counts_only_sent_chunks() {
 }
 
 #[test]
+fn unchanged_chunk_queue_is_not_resorted_between_batches() {
+    let (mut client, _peer_stream) = test_client_pair();
+    let mut player = Player::new(
+        Uuid::nil(),
+        "Player".to_string(),
+        0,
+        SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 25565),
+    );
+    player.set_client(&mut client);
+    player.max_chunk_batch_lead = 10;
+    player.target_chunks_per_tick = 1.0;
+    player.needs_chunk_position_sync = false;
+    player.send_chunk(empty_chunk_packet(3, 0));
+    player.send_chunk(empty_chunk_packet(1, 0));
+    player.send_chunk(empty_chunk_packet(2, 0));
+
+    player.send_pending_chunks().unwrap();
+
+    assert_eq!(player.chunk_queue_sort_count, 1);
+    assert_eq!(player.get_queued_chunk_count(), 2);
+
+    player.send_pending_chunks().unwrap();
+
+    assert_eq!(player.chunk_queue_sort_count, 1);
+    assert_eq!(player.get_queued_chunk_count(), 1);
+
+    player.send_chunk(empty_chunk_packet(4, 0));
+    player.send_pending_chunks().unwrap();
+
+    assert_eq!(player.chunk_queue_sort_count, 2);
+}
+#[test]
 fn unavailable_queued_chunks_still_finish_an_empty_minestom_batch() {
     let (mut client, mut peer_stream) = test_client_pair();
     let mut player = Player::new(
