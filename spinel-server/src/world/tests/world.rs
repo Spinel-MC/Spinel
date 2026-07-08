@@ -27,7 +27,7 @@ use spinel_registry::Registries;
 use spinel_registry::dimension_type::DimensionType;
 use std::io::{self, Cursor, Error, ErrorKind, Read};
 use std::net::{IpAddr, Ipv4Addr, SocketAddr, TcpListener, TcpStream};
-use std::sync::atomic::{AtomicI32, AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicI32, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
@@ -120,6 +120,31 @@ impl ChunkLoader for StoredChunkLoader {
 
     fn unload_chunk(&self, _chunk: &mut Chunk) -> io::Result<()> {
         Ok(())
+    }
+}
+
+struct GatedParallelChunkLoader {
+    can_load: Arc<AtomicBool>,
+}
+
+impl ChunkLoader for GatedParallelChunkLoader {
+    fn load_chunk(&self, _position: ChunkPosition) -> io::Result<Option<Chunk>> {
+        while !self.can_load.load(Ordering::SeqCst) {
+            thread::yield_now();
+        }
+        Ok(None)
+    }
+
+    fn save_chunk(&self, _chunk: &Chunk) -> io::Result<()> {
+        Ok(())
+    }
+
+    fn unload_chunk(&self, _chunk: &mut Chunk) -> io::Result<()> {
+        Ok(())
+    }
+
+    fn supports_parallel_loading(&self) -> bool {
+        true
     }
 }
 
@@ -761,6 +786,14 @@ fn rapid_forward_reverse_stop_loads_and_lights_the_standing_chunk() {
         world.tick_with_registries(&registries);
         std::thread::yield_now();
     }
+    let initial_teleport_id = world
+        .player_by_addr(&client.addr)
+        .unwrap()
+        .get_last_sent_teleport_id();
+    world
+        .player_by_addr_mut(&client.addr)
+        .unwrap()
+        .set_last_received_teleport_id(initial_teleport_id);
     world.set_chunk_supplier(Chunk::new_lighting);
     world.set_generator(|unit| {
         std::thread::sleep(Duration::from_millis(5));
@@ -971,7 +1004,7 @@ fn stored_chunk_skips_generation_and_generation_callback() {
 fn enter_player_queues_the_initial_spawn_view_without_blocking_on_chunk_loads() {
     let generation_callback_count = Arc::new(AtomicUsize::new(0));
     let registries = Registries::new_vanilla();
-    let (mut client, _peer_stream) = test_client_pair();
+    let (mut client, mut peer_stream) = test_client_pair();
     let mut world = World::new_with_dimension_name(
         uuid::Uuid::new_v4(),
         spinel_registry::dimension_type::DimensionType::OVERWORLD,
@@ -981,6 +1014,7 @@ fn enter_player_queues_the_initial_spawn_view_without_blocking_on_chunk_loads() 
     world.set_chunk_loader(StoredChunkLoader {
         generation_callback_count,
     });
+    world.load_chunk(ChunkPosition::new(0, 0)).unwrap();
     world.add_entity(Entity::Player(Player::new(
         Uuid::new_v4(),
         "ChunkQueue".to_string(),
@@ -998,21 +1032,30 @@ fn enter_player_queues_the_initial_spawn_view_without_blocking_on_chunk_loads() 
     assert!(
         world
             .player_by_addr(&client.addr)
-            .unwrap()
-            .has_entered_world()
+            .is_some_and(|player| player.has_entered_world())
     );
     assert!(world.chunks().count() < initial_spawn_chunk_count);
+    let initial_packet_ids = read_available_packet_frames(&mut peer_stream)
+        .into_iter()
+        .map(|(packet_id, _)| packet_id)
+        .collect::<Vec<_>>();
+    assert!(initial_packet_ids.contains(&ChunkDataAndUpdateLightPacket::get_id()));
 }
 
 #[test]
-fn enter_player_waits_for_loaded_chunks_before_sending_initial_chunk_batch() {
+fn enter_player_with_parallel_loader_enters_before_initial_chunks_finish_loading() {
     let registries = Registries::new_vanilla();
     let (mut client, mut peer_stream) = test_client_pair();
+    let can_load = Arc::new(AtomicBool::new(false));
     let mut world = World::new_with_dimension_name(
         uuid::Uuid::new_v4(),
         spinel_registry::dimension_type::DimensionType::OVERWORLD,
         Identifier::minecraft("overworld"),
     );
+    world.set_view_distance(1);
+    world.set_chunk_loader(GatedParallelChunkLoader {
+        can_load: Arc::clone(&can_load),
+    });
     world.add_entity(Entity::Player(Player::new(
         Uuid::new_v4(),
         "ChunkQueue".to_string(),
@@ -1029,41 +1072,15 @@ fn enter_player_waits_for_loaded_chunks_before_sending_initial_chunk_batch() {
 
     assert!(!initial_packet_ids.contains(&ChunkBatchStartPacket::get_id()));
     assert!(!initial_packet_ids.contains(&ChunkBatchFinishedPacket::get_id()));
+    assert!(!initial_packet_ids.contains(&ChunkDataAndUpdateLightPacket::get_id()));
     assert!(!initial_packet_ids.contains(&SyncPlayerPositionPacket::get_id()));
-
-    let entry_deadline = Instant::now() + Duration::from_secs(2);
-    while world
-        .player_by_addr(&client.addr)
-        .is_some_and(|player| !player.has_entered_world())
-    {
-        assert!(Instant::now() < entry_deadline);
-        world.tick_with_registries(&registries);
-        std::thread::yield_now();
-    }
-
-    let tick_packet_ids = read_available_packet_frames(&mut peer_stream)
-        .into_iter()
-        .map(|(packet_id, _)| packet_id)
-        .collect::<Vec<_>>();
-    let chunk_batch_start_index = tick_packet_ids
-        .iter()
-        .position(|packet_id| *packet_id == ChunkBatchStartPacket::get_id())
-        .unwrap();
-    let chunk_batch_finished_index = tick_packet_ids
-        .iter()
-        .position(|packet_id| *packet_id == ChunkBatchFinishedPacket::get_id())
-        .unwrap();
-
     assert!(
-        tick_packet_ids[chunk_batch_start_index + 1..chunk_batch_finished_index]
-            .iter()
-            .all(|packet_id| *packet_id == ChunkDataAndUpdateLightPacket::get_id())
+        world
+            .player_by_addr(&client.addr)
+            .is_some_and(|player| player.has_entered_world())
     );
-    assert!(chunk_batch_finished_index > chunk_batch_start_index + 1);
-    assert_eq!(
-        tick_packet_ids[chunk_batch_finished_index + 1],
-        SyncPlayerPositionPacket::get_id()
-    );
+    can_load.store(true, Ordering::SeqCst);
+    world.process_completed_chunk_loads().unwrap();
 }
 
 #[test]

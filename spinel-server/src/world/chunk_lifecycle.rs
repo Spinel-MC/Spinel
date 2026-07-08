@@ -1,4 +1,6 @@
-﻿impl World {
+const MAX_COMPLETED_CHUNK_LOADS_PER_TICK: usize = 32;
+
+impl World {
     pub fn generator(&self) -> Option<&(dyn Generator + Send + Sync)> {
         self.generator.as_deref()
     }
@@ -579,16 +581,16 @@
         for chunk in chunks {
             let position = ChunkPosition::from(*chunk);
             if self.is_chunk_loaded(position) {
+                self.queue_loaded_chunk_for_player(player_address, *chunk);
                 continue;
             }
-            let Some(ticket) = self.load_optional_chunk_future(position)? else {
+            if self.load_optional_chunk_future(position)?.is_none() {
                 continue;
-            };
+            }
             self.player_chunk_load_waiters
                 .entry(position)
                 .or_default()
                 .push(player_address);
-            let _ = self.complete_chunk_load(&ticket)?;
         }
         Ok(())
     }
@@ -604,14 +606,13 @@
                 self.queue_loaded_chunk_for_player(player_address, *chunk);
                 continue;
             }
-            let Some(ticket) = self.load_optional_chunk_future(position)? else {
+            if self.load_optional_chunk_future(position)?.is_none() {
                 continue;
-            };
+            }
             self.player_chunk_load_waiters
                 .entry(position)
                 .or_default()
                 .push(player_address);
-            let _ = self.complete_chunk_load(&ticket)?;
         }
         Ok(())
     }
@@ -621,6 +622,7 @@
         let completed_tickets = self
             .prepared_chunk_loads
             .values()
+            .take(MAX_COMPLETED_CHUNK_LOADS_PER_TICK)
             .map(|(ticket, _)| ticket.clone())
             .collect::<Vec<_>>();
         for ticket in completed_tickets {
@@ -755,7 +757,7 @@
         position: ChunkPosition,
         should_load_missing_chunk: bool,
     ) -> Result<Option<ChunkLoadTicket>> {
-        if self.chunks.contains_key(&position) {
+        if self.is_chunk_loaded(position) {
             let ticket = self.next_completed_chunk_load_ticket(position);
             return Ok(Some(ticket));
         }
@@ -1097,4 +1099,3 @@ fn generate_chunk(
     chunk.replace_sections(sections);
     Ok(generation_forks)
 }
-

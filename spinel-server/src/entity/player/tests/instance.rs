@@ -194,7 +194,7 @@ fn offline_player_does_not_prepare_or_send_buffered_chunks() {
     player
         .send_pending_chunks_with(&mut client, |queued_chunk| {
             prepared_chunk_count += 1;
-            Ok(queued_chunk.packet)
+            Ok(queued_chunk.packet.take())
         })
         .unwrap();
 
@@ -442,7 +442,7 @@ fn unchanged_chunk_queue_is_not_resorted_between_batches() {
     assert_eq!(player.chunk_queue_sort_count, 2);
 }
 #[test]
-fn unavailable_queued_chunks_still_finish_an_empty_minestom_batch() {
+fn unavailable_queued_chunks_wait_without_starting_empty_batch() {
     let (mut client, mut peer_stream) = test_client_pair();
     let mut player = Player::new(
         Uuid::nil(),
@@ -457,27 +457,13 @@ fn unavailable_queued_chunks_still_finish_an_empty_minestom_batch() {
         .send_pending_chunks_with(&mut client, |_| Ok(None))
         .unwrap();
 
-    let (chunk_batch_start_packet_id, _) = read_packet_frame(&mut peer_stream);
-    let (chunk_batch_finished_packet_id, chunk_batch_finished_payload) =
-        read_packet_frame(&mut peer_stream);
-    let mut chunk_batch_finished_payload = Cursor::new(chunk_batch_finished_payload);
+    let packet_frames = read_available_packet_frames(&mut peer_stream);
 
-    assert_eq!(chunk_batch_start_packet_id, ChunkBatchStartPacket::get_id());
-    assert_eq!(
-        chunk_batch_finished_packet_id,
-        ChunkBatchFinishedPacket::get_id()
-    );
-    assert_eq!(
-        VarIntWrapper::decode(&mut chunk_batch_finished_payload)
-            .unwrap()
-            .0,
-        0
-    );
-    assert_eq!(player.get_chunk_batch_lead(), 1);
+    assert!(packet_frames.is_empty());
+    assert_eq!(player.get_chunk_batch_lead(), 0);
     assert_eq!(player.get_pending_chunk_count(), 9.0);
-    assert_eq!(player.get_queued_chunk_count(), 0);
+    assert_eq!(player.get_queued_chunk_count(), 1);
 }
-
 #[test]
 fn ordinary_chunk_border_crossing_sends_no_position_sync() {
     let (mut client, mut peer_stream) = test_client_pair();

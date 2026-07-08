@@ -26,6 +26,7 @@ pub struct AnvilChunkLoader {
     region_directory: PathBuf,
     file_creation_lock: Mutex<()>,
     loaded_region_files: Mutex<HashMap<String, Arc<Mutex<RegionFile>>>>,
+    missing_region_files: Mutex<HashSet<String>>,
     loaded_chunks_by_region: Mutex<HashMap<(i32, i32), HashSet<(i32, i32)>>>,
     failures: Mutex<VecDeque<ChunkLoaderFailure>>,
 }
@@ -41,6 +42,7 @@ impl AnvilChunkLoader {
             region_directory,
             file_creation_lock: Mutex::new(()),
             loaded_region_files: Mutex::new(HashMap::new()),
+            missing_region_files: Mutex::new(HashSet::new()),
             loaded_chunks_by_region: Mutex::new(HashMap::new()),
             failures: Mutex::new(VecDeque::new()),
         })
@@ -63,6 +65,11 @@ impl AnvilChunkLoader {
         {
             return Ok(Some(region_file));
         }
+        if creation == RegionFileCreation::Existing
+            && lock_mutex(&self.missing_region_files)?.contains(&region_file_name)
+        {
+            return Ok(None);
+        }
         let creation_guard = lock_mutex(&self.file_creation_lock)?;
         let mut loaded_region_files = lock_mutex(&self.loaded_region_files)?;
         if let Some(region_file) = loaded_region_files.get(&region_file_name).cloned() {
@@ -71,9 +78,11 @@ impl AnvilChunkLoader {
         }
         let region_file_path = self.region_directory.join(&region_file_name);
         if creation == RegionFileCreation::Existing && !region_file_path.exists() {
+            lock_mutex(&self.missing_region_files)?.insert(region_file_name);
             drop(creation_guard);
             return Ok(None);
         }
+        lock_mutex(&self.missing_region_files)?.remove(&region_file_name);
         if let Some(region_file_parent) = region_file_path.parent() {
             fs::create_dir_all(region_file_parent)?;
         }
@@ -268,7 +277,7 @@ fn anvil_panic_message(panic_payload: Box<dyn std::any::Any + Send>) -> String {
     "Anvil chunk loading panicked without a string message.".to_string()
 }
 fn decode_chunk(position: ChunkPosition, mut chunk_data: NbtCompound) -> io::Result<Chunk> {
-    let mut chunk = Chunk::new_with_generation(position, false);
+    let mut chunk = Chunk::new_lighting_with_generation(position, false);
     if chunk_has_full_status(&chunk_data) {
         load_sections(&mut chunk, &chunk_data)?;
         load_block_entities(&mut chunk, &chunk_data);

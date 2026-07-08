@@ -570,14 +570,14 @@ impl Player {
     }
 
     fn send_pending_chunks_to(&mut self, client: &mut Client) -> io::Result<()> {
-        self.send_pending_chunks_with(client, |queued_chunk| Ok(queued_chunk.packet))
+        self.send_pending_chunks_with(client, |queued_chunk| Ok(queued_chunk.packet.take()))
     }
 
     pub(crate) fn send_pending_chunks_with(
         &mut self,
         client: &mut Client,
         mut packet_for_chunk: impl FnMut(
-            QueuedPlayerChunk,
+            &mut QueuedPlayerChunk,
         ) -> io::Result<Option<ChunkDataAndUpdateLightPacket>>,
     ) -> io::Result<()> {
         if !client.is_online() {
@@ -593,26 +593,35 @@ impl Player {
         if self.pending_chunk_count < 1.0 {
             return Ok(());
         }
-        ChunkBatchStartPacket.dispatch(client)?;
         let mut sent_chunk_count = 0;
+        let mut batch_started = false;
         while !self.chunk_queue.is_empty() && self.pending_chunk_count >= 1.0 {
             if !client.is_online() {
                 self.discard_pending_chunk_delivery();
                 return Ok(());
             }
-            let Some(queued_chunk) = self.chunk_queue.pop_front() else {
+            let Some(mut queued_chunk) = self.chunk_queue.pop_front() else {
                 break;
             };
-            let chunk = queued_chunk.chunk;
-            let Some(packet) = packet_for_chunk(queued_chunk)? else {
-                continue;
+            let Some(packet) = packet_for_chunk(&mut queued_chunk)? else {
+                self.chunk_queue.push_front(queued_chunk);
+                self.chunk_queue_requires_sorting = true;
+                break;
             };
+            if !batch_started {
+                ChunkBatchStartPacket.dispatch(client)?;
+                batch_started = true;
+            }
+            let chunk = queued_chunk.chunk;
             packet.dispatch(client)?;
             self.client_sent_chunks
                 .insert(PlayerChunk::new(chunk.x, chunk.z));
             self.dispatch_player_chunk_load_event(client, chunk.x, chunk.z);
             self.pending_chunk_count -= 1.0;
             sent_chunk_count += 1;
+        }
+        if !batch_started {
+            return Ok(());
         }
         ChunkBatchFinishedPacket::new(sent_chunk_count).dispatch(client)?;
         self.chunk_batch_lead += 1;

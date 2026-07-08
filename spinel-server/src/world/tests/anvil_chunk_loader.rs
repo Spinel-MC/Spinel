@@ -36,6 +36,7 @@ fn anvil_chunk_loader_round_trips_chunk_data() -> io::Result<()> {
         .load_chunk(position)?
         .expect("saved chunk should load");
 
+    assert!(loaded_chunk.is_lighting_chunk());
     assert_eq!(loaded_chunk.block(stone_position), Block::STONE);
     assert_eq!(loaded_chunk.biome(biome_position), Biome::DESERT);
     assert_eq!(loaded_chunk.sky_light(BlockPosition::new(0, 0, 0)), 15);
