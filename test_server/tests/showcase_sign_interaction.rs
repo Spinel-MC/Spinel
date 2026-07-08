@@ -1,6 +1,6 @@
 use spinel::core::network::serverbound::play::use_item_on::UseItemOnPacket;
 use spinel::network::{Client, ConnectionState, DataType, Position};
-use spinel::registry::{EntityType, Identifier, Material};
+use spinel::registry::{EntityType, Material, dimension_type::DimensionType};
 use spinel::server::MinecraftServer;
 use spinel::server::entity::{Entity, EntityPosition, GenericEntity, Player, PlayerHand};
 use spinel::server::world::{Block, BlockPosition, ChunkPosition};
@@ -16,7 +16,7 @@ fn entity_showcase_sign_interaction_keeps_player_valid_after_spawning_entities()
     client.state = ConnectionState::Play;
     let world_id = server
         .world_manager
-        .create_world(Identifier::minecraft("showcase_sign_interaction"));
+        .create_world(DimensionType::OVERWORLD);
     let sign_position = BlockPosition::new(3, 4, 5);
     let player_uuid = Uuid::new_v4();
     let world = server.world_manager.world_mut(world_id).unwrap();
@@ -54,7 +54,7 @@ fn repeated_entity_showcase_sign_interactions_keep_player_valid() {
     client.state = ConnectionState::Play;
     let world_id = server
         .world_manager
-        .create_world(Identifier::minecraft("repeated_showcase_sign_interaction"));
+        .create_world(DimensionType::OVERWORLD);
     let sign_position = BlockPosition::new(3, 4, 5);
     let player_uuid = Uuid::new_v4();
     let world = server.world_manager.world_mut(world_id).unwrap();

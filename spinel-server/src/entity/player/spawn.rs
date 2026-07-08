@@ -192,13 +192,13 @@ impl Player {
             world_border_packet.dispatch(client)?;
             time_packet.dispatch(client)?;
         }
-        if dimension_change || first_spawn {
+        if first_spawn {
+            GameEventPacket::from(GameEvent::StartWaitingForLevelChunks).dispatch(client)?;
             self.sync_inventory(client)?;
             SetHeldSlotPacket {
                 slot: self.get_held_slot() as i8,
             }
             .dispatch(client)?;
-            GameEventPacket::from(GameEvent::StartWaitingForLevelChunks).dispatch(client)?;
         }
         self.mark_entered_world();
         Ok(())
@@ -595,6 +595,7 @@ impl Player {
         }
         let mut sent_chunk_count = 0;
         let mut batch_started = false;
+        let mut unavailable_chunks = Vec::new();
         while !self.chunk_queue.is_empty() && self.pending_chunk_count >= 1.0 {
             if !client.is_online() {
                 self.discard_pending_chunk_delivery();
@@ -604,9 +605,8 @@ impl Player {
                 break;
             };
             let Some(packet) = packet_for_chunk(&mut queued_chunk)? else {
-                self.chunk_queue.push_front(queued_chunk);
-                self.chunk_queue_requires_sorting = true;
-                break;
+                unavailable_chunks.push(queued_chunk);
+                continue;
             };
             if !batch_started {
                 ChunkBatchStartPacket.dispatch(client)?;
@@ -621,6 +621,10 @@ impl Player {
             sent_chunk_count += 1;
         }
         if !batch_started {
+            unavailable_chunks
+                .into_iter()
+                .rev()
+                .for_each(|queued_chunk| self.chunk_queue.push_front(queued_chunk));
             return Ok(());
         }
         ChunkBatchFinishedPacket::new(sent_chunk_count).dispatch(client)?;

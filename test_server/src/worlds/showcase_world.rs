@@ -1,7 +1,7 @@
 use crate::biomes::example_biome::ExampleBiome;
 use crate::showcase::ShowcaseSigns;
 use spinel::{
-    registry::{Identifier, biome::Biome},
+    registry::{Identifier, biome::Biome, dimension_type::DimensionType},
     server::{
         MinecraftServer,
         world::{Block, BlockPosition, ChunkPosition},
@@ -20,9 +20,8 @@ impl ShowcaseWorld {
             )
             .map_err(|error| io::Error::other(format!("{error:?}")))?;
 
-        let world_id = server
-            .world_manager
-            .create_world(Identifier::minecraft("overworld"));
+        let world_id = server.world_manager.create_world(DimensionType::OVERWORLD);
+
         let Some(world) = server.world_manager.world_mut(world_id) else {
             return Err(io::Error::new(
                 io::ErrorKind::NotFound,

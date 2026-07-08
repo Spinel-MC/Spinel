@@ -1,11 +1,14 @@
 mod anvil_chunk_loader;
+mod anvil_chunk_loading;
 mod block_instance;
 mod chunk_cache;
 mod chunk_generation;
 mod chunk_heightmaps;
 mod chunk_lifecycle;
 mod chunk_lighting;
+mod chunk_load_future;
 mod chunk_loader_errors;
+mod chunk_loading;
 mod chunk_memory;
 mod chunk_section;
 mod entity_attack;

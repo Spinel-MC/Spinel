@@ -797,8 +797,7 @@ impl World {
                 .insert(ticket.id, (ticket.clone(), prepared_chunk_load));
             self.async_chunk_loads.insert(position, ticket.clone());
             return Ok(Some(ticket));
-        }
-        let completed_chunk_load_sender = self.completed_chunk_load_sender.clone();
+        }        let completed_chunk_load_sender = self.completed_chunk_load_sender.clone();
         let executor_ticket = ticket.clone();
         ChunkLoadingExecutor::global().execute(move || {
             let prepared_chunk_load = catch_unwind(AssertUnwindSafe(|| {

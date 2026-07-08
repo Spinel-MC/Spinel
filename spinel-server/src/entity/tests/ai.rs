@@ -395,18 +395,29 @@ fn ranged_goal_world_tick_spawns_and_shoots_default_arrow() {
     creature.add_ai_group(group);
     world.add_entity(Entity::Creature(creature));
     world.add_entity(Entity::Creature(target));
+    assert!(world.update_snapshot().has_line_of_sight(creature_id, target_id));
 
     world.tick();
 
-    let projectile = world.entities().find_map(|entity| match entity {
-        Entity::Projectile(projectile) => Some(projectile),
-        _ => None,
-    });
-    assert!(projectile.is_some_and(|projectile| {
-        projectile.get_shooter() == Some(creature_id)
-            && projectile.get_entity_type() == EntityType::ARROW
-            && projectile.get_velocity().0.x > 0.0
-    }));
+    let projectiles = world
+        .entities()
+        .filter_map(|entity| match entity {
+            Entity::Projectile(projectile) => Some((
+                projectile.get_shooter(),
+                projectile.get_entity_type(),
+                projectile.get_velocity(),
+            )),
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+    assert!(
+        projectiles.iter().any(|(shooter, entity_type, velocity)| {
+            *shooter == Some(creature_id)
+                && *entity_type == EntityType::ARROW
+                && velocity.0.x > 0.0
+        }),
+        "projectiles={projectiles:?}"
+    );
 }
 
 struct RecordingGoal {
@@ -521,3 +532,8 @@ fn ai_world() -> World {
     }
     world
 }
+
+
+
+
+

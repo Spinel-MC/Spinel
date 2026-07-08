@@ -186,6 +186,7 @@ pub struct Player {
     pub(super) item_cooldowns: BTreeMap<String, u64>,
     statistics: BTreeMap<String, i32>,
     pub(super) alive_ticks: u64,
+    delayed_remove_ticks: Option<u64>,
     last_experience_pickup_tick: Option<i64>,
     pub(super) item_use_hand: Option<PlayerHand>,
     pub(super) start_item_use_time: u64,
@@ -368,6 +369,7 @@ impl Player {
             item_cooldowns: BTreeMap::new(),
             statistics: BTreeMap::new(),
             alive_ticks: 0,
+            delayed_remove_ticks: None,
             last_experience_pickup_tick: None,
             item_use_hand: None,
             start_item_use_time: 0,
@@ -796,26 +798,9 @@ impl Player {
             self.refresh_abilities()?;
         }
         let respawn_point = self.dispatch_player_respawn_event();
-        let respawn_position = EntityPosition::new(
-            respawn_point.x,
-            respawn_point.y,
-            respawn_point.z,
-            respawn_point.yaw,
-            respawn_point.pitch,
-        );
         self.living.revive();
         self.refresh_pose();
         self.position = PlayerPosition::from(respawn_point);
-        self.synchronize_position_after_teleport(
-            respawn_position,
-            Vector3d {
-                x: 0.0,
-                y: 0.0,
-                z: 0.0,
-            },
-            TeleportFlags::absolute(),
-            false,
-        )?;
         Ok(true)
     }
 
@@ -2693,10 +2678,17 @@ impl Player {
 
     pub(crate) fn tick(&mut self) -> Option<crate::entity::player::PlayerItemUseCompletion> {
         self.process_scheduler_tick_start();
+        let _ = self.sync_dirty_player_inventory_slots();
         let current_tick = self.last_completed_client_tick;
         self.item_cooldowns
             .retain(|_, cooldown_expires_at| *cooldown_expires_at > current_tick);
         let item_use_completion = self.tick_item_use();
+        if self
+            .delayed_remove_ticks
+            .is_some_and(|remove_tick| remove_tick <= self.alive_ticks)
+        {
+            self.living.kill();
+        }
         self.process_scheduler_tick_end();
         item_use_completion
     }
@@ -3285,11 +3277,13 @@ impl Player {
     }
 
     pub fn schedule_remove_after_ticks(&mut self, delay_ticks: u64) {
-        let _ = delay_ticks;
+        self.delayed_remove_ticks = Some(self.alive_ticks.saturating_add(delay_ticks));
     }
 
     pub fn schedule_remove_after_duration(&mut self, duration: std::time::Duration) {
-        let _ = duration;
+        let duration_millis = duration.as_millis();
+        let delay_ticks = u64::try_from(duration_millis.div_ceil(50)).unwrap_or(u64::MAX);
+        self.schedule_remove_after_ticks(delay_ticks);
     }
 }
 

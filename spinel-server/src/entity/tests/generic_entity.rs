@@ -146,7 +146,7 @@ fn generic_entity_refresh_position_packet_control_overloads_update_owned_positio
 
     entity.refresh_position_ignoring_view(EntityPosition::new(6.0, 7.0, 8.0, 9.0, 10.0), true);
     assert_eq!(entity.get_position().get_x(), 6.0);
-    assert_eq!(entity.get_position().get_x(), 1.0);
+    assert_eq!(entity.get_previous_position().get_x(), 1.0);
 }
 
 #[test]

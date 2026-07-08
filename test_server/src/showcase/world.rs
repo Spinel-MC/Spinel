@@ -27,10 +27,10 @@ impl WorldShowcase {
         let base_x = origin.get_x() as i32;
         let base_y = origin.get_y() as i32;
         let base_z = origin.get_z() as i32;
-        world.set_time(6_000)?;
+        world.set_time(6_000);
         let weather = Weather::new(0.5, 0.0)
             .map_err(|error| io::Error::new(io::ErrorKind::InvalidInput, error))?;
-        world.set_weather(weather)?;
+        world.set_weather(weather);
         world.set_block(
             BlockPosition::new(base_x, base_y - 1, base_z + 3),
             Block::EMERALD_BLOCK,

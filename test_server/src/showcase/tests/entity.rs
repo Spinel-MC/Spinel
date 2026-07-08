@@ -1,5 +1,5 @@
 use crate::showcase::EntityShowcase;
-use spinel::registry::Identifier;
+use spinel::registry::dimension_type::DimensionType;
 use spinel::server::MinecraftServer;
 use spinel::server::entity::{Entity, EntityPosition, Player};
 use spinel::server::world::{Block, BlockPosition, ChunkPosition};
@@ -9,9 +9,7 @@ use uuid::Uuid;
 #[test]
 fn entity_showcase_controls_minestom_and_vanilla_physics_zombies_together() {
     let mut server = MinecraftServer::new();
-    let world_id = server
-        .world_manager
-        .create_world(Identifier::minecraft("pathfinding_showcase_test"));
+    let world_id = server.world_manager.create_world(DimensionType::OVERWORLD);
     let world = server.world_manager.world_mut(world_id).unwrap();
     world.load_chunk(ChunkPosition::new(0, 0)).unwrap();
     for x in 0..=12 {
@@ -65,9 +63,7 @@ fn entity_showcase_controls_minestom_and_vanilla_physics_zombies_together() {
 #[test]
 fn entity_showcase_controls_minestom_and_vanilla_physics_zombies_individually() {
     let mut server = MinecraftServer::new();
-    let world_id = server.world_manager.create_world(Identifier::minecraft(
-        "individual_pathfinding_showcase_test",
-    ));
+    let world_id = server.world_manager.create_world(DimensionType::OVERWORLD);
     let world = server.world_manager.world_mut(world_id).unwrap();
     world.load_chunk(ChunkPosition::new(0, 0)).unwrap();
     for x in 0..=12 {
@@ -118,9 +114,7 @@ fn entity_showcase_controls_minestom_and_vanilla_physics_zombies_individually() 
 #[test]
 fn entity_showcase_pathfinding_sticks_are_added_without_replacing_occupied_slots() {
     let mut server = MinecraftServer::new();
-    let world_id = server
-        .world_manager
-        .create_world(Identifier::minecraft("pathfinding_stick_inventory_test"));
+    let world_id = server.world_manager.create_world(DimensionType::OVERWORLD);
     let world = server.world_manager.world_mut(world_id).unwrap();
     world.load_chunk(ChunkPosition::new(0, 0)).unwrap();
     for x in 0..=12 {
@@ -177,9 +171,7 @@ fn entity_showcase_pathfinding_sticks_are_added_without_replacing_occupied_slots
 #[test]
 fn entity_showcase_minestom_stick_targets_selected_block_top_like_minestom_showcase() {
     let mut server = MinecraftServer::new();
-    let world_id = server.world_manager.create_world(Identifier::minecraft(
-        "minestom_showcase_slab_destination_test",
-    ));
+    let world_id = server.world_manager.create_world(DimensionType::OVERWORLD);
     let world = server.world_manager.world_mut(world_id).unwrap();
     world.load_chunk(ChunkPosition::new(0, 0)).unwrap();
     for x in 0..=12 {
