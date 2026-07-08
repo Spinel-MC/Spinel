@@ -65,6 +65,6 @@ fn summon_nbt_applies_living_and_type_specific_state_only_to_matching_entities()
 
     let mut item = GenericEntity::new(EntityType::ITEM);
     item.apply_summon_nbt(&slime_nbt);
-    assert_eq!(item.get_health(), 1.0);
+    assert_eq!(item.get_health(), 20.0);
     assert!(item.get_entity_meta_mut().as_slime().is_none());
 }

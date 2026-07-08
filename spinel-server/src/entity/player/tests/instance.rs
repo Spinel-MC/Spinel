@@ -1064,7 +1064,7 @@ fn player_state_apis_match_minestom_health_food_experience_and_respawn_surface()
         SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 25565),
     );
 
-    assert_eq!(player.get_health(), 1.0);
+    assert_eq!(player.get_health(), 20.0);
     assert_eq!(player.get_food(), 20);
     assert_eq!(player.get_food_saturation(), 5.0);
     assert!(player.is_respawn_screen_enabled());

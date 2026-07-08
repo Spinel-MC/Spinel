@@ -395,7 +395,11 @@ fn ranged_goal_world_tick_spawns_and_shoots_default_arrow() {
     creature.add_ai_group(group);
     world.add_entity(Entity::Creature(creature));
     world.add_entity(Entity::Creature(target));
-    assert!(world.update_snapshot().has_line_of_sight(creature_id, target_id));
+    assert!(
+        world
+            .update_snapshot()
+            .has_line_of_sight(creature_id, target_id)
+    );
 
     world.tick();
 
@@ -412,9 +416,7 @@ fn ranged_goal_world_tick_spawns_and_shoots_default_arrow() {
         .collect::<Vec<_>>();
     assert!(
         projectiles.iter().any(|(shooter, entity_type, velocity)| {
-            *shooter == Some(creature_id)
-                && *entity_type == EntityType::ARROW
-                && velocity.0.x > 0.0
+            *shooter == Some(creature_id) && *entity_type == EntityType::ARROW && velocity.0.x > 0.0
         }),
         "projectiles={projectiles:?}"
     );
@@ -532,8 +534,3 @@ fn ai_world() -> World {
     }
     world
 }
-
-
-
-
-

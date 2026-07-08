@@ -467,6 +467,9 @@ impl World {
     }
 
     fn unload_chunks_without_online_viewers(&mut self) -> Result<usize> {
+        if !self.has_online_players() {
+            return Ok(0);
+        }
         let unload_positions = self
             .chunks
             .keys()
@@ -480,6 +483,13 @@ impl World {
             }
         }
         Ok(unloaded_chunk_count)
+    }
+
+    fn has_online_players(&self) -> bool {
+        self.entities.iter().any(|entity| match entity {
+            Entity::Player(player) => player.has_entered_world() && player.is_online(),
+            _ => false,
+        })
     }
 
     fn chunk_has_online_viewer(&self, position: ChunkPosition) -> bool {
@@ -1098,3 +1108,4 @@ fn generate_chunk(
     chunk.replace_sections(sections);
     Ok(generation_forks)
 }
+

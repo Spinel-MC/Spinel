@@ -40,7 +40,7 @@ impl LivingState {
         Self {
             arrow_count: 0,
             fire_ticks: 0,
-            health: 1.0_f32.min(max_health),
+            health: max_health,
             max_health,
             dead: false,
             invulnerable: false,

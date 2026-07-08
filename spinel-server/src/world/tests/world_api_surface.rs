@@ -1854,12 +1854,12 @@ fn player_set_world_future_completes_after_spawn_packets_and_viewer_refresh() {
             .world_manager
             .player_world_transition_is_complete(ticket)
     );
-    assert_eq!(
-        old_viewer_client.queued_outbound_packet_ids()[..2],
-        [
+    assert_packet_order(
+        &old_viewer_client.queued_outbound_packet_ids(),
+        &[
             PlayerInfoRemovePacket::get_id(),
-            RemoveEntitiesPacket::get_id()
-        ]
+            RemoveEntitiesPacket::get_id(),
+        ],
     );
     assert!(
         new_viewer_client

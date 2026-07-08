@@ -1992,14 +1992,17 @@ impl Player {
     }
 
     fn sync_dirty_player_inventory_slots(&mut self) -> bool {
-        let dirty_slots = self.inventory.drain_dirty_slots();
-        if dirty_slots.is_empty() {
-            return true;
-        }
         let Some(client) = self.client else {
             return false;
         };
         let client = unsafe { &mut *(client as *mut Client) };
+        if client.state != ConnectionState::Play {
+            return false;
+        }
+        let dirty_slots = self.inventory.drain_dirty_slots();
+        if dirty_slots.is_empty() {
+            return true;
+        }
         dirty_slots.into_iter().all(|dirty_slot| {
             self.sync_player_inventory_slot(dirty_slot as i32, client)
                 .is_ok()

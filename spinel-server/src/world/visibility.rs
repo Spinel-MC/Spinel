@@ -591,18 +591,24 @@ impl World {
         viewed_entity_id: EntityId,
         viewer_player_id: EntityId,
     ) -> Result<()> {
-        if self.entity_by_id(viewed_entity_id).is_none() {
-            return Ok(());
-        }
-        let Some(client) =
-            self.entity_by_id_mut(viewer_player_id)
-                .and_then(|entity| match entity {
-                    Entity::Player(player) => player.get_client_mut(),
-                    _ => None,
-                })
+        let Some((viewed_entity_type, viewed_entity_uuid)) = self
+            .entity_by_id(viewed_entity_id)
+            .map(|entity| (entity.get_entity_type(), entity.get_uuid()))
         else {
             return Ok(());
         };
+        let Some(client) = self
+            .entity_by_id_mut(viewer_player_id)
+            .and_then(|entity| match entity {
+                Entity::Player(player) => player.get_client_mut(),
+                _ => None,
+            })
+        else {
+            return Ok(());
+        };
+        if viewed_entity_type == EntityType::PLAYER {
+            PlayerInfoRemovePacket::new(viewed_entity_uuid).dispatch(client)?;
+        }
         RemoveEntitiesPacket::new(vec![viewed_entity_id.get_value()]).dispatch(client)
     }
 
@@ -924,3 +930,4 @@ fn automatic_visibility_pair_is_allowed(
             .get_view()
             .viewer_rule_allows(viewed_entity.get_entity_id())
 }
+

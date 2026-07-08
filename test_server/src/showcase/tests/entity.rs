@@ -169,7 +169,7 @@ fn entity_showcase_pathfinding_sticks_are_added_without_replacing_occupied_slots
     assert!(positions_after_pathfind[1].get_x() != starts[1].get_x());
 }
 #[test]
-fn entity_showcase_minestom_stick_targets_selected_block_top_like_minestom_showcase() {
+fn entity_showcase_minestom_stick_targets_selected_block_collision_surface() {
     let mut server = MinecraftServer::new();
     let world_id = server.world_manager.create_world(DimensionType::OVERWORLD);
     let world = server.world_manager.world_mut(world_id).unwrap();
@@ -201,7 +201,7 @@ fn entity_showcase_minestom_stick_targets_selected_block_top_like_minestom_showc
     let minestom_goal_position = creature_goal_positions_by_z(world)[0];
     assert_eq!(
         minestom_goal_position,
-        Some(EntityPosition::new(8.5, 66.0, 1.5, 0.0, 0.0))
+        Some(EntityPosition::new(8.5, 65.5, 1.5, 0.0, 0.0))
     );
 }
 fn creature_positions_by_z(world: &spinel::server::world::World) -> Vec<EntityPosition> {

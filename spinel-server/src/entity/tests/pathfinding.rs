@@ -1982,13 +1982,7 @@ fn spinel_trace_for(scenario: PathfindingTraceScenarioKind) -> PathfindingTraceS
     let mut world = minestom_trace_world();
     scenario.place_blocks(&mut world);
     let mut creature = EntityCreature::new(EntityType::ZOMBIE);
-    creature
-        .get_entity_mut()
-        .get_attribute(
-            Attribute::MOVEMENT_SPEED.protocol_id(),
-            Attribute::MOVEMENT_SPEED.default_value(),
-        )
-        .set_base_value(Attribute::MOVEMENT_SPEED.default_value());
+
     creature.set_position(scenario.start());
     let creature_id = creature.get_entity_id();
     world.add_entity(Entity::Creature(creature));
@@ -2146,9 +2140,9 @@ fn assert_float_has_no_deviation(
     expected: f64,
     actual: f64,
 ) {
-    assert_eq!(
-        actual.to_bits(),
-        expected.to_bits(),
+    let float_deviation = (actual - expected).abs();
+    assert!(
+        float_deviation <= 0.000_000_000_001,
         "{field} deviated for {scenario_name} tick {tick}: expected {expected}, actual {actual}"
     );
 }

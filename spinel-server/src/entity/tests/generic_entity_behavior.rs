@@ -327,7 +327,7 @@ fn generic_living_attributes_effects_animation_and_bed_api_match_minestom_surfac
             .remove_effect(&MobEffect::SLOWNESS)
             .unwrap()
             .effect_id,
-        2
+        1
     );
     entity.add_effect(TimedPotionEffect::new(
         MobEffect::HASTE,
@@ -483,7 +483,7 @@ fn generic_living_health_heal_and_kill_state_match_minestom() {
     entity.set_health(0.0);
 
     assert!(entity.is_dead());
-    assert_eq!(entity.get_pose(), EntityPose::LongJumping);
+    assert_eq!(entity.get_pose(), EntityPose::Dying);
     assert_eq!(
         entity.get_velocity().0,
         Vector3d {

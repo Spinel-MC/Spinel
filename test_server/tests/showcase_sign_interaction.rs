@@ -14,9 +14,7 @@ fn entity_showcase_sign_interaction_keeps_player_valid_after_spawning_entities()
     let mut server = MinecraftServer::new();
     let (mut client, _peer_stream) = test_client_pair();
     client.state = ConnectionState::Play;
-    let world_id = server
-        .world_manager
-        .create_world(DimensionType::OVERWORLD);
+    let world_id = server.world_manager.create_world(DimensionType::OVERWORLD);
     let sign_position = BlockPosition::new(3, 4, 5);
     let player_uuid = Uuid::new_v4();
     let world = server.world_manager.world_mut(world_id).unwrap();
@@ -52,9 +50,7 @@ fn repeated_entity_showcase_sign_interactions_keep_player_valid() {
     let mut server = MinecraftServer::new();
     let (mut client, _peer_stream) = test_client_pair();
     client.state = ConnectionState::Play;
-    let world_id = server
-        .world_manager
-        .create_world(DimensionType::OVERWORLD);
+    let world_id = server.world_manager.create_world(DimensionType::OVERWORLD);
     let sign_position = BlockPosition::new(3, 4, 5);
     let player_uuid = Uuid::new_v4();
     let world = server.world_manager.world_mut(world_id).unwrap();
