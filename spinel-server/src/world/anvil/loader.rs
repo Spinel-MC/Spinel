@@ -5,6 +5,7 @@ use crate::world::{
     WorldPersistentTags,
 };
 use flate2::{Compression, read::GzDecoder, write::GzEncoder};
+use log::debug;
 use spinel_nbt::{Nbt, NbtCompound, Taggable};
 use spinel_registry::{Identifier, RegistryKey};
 use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
@@ -75,6 +76,19 @@ impl AnvilChunkLoader {
         }
         if let Some(region_file_parent) = region_file_path.parent() {
             fs::create_dir_all(region_file_parent)?;
+        }
+        if region_file_path.exists() {
+            debug!(
+                target: "AnvilChunkLoader",
+                "loading region {} for chunk {},{}",
+                region_file_name, position.x, position.z
+            );
+        } else {
+            debug!(
+                target: "AnvilChunkLoader",
+                "generating new region {} for chunk {},{}",
+                region_file_name, position.x, position.z
+            );
         }
         let region_file = Arc::new(Mutex::new(RegionFile::open(&region_file_path)?));
         loaded_region_files.insert(region_file_name, Arc::clone(&region_file));
