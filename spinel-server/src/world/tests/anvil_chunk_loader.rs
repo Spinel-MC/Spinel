@@ -7,10 +7,10 @@ use std::io;
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
 #[test]
-fn anvil_chunk_loader_supports_parallel_io() -> io::Result<()> {
+fn anvil_chunk_loader_uses_synchronous_loading_and_parallel_saving() -> io::Result<()> {
     let loader = AnvilChunkLoader::new(unique_test_world_directory("parallel"))?;
 
-    assert!(loader.supports_parallel_loading());
+    assert!(!loader.supports_parallel_loading());
     assert!(loader.supports_parallel_saving());
 
     Ok(())

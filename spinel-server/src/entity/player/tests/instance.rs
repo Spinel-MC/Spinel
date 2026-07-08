@@ -105,8 +105,8 @@ fn chunk_batch_acknowledgement_matches_minestom_target_and_lead_rules() {
     );
 
     assert_eq!(player.get_chunk_batch_lead(), 0);
-    assert_eq!(player.get_max_chunk_batch_lead(), 1);
-    assert_eq!(player.get_target_chunks_per_tick(), 9.0);
+    assert_eq!(player.get_max_chunk_batch_lead(), 2);
+    assert_eq!(player.get_target_chunks_per_tick(), 10.0);
 
     player.on_chunk_batch_received(1000.0);
 
@@ -139,7 +139,7 @@ fn chunk_queue_reset_preserves_minestom_batch_lead_state() {
     assert_eq!(player.get_queued_chunk_count(), 0);
     assert_eq!(player.get_chunk_batch_lead(), 4);
     assert_eq!(player.get_max_chunk_batch_lead(), 10);
-    assert_eq!(player.get_target_chunks_per_tick(), 9.0);
+    assert_eq!(player.get_target_chunks_per_tick(), 10.0);
     assert_eq!(player.get_pending_chunk_count(), 0.0);
     assert!(player.needs_chunk_position_sync);
 }
@@ -461,8 +461,40 @@ fn unavailable_queued_chunks_wait_without_starting_empty_batch() {
 
     assert!(packet_frames.is_empty());
     assert_eq!(player.get_chunk_batch_lead(), 0);
-    assert_eq!(player.get_pending_chunk_count(), 9.0);
+    assert_eq!(player.get_pending_chunk_count(), 10.0);
     assert_eq!(player.get_queued_chunk_count(), 1);
+}
+#[test]
+fn unavailable_queued_chunks_wait_after_partial_batch() {
+    let (mut client, mut peer_stream) = test_client_pair();
+    let mut player = Player::new(
+        Uuid::nil(),
+        "Player".to_string(),
+        0,
+        SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 25565),
+    );
+    player.set_client(&mut client);
+    player.needs_chunk_position_sync = false;
+    player.send_chunk(empty_chunk_packet(0, 0));
+    player.queue_loaded_chunk(PlayerChunk::new(1, 0));
+
+    player
+        .send_pending_chunks_with(&mut client, |queued_chunk| {
+            Ok((queued_chunk.chunk == PlayerChunk::new(0, 0)).then(|| empty_chunk_packet(0, 0)))
+        })
+        .unwrap();
+
+    let _ = read_packet_frame(&mut peer_stream);
+    let _ = read_packet_frame(&mut peer_stream);
+    let _ = read_packet_frame(&mut peer_stream);
+
+    assert_eq!(player.get_queued_chunk_count(), 1);
+    assert!(
+        player
+            .chunk_queue
+            .iter()
+            .any(|queued_chunk| queued_chunk.chunk == PlayerChunk::new(1, 0))
+    );
 }
 #[test]
 fn ordinary_chunk_border_crossing_sends_no_position_sync() {
@@ -553,7 +585,7 @@ fn ordinary_chunk_border_crossing_keeps_throttled_queue_state() {
     );
     assert_eq!(player.get_chunk_batch_lead(), 0);
     assert_eq!(player.get_pending_chunk_count(), 0.0);
-    assert_eq!(player.get_target_chunks_per_tick(), 9.0);
+    assert_eq!(player.get_target_chunks_per_tick(), 10.0);
     assert!(!player.needs_chunk_position_sync);
 }
 

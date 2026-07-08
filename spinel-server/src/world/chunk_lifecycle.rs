@@ -664,10 +664,16 @@ impl World {
     }
 
     fn queue_loaded_chunk_for_player(&mut self, player_address: SocketAddr, chunk: PlayerChunk) {
-        let Some(player) = self.player_by_addr_mut(&player_address) else {
+        let Some(player_id) = self.player_by_addr_mut(&player_address).map(|player| {
+            player.queue_loaded_chunk(chunk);
+            player.get_entity_id()
+        }) else {
             return;
         };
-        player.queue_loaded_chunk(chunk);
+        let position = ChunkPosition::from(chunk);
+        if let Some(world_chunk) = self.chunks.get_mut(&position) {
+            world_chunk.add_viewer(player_id);
+        }
     }
 
     fn loaded_chunk_packet(

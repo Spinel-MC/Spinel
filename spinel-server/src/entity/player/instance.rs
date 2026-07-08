@@ -382,9 +382,9 @@ impl Player {
             #[cfg(test)]
             chunk_queue_sort_count: 0,
             needs_chunk_position_sync: true,
-            max_chunk_batch_lead: 1,
+            max_chunk_batch_lead: 2,
             chunk_batch_lead: 0,
-            target_chunks_per_tick: 9.0,
+            target_chunks_per_tick: 10.0,
             pending_chunk_count: 0.0,
             scheduler: ContextScheduler::new(),
             view: EntityView::new(entity_id),
@@ -1169,7 +1169,7 @@ impl Player {
             (desired_chunks_per_tick * CHUNKS_PER_TICK_MULTIPLIER)
                 .clamp(MIN_CHUNKS_PER_TICK, MAX_CHUNKS_PER_TICK)
         };
-        if self.max_chunk_batch_lead == 1 {
+        if self.max_chunk_batch_lead == 2 {
             self.max_chunk_batch_lead = 10;
         }
     }

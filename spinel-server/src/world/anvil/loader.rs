@@ -246,7 +246,7 @@ impl ChunkLoader for AnvilChunkLoader {
     }
 
     fn supports_parallel_loading(&self) -> bool {
-        true
+        false
     }
 
     fn supports_parallel_saving(&self) -> bool {
