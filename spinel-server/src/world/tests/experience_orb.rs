@@ -167,7 +167,7 @@ fn nearest_spectator_isselected_then_cleared_without_falling_back_to_another_pla
 }
 
 #[test]
-fn experience_orb_motion_matches_minestom_gravity_drag_and_ground_bounce() {
+fn experience_orb_motion_matches_reference_gravity_drag_and_ground_bounce() {
     let mut experience_orb = ExperienceOrb::new(1);
     experience_orb.set_no_gravity(true);
     experience_orb.set_on_ground(true);
@@ -187,7 +187,7 @@ fn experience_orb_motion_matches_minestom_gravity_drag_and_ground_bounce() {
 }
 
 #[test]
-fn pickup_event_cancellation_and_player_cooldown_match_minestom() {
+fn pickup_event_cancellation_and_player_cooldown_match_reference() {
     let _lock = EXPERIENCE_PICKUP_TEST_LOCK.lock().unwrap();
     EXPERIENCE_PICKUP_CANCELLED.store(true, Ordering::SeqCst);
     EXPERIENCE_PICKUP_COUNT.store(0, Ordering::SeqCst);

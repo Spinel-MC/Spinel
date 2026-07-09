@@ -2,7 +2,7 @@ use super::super::entity_status::EntityStatusPacket;
 use spinel_network::DataType;
 
 #[test]
-fn entity_status_packet_matches_minestom_int_then_byte_shape() {
+fn entity_status_packet_matches_reference_int_then_byte_shape() {
     let packet = EntityStatusPacket {
         entity_id: 7,
         status: 3,

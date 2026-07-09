@@ -4,7 +4,7 @@ use spinel_network::types::Position;
 use spinel_registry::block_entity_type::BlockEntityType;
 
 #[test]
-fn block_entity_data_packet_matches_minestom_position_type_and_nbt_shape() {
+fn block_entity_data_packet_matches_reference_position_type_and_nbt_shape() {
     let packet =
         BlockEntityDataPacket::new(Position { x: 1, y: 2, z: 3 }, BlockEntityType::Chest, None);
     let mut payload = Vec::new();

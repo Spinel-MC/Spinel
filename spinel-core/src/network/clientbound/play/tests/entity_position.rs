@@ -2,7 +2,7 @@ use super::super::entity_position::EntityPositionPacket;
 use spinel_network::DataType;
 
 #[test]
-fn entity_position_packet_matches_minestom_relative_delta_shape() {
+fn entity_position_packet_matches_reference_relative_delta_shape() {
     let packet = EntityPositionPacket {
         entity_id: 7,
         delta_x: EntityPositionPacket::delta(1.5, 1.0),

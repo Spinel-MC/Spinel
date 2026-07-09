@@ -3,7 +3,7 @@ use spinel_network::DataType;
 use spinel_network::types::{Vector3d, Velocity};
 
 #[test]
-fn entity_velocity_packet_matches_minestom_var_int_then_lpv3_shape() {
+fn entity_velocity_packet_matches_reference_var_int_then_lpv3_shape() {
     let packet = EntityVelocityPacket {
         entity_id: 7,
         velocity: Velocity(Vector3d {

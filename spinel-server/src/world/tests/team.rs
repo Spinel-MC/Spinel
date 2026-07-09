@@ -60,7 +60,7 @@ fn world_scoreboard_team_assignment_updates_registry_members_without_duplicates(
 }
 
 #[test]
-fn world_scoreboard_team_assignment_refreshes_current_viewers_in_minestom_order() {
+fn world_scoreboard_team_assignment_refreshes_current_viewers_in_reference_order() {
     let (mut viewer_client, mut viewer_stream) = test_client_pair();
     let mut world = World::new_with_dimension_name(
         uuid::Uuid::new_v4(),

@@ -358,7 +358,7 @@ fn play_plugin_message_listener_dispatches_exact_channel_and_raw_payload() {
 }
 
 #[test]
-fn movement_packet_listeners_preserve_each_minestom_variant_shape() {
+fn movement_packet_listeners_preserve_each_reference_variant_shape() {
     let _scope = ListenerParityScope::new();
     let (mut server, mut client, _peer_stream, world_uuid, _player_id) =
         server_with_play_player(GameMode::Survival);
@@ -688,7 +688,7 @@ fn steer_boat_listener_refreshes_the_ridden_boat_paddles() {
 }
 
 #[test]
-fn steer_boat_listener_ignores_non_boat_vehicle_like_minestom() {
+fn steer_boat_listener_ignores_non_boat_vehicle_like_reference() {
     let _scope = ListenerParityScope::new();
     let (mut server, mut client, _peer_stream, world_uuid, player_id) =
         server_with_play_player(GameMode::Survival);
@@ -1326,7 +1326,7 @@ fn chat_message_listener_dispatches_event_and_sends_mutated_message() {
 }
 
 #[test]
-fn signed_command_chat_listener_uses_minestom_chat_rejection_gate() {
+fn signed_command_chat_listener_uses_reference_chat_rejection_gate() {
     let _scope = ListenerParityScope::new();
     let (mut server, mut client, mut peer_stream, _world_uuid, _player_id) =
         server_with_play_player(GameMode::Survival);

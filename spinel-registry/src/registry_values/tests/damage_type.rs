@@ -37,7 +37,7 @@ fn generated_vanilla_damage_types_preserve_non_default_effect_categories() {
 }
 
 #[test]
-fn damage_type_builder_supports_runtime_message_ids_and_minestom_defaults() {
+fn damage_type_builder_supports_runtime_message_ids_and_reference_defaults() {
     let message_id = String::from("customRuntimeDamage");
     let damage_type = DamageType::builder()
         .message_id(message_id)

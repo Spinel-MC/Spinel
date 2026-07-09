@@ -3,7 +3,7 @@ use spinel_network::DataType;
 use spinel_network::types::entity_metadata::{MetadataEntry, MetadataValue};
 
 #[test]
-fn set_entity_data_packet_uses_minestom_terminator_shape() {
+fn set_entity_data_packet_uses_reference_terminator_shape() {
     let packet = SetEntityDataPacket::new(
         7,
         vec![MetadataEntry {

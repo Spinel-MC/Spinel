@@ -4,7 +4,7 @@ use spinel_network::DataType;
 use std::io::{Cursor, Read};
 
 #[test]
-fn change_game_mode_decodes_minestom_byte_backed_game_mode() {
+fn change_game_mode_decodes_reference_byte_backed_game_mode() {
     let mut payload = Vec::new();
     GameMode::Spectator.encode(&mut payload).unwrap();
 
@@ -19,7 +19,7 @@ fn change_game_mode_decodes_minestom_byte_backed_game_mode() {
 }
 
 #[test]
-fn change_game_mode_rejects_unknown_minestom_game_mode_id() {
+fn change_game_mode_rejects_unknown_reference_game_mode_id() {
     let mut reader = Cursor::new(vec![4]);
 
     assert!(ChangeGameModePacket::decode(&mut reader).is_err());

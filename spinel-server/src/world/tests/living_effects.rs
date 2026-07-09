@@ -270,7 +270,7 @@ fn world_entity_tick_event_observes_effect_before_same_tick_expiry() {
     reset_living_effect_test_state();
 }
 #[test]
-fn timed_potion_effect_flags_packets_and_duration_boundaries_match_minestom_potion() {
+fn timed_potion_effect_flags_packets_and_duration_boundaries_match_reference_potion() {
     let flags = TimedPotionEffect::AMBIENT_FLAG
         | TimedPotionEffect::PARTICLES_FLAG
         | TimedPotionEffect::ICON_FLAG

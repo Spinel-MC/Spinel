@@ -96,7 +96,7 @@ fn player_inventory_shift_click_moves_offhand_to_inventory_before_hotbar() {
 }
 
 #[test]
-fn open_inventory_shift_click_uses_minestom_transfer_order() {
+fn open_inventory_shift_click_uses_reference_transfer_order() {
     let mut player = test_player();
     let mut inventory = Inventory::new(InventoryType::Chest(1), Component::text("Test").build());
     inventory.set_item_stack(0, ItemStack::of(Material::DIAMOND));

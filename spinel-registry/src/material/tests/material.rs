@@ -22,7 +22,7 @@ fn generated_materials_have_vanilla_ids_and_block_links() {
 }
 
 #[test]
-fn entity_type_registry_matches_minestom_generated_id_order() {
+fn entity_type_registry_matches_reference_generated_id_order() {
     assert_eq!(EntityType::ACACIA_BOAT.id(), 0);
     assert_eq!(EntityType::PLAYER.id(), 155);
     assert_eq!(EntityType::FISHING_BOBBER.id(), 156);
@@ -54,7 +54,7 @@ fn entity_type_registry_matches_minestom_generated_id_order() {
 }
 
 #[test]
-fn entity_type_registry_entry_exposes_the_extracted_minestom_data() {
+fn entity_type_registry_entry_exposes_the_extracted_reference_data() {
     let entity_type = EntityType::PLAYER;
     let registry = entity_type.registry();
 
@@ -87,7 +87,7 @@ fn entity_type_registry_entry_exposes_the_extracted_minestom_data() {
 }
 
 #[test]
-fn synchronization_only_entity_types_match_minestom() {
+fn synchronization_only_entity_types_match_reference() {
     let synchronization_only_entity_types = [
         EntityType::ITEM,
         EntityType::FALLING_BLOCK,
@@ -144,7 +144,7 @@ fn material_prototype_uses_extracted_use_cooldown_component() {
 }
 
 #[test]
-fn data_component_descriptors_match_minestom_registry_metadata() {
+fn data_component_descriptors_match_reference_registry_metadata() {
     assert_eq!(DataComponentDescriptor::values().len(), 104);
     assert_eq!(
         DataComponentDescriptor::from_key("minecraft:max_stack_size")
@@ -212,7 +212,7 @@ fn material_prototype_is_generated_from_component_entries() {
 }
 
 #[test]
-fn material_prototype_uses_minestom_default_data_components() {
+fn material_prototype_uses_reference_default_data_components() {
     let pickaxe = ItemStack::of(Material::DIAMOND_PICKAXE);
 
     assert_eq!(pickaxe.max_stack_size(), 1);
@@ -226,7 +226,7 @@ fn material_prototype_uses_minestom_default_data_components() {
 }
 
 #[test]
-fn material_text_components_decode_from_minestom_component_json() {
+fn material_text_components_decode_from_reference_component_json() {
     let item_name = ItemStack::of(Material::DIAMOND_PICKAXE)
         .get(ITEM_NAME)
         .unwrap();
@@ -242,7 +242,7 @@ fn material_text_components_decode_from_minestom_component_json() {
 }
 
 #[test]
-fn item_stack_amounts_air_and_custom_data_match_minestom_shape() {
+fn item_stack_amounts_air_and_custom_data_match_reference_shape() {
     let tag = Tag::<String>::string("owner");
     let stack = ItemStack::of(Material::DIAMOND)
         .with_amount(3)
@@ -257,7 +257,7 @@ fn item_stack_amounts_air_and_custom_data_match_minestom_shape() {
 }
 
 #[test]
-fn item_stack_amount_api_matches_minestom_shape() {
+fn item_stack_amount_api_matches_reference_shape() {
     let stack = ItemStack::of(Material::DIAMOND).with_amount(3);
     let mut builder = ItemStack::builder(Material::DIAMOND);
 
@@ -270,7 +270,7 @@ fn item_stack_amount_api_matches_minestom_shape() {
 }
 
 #[test]
-fn item_stack_transform_amount_matches_minestom_operator_shape() {
+fn item_stack_transform_amount_matches_reference_operator_shape() {
     let stack = ItemStack::of(Material::DIAMOND)
         .with_amount(3)
         .transform_amount(|amount| amount + 10);
@@ -323,7 +323,7 @@ fn component_map_diff_removes_patch_entries_matching_the_material_prototype() {
 }
 
 #[test]
-fn data_component_map_builder_matches_minestom_staged_build_shape() {
+fn data_component_map_builder_matches_reference_staged_build_shape() {
     let mut builder = DataComponentMap::builder();
     builder.set(MAX_STACK_SIZE, 12).set_unit(GLIDER);
     let component_map = builder.build();

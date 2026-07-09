@@ -2,7 +2,7 @@ use super::super::entity_effect::EntityEffectPacket;
 use spinel_network::DataType;
 
 #[test]
-fn entity_effect_packet_matches_minestom_potion_network_shape() {
+fn entity_effect_packet_matches_reference_potion_network_shape() {
     let packet = EntityEffectPacket {
         entity_id: 7,
         effect_id: 1,

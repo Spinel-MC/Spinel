@@ -3,7 +3,7 @@ use spinel_network::DataType;
 use spinel_network::types::Vector3d;
 
 #[test]
-fn move_minecart_packet_matches_minestom_lerp_step_shape() {
+fn move_minecart_packet_matches_reference_lerp_step_shape() {
     let packet = MoveMinecartPacket {
         entity_id: 7,
         lerp_steps: vec![MinecartLerpStep {

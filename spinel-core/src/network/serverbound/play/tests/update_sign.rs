@@ -3,7 +3,7 @@ use spinel_network::data_type::DataType;
 use spinel_network::types::Position;
 
 #[test]
-fn update_sign_packet_matches_minestom_fixed_four_line_shape() {
+fn update_sign_packet_matches_reference_fixed_four_line_shape() {
     let packet = UpdateSignPacket {
         block_position: Position { x: 1, y: 2, z: 3 },
         is_front_text: true,

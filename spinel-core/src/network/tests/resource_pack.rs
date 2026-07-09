@@ -3,7 +3,7 @@ use spinel_network::DataType;
 use uuid::Uuid;
 
 #[test]
-fn resource_pack_status_ids_match_minestom_client_status_ids() {
+fn resource_pack_status_ids_match_reference_client_status_ids() {
     assert_eq!(ResourcePackStatus::SuccessfullyLoaded.id(), 0);
     assert_eq!(ResourcePackStatus::Declined.id(), 1);
     assert_eq!(ResourcePackStatus::FailedDownload.id(), 2);

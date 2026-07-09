@@ -7,7 +7,7 @@ use spinel_nbt::{Nbt, NbtCompound};
 use spinel_utils::component::text::TextComponent;
 
 #[test]
-fn enchantment_builder_preserves_minestom_registry_payload_fields() {
+fn enchantment_builder_preserves_reference_registry_payload_fields() {
     let effects = DataComponentMap::new().with(CUSTOM_NAME, TextComponent::literal("effect"));
     let enchantment = Enchantment::builder()
         .description(TextComponent::literal("Test Enchantment"))
@@ -63,7 +63,7 @@ fn enchantment_builder_preserves_minestom_registry_payload_fields() {
 }
 
 #[test]
-fn enchantment_registry_nbt_matches_minestom_field_names_and_defaults() {
+fn enchantment_registry_nbt_matches_reference_field_names_and_defaults() {
     let enchantment = Enchantment::builder()
         .description(TextComponent::literal("Sharpness"))
         .supported_items(RegistryTagReference::direct(vec![Identifier::minecraft(

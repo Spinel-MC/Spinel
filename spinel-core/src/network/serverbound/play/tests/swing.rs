@@ -4,7 +4,7 @@ use spinel_network::types::var_int::VarIntWrapper;
 use std::io::{Cursor, Read};
 
 #[test]
-fn swing_packet_decodes_minestom_client_animation_shape() {
+fn swing_packet_decodes_reference_client_animation_shape() {
     let mut payload = Vec::new();
     VarIntWrapper(1).encode(&mut payload).unwrap();
 

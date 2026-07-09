@@ -2,7 +2,7 @@ use super::super::chat::{ChatPacket, ChatSignature};
 use spinel_network::DataType;
 
 #[test]
-fn chat_packet_matches_minestom_signed_body_shape() {
+fn chat_packet_matches_reference_signed_body_shape() {
     let packet = ChatPacket {
         message: "hello".to_owned(),
         timestamp: 42,

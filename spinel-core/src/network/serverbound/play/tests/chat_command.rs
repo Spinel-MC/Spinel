@@ -2,7 +2,7 @@ use super::super::chat_command::ChatCommandPacket;
 use spinel_network::DataType;
 
 #[test]
-fn chat_command_packet_matches_minestom_string_shape() {
+fn chat_command_packet_matches_reference_string_shape() {
     let packet = ChatCommandPacket {
         command: "test spawn_zombie".to_string(),
     };

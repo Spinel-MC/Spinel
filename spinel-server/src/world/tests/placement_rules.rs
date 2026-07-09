@@ -4,7 +4,7 @@ use spinel_network::types::Identifier;
 use spinel_registry::EntityType;
 
 #[test]
-fn world_border_and_entity_collision_reject_block_placement_like_minestom() {
+fn world_border_and_entity_collision_reject_block_placement_like_reference() {
     let mut world = World::new_with_dimension_name(
         uuid::Uuid::new_v4(),
         spinel_registry::dimension_type::DimensionType::OVERWORLD,

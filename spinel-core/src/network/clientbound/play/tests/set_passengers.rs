@@ -3,7 +3,7 @@ use spinel_network::DataType;
 use spinel_network::types::IntList;
 
 #[test]
-fn set_passengers_packet_matches_minestom_var_int_list_shape() {
+fn set_passengers_packet_matches_reference_var_int_list_shape() {
     let packet = SetPassengersPacket {
         vehicle_entity_id: 7,
         passenger_entity_ids: IntList(vec![8, 9]),

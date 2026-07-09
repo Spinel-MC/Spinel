@@ -83,7 +83,7 @@ impl ChunkLoader for GatedParallelChunkLoader {
 }
 
 #[test]
-fn optional_chunk_load_respects_auto_chunk_loading_like_minestom() {
+fn optional_chunk_load_respects_auto_chunk_loading_like_reference() {
     let mut world = test_world();
     let chunk_position = ChunkPosition::new(2, 3);
 
@@ -99,7 +99,7 @@ fn optional_chunk_load_respects_auto_chunk_loading_like_minestom() {
 }
 
 #[test]
-fn chunk_unload_missing_chunk_is_minestom_noop() {
+fn chunk_unload_missing_chunk_is_reference_noop() {
     let mut world = test_world();
 
     assert!(!world.unload_chunk(ChunkPosition::new(4, 5)).unwrap());
@@ -146,7 +146,7 @@ fn chunk_loader_errors_propagate_through_fallible_load_api() {
 }
 
 #[test]
-fn loader_miss_uses_world_chunk_supplier_like_minestom() {
+fn loader_miss_uses_world_chunk_supplier_like_reference() {
     let mut world = test_world();
     world.set_chunk_supplier(|_| Chunk::new(ChunkPosition::new(7, -9)));
 

@@ -3,7 +3,7 @@ use crate::network::clientbound::play::spawn_entity::EntityAngle;
 use spinel_network::DataType;
 
 #[test]
-fn entity_head_look_packet_matches_minestom_var_int_then_angle_shape() {
+fn entity_head_look_packet_matches_reference_var_int_then_angle_shape() {
     let packet = EntityHeadLookPacket {
         entity_id: 7,
         head_yaw: EntityAngle(90.0),

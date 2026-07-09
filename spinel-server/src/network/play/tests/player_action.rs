@@ -15,7 +15,7 @@ use std::net::{IpAddr, Ipv4Addr, SocketAddr, TcpListener, TcpStream};
 use uuid::Uuid;
 
 #[test]
-fn digging_prevention_matches_minestom_game_mode_item_component_rules() {
+fn digging_prevention_matches_reference_game_mode_item_component_rules() {
     let registries = Registries::new_vanilla();
     let mut player = Player::new(Uuid::nil(), "Digger".to_string(), 0, test_client().addr);
 
@@ -80,7 +80,7 @@ fn digging_prevention_matches_minestom_game_mode_item_component_rules() {
 }
 
 #[test]
-fn survival_break_ticks_match_minestom_hardness_tool_effect_and_environment_branches() {
+fn survival_break_ticks_match_reference_hardness_tool_effect_and_environment_branches() {
     let registries = Registries::new_vanilla();
     let mut player = Player::new(Uuid::nil(), "Digger".to_string(), 0, test_client().addr);
     player.set_on_ground(true);

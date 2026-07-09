@@ -6,7 +6,7 @@ use crate::server::MinecraftServer;
 use spinel_core::network::clientbound::play::commands::ArgumentParserType;
 
 #[test]
-fn command_manager_suggests_roots_and_argument_callbacks_like_minestom_tab_complete() {
+fn command_manager_suggests_roots_and_argument_callbacks_like_reference_tab_complete() {
     let mut command_manager = CommandManager::new();
     command_manager.register(Command::new("spawn").with_alias("summon"));
     command_manager.register(Command::new("teleport").with_syntax(

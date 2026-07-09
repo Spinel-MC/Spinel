@@ -19,7 +19,7 @@ fn color_rejects_out_of_range_components() {
 }
 
 #[test]
-fn color_hex_and_alpha_helpers_match_minestom_shape() {
+fn color_hex_and_alpha_helpers_match_reference_shape() {
     let color = Color::from_hex_string("#123456").unwrap();
 
     assert_eq!(color.as_rgb(), 0x12_34_56);

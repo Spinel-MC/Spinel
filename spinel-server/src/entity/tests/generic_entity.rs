@@ -64,7 +64,7 @@ fn generic_entity_teleport_overloads_update_position_velocity_chunks_and_flags()
 }
 
 #[test]
-fn generic_entity_teleport_resolves_minestom_relative_position_and_velocity_flags() {
+fn generic_entity_teleport_resolves_reference_relative_position_and_velocity_flags() {
     let mut entity = GenericEntity::new(EntityType::ZOMBIE);
     entity.set_position(EntityPosition::new(10.0, 20.0, 30.0, 40.0, 50.0));
     entity.set_velocity(Velocity(Vector3d {
@@ -180,7 +180,7 @@ fn generic_entity_hover_event_uses_type_uuid_and_custom_name() {
 }
 
 #[test]
-fn generic_entity_base_metadata_api_matches_minestom_entity_meta_defaults() {
+fn generic_entity_base_metadata_api_matches_reference_entity_meta_defaults() {
     let mut entity = GenericEntity::new(EntityType::ZOMBIE);
 
     assert!(!entity.is_on_fire());
@@ -229,7 +229,7 @@ fn generic_entity_base_metadata_api_matches_minestom_entity_meta_defaults() {
 }
 
 #[test]
-fn generic_entity_living_mob_and_ageable_metadata_api_matches_minestom_meta_surface() {
+fn generic_entity_living_mob_and_ageable_metadata_api_matches_reference_meta_surface() {
     let mut entity = GenericEntity::new(EntityType::ZOMBIE);
     let original_bounding_box = entity.get_bounding_box();
     let effect_particle = Particle::effect();
@@ -307,7 +307,8 @@ fn generic_entity_living_mob_and_ageable_metadata_api_matches_minestom_meta_surf
 }
 
 #[test]
-fn generic_entity_vehicle_avatar_player_and_mannequin_metadata_api_matches_minestom_meta_surface() {
+fn generic_entity_vehicle_avatar_player_and_mannequin_metadata_api_matches_reference_meta_surface()
+{
     let mut entity = GenericEntity::new(EntityType::PLAYER);
     let mut player_meta = entity.get_entity_meta_mut().as_player().unwrap();
     let mut mannequin = GenericEntity::new(EntityType::MANNEQUIN);
@@ -359,7 +360,7 @@ fn generic_entity_vehicle_avatar_player_and_mannequin_metadata_api_matches_mines
 }
 
 #[test]
-fn typed_display_metadata_api_matches_minestom_display_meta_surface() {
+fn typed_display_metadata_api_matches_reference_display_meta_surface() {
     use crate::entity::metadata::{BillboardConstraints, DisplayContext, TextAlignment};
 
     let mut block_display = GenericEntity::new(EntityType::BLOCK_DISPLAY);
@@ -477,7 +478,7 @@ fn typed_display_metadata_api_matches_minestom_display_meta_surface() {
     assert_eq!(text_meta.get_alignment(), TextAlignment::Right);
 }
 #[test]
-fn typed_object_metadata_api_matches_minestom_other_meta_surface() {
+fn typed_object_metadata_api_matches_reference_other_meta_surface() {
     let mut area_effect_cloud = GenericEntity::new(EntityType::AREA_EFFECT_CLOUD);
     let mut fishing_hook = GenericEntity::new(EntityType::FISHING_BOBBER);
     let owner_entity_id = EntityId::next();
@@ -736,7 +737,7 @@ fn typed_object_metadata_api_matches_minestom_other_meta_surface() {
     );
 }
 #[test]
-fn generic_entity_object_data_provider_velocity_rules_match_minestom() {
+fn generic_entity_object_data_provider_velocity_rules_match_reference() {
     let llama_spit_type = EntityType::from_key("minecraft:llama_spit").unwrap();
     let shulker_bullet_type = EntityType::from_key("minecraft:shulker_bullet").unwrap();
     let mut zombie = GenericEntity::new(EntityType::ZOMBIE);
@@ -771,7 +772,7 @@ fn generic_entity_object_data_provider_velocity_rules_match_minestom() {
 }
 
 #[test]
-fn typed_armor_stand_metadata_api_matches_minestom_meta_surface() {
+fn typed_armor_stand_metadata_api_matches_reference_meta_surface() {
     let mut armor_stand = GenericEntity::new(EntityType::ARMOR_STAND);
     let rotation = Vector3f {
         x: 1.0,
@@ -831,7 +832,7 @@ fn typed_armor_stand_metadata_api_matches_minestom_meta_surface() {
     assert_eq!(armor_stand_meta.get_right_leg_rotation(), rotation);
 }
 #[test]
-fn typed_slime_metadata_api_matches_minestom_meta_surface() {
+fn typed_slime_metadata_api_matches_reference_meta_surface() {
     let mut slime = GenericEntity::new(EntityType::SLIME);
     let mut magma_cube = GenericEntity::new(EntityType::MAGMA_CUBE);
 
@@ -885,7 +886,7 @@ fn typed_slime_metadata_api_matches_minestom_meta_surface() {
     );
 }
 #[test]
-fn typed_ender_dragon_metadata_api_matches_minestom_meta_surface() {
+fn typed_ender_dragon_metadata_api_matches_reference_meta_surface() {
     let mut ender_dragon = GenericEntity::new(EntityType::ENDER_DRAGON);
 
     assert_eq!(
@@ -914,7 +915,7 @@ fn typed_ender_dragon_metadata_api_matches_minestom_meta_surface() {
 }
 
 #[test]
-fn bat_and_bee_metadata_owners_match_minestom_meta_surface() {
+fn bat_and_bee_metadata_owners_match_reference_meta_surface() {
     let mut bat = GenericEntity::new(EntityType::BAT);
     let mut bee = GenericEntity::new(EntityType::BEE);
     let mut zombie = GenericEntity::new(EntityType::ZOMBIE);
@@ -957,7 +958,7 @@ fn bat_and_bee_metadata_owners_match_minestom_meta_surface() {
 }
 
 #[test]
-fn allay_armadillo_and_sniffer_metadata_owners_match_minestom() {
+fn allay_armadillo_and_sniffer_metadata_owners_match_reference() {
     let mut allay = GenericEntity::new(EntityType::ALLAY);
     let mut armadillo = GenericEntity::new(EntityType::ARMADILLO);
     let mut sniffer = GenericEntity::new(EntityType::SNIFFER);
@@ -1009,7 +1010,7 @@ fn allay_armadillo_and_sniffer_metadata_owners_match_minestom() {
 }
 
 #[test]
-fn generic_entity_blaze_creeper_and_golem_metadata_match_minestom() {
+fn generic_entity_blaze_creeper_and_golem_metadata_match_reference() {
     let mut blaze = GenericEntity::new(EntityType::BLAZE);
     let mut creeper = GenericEntity::new(EntityType::CREEPER);
     let mut iron_golem = GenericEntity::new(EntityType::IRON_GOLEM);
@@ -1104,7 +1105,7 @@ fn generic_entity_blaze_creeper_and_golem_metadata_match_minestom() {
 }
 
 #[test]
-fn generic_entity_copper_golem_shulker_and_spellcaster_metadata_match_minestom() {
+fn generic_entity_copper_golem_shulker_and_spellcaster_metadata_match_reference() {
     let mut copper_golem = GenericEntity::new(EntityType::COPPER_GOLEM);
     let mut shulker = GenericEntity::new(EntityType::SHULKER);
     let mut evoker = GenericEntity::new(EntityType::EVOKER);
@@ -1243,7 +1244,7 @@ fn generic_entity_copper_golem_shulker_and_spellcaster_metadata_match_minestom()
 }
 
 #[test]
-fn generic_entity_bogged_creaking_spider_and_vex_metadata_match_minestom() {
+fn generic_entity_bogged_creaking_spider_and_vex_metadata_match_reference() {
     let mut bogged = GenericEntity::new(EntityType::BOGGED);
     let mut creaking = GenericEntity::new(EntityType::CREAKING);
     let mut spider = GenericEntity::new(EntityType::SPIDER);
@@ -1339,7 +1340,7 @@ fn generic_entity_bogged_creaking_spider_and_vex_metadata_match_minestom() {
 }
 
 #[test]
-fn generic_entity_guardian_raider_wither_warden_and_zombie_metadata_match_minestom() {
+fn generic_entity_guardian_raider_wither_warden_and_zombie_metadata_match_reference() {
     let mut guardian = GenericEntity::new(EntityType::GUARDIAN);
     let mut raider = GenericEntity::new(EntityType::RAVAGER);
     let mut pillager = GenericEntity::new(EntityType::PILLAGER);
@@ -1597,7 +1598,7 @@ fn generic_entity_guardian_raider_wither_warden_and_zombie_metadata_match_minest
 }
 
 #[test]
-fn generic_entity_piglin_enderman_ghast_and_phantom_metadata_match_minestom() {
+fn generic_entity_piglin_enderman_ghast_and_phantom_metadata_match_reference() {
     let mut piglin = GenericEntity::new(EntityType::PIGLIN);
     let mut enderman = GenericEntity::new(EntityType::ENDERMAN);
     let mut ghast = GenericEntity::new(EntityType::GHAST);
@@ -1721,7 +1722,7 @@ fn generic_entity_piglin_enderman_ghast_and_phantom_metadata_match_minestom() {
 }
 
 #[test]
-fn generic_entity_villager_scalar_metadata_matches_minestom() {
+fn generic_entity_villager_scalar_metadata_matches_reference() {
     let mut villager = GenericEntity::new(EntityType::VILLAGER);
     let mut zombie_villager = GenericEntity::new(EntityType::ZOMBIE_VILLAGER);
     let librarian = VillagerData::DEFAULT
@@ -1828,7 +1829,7 @@ fn generic_entity_villager_scalar_metadata_matches_minestom() {
 }
 
 #[test]
-fn dolphin_and_goat_metadata_owners_match_minestom_meta_surface() {
+fn dolphin_and_goat_metadata_owners_match_reference_meta_surface() {
     let mut dolphin = GenericEntity::new(EntityType::DOLPHIN);
     let mut goat = GenericEntity::new(EntityType::GOAT);
     let treasure_position = spinel_network::types::Position { x: 4, y: 5, z: 6 };
@@ -1869,7 +1870,7 @@ fn dolphin_and_goat_metadata_owners_match_minestom_meta_surface() {
 }
 
 #[test]
-fn axolotl_metadata_owner_matches_minestom_meta_surface() {
+fn axolotl_metadata_owner_matches_reference_meta_surface() {
     let mut axolotl = GenericEntity::new(EntityType::AXOLOTL);
     let mut axolotl_meta = axolotl
         .get_entity_meta_mut()
@@ -1890,7 +1891,7 @@ fn axolotl_metadata_owner_matches_minestom_meta_surface() {
 }
 
 #[test]
-fn generic_entity_pig_and_sheep_metadata_api_matches_minestom_meta_surface() {
+fn generic_entity_pig_and_sheep_metadata_api_matches_reference_meta_surface() {
     let mut pig = GenericEntity::new(EntityType::PIG);
     let mut sheep = GenericEntity::new(EntityType::SHEEP);
 
@@ -1930,7 +1931,7 @@ fn generic_entity_pig_and_sheep_metadata_api_matches_minestom_meta_surface() {
 }
 
 #[test]
-fn generic_entity_remaining_animal_scalar_metadata_matches_minestom() {
+fn generic_entity_remaining_animal_scalar_metadata_matches_reference() {
     let mut horse = GenericEntity::new(EntityType::HORSE);
     let mut camel = GenericEntity::new(EntityType::CAMEL);
     let mut donkey = GenericEntity::new(EntityType::DONKEY);
@@ -2106,7 +2107,7 @@ fn generic_entity_remaining_animal_scalar_metadata_matches_minestom() {
 }
 
 #[test]
-fn generic_entity_cat_and_wolf_scalar_components_match_minestom() {
+fn generic_entity_cat_and_wolf_scalar_components_match_reference() {
     let mut cat = GenericEntity::new(EntityType::CAT);
     let mut wolf = GenericEntity::new(EntityType::WOLF);
 
@@ -2179,7 +2180,7 @@ fn generic_entity_cat_and_wolf_scalar_components_match_minestom() {
 }
 
 #[test]
-fn generic_entity_static_animal_variants_and_genes_match_minestom() {
+fn generic_entity_static_animal_variants_and_genes_match_reference() {
     let mut horse = GenericEntity::new(EntityType::HORSE);
     let mut llama = GenericEntity::new(EntityType::LLAMA);
     let mut fox = GenericEntity::new(EntityType::FOX);
@@ -2423,7 +2424,7 @@ fn generic_entity_static_variant_components_bridge_owned_metadata() {
 }
 
 #[test]
-fn fish_metadata_owners_match_minestom_meta_surface() {
+fn fish_metadata_owners_match_reference_meta_surface() {
     let mut pufferfish = GenericEntity::new(EntityType::PUFFERFISH);
     let mut salmon = GenericEntity::new(EntityType::SALMON);
     let mut tropical_fish = GenericEntity::new(EntityType::TROPICAL_FISH);
@@ -2491,7 +2492,7 @@ fn generic_entity_snapshot_updater_receives_mutable_snapshot_copy() {
 }
 
 #[test]
-fn generic_entity_event_node_pose_kill_viewer_packets_and_occlusion_match_minestom_surface() {
+fn generic_entity_event_node_pose_kill_viewer_packets_and_occlusion_match_reference_surface() {
     static POSE_EVENT_ENTITY_ID: AtomicI32 = AtomicI32::new(0);
     let (mut client, _peer_stream) = test_client();
     client.state = ConnectionState::Play;

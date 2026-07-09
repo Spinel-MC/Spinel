@@ -8,7 +8,7 @@ use spinel_utils::component::Component;
 use uuid::Uuid;
 
 #[test]
-fn player_info_update_add_listed_player_matches_minestom_action_shape() {
+fn player_info_update_add_listed_player_matches_reference_action_shape() {
     let packet = PlayerInfoUpdatePacket::add_listed_player(Uuid::nil(), "Player");
     let mut payload = Vec::new();
 
@@ -24,7 +24,7 @@ fn player_info_update_add_listed_player_matches_minestom_action_shape() {
 }
 
 #[test]
-fn player_info_update_game_mode_matches_minestom_action_shape() {
+fn player_info_update_game_mode_matches_reference_action_shape() {
     let packet = PlayerInfoUpdatePacket::update_game_mode(Uuid::nil(), GameMode::Creative);
     let mut payload = Vec::new();
 
@@ -38,7 +38,7 @@ fn player_info_update_game_mode_matches_minestom_action_shape() {
 }
 
 #[test]
-fn player_info_update_listed_matches_minestom_action_shape() {
+fn player_info_update_listed_matches_reference_action_shape() {
     let packet = PlayerInfoUpdatePacket::update_listed(Uuid::nil(), true);
     let mut payload = Vec::new();
 
@@ -51,7 +51,7 @@ fn player_info_update_listed_matches_minestom_action_shape() {
 }
 
 #[test]
-fn player_info_update_latency_matches_minestom_action_shape() {
+fn player_info_update_latency_matches_reference_action_shape() {
     let packet = PlayerInfoUpdatePacket::update_latency(Uuid::nil(), 42);
     let mut payload = Vec::new();
 
@@ -95,7 +95,7 @@ fn player_info_update_add_player_encodes_profile_properties() {
 }
 
 #[test]
-fn player_info_update_display_name_matches_minestom_action_shape() {
+fn player_info_update_display_name_matches_reference_action_shape() {
     let display_name = Component::text("Display").build();
     let packet = PlayerInfoUpdatePacket::update_display_name(Uuid::nil(), Some(display_name));
     let mut payload = Vec::new();
@@ -120,7 +120,7 @@ fn player_info_update_display_name_none_encodes_optional_absent() {
 }
 
 #[test]
-fn player_info_update_list_order_matches_minestom_action_shape() {
+fn player_info_update_list_order_matches_reference_action_shape() {
     let packet = PlayerInfoUpdatePacket::update_list_order(Uuid::nil(), 12);
     let mut payload = Vec::new();
 
@@ -132,7 +132,7 @@ fn player_info_update_list_order_matches_minestom_action_shape() {
 }
 
 #[test]
-fn player_info_update_hat_matches_minestom_action_shape() {
+fn player_info_update_hat_matches_reference_action_shape() {
     let packet = PlayerInfoUpdatePacket::update_hat(Uuid::nil(), false);
     let mut payload = Vec::new();
 

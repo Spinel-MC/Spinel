@@ -8,7 +8,7 @@ use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use uuid::Uuid;
 
 #[test]
-fn generic_entity_movement_tick_applies_minestom_gravity_in_blocks_per_second() {
+fn generic_entity_movement_tick_applies_reference_gravity_in_blocks_per_second() {
     let mut world = World::new_with_dimension_name(
         uuid::Uuid::new_v4(),
         spinel_registry::dimension_type::DimensionType::OVERWORLD,
@@ -52,7 +52,7 @@ fn generic_entity_movement_tick_collides_with_extracted_block_collision_shape() 
 }
 
 #[test]
-fn stationary_entity_uses_minestom_zero_delta_gravity_and_ground_result() {
+fn stationary_entity_uses_reference_zero_delta_gravity_and_ground_result() {
     let mut world = World::new_with_dimension_name(
         uuid::Uuid::new_v4(),
         spinel_registry::dimension_type::DimensionType::OVERWORLD,
@@ -73,7 +73,7 @@ fn stationary_entity_uses_minestom_zero_delta_gravity_and_ground_result() {
     assert!(!entity.is_on_ground());
 }
 #[test]
-fn physics_result_preserves_minestom_collision_evidence_and_cache_reuse() {
+fn physics_result_preserves_reference_collision_evidence_and_cache_reuse() {
     let mut world = World::new_with_dimension_name(
         uuid::Uuid::new_v4(),
         spinel_registry::dimension_type::DimensionType::OVERWORLD,
@@ -135,7 +135,7 @@ fn physics_result_preserves_minestom_collision_evidence_and_cache_reuse() {
 }
 
 #[test]
-fn physics_matches_minestom_high_speed_wall_and_slab_fixtures() {
+fn physics_matches_reference_high_speed_wall_and_slab_fixtures() {
     let mut wall_world = World::new_with_dimension_name(
         uuid::Uuid::new_v4(),
         spinel_registry::dimension_type::DimensionType::OVERWORLD,
@@ -185,7 +185,7 @@ fn physics_matches_minestom_high_speed_wall_and_slab_fixtures() {
 }
 
 #[test]
-fn physics_matches_minestom_tall_fence_and_diagonal_slide_fixtures() {
+fn physics_matches_reference_tall_fence_and_diagonal_slide_fixtures() {
     let mut fence_world = World::new_with_dimension_name(
         uuid::Uuid::new_v4(),
         spinel_registry::dimension_type::DimensionType::OVERWORLD,

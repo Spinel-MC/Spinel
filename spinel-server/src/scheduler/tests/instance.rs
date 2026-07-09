@@ -21,7 +21,7 @@ fn immediate_task_runs_during_process() {
 }
 
 #[test]
-fn next_tick_and_tick_end_tasks_run_in_minestom_order() {
+fn next_tick_and_tick_end_tasks_run_in_reference_order() {
     let mut scheduler = Scheduler::new();
     let events = Arc::new(Mutex::new(Vec::new()));
     let tick_start_events = events.clone();

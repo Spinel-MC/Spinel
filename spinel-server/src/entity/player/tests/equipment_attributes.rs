@@ -148,7 +148,7 @@ fn queued_client() -> Client {
 }
 
 #[test]
-fn runtime_attribute_modifiers_follow_minestom_operation_order() {
+fn runtime_attribute_modifiers_follow_reference_operation_order() {
     let mut player = player();
     let attribute = player.get_attribute(Attribute::ATTACK_DAMAGE);
     attribute.set_base_value(10.0);
@@ -247,7 +247,7 @@ fn equipment_attribute_transition_removes_previous_item_modifiers() {
 }
 
 #[test]
-fn runtime_attribute_base_value_removal_and_clamp_match_minestom_attribute_instance() {
+fn runtime_attribute_base_value_removal_and_clamp_match_reference_attribute_instance() {
     let mut player = player();
     let attribute = player.get_attribute(Attribute::ATTACK_SPEED);
     let modifier = EntityAttributeModifier {

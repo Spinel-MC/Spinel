@@ -3,7 +3,7 @@ use spinel_network::DataType;
 use spinel_network::types::ClientInformation;
 
 #[test]
-fn configuration_client_information_decodes_minestom_settings_shape() {
+fn configuration_client_information_decodes_reference_settings_shape() {
     let settings = ClientInformation {
         locale: "en_GB".to_string(),
         view_distance: 12,

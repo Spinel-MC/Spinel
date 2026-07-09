@@ -25,7 +25,7 @@ use std::sync::{
 use std::{env, fs};
 
 #[test]
-fn path_state_owner_records_every_minestom_state_transition() {
+fn path_state_owner_records_every_reference_state_transition() {
     let path = Path::new(40.0, 8.0, None);
     let states = [
         PathState::Calculating,
@@ -44,7 +44,7 @@ fn path_state_owner_records_every_minestom_state_transition() {
 }
 
 #[test]
-fn path_exposes_minestom_modifiable_node_collection() {
+fn path_exposes_reference_modifiable_node_collection() {
     let mut path = Path::new(32.0, 0.0, None);
     path.get_nodes_mut().push(PathNode::new(
         EntityPosition::new(1.0, 2.0, 3.0, 0.0, 0.0),
@@ -61,7 +61,7 @@ fn path_exposes_minestom_modifiable_node_collection() {
 }
 
 #[test]
-fn public_path_generator_exposes_minestom_generation_entry_point() {
+fn public_path_generator_exposes_reference_generation_entry_point() {
     let world = pathfinding_world();
     let snapshot = world.update_snapshot();
     let path = PathGenerator::generate(
@@ -82,7 +82,7 @@ fn public_path_generator_exposes_minestom_generation_entry_point() {
 }
 
 #[test]
-fn path_generator_preserves_minestom_sub_millistep_later_candidate_ties() {
+fn path_generator_preserves_reference_sub_millistep_later_candidate_ties() {
     let world = pathfinding_world();
     let snapshot = world.update_snapshot();
     let expanded_nodes = Arc::new(Mutex::new(Vec::new()));
@@ -110,7 +110,7 @@ fn path_generator_preserves_minestom_sub_millistep_later_candidate_ties() {
 }
 
 #[test]
-fn navigator_exposes_minestom_modifiable_node_collection() {
+fn navigator_exposes_reference_modifiable_node_collection() {
     let world = pathfinding_world();
     let snapshot = world.update_snapshot();
     let mut navigator = Navigator::default();
@@ -133,7 +133,7 @@ fn navigator_exposes_minestom_modifiable_node_collection() {
 }
 
 #[test]
-fn navigator_default_request_uses_minestom_bounding_box_distance_and_path_limits() {
+fn navigator_default_request_uses_reference_bounding_box_distance_and_path_limits() {
     let world = pathfinding_world();
     let snapshot = world.update_snapshot();
     let mut navigator = Navigator::default();
@@ -586,7 +586,7 @@ fn navigator_marks_path_invalid_without_next_target() {
 }
 
 #[test]
-fn navigator_moves_toward_jump_node_before_executing_jump_like_minestom() {
+fn navigator_moves_toward_jump_node_before_executing_jump_like_reference() {
     let world = pathfinding_world();
     let snapshot = world.update_snapshot();
     let mut entity = GenericEntity::new(EntityType::ZOMBIE);
@@ -1055,7 +1055,7 @@ fn collision_sweep_allows_clear_horizontal_floor_travel() {
 }
 
 #[test]
-fn flying_generator_emits_minestom_neighbor_shape() {
+fn flying_generator_emits_reference_neighbor_shape() {
     let world = pathfinding_world();
     let snapshot = world.update_snapshot();
     let generator = FlyingNodeGenerator;
@@ -1097,7 +1097,7 @@ fn flying_generator_emits_minestom_neighbor_shape() {
 }
 
 #[test]
-fn water_generator_matches_minestom_default_direct_movement_rejection() {
+fn water_generator_matches_reference_default_direct_movement_rejection() {
     let mut world = pathfinding_world();
     world
         .set_block(BlockPosition::new(8, 70, 9), Block::WATER)
@@ -1125,7 +1125,7 @@ fn water_generator_matches_minestom_default_direct_movement_rejection() {
 }
 
 #[test]
-fn ground_follower_applies_minestom_speed_rotation_collision_and_jump_behavior() {
+fn ground_follower_applies_reference_speed_rotation_collision_and_jump_behavior() {
     let world = pathfinding_world();
     let snapshot = world.update_snapshot();
     let follower = GroundNodeFollower;
@@ -1182,7 +1182,7 @@ fn ground_follower_applies_minestom_speed_rotation_collision_and_jump_behavior()
 }
 
 #[test]
-fn node_follower_uses_living_entity_default_and_minestom_non_living_fallback() {
+fn node_follower_uses_living_entity_default_and_reference_non_living_fallback() {
     let follower = GroundNodeFollower;
     let living_entity = GenericEntity::new(EntityType::ZOMBIE);
     let non_living_entity = GenericEntity::new(EntityType::ITEM);
@@ -1192,7 +1192,7 @@ fn node_follower_uses_living_entity_default_and_minestom_non_living_fallback() {
 }
 
 #[test]
-fn ground_follower_uses_extracted_minecraft_zombie_speed_as_minestom_displacement() {
+fn ground_follower_uses_extracted_minecraft_zombie_speed_as_reference_displacement() {
     let world = pathfinding_world();
     let snapshot = world.update_snapshot();
     let follower = GroundNodeFollower;
@@ -1214,7 +1214,7 @@ fn ground_follower_uses_extracted_minecraft_zombie_speed_as_minestom_displacemen
 }
 
 #[test]
-fn minestom_straight_short_and_fractional_negative_path_fixtures_are_valid() {
+fn reference_straight_short_and_fractional_negative_path_fixtures_are_valid() {
     let straight_world = pathfinding_world_in_chunk_range(-1, 1, -1, 1);
     assert_valid_default_path(
         &straight_world,
@@ -1239,7 +1239,7 @@ fn minestom_straight_short_and_fractional_negative_path_fixtures_are_valid() {
 }
 
 #[test]
-fn minestom_tall_and_blocked_path_fixtures_are_valid() {
+fn reference_tall_and_blocked_path_fixtures_are_valid() {
     let mut tall_world = pathfinding_world_in_chunk_range(-1, 1, -1, 1);
     tall_world
         .set_block(BlockPosition::new(1, 71, 7), Block::STONE)
@@ -1570,7 +1570,7 @@ fn perfect_planner_is_deterministic_and_replays_to_predicted_state() {
 }
 
 #[test]
-fn minestom_follower_accepts_new_path_after_long_jump_landing() {
+fn reference_follower_accepts_new_path_after_long_jump_landing() {
     let mut world = pathfinding_world();
     world
         .set_block(BlockPosition::new(1, 65, 0), Block::STONE)
@@ -1667,15 +1667,15 @@ fn ground_generator_treats_epsilon_above_ground_landing_as_flat_ground() {
 }
 
 #[test]
-fn minestom_default_creature_trace_has_no_per_tick_deviation_across_obstacles() {
-    let minestom_trace = minestom_reference_trace();
+fn reference_default_creature_trace_has_no_per_tick_deviation_across_obstacles() {
+    let reference_trace = reference_reference_trace();
     let spinel_trace = spinel_reference_trace();
 
     assert_eq!(
         spinel_trace.keys().collect::<Vec<_>>(),
-        minestom_trace.keys().collect::<Vec<_>>()
+        reference_trace.keys().collect::<Vec<_>>()
     );
-    for (scenario_name, expected_scenario) in &minestom_trace {
+    for (scenario_name, expected_scenario) in &reference_trace {
         let actual_scenario = spinel_trace
             .get(scenario_name)
             .unwrap_or_else(|| panic!("missing Spinel trace scenario {scenario_name}"));
@@ -1915,33 +1915,35 @@ impl PathfindingTraceScenarioKind {
     }
 }
 
-fn minestom_reference_trace() -> BTreeMap<String, PathfindingTraceScenario> {
+fn reference_reference_trace() -> BTreeMap<String, PathfindingTraceScenario> {
     let output = Command::new(gradle_executable())
         .arg("-q")
         .arg("pathfindingTrace")
-        .current_dir(minestom_pathfinding_showcase_dir())
+        .current_dir(reference_pathfinding_showcase_dir())
         .output()
-        .unwrap_or_else(|error| panic!("failed to run Minestom pathfinding trace task: {error}"));
+        .unwrap_or_else(|error| panic!("failed to run Reference pathfinding trace task: {error}"));
     if output.status.success() {
-        return parse_minestom_trace(&String::from_utf8_lossy(&output.stdout));
+        return parse_reference_trace(&String::from_utf8_lossy(&output.stdout));
     }
 
     let stderr = String::from_utf8_lossy(&output.stderr);
-    if minestom_jar_is_locked_by_running_showcase(&stderr) {
-        return minestom_reference_trace_from_running_showcase_classpath();
+    if reference_jar_is_locked_by_running_showcase(&stderr) {
+        return reference_reference_trace_from_running_showcase_classpath();
     }
 
     panic!(
-        "Minestom pathfinding trace task failed:
+        "Reference pathfinding trace task failed:
 {stderr}"
     );
 }
 
-fn minestom_jar_is_locked_by_running_showcase(stderr: &str) -> bool {
-    stderr.contains("Unable to delete file") && stderr.contains("minestom-dev.jar") && cfg!(windows)
+fn reference_jar_is_locked_by_running_showcase(stderr: &str) -> bool {
+    stderr.contains("Unable to delete file")
+        && stderr.contains("reference-dev.jar")
+        && cfg!(windows)
 }
 
-fn minestom_reference_trace_from_running_showcase_classpath()
+fn reference_reference_trace_from_running_showcase_classpath()
 -> BTreeMap<String, PathfindingTraceScenario> {
     let output = Command::new("powershell")
         .arg("-NoProfile")
@@ -1950,22 +1952,22 @@ fn minestom_reference_trace_from_running_showcase_classpath()
         .current_dir(workspace_root())
         .output()
         .unwrap_or_else(|error| {
-            panic!("failed to run Minestom trace from locked showcase classpath: {error}")
+            panic!("failed to run Reference trace from locked showcase classpath: {error}")
         });
     if !output.status.success() {
         panic!(
-            "Minestom trace fallback failed:
+            "Reference trace fallback failed:
 {}",
             String::from_utf8_lossy(&output.stderr)
         );
     }
-    parse_minestom_trace(&String::from_utf8_lossy(&output.stdout))
+    parse_reference_trace(&String::from_utf8_lossy(&output.stdout))
 }
 
 fn running_showcase_trace_command() -> String {
     let workspace = workspace_root().to_string_lossy().replace('\'', "''");
     format!(
-        r#"$process = Get-CimInstance Win32_Process -Filter "name = 'java.exe' or name = 'javaw.exe'" | Where-Object {{ $_.CommandLine -like '*showcase.PathfindingShowcaseServer*' -and $_.CommandLine -like '*{workspace}*' }} | Select-Object -First 1; if ($null -eq $process) {{ Write-Error 'No running Minestom showcase process is available for locked-jar trace fallback'; exit 64 }}; $commandLine = $process.CommandLine; $classpathStart = $commandLine.IndexOf('-cp ') + 4; $classpathEnd = $commandLine.IndexOf(' showcase.PathfindingShowcaseServer'); if ($classpathStart -lt 4 -or $classpathEnd -le $classpathStart) {{ Write-Error 'The running Minestom showcase command line did not expose a classpath'; exit 65 }}; $classpath = $commandLine.Substring($classpathStart, $classpathEnd - $classpathStart); & 'C:\Program Files\Eclipse Adoptium\jdk-25.0.2.10-hotspot\bin\java.exe' -cp $classpath showcase.PathfindingTraceDumper"#
+        r#"$process = Get-CimInstance Win32_Process -Filter "name = 'java.exe' or name = 'javaw.exe'" | Where-Object {{ $_.CommandLine -like '*showcase.PathfindingShowcaseServer*' -and $_.CommandLine -like '*{workspace}*' }} | Select-Object -First 1; if ($null -eq $process) {{ Write-Error 'No running Reference showcase process is available for locked-jar trace fallback'; exit 64 }}; $commandLine = $process.CommandLine; $classpathStart = $commandLine.IndexOf('-cp ') + 4; $classpathEnd = $commandLine.IndexOf(' showcase.PathfindingShowcaseServer'); if ($classpathStart -lt 4 -or $classpathEnd -le $classpathStart) {{ Write-Error 'The running Reference showcase command line did not expose a classpath'; exit 65 }}; $classpath = $commandLine.Substring($classpathStart, $classpathEnd - $classpathStart); & 'C:\Program Files\Eclipse Adoptium\jdk-25.0.2.10-hotspot\bin\java.exe' -cp $classpath showcase.PathfindingTraceDumper"#
     )
 }
 
@@ -1979,7 +1981,7 @@ fn spinel_reference_trace() -> BTreeMap<String, PathfindingTraceScenario> {
 }
 
 fn spinel_trace_for(scenario: PathfindingTraceScenarioKind) -> PathfindingTraceScenario {
-    let mut world = minestom_trace_world();
+    let mut world = reference_trace_world();
     scenario.place_blocks(&mut world);
     let mut creature = EntityCreature::new(EntityType::ZOMBIE);
 
@@ -2004,7 +2006,7 @@ fn spinel_trace_for(scenario: PathfindingTraceScenarioKind) -> PathfindingTraceS
     PathfindingTraceScenario { accepted, ticks }
 }
 
-fn minestom_trace_world() -> World {
+fn reference_trace_world() -> World {
     let mut world = pathfinding_world_in_chunk_range(-2, 2, -2, 2);
     for x in -32..=32 {
         for z in -32..=32 {
@@ -2030,16 +2032,16 @@ fn trace_tick_from_creature(tick: usize, creature: &EntityCreature) -> Pathfindi
         velocity_y: velocity.y,
         velocity_z: velocity.z,
         is_on_ground: creature.is_on_ground(),
-        state: minestom_state_name(creature.get_navigator().state()).to_string(),
+        state: reference_state_name(creature.get_navigator().state()).to_string(),
     }
 }
 
-fn parse_minestom_trace(trace: &str) -> BTreeMap<String, PathfindingTraceScenario> {
+fn parse_reference_trace(trace: &str) -> BTreeMap<String, PathfindingTraceScenario> {
     let mut scenarios = BTreeMap::new();
     for line in trace.lines().filter(|line| line.starts_with("scenario\t")) {
         let fields = line.split('\t').collect::<Vec<_>>();
         if fields.len() != 4 || fields[2] != "accepted" {
-            panic!("malformed Minestom scenario line: {line}");
+            panic!("malformed Reference scenario line: {line}");
         }
         scenarios.insert(
             fields[1].to_string(),
@@ -2052,7 +2054,7 @@ fn parse_minestom_trace(trace: &str) -> BTreeMap<String, PathfindingTraceScenari
     for line in trace.lines().filter(|line| line.starts_with("tick\t")) {
         let fields = line.split('\t').collect::<Vec<_>>();
         if fields.len() != 13 {
-            panic!("malformed Minestom tick line: {line}");
+            panic!("malformed Reference tick line: {line}");
         }
         let scenario = scenarios
             .get_mut(fields[1])
@@ -2147,7 +2149,7 @@ fn assert_float_has_no_deviation(
     );
 }
 
-fn minestom_state_name(state: PathState) -> &'static str {
+fn reference_state_name(state: PathState) -> &'static str {
     match state {
         PathState::Calculating => "CALCULATING",
         PathState::Following => "FOLLOWING",
@@ -2194,8 +2196,8 @@ fn parse_bool(value: &str, line: &str) -> bool {
         .unwrap_or_else(|error| panic!("failed to parse bool in {line}: {error}"))
 }
 
-fn minestom_pathfinding_showcase_dir() -> PathBuf {
-    workspace_root().join("minestom-pathfinding-showcase")
+fn reference_pathfinding_showcase_dir() -> PathBuf {
+    workspace_root().join("reference-pathfinding-showcase")
 }
 
 fn gradle_executable() -> PathBuf {

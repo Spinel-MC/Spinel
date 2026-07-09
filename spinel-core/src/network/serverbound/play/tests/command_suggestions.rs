@@ -2,7 +2,7 @@ use super::super::command_suggestions::CommandSuggestionsRequestPacket;
 use spinel_network::{DataType, PacketStruct};
 
 #[test]
-fn command_suggestions_request_round_trips_minestom_shape() {
+fn command_suggestions_request_round_trips_reference_shape() {
     let packet = CommandSuggestionsRequestPacket {
         transaction_id: 6,
         text: "/spawn zo".to_string(),

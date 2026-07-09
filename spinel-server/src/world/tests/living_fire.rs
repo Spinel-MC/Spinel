@@ -53,7 +53,7 @@ fn living_fire_extinguish_listener(
 }
 
 #[test]
-fn world_set_entity_fire_ticks_dispatches_minestom_set_fire_event_mutation() {
+fn world_set_entity_fire_ticks_dispatches_reference_set_fire_event_mutation() {
     let _lock = LIVING_FIRE_TEST_LOCK.lock().unwrap();
     reset_living_fire_test_state();
     let mut server = server_with_living_entity();
@@ -76,7 +76,7 @@ fn world_set_entity_fire_ticks_dispatches_minestom_set_fire_event_mutation() {
 }
 
 #[test]
-fn world_set_player_fire_ticks_uses_the_same_minestom_set_fire_path() {
+fn world_set_player_fire_ticks_uses_the_same_reference_set_fire_path() {
     let _lock = LIVING_FIRE_TEST_LOCK.lock().unwrap();
     reset_living_fire_test_state();
     let mut server = server_with_player();
@@ -99,7 +99,7 @@ fn world_set_player_fire_ticks_uses_the_same_minestom_set_fire_path() {
 }
 
 #[test]
-fn world_living_tick_dispatches_minestom_natural_fire_extinguish_event() {
+fn world_living_tick_dispatches_reference_natural_fire_extinguish_event() {
     let _lock = LIVING_FIRE_TEST_LOCK.lock().unwrap();
     reset_living_fire_test_state();
     let mut server = server_with_living_entity();
@@ -127,7 +127,7 @@ fn world_living_tick_dispatches_minestom_natural_fire_extinguish_event() {
 }
 
 #[test]
-fn world_player_living_tick_dispatches_minestom_natural_fire_extinguish_event() {
+fn world_player_living_tick_dispatches_reference_natural_fire_extinguish_event() {
     let _lock = LIVING_FIRE_TEST_LOCK.lock().unwrap();
     reset_living_fire_test_state();
     let mut server = server_with_player();

@@ -3,7 +3,7 @@ use spinel_network::DataType;
 use spinel_network::types::sound::SoundEvent;
 
 #[test]
-fn entity_sound_effect_packet_matches_minestom_builtin_sound_branch_shape() {
+fn entity_sound_effect_packet_matches_reference_builtin_sound_branch_shape() {
     let packet = EntitySoundEffectPacket {
         sound_event: NetworkSoundEvent(SoundEvent::Id(2)),
         source_id: 2,
@@ -29,7 +29,7 @@ fn entity_sound_effect_packet_matches_minestom_builtin_sound_branch_shape() {
 }
 
 #[test]
-fn entity_sound_effect_packet_matches_minestom_named_sound_branch_shape() {
+fn entity_sound_effect_packet_matches_reference_named_sound_branch_shape() {
     let packet = EntitySoundEffectPacket {
         sound_event: NetworkSoundEvent(SoundEvent::Named {
             name: "minecraft:custom.sound".to_string(),

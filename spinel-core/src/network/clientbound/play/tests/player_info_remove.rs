@@ -3,7 +3,7 @@ use spinel_network::DataType;
 use uuid::Uuid;
 
 #[test]
-fn player_info_remove_packet_matches_minestom_uuid_list_shape() {
+fn player_info_remove_packet_matches_reference_uuid_list_shape() {
     let packet = PlayerInfoRemovePacket::new(Uuid::nil());
     let mut payload = Vec::new();
 

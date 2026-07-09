@@ -4,7 +4,7 @@ use spinel_network::types::var_int::VarIntWrapper;
 use std::io::{Cursor, Read};
 
 #[test]
-fn player_command_packet_decodes_minestom_client_entity_action_shape() {
+fn player_command_packet_decodes_reference_client_entity_action_shape() {
     let mut payload = Vec::new();
     VarIntWrapper(7).encode(&mut payload).unwrap();
     VarIntWrapper(PlayerCommandPacket::START_SPRINTING)

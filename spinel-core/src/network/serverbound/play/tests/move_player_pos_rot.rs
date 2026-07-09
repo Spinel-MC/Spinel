@@ -1,7 +1,7 @@
 use super::super::move_player_pos_rot::MovePlayerPosRotPacket;
 
 #[test]
-fn move_player_position_and_rotation_decodes_minestom_status_flags() {
+fn move_player_position_and_rotation_decodes_reference_status_flags() {
     let packet = MovePlayerPosRotPacket {
         x: 1.0,
         y: 2.0,

@@ -17,7 +17,7 @@ impl Material {
 #[serde(untagged)]
 enum MaterialPrototypeExtraction {
     SpinelExtractor { items: Vec<MaterialPrototypeEntry> },
-    Minestom(BTreeMap<String, MaterialPrototypeEntry>),
+    ExtractedMap(BTreeMap<String, MaterialPrototypeEntry>),
 }
 
 #[derive(Deserialize)]
@@ -35,7 +35,7 @@ fn parse_material_prototypes() -> BTreeMap<i32, DataComponentMap> {
     serde_json::from_str::<MaterialPrototypeExtraction>(include_str!("../../assets/items.json"))
         .map(|extraction| match extraction {
             MaterialPrototypeExtraction::SpinelExtractor { items } => items,
-            MaterialPrototypeExtraction::Minestom(entries) => entries.into_values().collect(),
+            MaterialPrototypeExtraction::ExtractedMap(entries) => entries.into_values().collect(),
         })
         .map(|entries| {
             entries

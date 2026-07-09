@@ -20,7 +20,7 @@ pub(crate) struct ItemEntry {
 #[serde(untagged)]
 enum ItemExtraction {
     Spinel { items: Vec<ExtractedItem> },
-    Minestom(BTreeMap<String, MinestomItem>),
+    ExtractedMap(BTreeMap<String, ExtractedItemMapEntry>),
 }
 
 impl ItemExtraction {
@@ -30,7 +30,7 @@ impl ItemExtraction {
                 .into_iter()
                 .map(ExtractedItem::into_item_entry)
                 .collect(),
-            Self::Minestom(items) => items
+            Self::ExtractedMap(items) => items
                 .into_iter()
                 .map(|(key, item)| item.into_item_entry(&key))
                 .collect(),
@@ -47,7 +47,7 @@ struct ExtractedItem {
 }
 
 #[derive(Deserialize)]
-struct MinestomItem {
+struct ExtractedItemMapEntry {
     id: i32,
     #[serde(rename = "correspondingBlock")]
     corresponding_block: Option<String>,
@@ -66,7 +66,7 @@ impl ExtractedItem {
     }
 }
 
-impl MinestomItem {
+impl ExtractedItemMapEntry {
     fn into_item_entry(self, key: &str) -> ItemEntry {
         ItemEntry {
             path: vanilla_path(key).to_string(),

@@ -45,7 +45,7 @@ fn living_damage_listener(event: &mut EntityDamageEvent, _server: &mut Minecraft
 }
 
 #[test]
-fn world_damage_entity_applies_minestom_event_mutation_and_last_damage_order() {
+fn world_damage_entity_applies_reference_event_mutation_and_last_damage_order() {
     let _lock = LIVING_DAMAGE_TEST_LOCK.lock().unwrap();
     reset_living_damage_test_state();
     let mut server = server_with_living_entity();

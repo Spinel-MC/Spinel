@@ -4,7 +4,7 @@ use std::io::{Cursor, Read};
 use uuid::Uuid;
 
 #[test]
-fn teleport_to_entity_decodes_minestom_spectate_packet_shape() {
+fn teleport_to_entity_decodes_reference_spectate_packet_shape() {
     let target = Uuid::from_u128(12);
     let mut payload = Vec::new();
     target.encode(&mut payload).unwrap();

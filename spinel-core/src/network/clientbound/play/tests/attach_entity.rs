@@ -2,7 +2,7 @@ use super::super::attach_entity::AttachEntityPacket;
 use spinel_network::DataType;
 
 #[test]
-fn attach_entity_packet_matches_minestom_two_int_shape() {
+fn attach_entity_packet_matches_reference_two_int_shape() {
     let packet = AttachEntityPacket {
         attached_entity_id: 7,
         holding_entity_id: -1,

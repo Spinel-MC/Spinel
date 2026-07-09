@@ -52,7 +52,7 @@ fn chunk_storage_preserves_concrete_block_states() {
 }
 
 #[test]
-fn block_light_propagates_with_minestom_attenuation() {
+fn block_light_propagates_with_reference_attenuation() {
     let mut world = lighting_world("block_light_propagation");
     world.load_chunk(ChunkPosition::new(0, 0)).unwrap();
     world

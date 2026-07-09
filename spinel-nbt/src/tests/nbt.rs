@@ -79,7 +79,7 @@ fn invalid_nbt_data_returns_errors() {
 }
 
 #[test]
-fn tag_handler_supports_minestom_style_operations() {
+fn tag_handler_supports_reference_style_operations() {
     let mut handler = TagHandler::new_handler();
     let score = Tag::<i32>::integer("score").default_value(5);
     let nested = Tag::<String>::string("name").path(["profile"]);

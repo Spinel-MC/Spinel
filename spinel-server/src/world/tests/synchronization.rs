@@ -218,7 +218,7 @@ fn creature_pathfinding_tick_sends_body_and_head_rotation_to_viewers() {
 }
 
 #[test]
-fn creature_pathfinding_jump_sends_velocity_after_minestom_ground_collision_tick() {
+fn creature_pathfinding_jump_sends_velocity_after_reference_ground_collision_tick() {
     let mut world = World::new_with_dimension_name(
         uuid::Uuid::new_v4(),
         spinel_registry::dimension_type::DimensionType::OVERWORLD,
@@ -334,7 +334,7 @@ fn synchronization_only_entity_suppresses_ordinary_physics_movement_packet() {
 }
 
 #[test]
-fn switch_entity_type_resends_entity_to_existing_viewers_in_minestom_order() {
+fn switch_entity_type_resends_entity_to_existing_viewers_in_reference_order() {
     let mut world = World::new_with_dimension_name(
         uuid::Uuid::new_v4(),
         spinel_registry::dimension_type::DimensionType::OVERWORLD,

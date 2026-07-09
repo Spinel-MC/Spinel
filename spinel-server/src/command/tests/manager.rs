@@ -18,7 +18,7 @@ fn command_manager_rejects_duplicate_roots_and_aliases() {
 }
 
 #[test]
-fn command_manager_declares_minestom_argument_nodes_for_spawn_syntax() {
+fn command_manager_declares_reference_argument_nodes_for_spawn_syntax() {
     let mut command_manager = CommandManager::new();
     command_manager.register(spawn_command());
 
@@ -70,7 +70,7 @@ fn command_manager_declares_empty_syntax_literal_as_executable() {
 }
 
 #[test]
-fn command_manager_declares_minestom_argument_node_properties() {
+fn command_manager_declares_reference_argument_node_properties() {
     let mut command_manager = CommandManager::new();
     command_manager.register(command_with_single_argument(
         "word",

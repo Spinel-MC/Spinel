@@ -3,7 +3,7 @@ use spinel_network::DataType;
 use spinel_network::types::Vector3d;
 
 #[test]
-fn player_look_at_position_packet_matches_minestom_shape() {
+fn player_look_at_position_packet_matches_reference_shape() {
     let packet = PlayerLookAtPacket::at_position(
         FacePoint::Eyes,
         Vector3d {
@@ -23,7 +23,7 @@ fn player_look_at_position_packet_matches_minestom_shape() {
 }
 
 #[test]
-fn player_look_at_entity_packet_matches_minestom_shape() {
+fn player_look_at_entity_packet_matches_reference_shape() {
     let packet = PlayerLookAtPacket::at_entity(
         FacePoint::Eyes,
         Vector3d {

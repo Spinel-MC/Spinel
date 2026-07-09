@@ -560,7 +560,7 @@ impl GenericEntity {
 
     pub fn set_position(&mut self, position: EntityPosition) {
         self.previous_position = self.position;
-        self.position = position.clamped_to_minestom_entity_bounds();
+        self.position = position.clamped_to_entity_bounds();
         if self.world.is_none() {
             self.synchronization.record_position(self.position);
         }
@@ -5243,7 +5243,7 @@ impl EntityPosition {
         delta_x * delta_x + delta_y * delta_y + delta_z * delta_z
     }
 
-    pub fn clamped_to_minestom_entity_bounds(self) -> Self {
+    pub fn clamped_to_entity_bounds(self) -> Self {
         Self {
             x: clamp_entity_coordinate(self.x),
             y: clamp_entity_coordinate(self.y),

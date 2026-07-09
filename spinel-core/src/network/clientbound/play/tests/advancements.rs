@@ -4,7 +4,7 @@ use spinel_registry::Material;
 use spinel_utils::component::Component;
 
 #[test]
-fn notification_builds_minestom_advancement_add_and_remove_packets() {
+fn notification_builds_reference_advancement_add_and_remove_packets() {
     let notification = Notification::from_material(
         Component::text("Done").build(),
         AdvancementFrameType::Challenge,
@@ -20,7 +20,7 @@ fn notification_builds_minestom_advancement_add_and_remove_packets() {
     assert_eq!(AdvancementsPacket::get_id(), 0x80);
     assert_eq!(
         decoded_packet.advancement_mappings[0].key,
-        "minestom:notification"
+        "spinel:notification"
     );
     assert_eq!(
         decoded_packet.progress_mappings[0].progress.criteria[0]
@@ -30,6 +30,6 @@ fn notification_builds_minestom_advancement_add_and_remove_packets() {
     );
     assert_eq!(
         remove_packet.identifiers_to_remove,
-        vec!["minestom:notification"]
+        vec!["spinel:notification"]
     );
 }

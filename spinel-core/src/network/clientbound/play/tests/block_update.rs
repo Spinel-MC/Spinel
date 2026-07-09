@@ -4,7 +4,7 @@ use spinel_network::types::Position;
 use spinel_network::types::var_int::VarIntWrapper;
 
 #[test]
-fn block_update_packet_matches_minestom_block_change_shape() {
+fn block_update_packet_matches_reference_block_change_shape() {
     let packet = BlockUpdatePacket::new(Position { x: 1, y: 2, z: 3 }, 42);
     let mut payload = Vec::new();
 

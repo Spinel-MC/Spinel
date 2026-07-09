@@ -2,7 +2,7 @@ use super::super::entity_animation::{EntityAnimation, EntityAnimationPacket};
 use spinel_network::DataType;
 
 #[test]
-fn entity_animation_packet_matches_minestom_var_int_then_byte_shape() {
+fn entity_animation_packet_matches_reference_var_int_then_byte_shape() {
     let packet = EntityAnimationPacket {
         entity_id: 7,
         animation: EntityAnimation::SwingOffHand,

@@ -2,7 +2,7 @@ use super::super::projectile_power::ProjectilePowerPacket;
 use spinel_network::DataType;
 
 #[test]
-fn projectile_power_packet_matches_minestom_var_int_then_double_shape() {
+fn projectile_power_packet_matches_reference_var_int_then_double_shape() {
     let packet = ProjectilePowerPacket {
         entity_id: 7,
         acceleration_power: 1.5,

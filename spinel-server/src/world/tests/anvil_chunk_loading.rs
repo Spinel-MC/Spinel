@@ -9,7 +9,7 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 #[test]
-fn anvil_loader_miss_uses_world_chunk_supplier_like_minestom() -> io::Result<()> {
+fn anvil_loader_miss_uses_world_chunk_supplier_like_reference() -> io::Result<()> {
     let world_directory = unique_test_world_directory("loader_miss_supplier");
     let _ = fs::remove_dir_all(&world_directory);
     let mut world = test_world();

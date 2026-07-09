@@ -3,7 +3,7 @@ use crate::world::{Block, BlockPosition, ChunkCache, ChunkPosition, World};
 use spinel_network::types::Identifier;
 
 #[test]
-fn point_position_chunk_access_matches_minestom_overloads() {
+fn point_position_chunk_access_matches_reference_overloads() {
     let mut world = World::new_with_dimension_name(
         uuid::Uuid::new_v4(),
         spinel_registry::dimension_type::DimensionType::OVERWORLD,

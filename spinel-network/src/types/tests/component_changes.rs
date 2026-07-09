@@ -47,7 +47,7 @@ fn serialized_only_component_is_not_sent_in_component_changes() {
 }
 
 #[test]
-fn string_component_encoder_writes_minestom_string_payload_shape() {
+fn string_component_encoder_writes_reference_string_payload_shape() {
     let component_patch = DataComponentMap::new().with(TOOLTIP_STYLE, "abc".to_string());
     let mut payload = Vec::new();
 
@@ -96,7 +96,7 @@ fn dynamic_registry_key_component_writes_registry_id_payload() {
 }
 
 #[test]
-fn villager_variant_component_writes_minestom_enum_ordinal() {
+fn villager_variant_component_writes_reference_enum_ordinal() {
     let component_patch =
         DataComponentMap::new().with(VILLAGER_VARIANT, spinel_registry::VillagerType::PLAINS);
     let component_changes = ComponentChanges::from(&component_patch);
@@ -143,7 +143,7 @@ fn entity_data_component_writes_entity_type_id_then_custom_nbt() {
 }
 
 #[test]
-fn builtin_sound_event_component_writes_minestom_builtin_id_branch() {
+fn builtin_sound_event_component_writes_reference_builtin_id_branch() {
     let sound_identifier = Identifier::minecraft("entity.generic.eat");
     let builtin_sound_event = BuiltinSoundEvent::from_key(&sound_identifier).unwrap();
     let component_patch = DataComponentMap::new().with(BREAK_SOUND, sound_identifier);
@@ -159,7 +159,7 @@ fn builtin_sound_event_component_writes_minestom_builtin_id_branch() {
 }
 
 #[test]
-fn custom_sound_event_component_writes_minestom_named_branch() {
+fn custom_sound_event_component_writes_reference_named_branch() {
     let component_patch =
         DataComponentMap::new().with(BREAK_SOUND, Identifier::new("custom", "snap"));
     let component_changes = ComponentChanges::from(&component_patch);
@@ -177,7 +177,7 @@ fn custom_sound_event_component_writes_minestom_named_branch() {
 }
 
 #[test]
-fn var_int_component_encoder_writes_minestom_var_int_payload_shape() {
+fn var_int_component_encoder_writes_reference_var_int_payload_shape() {
     let component_patch = DataComponentMap::new().with(MAX_STACK_SIZE, 16);
     let component_changes = ComponentChanges::from(&component_patch);
     let mut expected_payload = Vec::new();
@@ -207,7 +207,7 @@ fn non_empty_component_changes_decode_preserves_synced_payload_bytes() {
 }
 
 #[test]
-fn use_cooldown_component_decode_preserves_minestom_network_payload() {
+fn use_cooldown_component_decode_preserves_reference_network_payload() {
     let component_patch = DataComponentMap::new().with(
         USE_COOLDOWN,
         UseCooldown::new(1.5, Some("minecraft:ender_pearl".to_string())),
@@ -220,7 +220,7 @@ fn use_cooldown_component_decode_preserves_minestom_network_payload() {
 }
 
 #[test]
-fn food_component_decode_preserves_minestom_network_payload() {
+fn food_component_decode_preserves_reference_network_payload() {
     let component_patch = DataComponentMap::new().with(FOOD, Food::new(4, 0.3, true));
     let component_changes = ComponentChanges::from(&component_patch);
 
@@ -230,7 +230,7 @@ fn food_component_decode_preserves_minestom_network_payload() {
 }
 
 #[test]
-fn use_effects_component_decode_preserves_minestom_network_payload() {
+fn use_effects_component_decode_preserves_reference_network_payload() {
     let component_patch =
         DataComponentMap::new().with(USE_EFFECTS, UseEffects::new(true, false, 0.5));
     let component_changes = ComponentChanges::from(&component_patch);
@@ -241,7 +241,7 @@ fn use_effects_component_decode_preserves_minestom_network_payload() {
 }
 
 #[test]
-fn attribute_modifiers_component_decode_preserves_minestom_network_payload() {
+fn attribute_modifiers_component_decode_preserves_reference_network_payload() {
     let attribute_modifiers = AttributeList::new(vec![AttributeModifierEntry::new(
         Identifier::minecraft("attack_speed"),
         AttributeModifier::new(
@@ -261,7 +261,7 @@ fn attribute_modifiers_component_decode_preserves_minestom_network_payload() {
 }
 
 #[test]
-fn attribute_modifiers_component_writes_minestom_network_modifier_field_order() {
+fn attribute_modifiers_component_writes_reference_network_modifier_field_order() {
     let attribute_modifiers = AttributeList::new(vec![AttributeModifierEntry::new(
         Identifier::minecraft("attack_speed"),
         AttributeModifier::new(
@@ -301,7 +301,7 @@ fn attribute_modifiers_component_writes_minestom_network_modifier_field_order() 
 }
 
 #[test]
-fn attribute_modifiers_component_writes_minestom_network_display_union_branches() {
+fn attribute_modifiers_component_writes_reference_network_display_union_branches() {
     let attribute_modifiers = AttributeList::new(vec![
         AttributeModifierEntry::new(
             Identifier::minecraft("attack_speed"),
@@ -339,7 +339,7 @@ fn attribute_modifiers_component_writes_minestom_network_display_union_branches(
 }
 
 #[test]
-fn enchantment_components_write_minestom_network_registry_id_map_for_both_owners() {
+fn enchantment_components_write_reference_network_registry_id_map_for_both_owners() {
     let enchantments = EnchantmentList::from_enchantment(Enchantment::SHARPNESS, 5);
     let component_patch = DataComponentMap::new()
         .with(ENCHANTMENTS, enchantments.clone())
@@ -364,7 +364,7 @@ fn enchantment_components_write_minestom_network_registry_id_map_for_both_owners
     );
 }
 #[test]
-fn profile_component_decode_preserves_minestom_network_payload() {
+fn profile_component_decode_preserves_reference_network_payload() {
     let profile = ResolvableProfile::new(
         Some("Wayne".to_string()),
         Some("00000000-0000-0000-0000-000000000001".to_string()),
@@ -406,7 +406,7 @@ fn bundle_contents_component_decode_preserves_nested_item_stack_list_payload() {
 }
 
 #[test]
-fn component_changes_decode_rejects_attribute_and_enchantment_payloads_larger_than_minestom_limit()
+fn component_changes_decode_rejects_attribute_and_enchantment_payloads_larger_than_reference_limit()
 {
     let attribute_error = ComponentChanges::decode(
         &mut oversized_single_component_payload(ATTRIBUTE_MODIFIERS.id()).as_slice(),
@@ -443,7 +443,7 @@ fn component_changes_decode_rejects_unknown_component_id() {
 }
 
 #[test]
-fn component_changes_decode_rejects_maps_larger_than_minestom_limit() {
+fn component_changes_decode_rejects_maps_larger_than_reference_limit() {
     let mut payload = Vec::new();
 
     VarIntWrapper(257).encode(&mut payload).unwrap();

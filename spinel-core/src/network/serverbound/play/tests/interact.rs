@@ -3,7 +3,7 @@ use spinel_network::{DataType, VarIntWrapper};
 use std::io::{Cursor, Read};
 
 #[test]
-fn interact_packet_decodes_minestom_interact_shape() {
+fn interact_packet_decodes_reference_interact_shape() {
     let mut payload = Vec::new();
     VarIntWrapper(10).encode(&mut payload).unwrap();
     VarIntWrapper(0).encode(&mut payload).unwrap();
@@ -22,7 +22,7 @@ fn interact_packet_decodes_minestom_interact_shape() {
 }
 
 #[test]
-fn interact_packet_decodes_minestom_attack_shape() {
+fn interact_packet_decodes_reference_attack_shape() {
     let mut payload = Vec::new();
     VarIntWrapper(10).encode(&mut payload).unwrap();
     VarIntWrapper(1).encode(&mut payload).unwrap();
@@ -37,7 +37,7 @@ fn interact_packet_decodes_minestom_attack_shape() {
 }
 
 #[test]
-fn interact_packet_decodes_minestom_interact_at_shape() {
+fn interact_packet_decodes_reference_interact_at_shape() {
     let mut payload = Vec::new();
     VarIntWrapper(10).encode(&mut payload).unwrap();
     VarIntWrapper(2).encode(&mut payload).unwrap();

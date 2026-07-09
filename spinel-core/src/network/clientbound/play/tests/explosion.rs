@@ -4,7 +4,7 @@ use spinel_network::types::Vector3d;
 use spinel_network::types::sound::SoundEvent;
 
 #[test]
-fn explosion_packet_matches_minestom_wire_shape() {
+fn explosion_packet_matches_reference_wire_shape() {
     let packet = ExplosionPacket {
         center: Vector3d {
             x: 1.0,

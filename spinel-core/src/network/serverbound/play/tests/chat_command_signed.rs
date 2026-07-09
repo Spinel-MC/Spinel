@@ -4,7 +4,7 @@ use super::super::chat_command_signed::{
 use spinel_network::DataType;
 
 #[test]
-fn signed_command_chat_packet_decodes_minestom_signature_and_ack_shape() {
+fn signed_command_chat_packet_decodes_reference_signature_and_ack_shape() {
     let packet = SignedCommandChatPacket {
         command: "spawn foo".to_owned(),
         timestamp: 42,

@@ -3,7 +3,7 @@ use spinel_network::DataType;
 use std::io::{Cursor, Read};
 
 #[test]
-fn player_input_packet_decodes_minestom_client_input_flags() {
+fn player_input_packet_decodes_reference_client_input_flags() {
     let mut reader = Cursor::new(vec![0x61]);
 
     let packet = PlayerInputPacket::decode(&mut reader).unwrap();

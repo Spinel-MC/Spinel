@@ -24,7 +24,7 @@ fn parser_uses_default_relative_vec3_for_optional_position() {
 }
 
 #[test]
-fn parser_reads_minestom_relative_vec3_shape() {
+fn parser_reads_reference_relative_vec3_shape() {
     let command = spawn_command();
     let commands = [command];
 

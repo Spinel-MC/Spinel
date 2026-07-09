@@ -2,7 +2,7 @@ use super::super::steer_boat::SteerBoatPacket;
 use spinel_network::DataType;
 
 #[test]
-fn steer_boat_packet_matches_minestom_shape() {
+fn steer_boat_packet_matches_reference_shape() {
     let packet = SteerBoatPacket {
         left_paddle_turning: true,
         right_paddle_turning: false,

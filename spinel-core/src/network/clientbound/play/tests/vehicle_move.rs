@@ -2,7 +2,7 @@ use super::super::vehicle_move::{VehicleMovePacket, VehiclePosition};
 use spinel_network::DataType;
 
 #[test]
-fn vehicle_move_packet_matches_minestom_pos_shape() {
+fn vehicle_move_packet_matches_reference_pos_shape() {
     let packet = VehicleMovePacket {
         position: VehiclePosition {
             x: 1.0,

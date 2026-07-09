@@ -2,7 +2,7 @@ use super::super::query_entity_tag::QueryEntityTagPacket;
 use spinel_network::DataType;
 
 #[test]
-fn query_entity_tag_packet_matches_minestom_shape() {
+fn query_entity_tag_packet_matches_reference_shape() {
     let mut payload = [0x07, 0x2a].as_slice();
 
     let packet = QueryEntityTagPacket::decode(&mut payload).unwrap();

@@ -96,7 +96,7 @@ use std::time::Duration;
 use uuid::Uuid;
 
 #[test]
-fn chunk_batch_acknowledgement_matches_minestom_target_and_lead_rules() {
+fn chunk_batch_acknowledgement_matches_reference_target_and_lead_rules() {
     let mut player = Player::new(
         Uuid::nil(),
         "Player".to_string(),
@@ -120,7 +120,7 @@ fn chunk_batch_acknowledgement_matches_minestom_target_and_lead_rules() {
 }
 
 #[test]
-fn chunk_queue_reset_preserves_minestom_batch_lead_state() {
+fn chunk_queue_reset_preserves_reference_batch_lead_state() {
     let mut player = Player::new(
         Uuid::nil(),
         "Player".to_string(),
@@ -145,7 +145,7 @@ fn chunk_queue_reset_preserves_minestom_batch_lead_state() {
 }
 
 #[test]
-fn queued_chunks_send_minestom_batch_packets_and_first_position_sync() {
+fn queued_chunks_send_reference_batch_packets_and_first_position_sync() {
     let (mut client, mut peer_stream) = test_client_pair();
     let mut player = Player::new(
         Uuid::nil(),
@@ -203,7 +203,7 @@ fn offline_player_does_not_prepare_or_send_buffered_chunks() {
 }
 
 #[test]
-fn enter_world_sends_minestom_chunk_batch_then_position_sync_sequence() {
+fn enter_world_sends_reference_chunk_batch_then_position_sync_sequence() {
     let (mut client, mut peer_stream) = test_client_pair();
     let mut player = Player::new(
         Uuid::nil(),
@@ -442,7 +442,7 @@ fn unchanged_chunk_queue_is_not_resorted_between_batches() {
     assert_eq!(player.chunk_queue_sort_count, 2);
 }
 #[test]
-fn unavailable_queued_chunks_match_minestom_empty_batch_skip() {
+fn unavailable_queued_chunks_match_reference_empty_batch_skip() {
     let (mut client, mut peer_stream) = test_client_pair();
     let mut player = Player::new(
         Uuid::nil(),
@@ -679,7 +679,7 @@ fn slow_chunk_acknowledgements_do_not_block_multi_border_player_movement() {
 }
 
 #[test]
-fn sharp_turn_keeps_completed_chunks_queued_like_minestom() {
+fn sharp_turn_keeps_completed_chunks_queued_like_reference() {
     let (mut client, _peer_stream) = test_client_pair();
     let mut player = Player::new(
         Uuid::nil(),
@@ -833,7 +833,7 @@ fn play_disconnect_packet_bypasses_enabled_outbound_queue() {
 }
 
 #[test]
-fn effective_chunk_view_distance_matches_minestom_client_world_cap_plus_one() {
+fn effective_chunk_view_distance_matches_reference_client_world_cap_plus_one() {
     let mut player = Player::new(
         Uuid::nil(),
         "Player".to_string(),
@@ -856,7 +856,7 @@ fn effective_chunk_view_distance_matches_minestom_client_world_cap_plus_one() {
 }
 
 #[test]
-fn player_settings_locale_and_view_distance_match_minestom_refresh_surface() {
+fn player_settings_locale_and_view_distance_match_reference_refresh_surface() {
     let mut player = Player::new(
         Uuid::nil(),
         "Player".to_string(),
@@ -895,7 +895,7 @@ fn player_settings_locale_and_view_distance_match_minestom_refresh_surface() {
 }
 
 #[test]
-fn chunk_update_limiter_suppresses_recent_chunks_like_minestom() {
+fn chunk_update_limiter_suppresses_recent_chunks_like_reference() {
     let mut player = Player::new(
         Uuid::nil(),
         "Player".to_string(),
@@ -983,7 +983,7 @@ fn active_player_game_mode_change_sends_client_game_mode_and_abilities() {
 }
 
 #[test]
-fn spectator_game_mode_enables_flying_like_minestom() {
+fn spectator_game_mode_enables_flying_like_reference() {
     let mut player = Player::new(
         Uuid::nil(),
         "Player".to_string(),
@@ -1071,7 +1071,7 @@ fn player_respawn_test_listener(event: &mut PlayerRespawnEvent, _server: &mut Mi
 }
 
 #[test]
-fn player_identity_and_connection_getters_match_minestom_profile_surface() {
+fn player_identity_and_connection_getters_match_reference_profile_surface() {
     let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 25565);
     let player = Player::new(Uuid::nil(), "Player".to_string(), 765, addr);
 
@@ -1091,7 +1091,7 @@ fn player_identity_and_connection_getters_match_minestom_profile_surface() {
 }
 
 #[test]
-fn player_state_apis_match_minestom_health_food_experience_and_respawn_surface() {
+fn player_state_apis_match_reference_health_food_experience_and_respawn_surface() {
     let mut player = Player::new(
         Uuid::nil(),
         "Player".to_string(),
@@ -1132,7 +1132,7 @@ fn player_state_apis_match_minestom_health_food_experience_and_respawn_surface()
 }
 
 #[test]
-fn player_death_location_inputs_debug_and_keepalive_state_match_minestom_surface() {
+fn player_death_location_inputs_debug_and_keepalive_state_match_reference_surface() {
     let mut player = Player::new(
         Uuid::nil(),
         "Player".to_string(),
@@ -1177,7 +1177,7 @@ fn player_death_location_inputs_debug_and_keepalive_state_match_minestom_surface
 }
 
 #[test]
-fn player_pending_options_match_minestom_configuration_handoff_state() {
+fn player_pending_options_match_reference_configuration_handoff_state() {
     let mut player = Player::new(
         Uuid::nil(),
         "Player".to_string(),
@@ -1193,7 +1193,7 @@ fn player_pending_options_match_minestom_configuration_handoff_state() {
 }
 
 #[test]
-fn player_online_state_delegates_to_connection_like_minestom() {
+fn player_online_state_delegates_to_connection_like_reference() {
     let mut player = Player::new(
         Uuid::nil(),
         "Player".to_string(),
@@ -1233,7 +1233,7 @@ fn start_configuration_phase_requires_play_state_and_sends_transition_packet() {
 }
 
 #[test]
-fn refresh_recipes_sends_empty_declare_and_recipe_book_reset_like_empty_minestom_manager() {
+fn refresh_recipes_sends_empty_declare_and_recipe_book_reset_like_empty_reference_manager() {
     let mut player = Player::new(
         Uuid::nil(),
         "Player".to_string(),
@@ -1256,7 +1256,7 @@ fn refresh_recipes_sends_empty_declare_and_recipe_book_reset_like_empty_minestom
 }
 
 #[test]
-fn queued_player_packets_drain_at_minestom_packet_per_tick_limit() {
+fn queued_player_packets_drain_at_reference_packet_per_tick_limit() {
     let mut player = Player::new(
         Uuid::nil(),
         "Player".to_string(),
@@ -1303,7 +1303,7 @@ fn server_queues_play_packets_for_player_tick_instead_of_dispatching_immediately
 }
 
 #[test]
-fn queued_player_packet_overflow_kicks_with_minestom_reason() {
+fn queued_player_packet_overflow_kicks_with_reference_reason() {
     let mut player = Player::new(
         Uuid::nil(),
         "Player".to_string(),
@@ -1627,7 +1627,7 @@ fn player_skin_is_state_only_before_world_entry_and_is_used_in_player_info() {
 }
 
 #[test]
-fn active_player_skin_refresh_matches_minestom_self_viewer_and_player_list_recipients() {
+fn active_player_skin_refresh_matches_reference_self_viewer_and_player_list_recipients() {
     let mut server = MinecraftServer::new();
     let (mut source_client, _source_peer) = test_client_pair();
     let (mut viewer_client, _viewer_peer) = test_client_pair();
@@ -1771,7 +1771,7 @@ fn active_player_display_name_syncs_client_player_info() {
 }
 
 #[test]
-fn player_teleport_ids_match_minestom_sent_and_received_tracking() {
+fn player_teleport_ids_match_reference_sent_and_received_tracking() {
     let mut player = Player::new(
         Uuid::nil(),
         "Player".to_string(),
@@ -1791,7 +1791,7 @@ fn player_teleport_ids_match_minestom_sent_and_received_tracking() {
 }
 
 #[test]
-fn player_teleport_overloads_preserve_or_resolve_velocity_like_minestom() {
+fn player_teleport_overloads_preserve_or_resolve_velocity_like_reference() {
     let mut player = Player::new(
         Uuid::nil(),
         "Player".to_string(),
@@ -2036,7 +2036,7 @@ fn player_listed_latency_and_ability_setters_sync_active_client_state() {
 }
 
 #[test]
-fn swap_item_hands_matches_minestom_player_action_swap() {
+fn swap_item_hands_matches_reference_player_action_swap() {
     let mut player = Player::new(
         Uuid::nil(),
         "Player".to_string(),
@@ -2060,7 +2060,7 @@ fn swap_item_hands_matches_minestom_player_action_swap() {
 }
 
 #[test]
-fn player_equipment_packet_includes_full_minestom_equipment_set() {
+fn player_equipment_packet_includes_full_reference_equipment_set() {
     let mut player = Player::new(
         Uuid::nil(),
         "Player".to_string(),
@@ -2100,7 +2100,7 @@ fn player_equipment_packet_includes_full_minestom_equipment_set() {
 }
 
 #[test]
-fn player_exposes_connected_client_like_minestom_player_connection() {
+fn player_exposes_connected_client_like_reference_player_connection() {
     let mut player = Player::new(
         Uuid::nil(),
         "Player".to_string(),
@@ -2140,7 +2140,7 @@ fn player_input_sprint_does_not_set_sprinting_metadata() {
 }
 
 #[test]
-fn player_sneaking_api_matches_minestom_flying_pose_edge() {
+fn player_sneaking_api_matches_reference_flying_pose_edge() {
     let mut player = Player::new(
         Uuid::nil(),
         "Player".to_string(),
@@ -2175,7 +2175,7 @@ fn player_sneaking_api_matches_minestom_flying_pose_edge() {
 }
 
 #[test]
-fn player_base_metadata_api_matches_minestom_entity_meta_defaults() {
+fn player_base_metadata_api_matches_reference_entity_meta_defaults() {
     let mut player = Player::new(
         Uuid::new_v4(),
         "Steve".to_string(),
@@ -2220,7 +2220,7 @@ fn player_base_metadata_api_matches_minestom_entity_meta_defaults() {
 }
 
 #[test]
-fn player_living_metadata_api_matches_minestom_living_entity_meta_surface() {
+fn player_living_metadata_api_matches_reference_living_entity_meta_surface() {
     let mut player = Player::new(
         Uuid::new_v4(),
         "Steve".to_string(),
@@ -2265,7 +2265,7 @@ fn player_living_metadata_api_matches_minestom_living_entity_meta_surface() {
 }
 
 #[test]
-fn player_avatar_and_player_metadata_api_matches_minestom_meta_surface() {
+fn player_avatar_and_player_metadata_api_matches_reference_meta_surface() {
     let mut player = Player::new(
         Uuid::new_v4(),
         "Steve".to_string(),
@@ -2405,7 +2405,7 @@ fn player_item_cooldown_uses_extracted_material_default() {
 }
 
 #[test]
-fn player_item_use_state_matches_minestom_timing_and_eating_checks() {
+fn player_item_use_state_matches_reference_timing_and_eating_checks() {
     let mut player = Player::new(
         Uuid::nil(),
         "Player".to_string(),
@@ -2437,7 +2437,7 @@ fn player_item_use_state_matches_minestom_timing_and_eating_checks() {
 }
 
 #[test]
-fn direct_packet_send_apis_match_minestom_player_surface() {
+fn direct_packet_send_apis_match_reference_player_surface() {
     let (mut client, mut peer_stream) = test_client_pair();
     client.state = ConnectionState::Play;
     let mut player = Player::new(Uuid::nil(), "Player".to_string(), 0, client.addr);
@@ -2503,7 +2503,7 @@ fn direct_packet_send_apis_noop_when_player_has_no_connection() {
 }
 
 #[test]
-fn player_message_type_respects_minestom_chat_visibility_modes() {
+fn player_message_type_respects_reference_chat_visibility_modes() {
     let (mut client, mut peer_stream) = test_client_pair();
     client.state = ConnectionState::Play;
     let mut player = Player::new(Uuid::nil(), "Player".to_string(), 0, client.addr);
@@ -2546,7 +2546,7 @@ fn player_message_type_respects_minestom_chat_visibility_modes() {
 }
 
 #[test]
-fn player_resource_pack_api_matches_minestom_request_status_and_required_kick_flow() {
+fn player_resource_pack_api_matches_reference_request_status_and_required_kick_flow() {
     let (mut client, mut peer_stream) = test_client_pair();
     client.state = ConnectionState::Play;
     let mut player = Player::new(Uuid::nil(), "Player".to_string(), 0, client.addr);
@@ -2598,7 +2598,7 @@ fn player_resource_pack_api_matches_minestom_request_status_and_required_kick_fl
 }
 
 #[test]
-fn player_resource_pack_remove_clear_and_success_status_match_minestom_surface() {
+fn player_resource_pack_remove_clear_and_success_status_match_reference_surface() {
     let (mut client, mut peer_stream) = test_client_pair();
     client.state = ConnectionState::Play;
     let mut player = Player::new(Uuid::nil(), "Player".to_string(), 0, client.addr);
@@ -2671,7 +2671,7 @@ fn player_resource_pack_api_uses_configuration_packet_ids_during_configuration()
 }
 
 #[test]
-fn player_tab_list_and_title_apis_send_minestom_packets() {
+fn player_tab_list_and_title_apis_send_reference_packets() {
     let (mut client, mut peer_stream) = test_client_pair();
     client.state = ConnectionState::Play;
     let mut player = Player::new(Uuid::nil(), "Player".to_string(), 0, client.addr);
@@ -2733,7 +2733,7 @@ fn player_tab_list_and_title_apis_send_minestom_packets() {
 }
 
 #[test]
-fn player_permission_and_spectate_apis_send_minestom_packets() {
+fn player_permission_and_spectate_apis_send_reference_packets() {
     let (mut client, mut peer_stream) = test_client_pair();
     client.state = ConnectionState::Play;
     let mut player = Player::new(Uuid::nil(), "Player".to_string(), 0, client.addr);
@@ -2761,7 +2761,7 @@ fn player_permission_and_spectate_apis_send_minestom_packets() {
 }
 
 #[test]
-fn player_dimension_statistics_hover_and_leave_bed_api_match_minestom_surface() {
+fn player_dimension_statistics_hover_and_leave_bed_api_match_reference_surface() {
     let mut player = Player::new(
         Uuid::nil(),
         "Player".to_string(),
@@ -2801,7 +2801,7 @@ fn player_dimension_statistics_hover_and_leave_bed_api_match_minestom_surface() 
 }
 
 #[test]
-fn player_look_at_and_face_position_apis_send_minestom_face_player_packets() {
+fn player_look_at_and_face_position_apis_send_reference_face_player_packets() {
     let (mut client, mut peer_stream) = test_client_pair();
     client.state = ConnectionState::Play;
     let mut player = Player::new(Uuid::nil(), "Player".to_string(), 0, client.addr);
@@ -2856,7 +2856,7 @@ fn player_look_at_and_face_position_apis_send_minestom_face_player_packets() {
 }
 
 #[test]
-fn player_debug_subscriptions_and_vehicle_state_match_minestom_listener_surface() {
+fn player_debug_subscriptions_and_vehicle_state_match_reference_listener_surface() {
     let (client, _peer_stream) = test_client_pair();
     let mut worlds = WorldManager::new();
     let world = World::new_with_dimension_name(
@@ -2894,7 +2894,7 @@ fn player_debug_subscriptions_and_vehicle_state_match_minestom_listener_surface(
 }
 
 #[test]
-fn player_sound_effect_action_bar_and_boss_bar_apis_send_minestom_packets() {
+fn player_sound_effect_action_bar_and_boss_bar_apis_send_reference_packets() {
     let (mut client, mut peer_stream) = test_client_pair();
     client.state = ConnectionState::Play;
     let mut player = Player::new(Uuid::nil(), "Player".to_string(), 0, client.addr);

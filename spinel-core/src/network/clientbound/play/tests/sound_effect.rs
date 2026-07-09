@@ -4,7 +4,7 @@ use spinel_network::types::Vector3d;
 use spinel_network::types::sound::SoundEvent;
 
 #[test]
-fn sound_effect_packet_source_is_var_int_like_minestom() {
+fn sound_effect_packet_source_is_var_int_like_reference() {
     let packet = SoundEffectPacket {
         sound_event: NetworkPositionedSoundEvent(SoundEvent::Id(2)),
         source_id: 0,

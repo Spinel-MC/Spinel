@@ -3,7 +3,7 @@ use spinel_network::DataType;
 use spinel_network::types::Identifier;
 
 #[test]
-fn stop_sound_packet_matches_minestom_optional_source_and_sound_shape() {
+fn stop_sound_packet_matches_reference_optional_source_and_sound_shape() {
     let packet = StopSoundPacket::new(Some(3), Some(Identifier::minecraft("entity.arrow.hit")));
     let mut payload = Vec::new();
 
@@ -16,7 +16,7 @@ fn stop_sound_packet_matches_minestom_optional_source_and_sound_shape() {
 }
 
 #[test]
-fn stop_all_sounds_has_zero_flags_like_minestom() {
+fn stop_all_sounds_has_zero_flags_like_reference() {
     let packet = StopSoundPacket {
         stop: NetworkSoundStop::default(),
     };

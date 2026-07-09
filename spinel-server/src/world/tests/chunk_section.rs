@@ -25,7 +25,7 @@ fn chunk_section_public_palette_mutation_keeps_network_block_count_coherent() {
 }
 
 #[test]
-fn chunk_section_clear_clone_and_light_arrays_match_minestom_section_surface() {
+fn chunk_section_clear_clone_and_light_arrays_match_reference_section_surface() {
     let mut section = ChunkSection::new(0);
     section
         .block_palette_mut()
@@ -53,7 +53,7 @@ fn chunk_section_clear_clone_and_light_arrays_match_minestom_section_surface() {
 }
 
 #[test]
-fn empty_section_light_storage_is_lazy_like_minestom() {
+fn empty_section_light_storage_is_lazy_like_reference() {
     let mut section = ChunkSection::new(0);
 
     assert!(!section.has_allocated_sky_light());
@@ -78,7 +78,7 @@ fn empty_section_light_storage_is_lazy_like_minestom() {
 }
 
 #[test]
-fn fully_lit_section_uses_minestom_canonical_storage() {
+fn fully_lit_section_uses_reference_canonical_storage() {
     let mut section = ChunkSection::new(0);
 
     section.set_sky_light(&[255; 2048]).unwrap();

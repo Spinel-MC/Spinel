@@ -2,7 +2,7 @@ use super::super::commands::{ArgumentParserType, CommandNode, CommandsPacket};
 use spinel_network::DataType;
 
 #[test]
-fn commands_packet_matches_minestom_root_and_literal_node_shape() {
+fn commands_packet_matches_reference_root_and_literal_node_shape() {
     let packet = CommandsPacket {
         nodes: vec![
             CommandNode::root(vec![1]),
@@ -24,7 +24,7 @@ fn commands_packet_matches_minestom_root_and_literal_node_shape() {
 }
 
 #[test]
-fn commands_packet_matches_minestom_argument_node_shape() {
+fn commands_packet_matches_reference_argument_node_shape() {
     let packet = CommandsPacket {
         nodes: vec![
             CommandNode::root(vec![1]),
@@ -53,7 +53,7 @@ fn commands_packet_matches_minestom_argument_node_shape() {
 }
 
 #[test]
-fn commands_packet_decodes_minestom_argument_property_bytes() {
+fn commands_packet_decodes_reference_argument_property_bytes() {
     let packet = CommandsPacket {
         nodes: vec![
             CommandNode::root((1..=6).collect()),

@@ -54,7 +54,7 @@ fn entity_remove_from_world_listener(
 }
 
 #[test]
-fn world_add_entity_dispatches_add_and_spawn_events_in_minestom_order() {
+fn world_add_entity_dispatches_add_and_spawn_events_in_reference_order() {
     let _lock = ENTITY_INSTANCE_EVENT_TEST_LOCK.lock().unwrap();
     reset_entity_world_event_state();
     let mut server = MinecraftServer::new();

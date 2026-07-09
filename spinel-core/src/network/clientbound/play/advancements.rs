@@ -8,8 +8,8 @@ use spinel_utils::component::Component;
 use spinel_utils::component::text::TextComponent;
 use std::io::{self, Read, Write};
 
-const NOTIFICATION_IDENTIFIER: &str = "minestom:notification";
-const NOTIFICATION_CRITERION: &str = "minestom:some_criteria";
+const NOTIFICATION_IDENTIFIER: &str = "spinel:notification";
+const NOTIFICATION_CRITERION: &str = "spinel:notification_criteria";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AdvancementFrameType {

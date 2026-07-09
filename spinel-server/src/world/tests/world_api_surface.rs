@@ -40,7 +40,7 @@ use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use uuid::Uuid;
 
 #[test]
-fn world_and_chunk_tags_match_minestom_tag_handler_surface() {
+fn world_and_chunk_tags_match_reference_tag_handler_surface() {
     let mut world = World::new_with_dimension_name(
         uuid::Uuid::new_v4(),
         spinel_registry::dimension_type::DimensionType::OVERWORLD,
@@ -149,7 +149,7 @@ fn world_light_reads_match_loaded_chunk_and_missing_chunk_edges() {
 }
 
 #[test]
-fn world_entity_line_of_sight_matches_minestom_entity_raycast_surface() {
+fn world_entity_line_of_sight_matches_reference_entity_raycast_surface() {
     let mut world = World::new_with_dimension_name(
         uuid::Uuid::new_v4(),
         spinel_registry::dimension_type::DimensionType::OVERWORLD,
@@ -253,7 +253,7 @@ fn world_weather_api_updates_weather_state() {
 }
 
 #[test]
-fn weather_validates_levels_and_matches_minestom_immutable_updates() {
+fn weather_validates_levels_and_matches_reference_immutable_updates() {
     assert!(Weather::new(-0.01, 0.0).is_err());
     assert!(Weather::new(0.0, 1.01).is_err());
     assert!(Weather::new(f32::NAN, 0.0).is_err());
@@ -280,7 +280,7 @@ fn weather_validates_levels_and_matches_minestom_immutable_updates() {
 }
 
 #[test]
-fn world_weather_transition_ticks_follow_minestom_overload() {
+fn world_weather_transition_ticks_follow_reference_overload() {
     let mut world = World::new_with_dimension_name(
         uuid::Uuid::new_v4(),
         spinel_registry::dimension_type::DimensionType::OVERWORLD,
@@ -324,7 +324,7 @@ fn world_set_biome_loads_chunk_updates_palette_and_timestamp() {
 }
 
 #[test]
-fn world_block_lookup_conditions_match_minestom_cached_and_none_edges() {
+fn world_block_lookup_conditions_match_reference_cached_and_none_edges() {
     let mut world = World::new_with_dimension_name(
         uuid::Uuid::new_v4(),
         spinel_registry::dimension_type::DimensionType::OVERWORLD,
@@ -373,7 +373,7 @@ fn world_chunk_loader_getter_exposes_assigned_loader_without_mutable_ownership()
 }
 
 #[test]
-fn world_border_api_matches_minestom_initialize_packet_surface() {
+fn world_border_api_matches_reference_initialize_packet_surface() {
     let mut world = World::new_with_dimension_name(
         uuid::Uuid::new_v4(),
         spinel_registry::dimension_type::DimensionType::OVERWORLD,
@@ -561,7 +561,7 @@ fn world_boss_bar_api_tracks_unique_bars_and_dispatches_show_hide_packets() {
 }
 
 #[test]
-fn world_explosion_supplier_get_set_and_clear_match_minestom_surface() {
+fn world_explosion_supplier_get_set_and_clear_match_reference_surface() {
     let mut world = World::new_with_dimension_name(
         uuid::Uuid::new_v4(),
         spinel_registry::dimension_type::DimensionType::OVERWORLD,
@@ -587,7 +587,7 @@ fn world_explosion_supplier_get_set_and_clear_match_minestom_surface() {
 }
 
 #[test]
-fn world_explode_requires_supplier_like_minestom_state_branch() {
+fn world_explode_requires_supplier_like_reference_state_branch() {
     let mut world = World::new_with_dimension_name(
         uuid::Uuid::new_v4(),
         spinel_registry::dimension_type::DimensionType::OVERWORLD,
@@ -691,7 +691,7 @@ fn world_explode_prepares_removes_blocks_sends_packet_and_runs_hooks() {
 }
 
 #[test]
-fn block_handler_place_destroy_and_chunk_tick_follow_minestom_owner_flow() {
+fn block_handler_place_destroy_and_chunk_tick_follow_reference_owner_flow() {
     let mut world = World::new_with_dimension_name(
         uuid::Uuid::new_v4(),
         spinel_registry::dimension_type::DimensionType::OVERWORLD,
@@ -825,7 +825,7 @@ fn block_handler_touch_routes_from_world_entity_tick() {
 }
 
 #[test]
-fn block_handler_place_block_requires_loaded_chunk_like_minestom() {
+fn block_handler_place_block_requires_loaded_chunk_like_reference() {
     let mut world = World::new_with_dimension_name(
         uuid::Uuid::new_v4(),
         spinel_registry::dimension_type::DimensionType::OVERWORLD,
@@ -1329,7 +1329,7 @@ fn break_block_sends_destroy_effect_to_chunk_viewers_except_breaker() {
 }
 
 #[test]
-fn world_identity_and_pointers_resolve_world_uuid_like_minestom() {
+fn world_identity_and_pointers_resolve_world_uuid_like_reference() {
     let world = World::new_with_dimension_name(
         uuid::Uuid::new_v4(),
         spinel_registry::dimension_type::DimensionType::OVERWORLD,
@@ -1342,7 +1342,7 @@ fn world_identity_and_pointers_resolve_world_uuid_like_minestom() {
 }
 
 #[test]
-fn chunk_world_membership_and_viewer_chunk_send_match_minestom_chunk_api() {
+fn chunk_world_membership_and_viewer_chunk_send_match_reference_chunk_api() {
     let mut world = World::new_with_dimension_name(
         uuid::Uuid::new_v4(),
         spinel_registry::dimension_type::DimensionType::OVERWORLD,
@@ -1568,7 +1568,7 @@ fn generic_entity_set_world_moves_between_worlds_after_target_chunk_load() {
 }
 
 #[test]
-fn generic_entity_set_world_point_and_default_position_match_minestom_overloads() {
+fn generic_entity_set_world_point_and_default_position_match_reference_overloads() {
     let mut worlds = WorldManager::new();
     let first_world =
         worlds.create_world(spinel_registry::dimension_type::DimensionType::OVERWORLD);
@@ -1940,7 +1940,7 @@ fn same_dimension_player_set_world_does_not_send_respawn_packet() {
 }
 
 #[test]
-fn shared_world_registration_linking_and_chunk_delegation_match_minestom_shape() {
+fn shared_world_registration_linking_and_chunk_delegation_match_reference_shape() {
     let mut worlds = WorldManager::new();
     let source_world =
         worlds.create_world(spinel_registry::dimension_type::DimensionType::OVERWORLD);

@@ -56,13 +56,13 @@ fn permission_owner_adds_gets_and_removes_permissions() {
 fn permission_owner_verifies_exact_named_nbt_permission() {
     let mut permission_owner = PermissionOwner::default();
     let nbt_data = NbtCompound::new()
-        .put("name", Nbt::String("Minestom".to_string()))
+        .put("name", Nbt::String("Reference".to_string()))
         .put("amount", Nbt::Int(5));
     let permission = Permission::from_nbt_data("perm.name", nbt_data);
     let valid_nbt_data = |nbt_data: Option<&NbtCompound>| {
         nbt_data
             .and_then(|nbt_data| nbt_data.get("name"))
-            .is_some_and(|name| name == &Nbt::String("Minestom".to_string()))
+            .is_some_and(|name| name == &Nbt::String("Reference".to_string()))
     };
     let invalid_nbt_data = |nbt_data: Option<&NbtCompound>| nbt_data.is_some();
 
@@ -76,7 +76,7 @@ fn permission_owner_verifies_exact_named_nbt_permission() {
 }
 
 #[test]
-fn permission_owner_matches_minestom_wildcard_patterns() {
+fn permission_owner_matches_reference_wildcard_patterns() {
     let mut permission_owner = PermissionOwner::default();
 
     permission_owner.add_permission(Permission::new("foo.b*r.baz"));

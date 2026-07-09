@@ -16,7 +16,7 @@ use std::sync::{
 use std::time::Duration;
 
 #[test]
-fn creature_kill_uses_minestom_removal_animation_delay() {
+fn creature_kill_uses_reference_removal_animation_delay() {
     let mut animated_creature = EntityCreature::new(EntityType::ZOMBIE);
 
     assert_eq!(animated_creature.get_removal_animation_delay_millis(), 1000);
@@ -37,7 +37,7 @@ fn creature_kill_uses_minestom_removal_animation_delay() {
 }
 
 #[test]
-fn ai_group_preempts_lower_priority_goal_in_minestom_order() {
+fn ai_group_preempts_lower_priority_goal_in_reference_order() {
     let events = Arc::new(Mutex::new(Vec::new()));
     let high_should_start = Arc::new(AtomicBool::new(false));
     let high_should_end = Arc::new(AtomicBool::new(false));
@@ -219,7 +219,7 @@ fn goal_target_lookup_uses_target_selector_priority() {
 }
 
 #[test]
-fn closest_and_last_damager_targets_match_minestom_selection_rules() {
+fn closest_and_last_damager_targets_match_reference_selection_rules() {
     let mut world = ai_world();
     let mut creature = EntityCreature::new(EntityType::ZOMBIE);
     creature.set_position(EntityPosition::new(1.5, 65.0, 1.5, 0.0, 0.0));
@@ -298,7 +298,7 @@ fn follow_target_owns_creature_target_and_starts_navigation() {
 }
 
 #[test]
-fn random_look_and_stroll_goal_public_configuration_matches_minestom_surface() {
+fn random_look_and_stroll_goal_public_configuration_matches_reference_surface() {
     let world = ai_world();
     let snapshot = world.update_snapshot();
     let mut creature = EntityCreature::new(EntityType::ZOMBIE);
@@ -333,7 +333,7 @@ fn do_nothing_goal_clamps_chance_and_ends_after_its_duration() {
 }
 
 #[test]
-fn melee_and_combined_goals_queue_minestom_attack_branches() {
+fn melee_and_combined_goals_queue_reference_attack_branches() {
     let mut world = ai_world();
     let mut creature = EntityCreature::new(EntityType::ZOMBIE);
     creature.set_position(EntityPosition::new(1.5, 65.0, 1.5, 0.0, 0.0));

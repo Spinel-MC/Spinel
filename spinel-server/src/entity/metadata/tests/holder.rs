@@ -3,7 +3,7 @@ use crate::entity::metadata::{MetadataByteMaskDefinition, MetadataDefinition, de
 use spinel_network::types::entity_metadata::MetadataValue;
 
 #[test]
-fn metadata_holder_returns_minestom_default_when_entry_is_unset() {
+fn metadata_holder_returns_reference_default_when_entry_is_unset() {
     let metadata = MetadataHolder::default();
 
     assert_eq!(
@@ -86,7 +86,7 @@ fn player_metadata_definitions_include_avatar_and_living_offsets() {
 }
 
 #[test]
-fn inherited_animal_metadata_indexes_match_minestom() {
+fn inherited_animal_metadata_indexes_match_reference() {
     assert_eq!(definitions::ageable_mob::is_baby().get_index(), 16);
     assert_eq!(definitions::tameable_animal::get_owner().get_index(), 18);
     assert_eq!(definitions::wolf::get_sound_variant().get_index(), 23);

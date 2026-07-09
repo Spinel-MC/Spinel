@@ -320,7 +320,7 @@ fn measure_fast_client_movement_chunk_generation_per_second() {
 }
 
 #[test]
-fn too_large_player_coordinate_kicks_player_like_minestom() {
+fn too_large_player_coordinate_kicks_player_like_reference() {
     let (mut client, mut peer_stream) = test_client_pair();
     let mut world = world_with_entered_player(&mut client);
     let registries = Registries::new_vanilla();
@@ -560,7 +560,7 @@ fn position_and_rotation_movement_queues_chunks_only_after_async_load_completion
 }
 
 #[test]
-fn recent_reverse_transition_does_not_schedule_chunk_loads_like_minestom() {
+fn recent_reverse_transition_does_not_schedule_chunk_loads_like_reference() {
     let (mut client, _peer_stream) = test_client_pair();
     let mut world = world_with_entered_player(&mut client);
     let registries = Registries::new_vanilla();
@@ -810,7 +810,7 @@ fn player_move_event_triggred_teleport_stops_original_movement() {
 }
 
 #[test]
-fn chunk_state_accessors_match_minestom_chunk_api_capability() {
+fn chunk_state_accessors_match_reference_chunk_api_capability() {
     let mut chunk = Chunk::new(ChunkPosition::new(2, -3));
     let copied_chunk = chunk.copy_for_position(ChunkPosition::new(4, 5));
     let copied_lighting_chunk =
@@ -929,7 +929,7 @@ fn chunk_cache_and_heightmaps_invalidate_after_block_mutation() {
 }
 
 #[test]
-fn chunk_loads_heightmaps_from_nbt_like_minestom() {
+fn chunk_loads_heightmaps_from_nbt_like_reference() {
     let mut chunk = Chunk::new(ChunkPosition::new(0, 0));
     let mut heightmaps = spinel_nbt::NbtCompound::new();
     heightmaps.insert(
@@ -946,7 +946,7 @@ fn chunk_loads_heightmaps_from_nbt_like_minestom() {
 }
 
 #[test]
-fn chunk_viewer_membership_matches_minestom_no_op_edges() {
+fn chunk_viewer_membership_matches_reference_no_op_edges() {
     let mut chunk = Chunk::new(ChunkPosition::new(0, 0));
     let viewer = EntityId::next();
 
@@ -962,7 +962,7 @@ fn chunk_viewer_membership_matches_minestom_no_op_edges() {
 }
 
 #[test]
-fn empty_chunk_light_data_uses_empty_section_masks_like_minestom() {
+fn empty_chunk_light_data_uses_empty_section_masks_like_reference() {
     let chunk = Chunk::new(ChunkPosition::new(0, 0));
     let light_data = chunk.light_data();
 
@@ -1047,7 +1047,7 @@ fn added_entities_record_their_current_world_membership() {
 }
 
 #[test]
-fn world_dimension_registration_and_void_api_match_minestom_world_surface() {
+fn world_dimension_registration_and_void_api_match_reference_world_surface() {
     let dimension_type = DimensionType::THE_NETHER;
     let cached_dimension_type = DimensionType::builder()
         .vertical_bounds(-32, 256, 128)
@@ -1068,7 +1068,7 @@ fn world_dimension_registration_and_void_api_match_minestom_world_surface() {
 }
 
 #[test]
-fn world_entity_and_player_lookup_api_matches_minestom_world_surface() {
+fn world_entity_and_player_lookup_api_matches_reference_world_surface() {
     let mut world = World::new_with_dimension_name(
         uuid::Uuid::new_v4(),
         spinel_registry::dimension_type::DimensionType::OVERWORLD,
@@ -1145,7 +1145,7 @@ fn world_chunk_and_block_api_match_loaded_chunk_semantics() {
 }
 
 #[test]
-fn world_time_api_matches_minestom_defaults_and_validation() {
+fn world_time_api_matches_reference_defaults_and_validation() {
     let mut world = World::new_with_dimension_name(
         uuid::Uuid::new_v4(),
         spinel_registry::dimension_type::DimensionType::OVERWORLD,
@@ -1178,7 +1178,7 @@ fn world_time_api_matches_minestom_defaults_and_validation() {
 }
 
 #[test]
-fn world_tick_advances_time_like_minestom() {
+fn world_tick_advances_time_like_reference() {
     let mut world = World::new_with_dimension_name(
         uuid::Uuid::new_v4(),
         spinel_registry::dimension_type::DimensionType::OVERWORLD,

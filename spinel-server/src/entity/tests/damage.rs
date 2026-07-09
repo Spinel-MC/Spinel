@@ -3,7 +3,7 @@ use spinel_network::types::Vector3d;
 use spinel_registry::damage_type::DamageType;
 
 #[test]
-fn damage_amount_matches_minestom_without_clamping() {
+fn damage_amount_matches_reference_without_clamping() {
     let mut damage = Damage::new(DamageType::GENERIC, -2.0);
 
     assert_eq!(damage.get_amount(), -2.0);

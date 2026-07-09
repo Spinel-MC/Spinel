@@ -5,7 +5,7 @@ use std::sync::mpsc;
 use std::time::Duration;
 
 #[test]
-fn outbound_queue_preserves_packets_beyond_minestom_inbound_limit() {
+fn outbound_queue_preserves_packets_beyond_reference_inbound_limit() {
     let listener = TcpListener::bind(SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 0)).unwrap();
     let address = listener.local_addr().unwrap();
     let stream = TcpStream::connect(address).unwrap();

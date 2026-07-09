@@ -7,7 +7,7 @@ use spinel_nbt::{Nbt, NbtCompound};
 use spinel_utils::color::Color;
 
 #[test]
-fn potion_effect_settings_preserve_minestom_defaults_and_hidden_effects() {
+fn potion_effect_settings_preserve_reference_defaults_and_hidden_effects() {
     let default_settings = PotionEffectSettings::new(0, 0, false, true, true, None);
     let Nbt::Compound(default_compound) = default_settings.to_component_nbt() else {
         panic!("expected settings compound");

@@ -3,7 +3,7 @@ use spinel_network::DataType;
 use std::io::{Cursor, Read};
 
 #[test]
-fn serverbound_player_abilities_packet_decodes_minestom_flying_flag() {
+fn serverbound_player_abilities_packet_decodes_reference_flying_flag() {
     let mut reader = Cursor::new(vec![0x02]);
 
     let packet = ServerboundPlayerAbilitiesPacket::decode(&mut reader).unwrap();

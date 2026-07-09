@@ -2,7 +2,7 @@ use crate::types::{BlockHitResult, Position};
 use crate::{DataType, VarIntWrapper};
 
 #[test]
-fn block_hit_result_matches_minestom_use_item_on_shape() {
+fn block_hit_result_matches_reference_use_item_on_shape() {
     let block_hit = BlockHitResult {
         position: Position { x: 1, y: 2, z: 3 },
         direction: 1,

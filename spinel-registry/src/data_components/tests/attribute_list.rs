@@ -150,7 +150,7 @@ fn attribute_list_rejects_unknown_operation_slot_and_display_kind() {
 }
 
 #[test]
-fn equipment_slot_group_names_ids_and_filters_match_minestom_attribute_list_slot_groups() {
+fn equipment_slot_group_names_ids_and_filters_match_reference_attribute_list_slot_groups() {
     assert_eq!(EquipmentSlotGroup::Any.protocol_id(), 0);
     assert_eq!(EquipmentSlotGroup::MainHand.protocol_id(), 1);
     assert_eq!(EquipmentSlotGroup::OffHand.protocol_id(), 2);

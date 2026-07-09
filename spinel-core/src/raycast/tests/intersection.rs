@@ -78,7 +78,7 @@ fn raycast_rejects_box_beyond_ray_segment() {
 }
 
 #[test]
-fn raycast_corner_ties_use_minestom_x_z_y_axis_priority() {
+fn raycast_corner_ties_use_reference_x_z_y_axis_priority() {
     let bounding_box = RaycastBoundingBox::new(
         Vector3d {
             x: 0.0,

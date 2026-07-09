@@ -51,7 +51,7 @@ fn shooter_backed_projectile_spawn_packets_identify_their_shooter() {
 }
 
 #[test]
-fn arrow_metadata_owner_matches_minestom_defaults_and_dirty_entries() {
+fn arrow_metadata_owner_matches_reference_defaults_and_dirty_entries() {
     let mut arrow = ProjectileEntity::new(None, EntityType::ARROW);
 
     {
@@ -112,7 +112,7 @@ fn spectral_arrow_metadata_owner_inherits_abstract_arrow_and_projectile_shooter(
 }
 
 #[test]
-fn trident_and_wither_skull_metadata_owners_match_minestom_definitions() {
+fn trident_and_wither_skull_metadata_owners_match_reference_definitions() {
     let shooter = EntityId::from_raw(44);
     let mut trident = ProjectileEntity::new(None, EntityType::TRIDENT);
     let mut wither_skull = ProjectileEntity::new(None, EntityType::WITHER_SKULL);
@@ -157,7 +157,7 @@ fn trident_and_wither_skull_metadata_owners_match_minestom_definitions() {
 }
 
 #[test]
-fn fireballs_wind_charges_and_firework_metadata_owners_match_minestom() {
+fn fireballs_wind_charges_and_firework_metadata_owners_match_reference() {
     let shooter = EntityId::from_raw(21);
     let mut fireball = ProjectileEntity::new(None, EntityType::FIREBALL);
     let mut small_fireball = ProjectileEntity::new(None, EntityType::SMALL_FIREBALL);
@@ -242,7 +242,7 @@ fn fireballs_wind_charges_and_firework_metadata_owners_match_minestom() {
 }
 
 #[test]
-fn item_projectile_metadata_owner_matches_every_minestom_wrapper() {
+fn item_projectile_metadata_owner_matches_every_reference_wrapper() {
     let emerald = ItemStack::of(Material::EMERALD);
 
     let mut snowball = ProjectileEntity::new(None, EntityType::SNOWBALL);
@@ -350,7 +350,7 @@ fn item_projectile_metadata_owner_matches_every_minestom_wrapper() {
 }
 
 #[test]
-fn projectile_shoot_matches_minestom_gravity_compensation_and_velocity_units() {
+fn projectile_shoot_matches_reference_gravity_compensation_and_velocity_units() {
     let mut projectile = ProjectileEntity::new(None, EntityType::ARROW);
     let mut random = StdRng::seed_from_u64(4);
     projectile.shoot_from_with_rng(

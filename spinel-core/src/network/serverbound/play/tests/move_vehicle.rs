@@ -2,7 +2,7 @@ use super::super::move_vehicle::ServerboundVehicleMovePacket;
 use spinel_network::DataType;
 
 #[test]
-fn move_vehicle_packet_matches_minestom_shape() {
+fn move_vehicle_packet_matches_reference_shape() {
     let packet = ServerboundVehicleMovePacket {
         x: 1.0,
         y: 2.0,

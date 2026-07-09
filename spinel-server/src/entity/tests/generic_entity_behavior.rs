@@ -15,7 +15,7 @@ use spinel_registry::{
 use spinel_utils::component::Component;
 
 #[test]
-fn generic_entity_owns_minestom_entity_identity_and_type() {
+fn generic_entity_owns_reference_entity_identity_and_type() {
     let entity = GenericEntity::new(EntityType::ZOMBIE);
 
     assert!(entity.get_entity_id().get_value() > 0);
@@ -66,7 +66,7 @@ fn generic_living_entities_use_extracted_vanilla_base_attributes() {
 }
 
 #[test]
-fn generic_entity_switch_type_preserves_bounding_box_like_minestom() {
+fn generic_entity_switch_type_preserves_bounding_box_like_reference() {
     let mut entity = GenericEntity::new(EntityType::ZOMBIE);
     let original_bounding_box = entity.get_bounding_box();
     let original_aerodynamics = entity.get_aerodynamics();
@@ -90,7 +90,7 @@ fn generic_entity_switch_type_preserves_bounding_box_like_minestom() {
 }
 
 #[test]
-fn generic_entity_bounding_box_distance_and_position_api_match_minestom_shape() {
+fn generic_entity_bounding_box_distance_and_position_api_match_reference_shape() {
     let mut entity = GenericEntity::new(EntityType::ZOMBIE);
     let mut other_entity = GenericEntity::new(EntityType::ZOMBIE);
 
@@ -116,7 +116,7 @@ fn generic_entity_bounding_box_distance_and_position_api_match_minestom_shape() 
 }
 
 #[test]
-fn generic_entity_look_at_and_chunk_api_match_minestom_shape() {
+fn generic_entity_look_at_and_chunk_api_match_reference_shape() {
     let mut entity = GenericEntity::new(EntityType::ZOMBIE);
     let mut target = GenericEntity::new(EntityType::ZOMBIE);
 
@@ -136,7 +136,7 @@ fn generic_entity_look_at_and_chunk_api_match_minestom_shape() {
 }
 
 #[test]
-fn generic_entity_tag_handler_matches_minestom_entity_surface() {
+fn generic_entity_tag_handler_matches_reference_entity_surface() {
     let mut entity = GenericEntity::new(EntityType::ZOMBIE);
     let owner_tag = Tag::<String>::string("owner");
 
@@ -146,7 +146,7 @@ fn generic_entity_tag_handler_matches_minestom_entity_surface() {
 }
 
 #[test]
-fn generic_entity_passenger_leash_and_status_api_match_minestom_shape() {
+fn generic_entity_passenger_leash_and_status_api_match_reference_shape() {
     let mut entity = GenericEntity::new(EntityType::ZOMBIE);
     let passenger_id = EntityId::next();
     let leash_holder_id = EntityId::next();
@@ -192,7 +192,7 @@ fn generic_entity_passenger_leash_and_status_api_match_minestom_shape() {
 }
 
 #[test]
-fn generic_entity_base_metadata_api_matches_minestom_shape() {
+fn generic_entity_base_metadata_api_matches_reference_shape() {
     let mut entity = GenericEntity::new(EntityType::ZOMBIE);
     let custom_name = Component::text("Name").build();
 
@@ -227,7 +227,7 @@ fn generic_entity_base_metadata_api_matches_minestom_shape() {
 }
 
 #[test]
-fn generic_entity_data_components_match_minestom_entity_component_surface() {
+fn generic_entity_data_components_match_reference_entity_component_surface() {
     let mut entity = GenericEntity::new(EntityType::ZOMBIE);
     let component =
         DataComponentType::<String>::new(9000, Identifier::vanilla_static("test_component"));
@@ -239,7 +239,7 @@ fn generic_entity_data_components_match_minestom_entity_component_surface() {
 }
 
 #[test]
-fn generic_living_state_damage_fire_and_death_match_minestom_surface() {
+fn generic_living_state_damage_fire_and_death_match_reference_surface() {
     let mut entity = GenericEntity::new(EntityType::ZOMBIE);
 
     entity.set_arrow_count(4);
@@ -273,7 +273,7 @@ fn generic_living_state_damage_fire_and_death_match_minestom_surface() {
 }
 
 #[test]
-fn generic_living_attributes_effects_animation_and_bed_api_match_minestom_surface() {
+fn generic_living_attributes_effects_animation_and_bed_api_match_reference_surface() {
     let mut entity = GenericEntity::new(EntityType::ZOMBIE);
     let modifier = EntityAttributeModifier::base_attack_speed(-2.0);
 
@@ -354,7 +354,7 @@ fn generic_living_attributes_effects_animation_and_bed_api_match_minestom_surfac
 }
 
 #[test]
-fn generic_living_motion_team_and_collision_api_match_minestom_surface() {
+fn generic_living_motion_team_and_collision_api_match_reference_surface() {
     let mut entity = GenericEntity::new(EntityType::ZOMBIE);
     let aerodynamics = EntityAerodynamics::new(0.8, 0.9, 0.04);
 
@@ -452,7 +452,7 @@ fn generic_living_motion_team_and_collision_api_match_minestom_surface() {
 }
 
 #[test]
-fn generic_entity_knockback_matches_minestom_base_and_living_rules() {
+fn generic_entity_knockback_matches_reference_base_and_living_rules() {
     let mut living_entity = GenericEntity::new(EntityType::ZOMBIE);
     living_entity.set_on_ground(true);
     living_entity
@@ -476,7 +476,7 @@ fn generic_entity_knockback_matches_minestom_base_and_living_rules() {
 }
 
 #[test]
-fn generic_living_health_heal_and_kill_state_match_minestom() {
+fn generic_living_health_heal_and_kill_state_match_reference() {
     let mut entity = GenericEntity::new(EntityType::ZOMBIE);
     entity.set_on_ground(true);
     entity.take_knockback(0.4, 1.0, 0.0);
@@ -567,7 +567,7 @@ fn generic_entity_metadata_defaults_are_not_redundantly_sent() {
 }
 
 #[test]
-fn generic_entity_builds_minestom_equipment_packet_from_owned_equipment() {
+fn generic_entity_builds_reference_equipment_packet_from_owned_equipment() {
     let mut entity = GenericEntity::new(EntityType::ZOMBIE);
     entity.set_equipment(
         EquipmentSlot::MainHand,
@@ -638,7 +638,7 @@ fn generic_entity_builds_velocity_head_look_and_teleport_packets_from_owned_stat
 }
 
 #[test]
-fn generic_entity_builds_minestom_relative_movement_packets_from_previous_position() {
+fn generic_entity_builds_reference_relative_movement_packets_from_previous_position() {
     let mut entity = GenericEntity::new(EntityType::ZOMBIE);
     let previous_position = EntityPosition::new(1.0, 2.0, 3.0, 0.0, 0.0);
     entity.set_position(EntityPosition::new(1.5, 2.0, 2.5, 90.0, 45.0));
@@ -659,7 +659,7 @@ fn generic_entity_builds_minestom_relative_movement_packets_from_previous_positi
 }
 
 #[test]
-fn generic_entity_position_clamps_to_minestom_coordinate_limit() {
+fn generic_entity_position_clamps_to_reference_coordinate_limit() {
     let mut entity = GenericEntity::new(EntityType::ZOMBIE);
 
     entity.set_position(EntityPosition::new(

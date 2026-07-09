@@ -224,7 +224,7 @@ fn finished_item_effect_components_ignore_unknown_mob_effect_identifiers() {
     );
 }
 #[test]
-fn right_click_swappable_armor_matches_minestom_equipment_swap() {
+fn right_click_swappable_armor_matches_reference_equipment_swap() {
     let mut player = test_player();
     let mut server = MinecraftServer::new();
     let (mut client, _peer_stream) = test_client();

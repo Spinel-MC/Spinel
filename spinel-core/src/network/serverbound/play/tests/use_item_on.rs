@@ -4,7 +4,7 @@ use spinel_network::{DataType, Position};
 use std::io::{Cursor, Read};
 
 #[test]
-fn use_item_on_decodes_minestom_block_placement_shape() {
+fn use_item_on_decodes_reference_block_placement_shape() {
     let mut payload = Vec::new();
     VarIntWrapper(0).encode(&mut payload).unwrap();
     Position { x: 3, y: 39, z: 0 }.encode(&mut payload).unwrap();

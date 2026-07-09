@@ -2,7 +2,7 @@ use crate::world::Block;
 use crate::world::section_palette::SectionPalette;
 
 #[test]
-fn two_value_block_palette_uses_minestom_packed_storage() {
+fn two_value_block_palette_uses_reference_packed_storage() {
     let mut palette = SectionPalette::<_, 4096, 4>::new(Block::AIR.default_state());
 
     (0..4096).step_by(2).for_each(|entry_index| {

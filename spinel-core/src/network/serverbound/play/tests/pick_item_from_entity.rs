@@ -2,7 +2,7 @@ use super::super::pick_item_from_entity::PickItemFromEntityPacket;
 use spinel_network::DataType;
 
 #[test]
-fn pick_item_from_entity_packet_matches_minestom_shape() {
+fn pick_item_from_entity_packet_matches_reference_shape() {
     let mut payload = [0x2a, 0x01].as_slice();
 
     let packet = PickItemFromEntityPacket::decode(&mut payload).unwrap();

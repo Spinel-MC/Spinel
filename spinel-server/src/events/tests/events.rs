@@ -20,7 +20,7 @@ use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use uuid::Uuid;
 
 #[test]
-fn living_event_surface_matches_minestom_cancellation_shape() {
+fn living_event_surface_matches_reference_cancellation_shape() {
     let living_entity_id = EntityId::from_raw(1);
     let item_entity_id = EntityId::from_raw(2);
     let mut entity = Entity::Generic(GenericEntity::new(EntityType::ZOMBIE));
@@ -62,7 +62,7 @@ fn living_event_surface_matches_minestom_cancellation_shape() {
 }
 
 #[test]
-fn player_connection_events_expose_minestom_mutation_and_cancellation_surface() {
+fn player_connection_events_expose_reference_mutation_and_cancellation_surface() {
     let mut player = Player::new(
         Uuid::nil(),
         "Player".to_string(),

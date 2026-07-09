@@ -4,7 +4,7 @@ use spinel_network::types::var_int::VarIntWrapper;
 use std::io::{Cursor, Read};
 
 #[test]
-fn use_item_decodes_minestom_shape() {
+fn use_item_decodes_reference_shape() {
     let mut payload = Vec::new();
     VarIntWrapper(0).encode(&mut payload).unwrap();
     VarIntWrapper(300).encode(&mut payload).unwrap();

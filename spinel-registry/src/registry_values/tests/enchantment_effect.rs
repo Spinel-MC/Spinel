@@ -66,7 +66,7 @@ fn enchantment_effect_top_level_branches_are_distinct() {
 }
 
 #[test]
-fn attribute_effect_preserves_minestom_codec_field_names() {
+fn attribute_effect_preserves_reference_codec_field_names() {
     let amount = Nbt::Compound(level_value_payload(2.0));
     let effect = AttributeEffect::new(
         Identifier::minecraft("bonus"),
@@ -176,7 +176,7 @@ fn tagged_entity_location_and_value_effects_preserve_type_and_payload() {
 }
 
 #[test]
-fn enchantment_target_nbt_names_match_minestom_target_enum() {
+fn enchantment_target_nbt_names_match_reference_target_enum() {
     assert_eq!(EnchantmentTarget::Attacker.nbt_name(), "attacker");
     assert_eq!(
         EnchantmentTarget::DamagingEntity.nbt_name(),
@@ -242,7 +242,7 @@ fn entity_effect_union_preserves_all_of_and_single_value_leaf_shapes() {
 }
 
 #[test]
-fn entity_effect_apply_mob_effect_preserves_minestom_codec_fields() {
+fn entity_effect_apply_mob_effect_preserves_reference_codec_fields() {
     let to_apply = RegistryTagReference::direct(vec![Identifier::minecraft("speed")]);
     let effect = EntityEffectApplyMobEffect::new(
         to_apply.clone(),
@@ -594,7 +594,7 @@ fn string_list_payload(values: Vec<&str>) -> Nbt {
 }
 
 #[test]
-fn entity_effect_from_nbt_compound_decodes_all_minestom_registered_leaf_types() {
+fn entity_effect_from_nbt_compound_decodes_all_reference_registered_leaf_types() {
     let effects = vec![
         EntityEffect::AllOf(EntityEffectAllOf::new(vec![EntityEffect::Ignite(
             EntityEffectIgnite::new(level_value_payload_nbt(5.0)),

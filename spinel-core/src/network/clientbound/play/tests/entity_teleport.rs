@@ -3,7 +3,7 @@ use spinel_network::DataType;
 use spinel_network::types::Vector3d;
 
 #[test]
-fn entity_teleport_packet_matches_minestom_serializer_field_order() {
+fn entity_teleport_packet_matches_reference_serializer_field_order() {
     let packet = EntityTeleportPacket {
         entity_id: 7,
         position: Vector3d {

@@ -2,7 +2,7 @@ use super::super::entity_view::EntityView;
 use crate::entity::EntityId;
 
 #[test]
-fn entity_view_manual_add_remove_match_minestom_no_op_return_values() {
+fn entity_view_manual_add_remove_match_reference_no_op_return_values() {
     let entity_id = EntityId::next();
     let viewer_id = EntityId::next();
     let mut entity_view = EntityView::new(entity_id);
@@ -68,7 +68,7 @@ fn entity_view_predictable_viewers_require_auto_no_rule_and_no_manuals() {
 }
 
 #[test]
-fn entity_view_rule_updates_refresh_automatic_viewers_like_minestom_predicates() {
+fn entity_view_rule_updates_refresh_automatic_viewers_like_reference_predicates() {
     let entity_id = EntityId::next();
     let allowed_viewer = EntityId::from_raw(2);
     let denied_viewer = EntityId::from_raw(3);

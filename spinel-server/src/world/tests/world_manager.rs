@@ -23,7 +23,7 @@ impl ChunkLoader for ManagerTestChunkLoader {
 }
 
 #[test]
-fn world_manager_create_and_register_worlds_match_minestom_world_manager_surface() {
+fn world_manager_create_and_register_worlds_match_reference_world_manager_surface() {
     let mut worlds = WorldManager::new();
     let first_world = worlds.create_world(DimensionType::OVERWORLD);
     let mut custom_world = World::new_with_dimension_name(

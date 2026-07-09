@@ -29,7 +29,7 @@ fn player_pose_fit_accepts_sneaking_and_rejects_standing_under_loaded_ceiling() 
 }
 
 #[test]
-fn player_pose_fit_ignores_missing_chunks_like_minestom() {
+fn player_pose_fit_ignores_missing_chunks_like_reference() {
     let (mut world, client, player_uuid, _peer_stream) = world_with_player_without_loaded_chunks();
 
     assert!(world.set_player_pose(player_uuid, EntityPose::Standing));

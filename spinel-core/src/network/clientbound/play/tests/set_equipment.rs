@@ -3,7 +3,7 @@ use spinel_network::DataType;
 use spinel_network::types::Slot;
 
 #[test]
-fn set_equipment_packet_uses_minestom_legacy_slot_continuation_bit() {
+fn set_equipment_packet_uses_reference_legacy_slot_continuation_bit() {
     let packet = SetEquipmentPacket::new(
         7,
         vec![

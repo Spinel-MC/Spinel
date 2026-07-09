@@ -3,7 +3,7 @@ use spinel_network::DataType;
 use uuid::Uuid;
 
 #[test]
-fn spawn_entity_packet_matches_minestom_field_order() {
+fn spawn_entity_packet_matches_reference_field_order() {
     let packet = SpawnEntityPacket::new(7, Uuid::nil(), 148, 1.0, 2.0, 3.0);
     let mut payload = Vec::new();
 
@@ -20,7 +20,7 @@ fn spawn_entity_packet_matches_minestom_field_order() {
 }
 
 #[test]
-fn entity_angle_uses_minestom_byte_conversion() {
+fn entity_angle_uses_reference_byte_conversion() {
     let mut payload = Vec::new();
 
     EntityAngle(90.0).encode(&mut payload).unwrap();
@@ -29,7 +29,7 @@ fn entity_angle_uses_minestom_byte_conversion() {
 }
 
 #[test]
-fn entity_angle_wraps_unbounded_yaw_like_minestom_byte_cast() {
+fn entity_angle_wraps_unbounded_yaw_like_reference_byte_cast() {
     let mut positive_payload = Vec::new();
     let mut negative_payload = Vec::new();
 

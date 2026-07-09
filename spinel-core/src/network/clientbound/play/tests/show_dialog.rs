@@ -3,7 +3,7 @@ use spinel_network::DataType;
 use spinel_registry::dialog::Dialog;
 
 #[test]
-fn show_dialog_packet_uses_minestom_holder_id_shape() {
+fn show_dialog_packet_uses_reference_holder_id_shape() {
     let packet = ShowDialogPacket::from_vanilla_dialog(&Dialog::QUICK_ACTIONS).unwrap();
     let mut payload = Vec::new();
 

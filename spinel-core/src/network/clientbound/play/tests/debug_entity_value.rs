@@ -2,7 +2,7 @@ use super::super::debug_entity_value::{DebugEntityValuePacket, DebugSubscription
 use spinel_network::{DataType, PacketStruct};
 
 #[test]
-fn debug_entity_value_packet_matches_minestom_update_envelope() {
+fn debug_entity_value_packet_matches_reference_update_envelope() {
     let packet = DebugEntityValuePacket {
         entity_id: 300,
         update: DebugSubscriptionUpdate {

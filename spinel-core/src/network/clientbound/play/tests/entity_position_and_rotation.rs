@@ -4,7 +4,7 @@ use crate::network::clientbound::play::spawn_entity::EntityAngle;
 use spinel_network::DataType;
 
 #[test]
-fn entity_position_and_rotation_packet_matches_minestom_shape() {
+fn entity_position_and_rotation_packet_matches_reference_shape() {
     let packet = EntityPositionAndRotationPacket {
         entity_id: 7,
         delta_x: EntityPositionPacket::delta(1.5, 1.0),

@@ -49,7 +49,7 @@ fn manual_viewer_add_requires_an_active_entity_and_rejects_self_view() {
 }
 
 #[test]
-fn manual_viewer_add_and_remove_match_minestom_packets_and_no_op_edges() {
+fn manual_viewer_add_and_remove_match_reference_packets_and_no_op_edges() {
     let mut world = World::new_with_dimension_name(
         uuid::Uuid::new_v4(),
         spinel_registry::dimension_type::DimensionType::OVERWORLD,
@@ -288,7 +288,7 @@ fn automatic_visibility_removes_stale_viewer_relationship_after_entity_moves_out
 }
 
 #[test]
-fn player_spawn_snapshot_sends_living_packets_in_minestom_order() {
+fn player_spawn_snapshot_sends_living_packets_in_reference_order() {
     let mut world = World::new_with_dimension_name(
         uuid::Uuid::new_v4(),
         spinel_registry::dimension_type::DimensionType::OVERWORLD,

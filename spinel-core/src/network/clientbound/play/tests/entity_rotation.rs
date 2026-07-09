@@ -3,7 +3,7 @@ use crate::network::clientbound::play::spawn_entity::EntityAngle;
 use spinel_network::DataType;
 
 #[test]
-fn entity_rotation_packet_matches_minestom_var_int_angles_and_ground_shape() {
+fn entity_rotation_packet_matches_reference_var_int_angles_and_ground_shape() {
     let packet = EntityRotationPacket {
         entity_id: 7,
         yaw: EntityAngle(90.0),

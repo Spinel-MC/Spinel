@@ -3,7 +3,7 @@ use spinel_network::DataType;
 use spinel_network::types::Vector3d;
 
 #[test]
-fn entity_position_sync_packet_matches_minestom_serializer_shape() {
+fn entity_position_sync_packet_matches_reference_serializer_shape() {
     let packet = EntityPositionSyncPacket {
         entity_id: 7,
         position: Vector3d {

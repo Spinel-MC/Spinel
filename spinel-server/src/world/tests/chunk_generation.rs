@@ -221,7 +221,7 @@ fn generated_blocks_prime_chunk_heightmaps() {
 }
 
 #[test]
-fn generated_heightmap_matches_minestom_top_block_edge() {
+fn generated_heightmap_matches_reference_top_block_edge() {
     let mut world = World::new_with_dimension_name(
         uuid::Uuid::new_v4(),
         spinel_registry::dimension_type::DimensionType::OVERWORLD,
@@ -403,7 +403,7 @@ fn biome_writes_in_forks_fail_clearly() {
 }
 
 #[test]
-fn generation_biome_area_section_and_relative_writes_match_minestom_shape() {
+fn generation_biome_area_section_and_relative_writes_match_reference_shape() {
     let mut world = World::new_with_dimension_name(
         uuid::Uuid::new_v4(),
         spinel_registry::dimension_type::DimensionType::OVERWORLD,

@@ -2,7 +2,7 @@ use super::super::player_abilities::PlayerAbilitiesPacket;
 use spinel_network::DataType;
 
 #[test]
-fn player_abilities_packet_matches_minestom_shape() {
+fn player_abilities_packet_matches_reference_shape() {
     let packet = PlayerAbilitiesPacket::new(
         PlayerAbilitiesPacket::INVULNERABLE
             | PlayerAbilitiesPacket::ALLOW_FLYING

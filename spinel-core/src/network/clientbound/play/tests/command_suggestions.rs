@@ -3,7 +3,7 @@ use spinel_network::{DataType, PacketStruct};
 use spinel_utils::component::text::TextComponent;
 
 #[test]
-fn command_suggestions_round_trips_minestom_shape() {
+fn command_suggestions_round_trips_reference_shape() {
     let packet = CommandSuggestionsPacket {
         transaction_id: 4,
         start: 1,

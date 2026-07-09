@@ -3,7 +3,7 @@ use spinel_network::DataType;
 use spinel_network::types::var_int::VarIntWrapper;
 
 #[test]
-fn open_book_packet_matches_minestom_hand_enum_shape() {
+fn open_book_packet_matches_reference_hand_enum_shape() {
     let packet = OpenBookPacket::new(1);
     let mut payload = Vec::new();
 
