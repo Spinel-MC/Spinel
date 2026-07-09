@@ -8,7 +8,7 @@ use crate::world::World;
 use spinel_core::entity::game_mode::GameMode;
 use spinel_core::network::clientbound::play::remove_entities::RemoveEntitiesPacket;
 use spinel_core::network::clientbound::play::spawn_entity::SpawnEntityPacket;
-use spinel_macros::event_listener;
+use spinel_macros::fn_event_listener;
 use spinel_network::types::entity_metadata::MetadataValue;
 use spinel_network::types::{Identifier, Vector3d, Velocity};
 use spinel_network::{ConnectionState, DataType};
@@ -22,7 +22,7 @@ static EXPERIENCE_PICKUP_TEST_LOCK: Mutex<()> = Mutex::new(());
 static EXPERIENCE_PICKUP_CANCELLED: AtomicBool = AtomicBool::new(false);
 static EXPERIENCE_PICKUP_COUNT: AtomicI16 = AtomicI16::new(0);
 
-#[event_listener]
+#[fn_event_listener]
 fn experience_pickup_listener(event: &mut PickupExperienceEvent, _server: &mut MinecraftServer) {
     EXPERIENCE_PICKUP_COUNT.store(event.get_experience_count(), Ordering::SeqCst);
     event.set_experience_count(27);

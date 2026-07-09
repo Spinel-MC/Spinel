@@ -63,4 +63,3 @@ pub enum Recipient {
     Client,
     Server,
 }
-

@@ -3,9 +3,9 @@ use crate::inventory::InventoryType;
 use crate::network::client::instance::Client;
 use crate::server::MinecraftServer;
 use spinel_core::network::serverbound::play::rename_item::RenameItemPacket;
-use spinel_macros::packet_listener;
+use spinel_macros::fn_packet_listener;
 
-#[packet_listener]
+#[fn_packet_listener]
 fn on_rename_item(
     client: &mut Client,
     packet: RenameItemPacket,

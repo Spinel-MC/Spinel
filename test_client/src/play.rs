@@ -1,9 +1,9 @@
 use spinel::client::MinecraftClient;
 use spinel::core::network::clientbound::play::set_health::SetHealthPacket;
-use spinel::macros::packet_listener;
+use spinel::macros::fn_packet_listener;
 use spinel::network::Server;
 
-#[packet_listener(state: spinel::network::ConnectionState::Play)]
+#[fn_packet_listener(state: spinel::network::ConnectionState::Play)]
 fn on_set_health(
     _server: &mut Server,
     packet: SetHealthPacket,

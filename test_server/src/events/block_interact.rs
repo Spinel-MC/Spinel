@@ -14,40 +14,48 @@ use spinel::{
     utils::component::Component,
 };
 
-#[event_listener()]
-fn on_player_block_interact(event: &mut PlayerBlockInteractEvent, server: &mut MinecraftServer) {
-    if let Some(command) = ShowcaseSigns::command_at_position(event.block_position()) {
+pub struct BlockInteractListener;
+
+#[event_listener]
+impl BlockInteractListener {
+    #[event_handler]
+    pub fn on_player_block_interact(
+        event: &mut PlayerBlockInteractEvent,
+        server: &mut MinecraftServer,
+    ) {
+        if let Some(command) = ShowcaseSigns::command_at_position(event.block_position()) {
+            event.set_blocking_item_use(true);
+            event.set_cancelled(true);
+            run_showcase_sign_command(event, server, command);
+            return;
+        }
+
+        let pathfind_result = pathfind_showcase_zombie(event, server);
+        if pathfind_result {
+            event.set_blocking_item_use(true);
+            event.set_cancelled(true);
+            return;
+        }
+
+        if event.block() != Block::DARK_PRISMARINE {
+            return;
+        }
+
+        if event.player().is_sneaking() == true {
+            return;
+        }
+
+        let mut inventory = Inventory::new(
+            InventoryType::Chest(3),
+            Component::text("Test Inventory").build(),
+        );
+        inventory.set_item_stack(10, ItemStack::of(Material::DIAMOND));
+        inventory.set_item_stack(12, ItemStack::of(Material::GOLDEN_APPLE).with_amount(3));
+        inventory.set_item_stack(1, ItemStack::of(Material::NETHERITE_PICKAXE).with_amount(5));
+
         event.set_blocking_item_use(true);
-        event.set_cancelled(true);
-        run_showcase_sign_command(event, server, command);
-        return;
+        event.player().open_inventory(inventory);
     }
-
-    let pathfind_result = pathfind_showcase_zombie(event, server);
-    if pathfind_result {
-        event.set_blocking_item_use(true);
-        event.set_cancelled(true);
-        return;
-    }
-
-    if event.block() != Block::DARK_PRISMARINE {
-        return;
-    }
-
-    if event.player().is_sneaking() == true {
-        return;
-    }
-
-    let mut inventory = Inventory::new(
-        InventoryType::Chest(3),
-        Component::text("Test Inventory").build(),
-    );
-    inventory.set_item_stack(10, ItemStack::of(Material::DIAMOND));
-    inventory.set_item_stack(12, ItemStack::of(Material::GOLDEN_APPLE).with_amount(3));
-    inventory.set_item_stack(1, ItemStack::of(Material::NETHERITE_PICKAXE).with_amount(5));
-
-    event.set_blocking_item_use(true);
-    event.player().open_inventory(inventory);
 }
 
 fn run_showcase_sign_command(

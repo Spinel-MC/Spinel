@@ -4,12 +4,12 @@ use spinel::core::network::clientbound::login::login_success::LoginSuccessPacket
 use spinel::core::network::clientbound::login::set_compression::SetCompressionPacket;
 use spinel::core::network::serverbound::configuration::client_information::ClientInformationPacket;
 use spinel::core::network::serverbound::login::login_acknowledge::LoginAcknowledgedPacket;
-use spinel::macros::packet_listener;
+use spinel::macros::fn_packet_listener;
 use spinel::network::{ConnectionState, Server};
 
 use crate::dispatch::report_dispatch_result;
 
-#[packet_listener(state: ConnectionState::Login)]
+#[fn_packet_listener(state: ConnectionState::Login)]
 fn on_encryption_request(
     _server: &mut Server,
     _packet: EncryptionRequestPacket,
@@ -18,7 +18,7 @@ fn on_encryption_request(
     true
 }
 
-#[packet_listener(state: ConnectionState::Login)]
+#[fn_packet_listener(state: ConnectionState::Login)]
 fn on_set_compression(
     server: &mut Server,
     packet: SetCompressionPacket,
@@ -28,7 +28,7 @@ fn on_set_compression(
     true
 }
 
-#[packet_listener(state: ConnectionState::Login)]
+#[fn_packet_listener(state: ConnectionState::Login)]
 fn on_login_success(
     server: &mut Server,
     _packet: LoginSuccessPacket,

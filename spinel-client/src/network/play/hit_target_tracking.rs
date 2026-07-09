@@ -12,11 +12,11 @@ use spinel_core::network::clientbound::play::remove_entities::RemoveEntitiesPack
 use spinel_core::network::clientbound::play::spawn_entity::SpawnEntityPacket;
 use spinel_core::network::clientbound::play::sync_player_pos::SyncPlayerPositionPacket;
 use spinel_core::network::serverbound::play::accept_teleportation::AcceptTeleportationPacket;
-use spinel_macros::packet_listener;
+use spinel_macros::fn_packet_listener;
 use spinel_network::types::Vector3d;
 use std::sync::Arc;
 
-#[packet_listener(state: spinel_network::ConnectionState::Play)]
+#[fn_packet_listener(state: spinel_network::ConnectionState::Play)]
 fn on_spawn_entity(
     _server: &mut Server,
     packet: SpawnEntityPacket,
@@ -34,7 +34,7 @@ fn on_spawn_entity(
     true
 }
 
-#[packet_listener(state: spinel_network::ConnectionState::Play)]
+#[fn_packet_listener(state: spinel_network::ConnectionState::Play)]
 fn on_remove_entities(
     _server: &mut Server,
     packet: RemoveEntitiesPacket,
@@ -44,7 +44,7 @@ fn on_remove_entities(
     true
 }
 
-#[packet_listener(state: spinel_network::ConnectionState::Play)]
+#[fn_packet_listener(state: spinel_network::ConnectionState::Play)]
 fn on_entity_position(
     _server: &mut Server,
     packet: EntityPositionPacket,
@@ -59,7 +59,7 @@ fn on_entity_position(
     true
 }
 
-#[packet_listener(state: spinel_network::ConnectionState::Play)]
+#[fn_packet_listener(state: spinel_network::ConnectionState::Play)]
 fn on_entity_position_and_rotation(
     _server: &mut Server,
     packet: EntityPositionAndRotationPacket,
@@ -74,7 +74,7 @@ fn on_entity_position_and_rotation(
     true
 }
 
-#[packet_listener(state: spinel_network::ConnectionState::Play)]
+#[fn_packet_listener(state: spinel_network::ConnectionState::Play)]
 fn on_entity_teleport(
     _server: &mut Server,
     packet: EntityTeleportPacket,
@@ -84,7 +84,7 @@ fn on_entity_teleport(
     true
 }
 
-#[packet_listener(state: spinel_network::ConnectionState::Play)]
+#[fn_packet_listener(state: spinel_network::ConnectionState::Play)]
 fn on_entity_position_sync(
     _server: &mut Server,
     packet: EntityPositionSyncPacket,
@@ -94,7 +94,7 @@ fn on_entity_position_sync(
     true
 }
 
-#[packet_listener(state: spinel_network::ConnectionState::Play)]
+#[fn_packet_listener(state: spinel_network::ConnectionState::Play)]
 fn on_block_update(
     _server: &mut Server,
     packet: BlockUpdatePacket,
@@ -104,7 +104,7 @@ fn on_block_update(
     true
 }
 
-#[packet_listener(state: spinel_network::ConnectionState::Play)]
+#[fn_packet_listener(state: spinel_network::ConnectionState::Play)]
 fn on_chunk_data(
     _server: &mut Server,
     packet: ChunkDataAndUpdateLightPacket,
@@ -118,7 +118,7 @@ fn on_chunk_data(
     true
 }
 
-#[packet_listener(state: spinel_network::ConnectionState::Play)]
+#[fn_packet_listener(state: spinel_network::ConnectionState::Play)]
 fn on_forget_level_chunk(
     _server: &mut Server,
     packet: ForgetLevelChunkPacket,
@@ -128,7 +128,7 @@ fn on_forget_level_chunk(
     true
 }
 
-#[packet_listener(state: spinel_network::ConnectionState::Play)]
+#[fn_packet_listener(state: spinel_network::ConnectionState::Play)]
 fn on_sync_player_position(
     server: &mut Server,
     packet: SyncPlayerPositionPacket,

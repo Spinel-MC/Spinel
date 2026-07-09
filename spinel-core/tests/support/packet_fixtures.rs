@@ -1,8 +1,8 @@
+use serde::Serialize;
+use serde_json::Value;
 use spinel_network::data_type::DataType;
 use spinel_network::types::entity_metadata::MetadataValue;
 use spinel_network::{ConnectionState, PacketCodecRegistry, PacketNameRegistry, Recipient};
-use serde::Serialize;
-use serde_json::Value;
 use spinel_utils::component::text::TextComponent;
 use std::collections::{BTreeMap, HashSet};
 use std::fs;
@@ -522,5 +522,3 @@ fn packet_fields(
         .cloned()
         .unwrap_or_else(|| Value::Array(Vec::new()))
 }
-
-

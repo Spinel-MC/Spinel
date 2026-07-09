@@ -4,10 +4,10 @@ use crate::events::player_entity_interact::PlayerEntityInteractEvent;
 use crate::network::client::instance::Client;
 use crate::server::MinecraftServer;
 use spinel_core::network::serverbound::play::interact::{InteractAction, InteractPacket};
-use spinel_macros::packet_listener;
+use spinel_macros::fn_packet_listener;
 use spinel_registry::Attribute;
 
-#[packet_listener]
+#[fn_packet_listener]
 fn on_interact(client: &mut Client, packet: InteractPacket, server: &mut MinecraftServer) -> bool {
     let Some(interaction) = interaction_input(client, packet.entity_id, server) else {
         return true;

@@ -3,10 +3,10 @@ use crate::events::server_list_ping::event::ServerListPingEvent;
 use crate::events::server_list_ping::ping_type::ServerListPingType;
 use crate::network::client::instance::Client;
 use spinel_core::network::serverbound::handshake::legacy_server_list_ping::LegacyServerListPingPacket;
-use spinel_macros::packet_listener;
+use spinel_macros::fn_packet_listener;
 use std::io::Read;
 
-#[packet_listener()]
+#[fn_packet_listener()]
 pub fn handle_legacy_server_list_ping(
     client: &mut Client,
     _packet: LegacyServerListPingPacket,

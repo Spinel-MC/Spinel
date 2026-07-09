@@ -6,9 +6,9 @@ use crate::server::MinecraftServer;
 use crate::world::BlockPosition;
 use spinel_core::network::serverbound::play::pick_item_from_block::PickItemFromBlockPacket;
 use spinel_core::network::serverbound::play::pick_item_from_entity::PickItemFromEntityPacket;
-use spinel_macros::packet_listener;
+use spinel_macros::fn_packet_listener;
 
-#[packet_listener]
+#[fn_packet_listener]
 fn on_pick_item_from_block(
     client: &mut Client,
     packet: PickItemFromBlockPacket,
@@ -26,7 +26,7 @@ fn on_pick_item_from_block(
     !event.is_cancelled()
 }
 
-#[packet_listener]
+#[fn_packet_listener]
 fn on_pick_item_from_entity(
     client: &mut Client,
     packet: PickItemFromEntityPacket,

@@ -7,7 +7,7 @@ use crate::world::World;
 use spinel_core::network::clientbound::play::damage_event::DamageEventPacket;
 use spinel_core::network::clientbound::play::entity_sound_effect::EntitySoundEffectPacket;
 use spinel_core::network::clientbound::play::entity_status::EntityStatusPacket;
-use spinel_macros::event_listener;
+use spinel_macros::fn_event_listener;
 use spinel_network::types::Identifier;
 use spinel_network::{ConnectionState, DataType};
 use spinel_registry::damage_type::DamageType;
@@ -25,7 +25,7 @@ static LIVING_DAMAGE_EVENT_AMOUNT_BITS: AtomicU32 = AtomicU32::new(0);
 static LIVING_DAMAGE_EVENT_ANIMATE: AtomicBool = AtomicBool::new(true);
 static LIVING_DAMAGE_EVENT_ENTITY_ACCESSOR_MATCHED: AtomicBool = AtomicBool::new(false);
 
-#[event_listener]
+#[fn_event_listener]
 fn living_damage_listener(event: &mut EntityDamageEvent, _server: &mut MinecraftServer) {
     if !LIVING_DAMAGE_EVENT_ENABLED.load(Ordering::SeqCst) {
         return;

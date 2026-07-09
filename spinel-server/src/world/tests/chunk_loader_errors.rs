@@ -1,7 +1,7 @@
 use crate::events::chunk_loader_error::ChunkLoaderErrorEvent;
 use crate::server::MinecraftServer;
 use crate::world::{Chunk, ChunkLoader, ChunkLoaderOperation, ChunkPosition, World};
-use spinel_macros::event_listener;
+use spinel_macros::fn_event_listener;
 use spinel_network::types::Identifier;
 use std::io;
 use std::sync::Mutex;
@@ -13,7 +13,7 @@ static CHUNK_LOADER_ERROR_EVENTS: Mutex<
     Vec<(ChunkLoaderOperation, Option<ChunkPosition>, String)>,
 > = Mutex::new(Vec::new());
 
-#[event_listener]
+#[fn_event_listener]
 fn record_chunk_loader_error(event: &mut ChunkLoaderErrorEvent, _server: &mut MinecraftServer) {
     if event.world().name() != &Identifier::minecraft("chunk_loader_error_test") {
         return;

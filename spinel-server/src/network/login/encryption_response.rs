@@ -3,7 +3,7 @@ use crate::server::MinecraftServer;
 use rsa::Pkcs1v15Encrypt;
 use rsa::RsaPrivateKey;
 use spinel_core::network::serverbound::login::encryption_response::EncryptionResponsePacket;
-use spinel_macros::packet_listener;
+use spinel_macros::fn_packet_listener;
 use spinel_network::types::game_profile::GameProfile;
 use spinel_utils::component::Component;
 
@@ -100,7 +100,7 @@ impl<'a> EncryptionResponseHandler<'a> {
     }
 }
 
-#[packet_listener()]
+#[fn_packet_listener()]
 fn on_encryption_response(
     client: &mut Client,
     packet: EncryptionResponsePacket,

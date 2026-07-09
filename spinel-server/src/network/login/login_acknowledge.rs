@@ -4,7 +4,7 @@ use spinel_core::network::clientbound::configuration::{
     known_packs::KnownPacksPacket, plugin_message::CustomPayloadPacket,
 };
 use spinel_core::network::serverbound::login::login_acknowledge::LoginAcknowledgedPacket;
-use spinel_macros::packet_listener;
+use spinel_macros::fn_packet_listener;
 use spinel_network::ConnectionState;
 use spinel_utils::constants::{MINECRAFT_VERSION, SERVER_BRAND};
 use std::io;
@@ -30,7 +30,7 @@ impl<'a> ConfigurationTransition<'a> {
     }
 }
 
-#[packet_listener(id: "login_acknowledged", state: ConnectionState::Login)]
+#[fn_packet_listener(id: "login_acknowledged", state: ConnectionState::Login)]
 fn on_login_acknowledged(
     client: &mut Client,
     _packet: LoginAcknowledgedPacket,

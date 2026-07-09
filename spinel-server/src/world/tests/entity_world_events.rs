@@ -5,7 +5,7 @@ use crate::events::entity_spawn::EntitySpawnEvent;
 use crate::events::remove_entity_from_world::RemoveEntityFromWorldEvent;
 use crate::server::MinecraftServer;
 use crate::world::{World, WorldManager};
-use spinel_macros::event_listener;
+use spinel_macros::fn_event_listener;
 use spinel_network::types::Identifier;
 use spinel_registry::EntityType;
 use std::io::ErrorKind;
@@ -17,7 +17,7 @@ static ENTITY_INSTANCE_EVENT_TARGET: Mutex<Option<EntityId>> = Mutex::new(None);
 static ENTITY_INSTANCE_EVENT_LOG: Mutex<Vec<&'static str>> = Mutex::new(Vec::new());
 static ENTITY_INSTANCE_EVENT_CANCEL_ADD: AtomicBool = AtomicBool::new(false);
 
-#[event_listener]
+#[fn_event_listener]
 fn entity_add_to_world_listener(event: &mut AddEntityToWorldEvent, _server: &mut MinecraftServer) {
     if *ENTITY_INSTANCE_EVENT_TARGET.lock().unwrap() != Some(event.get_entity_id()) {
         return;
@@ -26,7 +26,7 @@ fn entity_add_to_world_listener(event: &mut AddEntityToWorldEvent, _server: &mut
     event.set_cancelled(ENTITY_INSTANCE_EVENT_CANCEL_ADD.load(Ordering::SeqCst));
 }
 
-#[event_listener]
+#[fn_event_listener]
 fn entity_spawn_listener(event: &mut EntitySpawnEvent, _server: &mut MinecraftServer) {
     if *ENTITY_INSTANCE_EVENT_TARGET.lock().unwrap() != Some(event.get_entity_id()) {
         return;
@@ -34,7 +34,7 @@ fn entity_spawn_listener(event: &mut EntitySpawnEvent, _server: &mut MinecraftSe
     ENTITY_INSTANCE_EVENT_LOG.lock().unwrap().push("spawn");
 }
 
-#[event_listener]
+#[fn_event_listener]
 fn entity_despawn_listener(event: &mut EntityDespawnEvent, _server: &mut MinecraftServer) {
     if *ENTITY_INSTANCE_EVENT_TARGET.lock().unwrap() != Some(event.get_entity_id()) {
         return;
@@ -42,7 +42,7 @@ fn entity_despawn_listener(event: &mut EntityDespawnEvent, _server: &mut Minecra
     ENTITY_INSTANCE_EVENT_LOG.lock().unwrap().push("despawn");
 }
 
-#[event_listener]
+#[fn_event_listener]
 fn entity_remove_from_world_listener(
     event: &mut RemoveEntityFromWorldEvent,
     _server: &mut MinecraftServer,

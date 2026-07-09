@@ -3,11 +3,16 @@ use spinel::{
     server::{MinecraftServer, events::player_spawn::PlayerSpawnEvent},
 };
 
-#[event_listener()]
-fn on_player_spawn(event: &mut PlayerSpawnEvent, _server: &mut MinecraftServer) {
-    if !event.first_spawn() {
-        return;
-    }
+pub struct PlayerJoinListener;
 
-    println!("{} joined the server.", event.player().username);
+#[event_listener]
+impl PlayerJoinListener {
+    #[event_handler]
+    pub fn on_player_spawn(event: &mut PlayerSpawnEvent, _server: &mut MinecraftServer) {
+        if !event.first_spawn() {
+            return;
+        }
+
+        println!("{} joined the server.", event.player().username);
+    }
 }

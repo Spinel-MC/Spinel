@@ -1,9 +1,9 @@
 use crate::instance::MinecraftClient;
 use crate::network::server::instance::Server;
 use spinel_core::network::clientbound::status::status_response::StatusResponsePacket;
-use spinel_macros::packet_listener;
+use spinel_macros::fn_packet_listener;
 
-#[packet_listener()]
+#[fn_packet_listener()]
 fn on_status_response(
     _client: &mut Server,
     packet: StatusResponsePacket,

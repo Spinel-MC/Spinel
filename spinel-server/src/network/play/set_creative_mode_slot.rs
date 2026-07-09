@@ -5,10 +5,10 @@ use crate::{
 };
 use spinel_core::entity::game_mode::GameMode;
 use spinel_core::network::serverbound::play::set_creative_mode_slot::SetCreativeModeSlotPacket;
-use spinel_macros::packet_listener;
+use spinel_macros::fn_packet_listener;
 use spinel_registry::ItemStack;
 
-#[packet_listener]
+#[fn_packet_listener]
 fn on_set_creative_mode_slot(
     client: &mut Client,
     packet: SetCreativeModeSlotPacket,

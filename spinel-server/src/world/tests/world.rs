@@ -12,7 +12,7 @@ use spinel_core::network::clientbound::play::remove_entities::RemoveEntitiesPack
 use spinel_core::network::clientbound::play::set_chunk_cache_center::SetChunkCacheCenterPacket;
 use spinel_core::network::clientbound::play::set_player_inventory::SetPlayerInventoryPacket;
 use spinel_core::network::clientbound::play::sync_player_pos::SyncPlayerPositionPacket;
-use spinel_macros::event_listener;
+use spinel_macros::fn_event_listener;
 use spinel_network::types::Identifier;
 use spinel_network::{ConnectionState, DataType, VarIntWrapper};
 use spinel_registry::EntityType;
@@ -37,7 +37,7 @@ const PLAYER_MOVE_TEST_TELEPORT: i32 = 4;
 static PLAYER_MOVE_TEST_BEHAVIOR: AtomicI32 = AtomicI32::new(PLAYER_MOVE_TEST_PASSTHROUGH);
 static PLAYER_MOVE_TEST_LOCK: Mutex<()> = Mutex::new(());
 
-#[event_listener]
+#[fn_event_listener]
 fn player_move_test_listener(event: &mut PlayerMoveEvent, _server: &mut MinecraftServer) {
     match PLAYER_MOVE_TEST_BEHAVIOR.load(Ordering::SeqCst) {
         PLAYER_MOVE_TEST_CANCEL => event.set_cancelled(true),

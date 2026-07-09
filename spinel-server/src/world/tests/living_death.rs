@@ -6,7 +6,7 @@ use crate::server::MinecraftServer;
 use crate::world::World;
 use spinel_core::network::clientbound::play::entity_status::EntityStatusPacket;
 use spinel_core::network::clientbound::play::set_passengers::SetPassengersPacket;
-use spinel_macros::event_listener;
+use spinel_macros::fn_event_listener;
 use spinel_network::ConnectionState;
 use spinel_network::types::{Identifier, Vector3d, Velocity};
 use spinel_registry::EntityType;
@@ -20,7 +20,7 @@ static LIVING_DEATH_TEST_ENTITY: Mutex<Option<EntityId>> = Mutex::new(None);
 static LIVING_DEATH_EVENT_FIRED: AtomicBool = AtomicBool::new(false);
 static LIVING_DEATH_EVENT_ENTITY_ACCESSOR_MATCHED: AtomicBool = AtomicBool::new(false);
 
-#[event_listener]
+#[fn_event_listener]
 fn living_death_listener(event: &mut EntityDeathEvent, _server: &mut MinecraftServer) {
     if *LIVING_DEATH_TEST_ENTITY.lock().unwrap() != Some(event.get_entity_id()) {
         return;

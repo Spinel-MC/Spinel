@@ -20,29 +20,34 @@ use spinel::{
 };
 use uuid::Uuid;
 
-#[event_listener(priority: Priority::High)]
-fn on_event(event: &mut ServerListPingEvent, _server: &mut MinecraftServer) {
-    let sample = vec![PlayerSample::new(
-        Component::text("A Spinel Server".to_string())
-            .color(TextColor::from_named(NamedTextColor::Aqua))
-            .into(),
-        Uuid::new_v4(),
-    )];
+pub struct ServerListPingListener;
 
-    event.response_data = ServerListPingEventResponseData {
-        online_players: Some(0),
-        max_players: Some(100),
-        description: Some(
-            Component::text("Minecraft, your way!".to_owned())
-                .color(TextColor::from_hex("#ff47d7".to_owned()))
+#[event_listener]
+impl ServerListPingListener {
+    #[event_handler(priority: Priority::High)]
+    pub fn on_event(event: &mut ServerListPingEvent, _server: &mut MinecraftServer) {
+        let sample = vec![PlayerSample::new(
+            Component::text("A Spinel Server".to_string())
+                .color(TextColor::from_named(NamedTextColor::Aqua))
                 .into(),
-        ),
-        brand: Some(SERVER_BRAND.to_owned()),
-        protocol: PROTOCOL_VERSION,
-        player_sample: Some(sample),
-        favicon: Some(Favicon::from_bytes(
-            fs::read("test_server/assets/favicon.png").unwrap(),
-        )),
-        enforce_secure_chat: Some(true),
-    };
+            Uuid::new_v4(),
+        )];
+
+        event.response_data = ServerListPingEventResponseData {
+            online_players: Some(0),
+            max_players: Some(100),
+            description: Some(
+                Component::text("Minecraft, your way!".to_owned())
+                    .color(TextColor::from_hex("#ff47d7".to_owned()))
+                    .into(),
+            ),
+            brand: Some(SERVER_BRAND.to_owned()),
+            protocol: PROTOCOL_VERSION,
+            player_sample: Some(sample),
+            favicon: Some(Favicon::from_bytes(
+                fs::read("test_server/assets/favicon.png").unwrap(),
+            )),
+            enforce_secure_chat: Some(true),
+        };
+    }
 }

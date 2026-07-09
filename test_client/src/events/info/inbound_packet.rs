@@ -1,7 +1,7 @@
 use spinel::network::Recipient;
 use spinel::{
     client::{MinecraftClient, events::network::packet::PacketEvent},
-    macros::event_listener,
+    macros::fn_event_listener,
 };
 
 use crate::events::info::packet_filter::packet_is_filtered;
@@ -13,7 +13,7 @@ static RECEIVED_CHUNK_COUNT: AtomicUsize = AtomicUsize::new(0);
 static RECEIVED_CHUNK_BYTES: AtomicUsize = AtomicUsize::new(0);
 static FIRST_RECEIVED_CHUNK_AT: OnceLock<Mutex<Option<Instant>>> = OnceLock::new();
 
-#[event_listener]
+#[fn_event_listener]
 fn on_inbound_packet(event: &mut PacketEvent, _client: &mut MinecraftClient) {
     if event.recipient == Recipient::Client && event.packet_name == "level_chunk_with_light" {
         RECEIVED_CHUNK_COUNT.fetch_add(1, Ordering::Relaxed);

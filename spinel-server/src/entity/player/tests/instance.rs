@@ -72,7 +72,7 @@ use spinel_core::network::clientbound::play::{
     world_event::WorldEventPacket,
 };
 use spinel_core::network::resource_pack::{ResourcePackInfo, ResourcePackStatus};
-use spinel_macros::event_listener;
+use spinel_macros::fn_event_listener;
 use spinel_network::types::chunk::ChunkData;
 use spinel_network::types::entity_metadata::MetadataValue;
 use spinel_network::types::light::LightData;
@@ -1005,7 +1005,7 @@ fn spectator_game_mode_enables_flying_like_minestom() {
 static PLAYER_GAME_MODE_EVENT_TARGET: Mutex<Option<Uuid>> = Mutex::new(None);
 static PLAYER_GAME_MODE_EVENT_SEEN: Mutex<Vec<GameMode>> = Mutex::new(Vec::new());
 
-#[event_listener]
+#[fn_event_listener]
 fn player_game_mode_change_test_listener(
     event: &mut PlayerGameModeChangeEvent,
     _server: &mut MinecraftServer,
@@ -1061,7 +1061,7 @@ fn player_game_mode_change_event_can_mutate_and_cancel_state_change() {
 static PLAYER_RESPAWN_EVENT_TARGET: Mutex<Option<Uuid>> = Mutex::new(None);
 static PLAYER_RESPAWN_EVENT_POSITION: Mutex<Option<PlayerSpawnPoint>> = Mutex::new(None);
 
-#[event_listener]
+#[fn_event_listener]
 fn player_respawn_test_listener(event: &mut PlayerRespawnEvent, _server: &mut MinecraftServer) {
     if *PLAYER_RESPAWN_EVENT_TARGET.lock().unwrap() != Some(event.player().uuid) {
         return;

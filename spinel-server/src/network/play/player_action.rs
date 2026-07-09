@@ -10,13 +10,13 @@ use crate::world::{Block, BlockPosition, BlockState};
 use spinel_core::entity::game_mode::GameMode;
 use spinel_core::network::clientbound::play::acknowledge_block_change::AcknowledgeBlockChangePacket;
 use spinel_core::network::serverbound::play::player_action::PlayerActionPacket;
-use spinel_macros::packet_listener;
+use spinel_macros::fn_packet_listener;
 use spinel_nbt::NbtCompound;
 use spinel_network::types::TeleportFlags;
 use spinel_registry::data_components::vanilla_components::{CAN_BREAK, PIERCING_WEAPON, TOOL};
 use spinel_registry::{BlockPredicates, Registries, Tool};
 
-#[packet_listener]
+#[fn_packet_listener]
 fn on_player_action(
     client: &mut Client,
     packet: PlayerActionPacket,

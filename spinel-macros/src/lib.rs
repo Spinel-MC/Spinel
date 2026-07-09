@@ -8,22 +8,33 @@ use syn::{FnArg, Item, ItemFn, PatType, Type, parse_macro_input};
 
 use common::parsers::{AttrsParser, EventAttrParser};
 
-// Routing Logic
-
 #[proc_macro_attribute]
 pub fn event_dispatcher(attr: TokenStream, item: TokenStream) -> TokenStream {
     common::event::event_dispatcher_logic(attr, item)
 }
 
 #[proc_macro_attribute]
-pub fn event_listener(attr: TokenStream, item: TokenStream) -> TokenStream {
+pub fn event_listener(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let parsed_item = parse_macro_input!(item as Item);
     match parsed_item {
-        Item::Fn(input_fn) => function_event_listener(attr, input_fn),
         Item::Impl(input_impl) => server::event_handler::generate(input_impl).into(),
         invalid_item => syn::Error::new_spanned(
             invalid_item,
-            "#[event_listener] can only be used on a function or impl block",
+            "#[event_listener] can only be used on an impl block",
+        )
+        .to_compile_error()
+        .into(),
+    }
+}
+
+#[proc_macro_attribute]
+pub fn fn_event_listener(attr: TokenStream, item: TokenStream) -> TokenStream {
+    let parsed_item = parse_macro_input!(item as Item);
+    match parsed_item {
+        Item::Fn(input_fn) => function_event_listener(attr, input_fn),
+        invalid_item => syn::Error::new_spanned(
+            invalid_item,
+            "#[fn_event_listener] can only be used on a function",
         )
         .to_compile_error()
         .into(),
@@ -33,9 +44,6 @@ pub fn event_listener(attr: TokenStream, item: TokenStream) -> TokenStream {
 fn function_event_listener(attr: TokenStream, input_fn: ItemFn) -> TokenStream {
     let event_attrs = parse_macro_input!(attr as EventAttrParser);
 
-    // Determine context based on the second argument (context arg)
-    // Arg 0: event
-    // Arg 1: context (Server or Client)
     let context_arg_index = 1;
     let context_type = if let Some(arg) = input_fn.sig.inputs.iter().nth(context_arg_index) {
         if let FnArg::Typed(PatType { ty, .. }) = arg {
@@ -44,10 +52,10 @@ fn function_event_listener(attr: TokenStream, input_fn: ItemFn) -> TokenStream {
                 _ => ty.clone(),
             }
         } else {
-            panic!("#[event_listener] function's second argument must be typed");
+            panic!("#[fn_event_listener] function's second argument must be typed");
         }
     } else {
-        panic!("#[event_listener] function must take two arguments: (event, context)");
+        panic!("#[fn_event_listener] function must take two arguments: (event, context)");
     };
 
     let event_struct_full_path =
@@ -56,13 +64,13 @@ fn function_event_listener(attr: TokenStream, input_fn: ItemFn) -> TokenStream {
                 if let Type::Path(path_ty) = &*type_ref.elem {
                     quote! { #path_ty }
                 } else {
-                    panic!("#[event_listener] function's event argument must be a path type")
+                    panic!("#[fn_event_listener] function's event argument must be a path type")
                 }
             } else {
-                panic!("#[event_listener] function's first argument must be a mutable reference")
+                panic!("#[fn_event_listener] function's first argument must be a mutable reference")
             }
         } else {
-            panic!("#[event_listener] function must take at least one argument")
+            panic!("#[fn_event_listener] function must take at least one argument")
         };
 
     let type_str = quote!(#context_type).to_string();
@@ -90,14 +98,27 @@ pub fn packet_dispatcher(attr: TokenStream, item: TokenStream) -> TokenStream {
 }
 
 #[proc_macro_attribute]
-pub fn packet_listener(attr: TokenStream, item: TokenStream) -> TokenStream {
+pub fn packet_listener(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let parsed_item = parse_macro_input!(item as Item);
     match parsed_item {
-        Item::Fn(input_fn) => function_packet_listener(attr, input_fn),
         Item::Impl(input_impl) => server::packet::handler::generate(input_impl).into(),
         invalid_item => syn::Error::new_spanned(
             invalid_item,
-            "#[packet_listener] can only be used on a function or impl block",
+            "#[packet_listener] can only be used on an impl block",
+        )
+        .to_compile_error()
+        .into(),
+    }
+}
+
+#[proc_macro_attribute]
+pub fn fn_packet_listener(attr: TokenStream, item: TokenStream) -> TokenStream {
+    let parsed_item = parse_macro_input!(item as Item);
+    match parsed_item {
+        Item::Fn(input_fn) => function_packet_listener(attr, input_fn),
+        invalid_item => syn::Error::new_spanned(
+            invalid_item,
+            "#[fn_packet_listener] can only be used on a function",
         )
         .to_compile_error()
         .into(),

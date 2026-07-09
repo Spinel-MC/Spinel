@@ -3,7 +3,7 @@ use crate::network::server::instance::Server;
 use spinel_core::network::clientbound::play::chunk_batch_finished::ChunkBatchFinishedPacket;
 use spinel_core::network::clientbound::play::chunk_batch_start::ChunkBatchStartPacket;
 use spinel_core::network::serverbound::play::chunk_batch_received::ChunkBatchReceivedPacket;
-use spinel_macros::packet_listener;
+use spinel_macros::fn_packet_listener;
 use std::time::Instant;
 
 const INITIAL_NANOS_PER_CHUNK: f64 = 2_000_000.0;
@@ -48,7 +48,7 @@ impl ChunkBatchSizeCalculator {
     }
 }
 
-#[packet_listener(state: spinel_network::ConnectionState::Play)]
+#[fn_packet_listener(state: spinel_network::ConnectionState::Play)]
 fn on_chunk_batch_start(
     _server: &mut Server,
     _packet: ChunkBatchStartPacket,
@@ -58,7 +58,7 @@ fn on_chunk_batch_start(
     true
 }
 
-#[packet_listener(state: spinel_network::ConnectionState::Play)]
+#[fn_packet_listener(state: spinel_network::ConnectionState::Play)]
 fn on_chunk_batch_finished(
     server: &mut Server,
     packet: ChunkBatchFinishedPacket,

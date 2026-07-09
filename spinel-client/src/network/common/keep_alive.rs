@@ -4,9 +4,9 @@ use spinel_core::network::clientbound::configuration::keep_alive::KeepAlivePacke
 use spinel_core::network::clientbound::play::keep_alive::KeepAlivePacket as PlayKeepAlivePacket;
 use spinel_core::network::serverbound::configuration::keep_alive::KeepAlivePacket as ConfigurationKeepAliveResponsePacket;
 use spinel_core::network::serverbound::play::keep_alive::KeepAlivePacket as PlayKeepAliveResponsePacket;
-use spinel_macros::packet_listener;
+use spinel_macros::fn_packet_listener;
 
-#[packet_listener(state: spinel_network::ConnectionState::Configuration)]
+#[fn_packet_listener(state: spinel_network::ConnectionState::Configuration)]
 fn on_configuration_keep_alive(
     server: &mut Server,
     packet: ConfigurationKeepAlivePacket,
@@ -17,7 +17,7 @@ fn on_configuration_keep_alive(
         .is_ok()
 }
 
-#[packet_listener(state: spinel_network::ConnectionState::Play)]
+#[fn_packet_listener(state: spinel_network::ConnectionState::Play)]
 fn on_play_keep_alive(
     server: &mut Server,
     packet: PlayKeepAlivePacket,

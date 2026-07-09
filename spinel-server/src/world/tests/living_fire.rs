@@ -2,7 +2,7 @@ use crate::entity::{Entity, EntityId, EntityPosition, GenericEntity, Player};
 use crate::events::entity_fire_extinguish::EntityFireExtinguishEvent;
 use crate::events::entity_set_fire::EntitySetFireEvent;
 use crate::server::MinecraftServer;
-use spinel_macros::event_listener;
+use spinel_macros::fn_event_listener;
 
 use spinel_registry::{EntityType, Registries};
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
@@ -18,7 +18,7 @@ static LIVING_FIRE_EXTINGUISH_NATURAL: AtomicBool = AtomicBool::new(false);
 static LIVING_FIRE_SET_EVENT_ENTITY_ACCESSOR_MATCHED: AtomicBool = AtomicBool::new(false);
 static LIVING_FIRE_EXTINGUISH_EVENT_ENTITY_ACCESSOR_MATCHED: AtomicBool = AtomicBool::new(false);
 
-#[event_listener]
+#[fn_event_listener]
 fn living_fire_set_listener(event: &mut EntitySetFireEvent, _server: &mut MinecraftServer) {
     if !LIVING_FIRE_SET_EVENT_ENABLED.load(Ordering::SeqCst) {
         return;
@@ -33,7 +33,7 @@ fn living_fire_set_listener(event: &mut EntitySetFireEvent, _server: &mut Minecr
     event.set_fire_ticks(LIVING_FIRE_SET_EVENT_TICKS.load(Ordering::SeqCst));
 }
 
-#[event_listener]
+#[fn_event_listener]
 fn living_fire_extinguish_listener(
     event: &mut EntityFireExtinguishEvent,
     _server: &mut MinecraftServer,

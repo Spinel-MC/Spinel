@@ -1,9 +1,9 @@
 use crate::network::client::instance::Client;
 use crate::server::MinecraftServer;
 use spinel_core::network::serverbound::play::container_click::ContainerClickPacket;
-use spinel_macros::packet_listener;
+use spinel_macros::fn_packet_listener;
 
-#[packet_listener]
+#[fn_packet_listener]
 fn on_container_click(
     client: &mut Client,
     packet: ContainerClickPacket,

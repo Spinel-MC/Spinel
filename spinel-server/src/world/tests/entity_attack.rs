@@ -4,7 +4,7 @@ use crate::network::client::instance::Client;
 use crate::server::MinecraftServer;
 use crate::world::World;
 use spinel_core::network::clientbound::play::entity_animation::EntityAnimationPacket;
-use spinel_macros::event_listener;
+use spinel_macros::fn_event_listener;
 use spinel_network::ConnectionState;
 use spinel_network::types::Identifier;
 use spinel_registry::EntityType;
@@ -16,7 +16,7 @@ static ENTITY_ATTACK_TEST_LOCK: Mutex<()> = Mutex::new(());
 static ENTITY_ATTACK_TEST_PAIR: Mutex<Option<(EntityId, EntityId)>> = Mutex::new(None);
 static ENTITY_ATTACK_EVENT_LOG: Mutex<Vec<(EntityId, EntityId)>> = Mutex::new(Vec::new());
 
-#[event_listener]
+#[fn_event_listener]
 fn creature_attack_listener(event: &mut EntityAttackEvent, _server: &mut MinecraftServer) {
     let attack_pair = (event.get_entity_id(), event.get_target_id());
     if *ENTITY_ATTACK_TEST_PAIR.lock().unwrap() != Some(attack_pair) {

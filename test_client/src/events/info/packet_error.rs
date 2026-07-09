@@ -1,9 +1,9 @@
 use spinel::{
     client::{MinecraftClient, events::network::packet_error::PacketErrorEvent},
-    macros::event_listener,
+    macros::fn_event_listener,
 };
 
-#[event_listener]
+#[fn_event_listener]
 fn on_packet_error(event: &mut PacketErrorEvent, _client: &mut MinecraftClient) {
     let server_address = event.server().addr;
 

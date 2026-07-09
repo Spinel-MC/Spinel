@@ -6,7 +6,7 @@ use crate::server::MinecraftServer;
 use spinel_core::network::clientbound::play::set_entity_data::SetEntityDataPacket;
 use spinel_core::network::clientbound::play::set_equipment::SetEquipmentPacket;
 use spinel_core::network::clientbound::play::update_attributes::UpdateAttributesPacket;
-use spinel_macros::event_listener;
+use spinel_macros::fn_event_listener;
 use spinel_network::ConnectionState;
 
 use spinel_registry::{EntityType, ItemStack, Material};
@@ -17,7 +17,7 @@ use uuid::Uuid;
 static LIVING_EQUIPMENT_TEST_LOCK: Mutex<()> = Mutex::new(());
 static LIVING_EQUIPMENT_TEST_ENTITY: Mutex<Option<EntityId>> = Mutex::new(None);
 
-#[event_listener]
+#[fn_event_listener]
 fn living_equipment_listener(event: &mut EntityEquipEvent, _server: &mut MinecraftServer) {
     if *LIVING_EQUIPMENT_TEST_ENTITY.lock().unwrap() != Some(event.get_entity_id()) {
         return;

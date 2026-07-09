@@ -1,9 +1,9 @@
 use crate::network::client::instance::Client;
 use crate::server::MinecraftServer;
 use spinel_core::network::serverbound::configuration::client_information::ClientInformationPacket;
-use spinel_macros::packet_listener;
+use spinel_macros::fn_packet_listener;
 
-#[packet_listener()]
+#[fn_packet_listener()]
 fn on_client_information(
     client: &mut Client,
     packet: ClientInformationPacket,

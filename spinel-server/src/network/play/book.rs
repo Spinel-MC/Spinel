@@ -3,10 +3,10 @@ use crate::inventory::slot_conversion;
 use crate::network::client::instance::Client;
 use crate::server::MinecraftServer;
 use spinel_core::network::serverbound::play::edit_book::EditBookPacket;
-use spinel_macros::packet_listener;
+use spinel_macros::fn_packet_listener;
 use spinel_registry::ItemStack;
 
-#[packet_listener]
+#[fn_packet_listener]
 fn on_edit_book(client: &mut Client, packet: EditBookPacket, server: &mut MinecraftServer) -> bool {
     let minestom_slot =
         slot_conversion::convert_player_inventory_slot_to_minestom_slot(packet.slot.0);

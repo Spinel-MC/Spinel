@@ -9,7 +9,7 @@ use rsa::pkcs8::EncodePublicKey;
 use rsa::rand_core::{OsRng, RngCore};
 use spinel_core::network::clientbound::login::encryption_request::EncryptionRequestPacket;
 use spinel_core::network::serverbound::login::login_start::LoginStartPacket;
-use spinel_macros::{event_listener, packet_listener};
+use spinel_macros::{fn_event_listener, fn_packet_listener};
 use spinel_utils::component::Component;
 
 struct LoginAuthenticationArtifacts {
@@ -188,12 +188,12 @@ pub(crate) fn resume_login_after_plugin_responses(client: &mut Client) -> bool {
     true
 }
 
-#[event_listener()]
+#[fn_event_listener()]
 fn on_intention(event: &mut IntentionEvent, _server: &mut MinecraftServer) {
     event.client().login_metadata = Some(LoginMetadata::new(event.protocol_version));
 }
 
-#[packet_listener()]
+#[fn_packet_listener()]
 fn on_login_start(
     client: &mut Client,
     packet: LoginStartPacket,

@@ -4,11 +4,11 @@ use spinel_core::network::clientbound::play::command_suggestions::{
     CommandSuggestionMatch, CommandSuggestionsPacket,
 };
 use spinel_core::network::serverbound::play::command_suggestions::CommandSuggestionsRequestPacket;
-use spinel_macros::packet_listener;
+use spinel_macros::fn_packet_listener;
 use spinel_network::{DataType, PacketSender, PacketStruct};
 use spinel_utils::component::text::TextComponent;
 
-#[packet_listener]
+#[fn_packet_listener]
 fn on_command_suggestions(
     client: &mut Client,
     packet: CommandSuggestionsRequestPacket,

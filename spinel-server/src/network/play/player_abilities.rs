@@ -4,9 +4,9 @@ use crate::network::client::instance::Client;
 use crate::server::MinecraftServer;
 use spinel_core::entity::game_mode::GameMode;
 use spinel_core::network::serverbound::play::player_abilities::ServerboundPlayerAbilitiesPacket;
-use spinel_macros::packet_listener;
+use spinel_macros::fn_packet_listener;
 
-#[packet_listener]
+#[fn_packet_listener]
 fn on_player_abilities(
     client: &mut Client,
     packet: ServerboundPlayerAbilitiesPacket,

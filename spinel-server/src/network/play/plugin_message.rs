@@ -2,9 +2,9 @@ use crate::events::player_plugin_message::PlayerPluginMessageEvent;
 use crate::network::client::instance::Client;
 use crate::server::MinecraftServer;
 use spinel_core::network::serverbound::play::plugin_message::ServerboundPlayCustomPayloadPacket;
-use spinel_macros::packet_listener;
+use spinel_macros::fn_packet_listener;
 
-#[packet_listener]
+#[fn_packet_listener]
 fn on_plugin_message(
     client: &mut Client,
     packet: ServerboundPlayCustomPayloadPacket,

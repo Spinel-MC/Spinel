@@ -3,7 +3,7 @@ use crate::events::entity_velocity::EntityVelocityEvent;
 use crate::network::client::instance::Client;
 use crate::server::MinecraftServer;
 use spinel_core::network::clientbound::play::entity_velocity::EntityVelocityPacket;
-use spinel_macros::event_listener;
+use spinel_macros::fn_event_listener;
 use spinel_network::ConnectionState;
 use spinel_network::types::{Vector3d, Velocity};
 use spinel_registry::EntityType;
@@ -17,7 +17,7 @@ static VELOCITY_TEST_ENTITY: Mutex<Option<EntityId>> = Mutex::new(None);
 static VELOCITY_EVENT_CANCELLED: AtomicBool = AtomicBool::new(false);
 static VELOCITY_EVENT_ENTITY_ACCESSOR_MATCHED: AtomicBool = AtomicBool::new(false);
 
-#[event_listener]
+#[fn_event_listener]
 fn entity_velocity_listener(event: &mut EntityVelocityEvent, _server: &mut MinecraftServer) {
     if *VELOCITY_TEST_ENTITY.lock().unwrap() != Some(event.get_entity_id()) {
         return;

@@ -6,7 +6,7 @@ use crate::events::projectile_collide_with_entity::ProjectileCollideWithEntityEv
 use crate::events::projectile_uncollide::ProjectileUncollideEvent;
 use crate::server::MinecraftServer;
 use crate::world::{Block, BlockPosition, World};
-use spinel_macros::event_listener;
+use spinel_macros::fn_event_listener;
 use spinel_network::types::{Vector3d, Velocity};
 use spinel_registry::{EntityType, Identifier};
 use std::sync::Mutex;
@@ -24,7 +24,7 @@ static PROJECTILE_SHARED_COLLISION_CANCELLED: AtomicBool = AtomicBool::new(false
 static PROJECTILE_UNCOLLIDE_COUNT: AtomicU32 = AtomicU32::new(0);
 static PROJECTILE_SHOOT_EVENT_ENTITY_ACCESSOR_MATCHED: AtomicBool = AtomicBool::new(false);
 
-#[event_listener]
+#[fn_event_listener]
 fn projectile_shoot_listener(event: &mut EntityShootEvent, _server: &mut MinecraftServer) {
     if *PROJECTILE_TEST_ID.lock().unwrap() != Some(event.get_projectile_id()) {
         return;
@@ -41,7 +41,7 @@ fn projectile_shoot_listener(event: &mut EntityShootEvent, _server: &mut Minecra
     event.set_cancelled(PROJECTILE_SHOOT_CANCELLED.load(Ordering::SeqCst));
 }
 
-#[event_listener]
+#[fn_event_listener]
 fn projectile_block_collision_listener(
     event: &mut ProjectileCollideWithBlockEvent,
     _server: &mut MinecraftServer,
@@ -53,7 +53,7 @@ fn projectile_block_collision_listener(
     event.set_cancelled(PROJECTILE_BLOCK_COLLISION_CANCELLED.load(Ordering::SeqCst));
 }
 
-#[event_listener]
+#[fn_event_listener]
 fn projectile_entity_collision_listener(
     event: &mut ProjectileCollideWithEntityEvent,
     _server: &mut MinecraftServer,
@@ -65,7 +65,7 @@ fn projectile_entity_collision_listener(
     PROJECTILE_ENTITY_COLLISION_COUNT.fetch_add(1, Ordering::SeqCst);
 }
 
-#[event_listener]
+#[fn_event_listener]
 fn projectile_collision_listener(
     event: &mut ProjectileCollideEvent,
     _server: &mut MinecraftServer,
@@ -77,7 +77,7 @@ fn projectile_collision_listener(
     event.set_cancelled(PROJECTILE_SHARED_COLLISION_CANCELLED.load(Ordering::SeqCst));
 }
 
-#[event_listener]
+#[fn_event_listener]
 fn projectile_uncollide_listener(
     event: &mut ProjectileUncollideEvent,
     _server: &mut MinecraftServer,

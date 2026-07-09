@@ -1,10 +1,10 @@
 use crate::network::client::instance::Client;
 use crate::server::MinecraftServer;
 use spinel_core::network::serverbound::play::client_command::ClientCommandPacket;
-use spinel_macros::packet_listener;
+use spinel_macros::fn_packet_listener;
 use spinel_network::types::{TeleportFlags, Vector3d};
 
-#[packet_listener]
+#[fn_packet_listener]
 fn on_client_command(
     client: &mut Client,
     packet: ClientCommandPacket,

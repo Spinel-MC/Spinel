@@ -1,10 +1,10 @@
 use crate::network::client::instance::Client;
 use crate::server::MinecraftServer;
 use spinel_core::network::serverbound::play::keep_alive::KeepAlivePacket;
-use spinel_macros::packet_listener;
+use spinel_macros::fn_packet_listener;
 use spinel_utils::component::Component;
 
-#[packet_listener]
+#[fn_packet_listener]
 fn on_keep_alive(
     client: &mut Client,
     packet: KeepAlivePacket,

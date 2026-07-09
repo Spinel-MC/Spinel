@@ -1,4 +1,5 @@
 use crate::commands::TestServerCommands;
+use crate::events::TestServerEventHandlers;
 use crate::worlds::ShowcaseWorld;
 use spinel::server::MinecraftServer;
 
@@ -25,6 +26,7 @@ impl TestServer {
 
     fn server(&self) -> Option<MinecraftServer> {
         let mut server = MinecraftServer::new();
+        TestServerEventHandlers::register(&mut server);
         TestServerCommands::register(&mut server);
         ShowcaseWorld::install(&mut server).ok()?;
         Some(server)

@@ -4,9 +4,9 @@ use crate::network::server::instance::Server;
 use spinel_core::network::clientbound::configuration::disconnect::ConfigurationDisconnectPacket;
 use spinel_core::network::clientbound::login::disconnect::LoginDisconnectPacket;
 use spinel_core::network::clientbound::play::disconnect::PlayDisconnectPacket;
-use spinel_macros::packet_listener;
+use spinel_macros::fn_packet_listener;
 
-#[packet_listener(state: spinel_network::ConnectionState::Login)]
+#[fn_packet_listener(state: spinel_network::ConnectionState::Login)]
 fn on_login_disconnect(
     server: &mut Server,
     packet: LoginDisconnectPacket,
@@ -15,7 +15,7 @@ fn on_login_disconnect(
     dispatch_disconnect_event(server, client, packet.reason)
 }
 
-#[packet_listener(state: spinel_network::ConnectionState::Configuration)]
+#[fn_packet_listener(state: spinel_network::ConnectionState::Configuration)]
 fn on_configuration_disconnect(
     server: &mut Server,
     packet: ConfigurationDisconnectPacket,
@@ -24,7 +24,7 @@ fn on_configuration_disconnect(
     dispatch_disconnect_event(server, client, packet.reason)
 }
 
-#[packet_listener(state: spinel_network::ConnectionState::Play)]
+#[fn_packet_listener(state: spinel_network::ConnectionState::Play)]
 fn on_play_disconnect(
     server: &mut Server,
     packet: PlayDisconnectPacket,

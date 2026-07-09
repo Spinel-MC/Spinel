@@ -5,7 +5,7 @@ use crate::network::client::instance::Client;
 use crate::server::MinecraftServer;
 use crate::world::World;
 use spinel_core::network::clientbound::play::take_item_entity::TakeItemEntityPacket;
-use spinel_macros::event_listener;
+use spinel_macros::fn_event_listener;
 use spinel_network::types::Identifier;
 use spinel_network::{ConnectionState, DataType};
 use spinel_registry::{EntityType, ItemStack, Material, Registries};
@@ -17,7 +17,7 @@ use uuid::Uuid;
 static LIVING_PICKUP_TEST_LOCK: Mutex<()> = Mutex::new(());
 static LIVING_PICKUP_EVENT_CANCELLED: AtomicBool = AtomicBool::new(false);
 
-#[event_listener]
+#[fn_event_listener]
 fn living_pickup_listener(event: &mut PickupItemEvent, _server: &mut MinecraftServer) {
     event.set_cancelled(LIVING_PICKUP_EVENT_CANCELLED.load(Ordering::SeqCst));
 }

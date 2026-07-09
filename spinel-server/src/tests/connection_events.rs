@@ -3,7 +3,7 @@ use crate::events::player_disconnect::PlayerDisconnectEvent;
 use crate::network::client::instance::Client;
 use crate::server::MinecraftServer;
 use spinel_core::network::clientbound::play::disconnect::PlayDisconnectPacket;
-use spinel_macros::event_listener;
+use spinel_macros::fn_event_listener;
 
 use spinel_network::{ConnectionState, DataType, PacketDecoder, VarIntWrapper};
 use spinel_utils::component::Component;
@@ -17,7 +17,7 @@ use uuid::Uuid;
 static PLAYER_DISCONNECT_EVENT_TARGET: Mutex<Option<Uuid>> = Mutex::new(None);
 static PLAYER_DISCONNECT_EVENT_SEEN: Mutex<Option<Uuid>> = Mutex::new(None);
 
-#[event_listener]
+#[fn_event_listener]
 fn player_disconnect_test_listener(
     event: &mut PlayerDisconnectEvent,
     _server: &mut MinecraftServer,

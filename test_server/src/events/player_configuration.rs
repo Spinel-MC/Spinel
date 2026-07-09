@@ -8,35 +8,40 @@ use spinel::{
     },
 };
 
-#[event_listener()]
-fn on_player_configuration(
-    event: &mut AsyncPlayerConfigurationEvent,
-    server: &mut MinecraftServer,
-) {
-    let Some(world) = server.world_manager.worlds().first() else {
-        return;
-    };
+pub struct PlayerConfigurationListener;
 
-    event.set_spawning_world(world.uuid);
-    event
-        .player()
-        .set_respawn_point(PlayerSpawnPoint::new(0.0, 4.0, 0.0, 0.0, 0.0));
+#[event_listener]
+impl PlayerConfigurationListener {
+    #[event_handler]
+    pub fn on_player_configuration(
+        event: &mut AsyncPlayerConfigurationEvent,
+        server: &mut MinecraftServer,
+    ) {
+        let Some(world) = server.world_manager.worlds().first() else {
+            return;
+        };
 
-    event.player().set_game_mode(GameMode::Survival);
-    let _ = event.player().set_permission_level(4);
+        event.set_spawning_world(world.uuid);
+        event
+            .player()
+            .set_respawn_point(PlayerSpawnPoint::new(0.0, 4.0, 0.0, 0.0, 0.0));
 
-    event
-        .player()
-        .get_inventory()
-        .add_item_stack(ItemStack::of(Material::DIAMOND_PICKAXE));
+        event.player().set_game_mode(GameMode::Survival);
+        let _ = event.player().set_permission_level(4);
 
-    event
-        .player()
-        .get_inventory()
-        .add_item_stack(ItemStack::of(Material::DIAMOND_HELMET));
+        event
+            .player()
+            .get_inventory()
+            .add_item_stack(ItemStack::of(Material::DIAMOND_PICKAXE));
 
-    event
-        .player()
-        .get_inventory()
-        .add_item_stack(ItemStack::of(Material::DIRT));
+        event
+            .player()
+            .get_inventory()
+            .add_item_stack(ItemStack::of(Material::DIAMOND_HELMET));
+
+        event
+            .player()
+            .get_inventory()
+            .add_item_stack(ItemStack::of(Material::DIRT));
+    }
 }

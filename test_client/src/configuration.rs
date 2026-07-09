@@ -5,14 +5,14 @@ use spinel::core::network::clientbound::configuration::registry_data::RegistryDa
 use spinel::core::network::clientbound::configuration::update_tags::UpdateTagsPacket;
 use spinel::core::network::serverbound::configuration::finish_configuration::FinishConfigurationPacket as ClientFinishConfigurationPacket;
 use spinel::core::network::serverbound::configuration::known_packs::KnownPacksPacket as ClientKnownPacksPacket;
-use spinel::macros::packet_listener;
+use spinel::macros::fn_packet_listener;
 use spinel::nbt::NbtCompound;
 use spinel::network::types::Identifier;
 use spinel::network::{ConnectionState, Server};
 
 use crate::dispatch::report_dispatch_result;
 
-#[packet_listener(state: ConnectionState::Configuration)]
+#[fn_packet_listener(state: ConnectionState::Configuration)]
 fn on_select_known_packs(
     server: &mut Server,
     _packet: ServerKnownPacksPacket,
@@ -28,7 +28,7 @@ fn on_select_known_packs(
     true
 }
 
-#[packet_listener(state: ConnectionState::Configuration)]
+#[fn_packet_listener(state: ConnectionState::Configuration)]
 fn on_registry_data(
     _server: &mut Server,
     packet: RegistryDataPacket,
@@ -54,7 +54,7 @@ fn on_registry_data(
     true
 }
 
-#[packet_listener(state: ConnectionState::Configuration)]
+#[fn_packet_listener(state: ConnectionState::Configuration)]
 fn on_update_tags(
     _server: &mut Server,
     _packet: UpdateTagsPacket,
@@ -63,7 +63,7 @@ fn on_update_tags(
     true
 }
 
-#[packet_listener(state: ConnectionState::Configuration)]
+#[fn_packet_listener(state: ConnectionState::Configuration)]
 fn on_finish_config(
     server: &mut Server,
     _packet: ServerFinishConfigurationPacket,

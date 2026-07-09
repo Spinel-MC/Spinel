@@ -8,11 +8,11 @@ use crate::world::{Block, BlockHandlerPlacement, BlockPosition, BlockReplacement
 use spinel_core::entity::game_mode::GameMode;
 use spinel_core::network::clientbound::play::acknowledge_block_change::AcknowledgeBlockChangePacket;
 use spinel_core::network::serverbound::play::use_item_on::UseItemOnPacket;
-use spinel_macros::packet_listener;
+use spinel_macros::fn_packet_listener;
 use spinel_registry::data_components::vanilla_components::{BLOCK_STATE, CAN_PLACE_ON};
 use spinel_registry::{BlockPredicates, DataComponentMap, ItemBlockState};
 
-#[packet_listener]
+#[fn_packet_listener]
 fn on_use_item_on(
     client: &mut Client,
     packet: UseItemOnPacket,

@@ -2,9 +2,9 @@ use crate::events::advancement_tab::AdvancementTabEvent;
 use crate::network::client::instance::Client;
 use crate::server::MinecraftServer;
 use spinel_core::network::serverbound::play::seen_advancements::SeenAdvancementsPacket;
-use spinel_macros::packet_listener;
+use spinel_macros::fn_packet_listener;
 
-#[packet_listener]
+#[fn_packet_listener]
 fn on_seen_advancements(
     client: &mut Client,
     packet: SeenAdvancementsPacket,

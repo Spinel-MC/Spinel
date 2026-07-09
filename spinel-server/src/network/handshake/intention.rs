@@ -2,10 +2,10 @@ use crate::events::intention::IntentionEvent;
 use crate::network::client::instance::Client;
 use crate::server::MinecraftServer;
 use spinel_core::network::serverbound::handshake::intention::IntentionPacket;
-use spinel_macros::packet_listener;
+use spinel_macros::fn_packet_listener;
 use spinel_network::ConnectionState;
 
-#[packet_listener(id: "intention", state: ConnectionState::Handshaking)]
+#[fn_packet_listener(id: "intention", state: ConnectionState::Handshaking)]
 fn on_intention(
     client: &mut Client,
     packet: IntentionPacket,

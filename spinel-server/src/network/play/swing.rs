@@ -3,9 +3,9 @@ use crate::events::player_hand_animation::PlayerHandAnimationEvent;
 use crate::network::client::instance::Client;
 use crate::server::MinecraftServer;
 use spinel_core::network::serverbound::play::swing::SwingPacket;
-use spinel_macros::packet_listener;
+use spinel_macros::fn_packet_listener;
 
-#[packet_listener]
+#[fn_packet_listener]
 fn on_swing(client: &mut Client, packet: SwingPacket, server: &mut MinecraftServer) -> bool {
     let Some(hand) = PlayerHand::from_protocol_id(packet.hand) else {
         return false;

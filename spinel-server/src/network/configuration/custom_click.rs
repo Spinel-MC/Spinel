@@ -2,9 +2,9 @@ use crate::events::player_config_custom_click::PlayerConfigCustomClickEvent;
 use crate::network::client::instance::Client;
 use crate::server::MinecraftServer;
 use spinel_core::network::serverbound::configuration::custom_click_action::ConfigurationCustomClickActionPacket;
-use spinel_macros::packet_listener;
+use spinel_macros::fn_packet_listener;
 
-#[packet_listener]
+#[fn_packet_listener]
 fn on_configuration_custom_click_action(
     client: &mut Client,
     packet: ConfigurationCustomClickActionPacket,

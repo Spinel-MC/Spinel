@@ -1,11 +1,11 @@
 use crate::network::client::instance::Client;
 use crate::server::MinecraftServer;
 use spinel_core::network::serverbound::configuration::finish_configuration::FinishConfigurationPacket;
-use spinel_macros::packet_listener;
+use spinel_macros::fn_packet_listener;
 use spinel_network::ConnectionState;
 use std::io;
 
-#[packet_listener(id: "finish_configuration", state: ConnectionState::Configuration)]
+#[fn_packet_listener(id: "finish_configuration", state: ConnectionState::Configuration)]
 fn on_finish_configuration(
     client: &mut Client,
     _packet: FinishConfigurationPacket,

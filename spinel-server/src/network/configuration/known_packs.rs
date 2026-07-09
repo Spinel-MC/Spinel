@@ -10,7 +10,7 @@ use spinel_core::network::clientbound::configuration::features::FeaturesPacket;
 use spinel_core::network::clientbound::configuration::finish_configuration::FinishConfigurationPacket;
 use spinel_core::network::clientbound::configuration::reset_chat::ResetChatPacket;
 use spinel_core::network::serverbound::configuration::known_packs::KnownPacksPacket;
-use spinel_macros::packet_listener;
+use spinel_macros::fn_packet_listener;
 use spinel_network::types::{Array, Identifier};
 use spinel_utils::component::Component;
 use spinel_utils::component::color::{NamedTextColor, TextColor};
@@ -143,7 +143,7 @@ fn error_during_login() -> TextComponent {
     )
 }
 
-#[packet_listener()]
+#[fn_packet_listener()]
 fn on_known_packs(
     client: &mut Client,
     _packet: KnownPacksPacket,

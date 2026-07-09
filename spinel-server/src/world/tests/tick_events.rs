@@ -3,7 +3,7 @@ use crate::events::entity_tick::EntityTickEvent;
 use crate::events::world_tick::WorldTickEvent;
 use crate::events::world_tick_end::WorldTickEndEvent;
 use crate::server::MinecraftServer;
-use spinel_macros::event_listener;
+use spinel_macros::fn_event_listener;
 
 use spinel_registry::{EntityType, Registries};
 use std::sync::Mutex;
@@ -15,7 +15,7 @@ static INSTANCE_TICK_EVENT_TEST_SEQUENCE: Mutex<Vec<&'static str>> = Mutex::new(
 static INSTANCE_TICK_EVENT_TEST_WORLD: Mutex<Option<Uuid>> = Mutex::new(None);
 static INSTANCE_TICK_EVENT_TEST_LOCK: Mutex<()> = Mutex::new(());
 
-#[event_listener]
+#[fn_event_listener]
 fn world_tick_test_listener(event: &mut WorldTickEvent, _server: &mut MinecraftServer) {
     if !INSTANCE_TICK_EVENT_TEST_ENABLED.load(Ordering::SeqCst) {
         return;
@@ -39,7 +39,7 @@ fn world_tick_test_listener(event: &mut WorldTickEvent, _server: &mut MinecraftS
         });
 }
 
-#[event_listener]
+#[fn_event_listener]
 fn world_tick_end_test_listener(event: &mut WorldTickEndEvent, _server: &mut MinecraftServer) {
     if !INSTANCE_TICK_EVENT_TEST_ENABLED.load(Ordering::SeqCst) {
         return;
@@ -63,7 +63,7 @@ fn world_tick_end_test_listener(event: &mut WorldTickEndEvent, _server: &mut Min
         });
 }
 
-#[event_listener]
+#[fn_event_listener]
 fn entity_tick_test_listener(event: &mut EntityTickEvent, _server: &mut MinecraftServer) {
     if !INSTANCE_TICK_EVENT_TEST_ENABLED.load(Ordering::SeqCst) {
         return;

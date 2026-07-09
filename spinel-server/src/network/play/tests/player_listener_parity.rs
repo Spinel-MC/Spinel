@@ -52,7 +52,7 @@ use spinel_core::network::serverbound::play::set_creative_mode_slot::SetCreative
 use spinel_core::network::serverbound::play::steer_boat::SteerBoatPacket;
 use spinel_core::network::serverbound::play::teleport_to_entity::TeleportToEntityPacket;
 use spinel_core::network::serverbound::play::use_item_on::UseItemOnPacket;
-use spinel_macros::event_listener;
+use spinel_macros::fn_event_listener;
 use spinel_network::types::entity_metadata::MetadataValue;
 use spinel_network::types::{Position, Slot, UntrustedSlot};
 use spinel_network::{ConnectionState, DataType, PacketStruct, VarIntWrapper};
@@ -94,7 +94,7 @@ static LISTENER_PARITY_CREATIVE_CANCEL: AtomicBool = AtomicBool::new(false);
 static LISTENER_PARITY_DROPPED_ITEMS: Mutex<Vec<ItemStack>> = Mutex::new(Vec::new());
 static LISTENER_PARITY_LOCK: Mutex<()> = Mutex::new(());
 
-#[event_listener]
+#[fn_event_listener]
 fn player_plugin_message_test_listener(
     event: &mut PlayerPluginMessageEvent,
     _server: &mut MinecraftServer,
@@ -108,7 +108,7 @@ fn player_plugin_message_test_listener(
         .push((event.channel().to_string(), event.data().to_vec()));
 }
 
-#[event_listener]
+#[fn_event_listener]
 fn entity_attack_test_listener(event: &mut EntityAttackEvent, _server: &mut MinecraftServer) {
     if !LISTENER_PARITY_ENABLED.load(Ordering::SeqCst) {
         return;
@@ -119,7 +119,7 @@ fn entity_attack_test_listener(event: &mut EntityAttackEvent, _server: &mut Mine
         .push((event.get_entity_id(), event.get_target_id()));
 }
 
-#[event_listener]
+#[fn_event_listener]
 fn player_entity_interact_test_listener(
     event: &mut PlayerEntityInteractEvent,
     _server: &mut MinecraftServer,
@@ -134,7 +134,7 @@ fn player_entity_interact_test_listener(
     ));
 }
 
-#[event_listener]
+#[fn_event_listener]
 fn player_pick_entity_test_listener(
     event: &mut PlayerPickEntityEvent,
     _server: &mut MinecraftServer,
@@ -149,7 +149,7 @@ fn player_pick_entity_test_listener(
         .push((target_id, event.get_include_data()));
 }
 
-#[event_listener]
+#[fn_event_listener]
 fn player_stab_test_listener(event: &mut PlayerStabEvent, _server: &mut MinecraftServer) {
     if LISTENER_PARITY_ENABLED.load(Ordering::SeqCst) && event.get_item_stack().has(PIERCING_WEAPON)
     {
@@ -157,7 +157,7 @@ fn player_stab_test_listener(event: &mut PlayerStabEvent, _server: &mut Minecraf
     }
 }
 
-#[event_listener]
+#[fn_event_listener]
 fn player_spectate_test_listener(event: &mut PlayerSpectateEvent, _server: &mut MinecraftServer) {
     if !LISTENER_PARITY_ENABLED.load(Ordering::SeqCst) {
         return;
@@ -168,7 +168,7 @@ fn player_spectate_test_listener(event: &mut PlayerSpectateEvent, _server: &mut 
         .push(event.get_target_id());
 }
 
-#[event_listener]
+#[fn_event_listener]
 fn player_game_mode_request_test_listener(
     event: &mut PlayerGameModeRequestEvent,
     _server: &mut MinecraftServer,
@@ -182,7 +182,7 @@ fn player_game_mode_request_test_listener(
         .push(event.requested_game_mode());
 }
 
-#[event_listener]
+#[fn_event_listener]
 fn player_start_sprinting_test_listener(
     _event: &mut PlayerStartSprintingEvent,
     _server: &mut MinecraftServer,
@@ -192,7 +192,7 @@ fn player_start_sprinting_test_listener(
     }
 }
 
-#[event_listener]
+#[fn_event_listener]
 fn player_stop_sprinting_test_listener(
     _event: &mut PlayerStopSprintingEvent,
     _server: &mut MinecraftServer,
@@ -202,7 +202,7 @@ fn player_stop_sprinting_test_listener(
     }
 }
 
-#[event_listener]
+#[fn_event_listener]
 fn player_start_flying_test_listener(
     event: &mut PlayerStartFlyingEvent,
     _server: &mut MinecraftServer,
@@ -212,7 +212,7 @@ fn player_start_flying_test_listener(
     }
 }
 
-#[event_listener]
+#[fn_event_listener]
 fn player_stop_flying_test_listener(
     event: &mut PlayerStopFlyingEvent,
     _server: &mut MinecraftServer,
@@ -222,7 +222,7 @@ fn player_stop_flying_test_listener(
     }
 }
 
-#[event_listener]
+#[fn_event_listener]
 fn player_start_flying_with_elytra_test_listener(
     event: &mut PlayerStartFlyingWithElytraEvent,
     _server: &mut MinecraftServer,
@@ -232,7 +232,7 @@ fn player_start_flying_with_elytra_test_listener(
     }
 }
 
-#[event_listener]
+#[fn_event_listener]
 fn player_stop_flying_with_elytra_test_listener(
     event: &mut PlayerStopFlyingWithElytraEvent,
     _server: &mut MinecraftServer,
@@ -242,7 +242,7 @@ fn player_stop_flying_with_elytra_test_listener(
     }
 }
 
-#[event_listener]
+#[fn_event_listener]
 fn player_leave_bed_test_listener(event: &mut PlayerLeaveBedEvent, _server: &mut MinecraftServer) {
     if LISTENER_PARITY_ENABLED.load(Ordering::SeqCst) {
         LISTENER_PARITY_LEAVE_BED.fetch_add(1, Ordering::SeqCst);
@@ -250,14 +250,14 @@ fn player_leave_bed_test_listener(event: &mut PlayerLeaveBedEvent, _server: &mut
     }
 }
 
-#[event_listener]
+#[fn_event_listener]
 fn player_loaded_test_listener(event: &mut PlayerLoadedEvent, _server: &mut MinecraftServer) {
     if LISTENER_PARITY_ENABLED.load(Ordering::SeqCst) && event.player().has_entered_world() {
         LISTENER_PARITY_LOADED.fetch_add(1, Ordering::SeqCst);
     }
 }
 
-#[event_listener]
+#[fn_event_listener]
 fn player_input_test_listener(event: &mut PlayerInputEvent, _server: &mut MinecraftServer) {
     if !LISTENER_PARITY_ENABLED.load(Ordering::SeqCst) {
         return;
@@ -273,7 +273,7 @@ fn player_input_test_listener(event: &mut PlayerInputEvent, _server: &mut Minecr
     ));
 }
 
-#[event_listener]
+#[fn_event_listener]
 fn player_start_sneaking_test_listener(
     _event: &mut PlayerStartSneakingEvent,
     _server: &mut MinecraftServer,
@@ -283,7 +283,7 @@ fn player_start_sneaking_test_listener(
     }
 }
 
-#[event_listener]
+#[fn_event_listener]
 fn player_stop_sneaking_test_listener(
     _event: &mut PlayerStopSneakingEvent,
     _server: &mut MinecraftServer,
@@ -293,7 +293,7 @@ fn player_stop_sneaking_test_listener(
     }
 }
 
-#[event_listener]
+#[fn_event_listener]
 fn creative_inventory_action_test_listener(
     event: &mut CreativeInventoryActionEvent,
     _server: &mut MinecraftServer,
@@ -315,7 +315,7 @@ fn creative_inventory_action_test_listener(
     }
 }
 
-#[event_listener]
+#[fn_event_listener]
 fn item_drop_test_listener(event: &mut ItemDropEvent, _server: &mut MinecraftServer) {
     if !LISTENER_PARITY_ENABLED.load(Ordering::SeqCst) {
         return;
@@ -326,7 +326,7 @@ fn item_drop_test_listener(event: &mut ItemDropEvent, _server: &mut MinecraftSer
         .push(event.item().clone());
 }
 
-#[event_listener]
+#[fn_event_listener]
 fn player_chat_test_listener(event: &mut PlayerChatEvent, _server: &mut MinecraftServer) {
     if !LISTENER_PARITY_ENABLED.load(Ordering::SeqCst) {
         return;

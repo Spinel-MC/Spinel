@@ -2,9 +2,9 @@ use crate::events::player_resource_pack_status::PlayerResourcePackStatusEvent;
 use crate::network::client::instance::Client;
 use crate::server::MinecraftServer;
 use spinel_core::network::serverbound::configuration::resource_pack::ResourcePackStatusPacket;
-use spinel_macros::packet_listener;
+use spinel_macros::fn_packet_listener;
 
-#[packet_listener]
+#[fn_packet_listener]
 fn on_resource_pack(
     client: &mut Client,
     packet: ResourcePackStatusPacket,

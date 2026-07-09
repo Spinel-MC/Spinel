@@ -7,7 +7,7 @@ use crate::network::client::instance::Client;
 use crate::server::MinecraftServer;
 use spinel_core::network::clientbound::play::entity_effect::EntityEffectPacket;
 use spinel_core::network::clientbound::play::remove_entity_effect::RemoveEntityEffectPacket;
-use spinel_macros::event_listener;
+use spinel_macros::fn_event_listener;
 use spinel_network::ConnectionState;
 use spinel_network::types::Particle;
 use spinel_registry::{EntityType, MobEffect, Registries};
@@ -24,7 +24,7 @@ static LIVING_EFFECT_ADD_EVENT_ENTITY_ACCESSOR_MATCHED: AtomicBool = AtomicBool:
 static LIVING_EFFECT_REMOVE_EVENT_ENTITY_ACCESSOR_MATCHED: AtomicBool = AtomicBool::new(false);
 static LIVING_EFFECT_TICK_EVENT_OBSERVED_ACTIVE_EFFECT: AtomicBool = AtomicBool::new(false);
 
-#[event_listener]
+#[fn_event_listener]
 fn living_effect_add_listener(event: &mut EntityPotionAddEvent, _server: &mut MinecraftServer) {
     if *LIVING_EFFECT_TEST_ENTITY.lock().unwrap() != Some(event.get_entity_id()) {
         return;
@@ -36,7 +36,7 @@ fn living_effect_add_listener(event: &mut EntityPotionAddEvent, _server: &mut Mi
     event.set_cancelled(LIVING_EFFECT_ADD_CANCELLED.load(Ordering::SeqCst));
 }
 
-#[event_listener]
+#[fn_event_listener]
 fn living_effect_remove_listener(
     event: &mut EntityPotionRemoveEvent,
     _server: &mut MinecraftServer,
@@ -51,7 +51,7 @@ fn living_effect_remove_listener(
     LIVING_EFFECT_REMOVE_COUNT.fetch_add(1, Ordering::SeqCst);
 }
 
-#[event_listener]
+#[fn_event_listener]
 fn living_effect_tick_listener(event: &mut EntityTickEvent, _server: &mut MinecraftServer) {
     let Some(test_entity_id) = *LIVING_EFFECT_TEST_ENTITY.lock().unwrap() else {
         return;

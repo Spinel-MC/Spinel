@@ -1,8 +1,8 @@
 use spinel::client::MinecraftClient;
 use spinel::client::events::disconnect::DisconnectEvent;
-use spinel::macros::event_listener;
+use spinel::macros::fn_event_listener;
 
-#[event_listener]
+#[fn_event_listener]
 fn on_disconnect(event: &mut DisconnectEvent, _client: &mut MinecraftClient) {
     let plain_reason = event.reason.to_plain_string();
     let reason = match plain_reason.is_empty() {

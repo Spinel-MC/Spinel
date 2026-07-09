@@ -2,7 +2,7 @@ use crate::entity::{Entity, EntityId, EntityPosition, ItemEntity};
 use crate::events::entity_item_merge::EntityItemMergeEvent;
 use crate::server::MinecraftServer;
 use crate::world::World;
-use spinel_macros::event_listener;
+use spinel_macros::fn_event_listener;
 use spinel_network::types::Identifier;
 use spinel_registry::{ItemStack, Material, Registries};
 use std::sync::Mutex;
@@ -14,7 +14,7 @@ static ITEM_MERGE_TEST_CANCELLED: AtomicBool = AtomicBool::new(false);
 static ITEM_MERGE_TEST_MUTATES_RESULT: AtomicBool = AtomicBool::new(false);
 static ITEM_MERGE_EVENT_ENTITY_ACCESSOR_MATCHED: AtomicBool = AtomicBool::new(false);
 
-#[event_listener]
+#[fn_event_listener]
 fn item_merge_test_listener(event: &mut EntityItemMergeEvent, _server: &mut MinecraftServer) {
     if ITEM_MERGE_TEST_SOURCE.lock().unwrap().is_none() {
         return;

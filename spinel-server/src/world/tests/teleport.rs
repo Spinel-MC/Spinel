@@ -4,7 +4,7 @@ use crate::network::client::instance::Client;
 use crate::server::MinecraftServer;
 use crate::world::{Chunk, ChunkLoader, ChunkPosition, World};
 use spinel_core::network::clientbound::play::entity_position_sync::EntityPositionSyncPacket;
-use spinel_macros::event_listener;
+use spinel_macros::fn_event_listener;
 use spinel_network::ConnectionState;
 use spinel_network::types::{Identifier, TeleportFlags, Vector3d, Velocity};
 use spinel_registry::EntityType;
@@ -54,7 +54,7 @@ impl ChunkLoader for DeferredTeleportChunkLoader {
     }
 }
 
-#[event_listener]
+#[fn_event_listener]
 fn entity_teleport_listener(event: &mut EntityTeleportEvent, server: &mut MinecraftServer) {
     let event_entity_id = event.get_entity_id();
     if event.get_entity().get_entity_id() == event_entity_id {

@@ -3,7 +3,7 @@ use crate::events::network::packet_error::{PacketErrorEvent, PacketErrorStage};
 use crate::network::client::instance::Client;
 use crate::server::MinecraftServer;
 use spinel_core::network::serverbound::play::query_entity_tag::QueryEntityTagPacket;
-use spinel_macros::event_listener;
+use spinel_macros::fn_event_listener;
 use spinel_network::{ConnectionState, Recipient};
 use std::net::{IpAddr, Ipv4Addr, SocketAddr, TcpListener, TcpStream};
 use std::sync::Mutex;
@@ -11,7 +11,7 @@ use std::sync::Mutex;
 static PACKET_EVENT_RECIPIENT: Mutex<Option<Recipient>> = Mutex::new(None);
 static PACKET_ERROR_EVENT: Mutex<Option<(Recipient, PacketErrorStage)>> = Mutex::new(None);
 
-#[event_listener]
+#[fn_event_listener]
 fn capture_packet_event(event: &mut PacketEvent, _server: &mut MinecraftServer) {
     if event.id != QueryEntityTagPacket::get_id() {
         return;
@@ -19,7 +19,7 @@ fn capture_packet_event(event: &mut PacketEvent, _server: &mut MinecraftServer) 
     *PACKET_EVENT_RECIPIENT.lock().unwrap() = Some(event.recipient);
 }
 
-#[event_listener]
+#[fn_event_listener]
 fn capture_packet_error_event(event: &mut PacketErrorEvent, _server: &mut MinecraftServer) {
     if event.packet_id != Some(QueryEntityTagPacket::get_id()) {
         return;

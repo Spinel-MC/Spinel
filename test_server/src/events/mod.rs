@@ -4,4 +4,7 @@ pub mod info;
 pub mod player_configuration;
 pub mod player_join;
 pub mod player_quit;
+pub mod registration;
 pub mod server_list_ping;
+
+pub use registration::TestServerEventHandlers;

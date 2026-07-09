@@ -6,7 +6,7 @@ use crate::network::client::instance::Client;
 use crate::server::MinecraftServer;
 use crate::world::{Block, BlockPosition, Chunk, ChunkLoader, ChunkPosition};
 use spinel_core::network::clientbound::play::forget_level_chunk::ForgetLevelChunkPacket;
-use spinel_macros::event_listener;
+use spinel_macros::fn_event_listener;
 use spinel_network::ConnectionState;
 use spinel_network::types::{Identifier, TeleportFlags};
 use std::io;
@@ -18,7 +18,7 @@ static CHUNK_LIFECYCLE_TEST_LOCK: Mutex<()> = Mutex::new(());
 static CHUNK_LIFECYCLE_WORLD: Mutex<Option<Uuid>> = Mutex::new(None);
 static CHUNK_LIFECYCLE_SEQUENCE: Mutex<Vec<&'static str>> = Mutex::new(Vec::new());
 
-#[event_listener]
+#[fn_event_listener]
 fn chunk_load_lifecycle_listener(event: &mut WorldChunkLoadEvent, _server: &mut MinecraftServer) {
     let position = event.chunk_position();
     let world = event.world();
@@ -31,7 +31,7 @@ fn chunk_load_lifecycle_listener(event: &mut WorldChunkLoadEvent, _server: &mut 
     CHUNK_LIFECYCLE_SEQUENCE.lock().unwrap().push("load_event");
 }
 
-#[event_listener]
+#[fn_event_listener]
 fn chunk_unload_lifecycle_listener(
     event: &mut WorldChunkUnloadEvent,
     _server: &mut MinecraftServer,

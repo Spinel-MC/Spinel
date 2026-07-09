@@ -2,14 +2,14 @@ use crate::events::network::packet_error::{PacketErrorEvent, PacketErrorStage};
 use crate::instance::MinecraftClient;
 use crate::network::server::instance::Server;
 use spinel_core::network::clientbound::play::clear_dialog::ClearDialogPacket;
-use spinel_macros::event_listener;
+use spinel_macros::fn_event_listener;
 use spinel_network::{ConnectionState, Recipient};
 use std::net::{IpAddr, Ipv4Addr, SocketAddr, TcpListener, TcpStream};
 use std::sync::Mutex;
 
 static PACKET_ERROR_EVENT: Mutex<Option<(Recipient, PacketErrorStage)>> = Mutex::new(None);
 
-#[event_listener]
+#[fn_event_listener]
 fn capture_packet_error_event(event: &mut PacketErrorEvent, _client: &mut MinecraftClient) {
     if event.packet_id != Some(ClearDialogPacket::get_id()) {
         return;
