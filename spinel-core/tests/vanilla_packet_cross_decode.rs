@@ -1,4 +1,7 @@
-use spinel::network::PacketFixtureCatalog;
+#[path = "support/packet_fixtures.rs"]
+mod packet_fixtures;
+
+use packet_fixtures::PacketFixtureCatalog;
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -77,3 +80,4 @@ fn env_file_value(key: &str) -> Option<String> {
         .find(|(candidate_key, _)| candidate_key.trim() == key)
         .map(|(_, value)| value.trim().trim_matches('"').to_owned())
 }
+

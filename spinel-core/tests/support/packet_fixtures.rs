@@ -1,6 +1,6 @@
-use crate::data_type::DataType;
-use crate::types::entity_metadata::MetadataValue;
-use crate::{ConnectionState, PacketCodecRegistry, PacketNameRegistry, Recipient};
+use spinel_network::data_type::DataType;
+use spinel_network::types::entity_metadata::MetadataValue;
+use spinel_network::{ConnectionState, PacketCodecRegistry, PacketNameRegistry, Recipient};
 use serde::Serialize;
 use serde_json::Value;
 use spinel_utils::component::text::TextComponent;
@@ -341,7 +341,7 @@ fn container_slot_state_changed_payload() -> Vec<u8> {
 fn set_entity_data_payload() -> Vec<u8> {
     let mut payload = encode_varint(7);
     payload.push(2);
-    if MetadataValue::OptionalText(Some(TextComponent::literal("Minestom Physics")))
+    if MetadataValue::OptionalText(Some(TextComponent::literal("Spinel okay")))
         .encode(&mut payload)
         .is_err()
     {
@@ -498,7 +498,7 @@ fn packet_resource_id(
 }
 
 fn packet_definitions() -> Value {
-    serde_json::from_str(include_str!("../../spinel-registry/assets/packets.json"))
+    serde_json::from_str(include_str!("../../../spinel-registry/assets/packets.json"))
         .unwrap_or(Value::Null)
 }
 
@@ -522,3 +522,5 @@ fn packet_fields(
         .cloned()
         .unwrap_or_else(|| Value::Array(Vec::new()))
 }
+
+
