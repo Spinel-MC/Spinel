@@ -1,7 +1,7 @@
 use crate::entity::EquipmentSlot;
 use crate::inventory::slot_conversion::{
-    BOOTS_SLOT, CHESTPLATE_SLOT, HELMET_SLOT, OFFHAND_SLOT, convert_minestom_slot_to_window_slot,
-    convert_player_inventory_slot_to_minestom_slot, convert_window_0_slot_to_minestom_slot,
+    BOOTS_SLOT, CHESTPLATE_SLOT, HELMET_SLOT, OFFHAND_SLOT, convert_internal_slot_to_window_slot,
+    convert_player_inventory_slot_to_internal_slot, convert_window_0_slot_to_internal_slot,
 };
 use crate::inventory::{
     Click, ClickPreprocessor, Inventory, InventoryClickProcessor, InventoryType, PlayerInventory,
@@ -14,7 +14,7 @@ use spinel_registry::{ItemStack, Material};
 use spinel_utils::component::Component;
 
 #[test]
-fn inventory_types_match_minestom_sizes_and_ordinals() {
+fn inventory_types_use_expected_sizes_and_ordinals() {
     assert_eq!(InventoryType::Chest(3).size(), 27);
     assert_eq!(InventoryType::Chest(6).size(), 54);
     assert_eq!(InventoryType::Anvil.size(), 3);
@@ -23,13 +23,13 @@ fn inventory_types_match_minestom_sizes_and_ordinals() {
 }
 
 #[test]
-fn player_inventory_slot_conversion_matches_minestom() {
-    assert_eq!(convert_window_0_slot_to_minestom_slot(5), HELMET_SLOT);
-    assert_eq!(convert_window_0_slot_to_minestom_slot(8), BOOTS_SLOT);
-    assert_eq!(convert_minestom_slot_to_window_slot(0), 36);
-    assert_eq!(convert_minestom_slot_to_window_slot(OFFHAND_SLOT), 45);
+fn player_inventory_slot_conversion_uses_expected_window_and_internal_mappings() {
+    assert_eq!(convert_window_0_slot_to_internal_slot(5), HELMET_SLOT);
+    assert_eq!(convert_window_0_slot_to_internal_slot(8), BOOTS_SLOT);
+    assert_eq!(convert_internal_slot_to_window_slot(0), 36);
+    assert_eq!(convert_internal_slot_to_window_slot(OFFHAND_SLOT), 45);
     assert_eq!(
-        convert_player_inventory_slot_to_minestom_slot(38),
+        convert_player_inventory_slot_to_internal_slot(38),
         CHESTPLATE_SLOT
     );
 }
@@ -49,7 +49,7 @@ fn inventory_stores_items_and_tags() {
 }
 
 #[test]
-fn click_preprocessor_matches_minestom_pickup_and_swap_clicks() {
+fn click_preprocessor_handles_pickup_and_swap_clicks() {
     let mut preprocessor = ClickPreprocessor::default();
     let left_click = click_packet(0, 0, 0, 0);
     let hotbar_swap = click_packet(10, 2, 3, 0);
@@ -112,7 +112,7 @@ fn click_preprocessor_finishes_drag_with_external_inventory_open() {
 }
 
 #[test]
-fn click_window_conversion_matches_minestom_for_player_inventory_slots() {
+fn click_window_conversion_handles_player_inventory_slots() {
     let click = Click::HotbarSwap {
         hotbar_slot: 2,
         slot: 14,
@@ -131,7 +131,7 @@ fn click_window_conversion_matches_minestom_for_player_inventory_slots() {
 }
 
 #[test]
-fn click_processor_matches_minestom_left_and_right_click_rules() {
+fn click_processor_handles_left_and_right_click_rules() {
     let diamond = ItemStack::of(Material::DIAMOND).with_amount(10);
     let cursor = ItemStack::of(Material::DIAMOND).with_amount(5);
     let left_result = InventoryClickProcessor::left_click(diamond.clone(), cursor.clone());
@@ -144,7 +144,7 @@ fn click_processor_matches_minestom_left_and_right_click_rules() {
 }
 
 #[test]
-fn inventory_transactions_match_minestom_add_take_options() {
+fn inventory_transactions_handle_add_take_options() {
     let mut inventory = Inventory::new(InventoryType::Chest(1), Component::text("Test").build());
     assert!(inventory.add_item_stack(ItemStack::of(Material::DIAMOND).with_amount(32)));
     assert_eq!(inventory.get_item_stack(0).unwrap().amount(), 32);
@@ -168,7 +168,7 @@ fn inventory_transactions_match_minestom_add_take_options() {
 }
 
 #[test]
-fn player_inventory_equipment_and_packet_slots_match_minestom() {
+fn player_inventory_equipment_and_packet_slots_use_expected_mappings() {
     let mut inventory = PlayerInventory::new();
     inventory.set_item_stack(
         HELMET_SLOT as usize,

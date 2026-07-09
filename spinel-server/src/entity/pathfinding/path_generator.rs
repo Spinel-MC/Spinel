@@ -165,14 +165,14 @@ impl OpenNode {
         Self { index, score }
     }
 
-    fn minestom_order(&self, other: &Self) -> Ordering {
+    fn rounded_score_ordering(&self, other: &Self) -> Ordering {
         (((self.score - other.score) * 1000.0) as i32).cmp(&0)
     }
 }
 
 impl PartialEq for OpenNode {
     fn eq(&self, other: &Self) -> bool {
-        self.minestom_order(other) == Ordering::Equal
+        self.rounded_score_ordering(other) == Ordering::Equal
     }
 }
 
@@ -186,7 +186,7 @@ impl PartialOrd for OpenNode {
 
 impl Ord for OpenNode {
     fn cmp(&self, other: &Self) -> Ordering {
-        match self.minestom_order(other) {
+        match self.rounded_score_ordering(other) {
             Ordering::Equal => self.index.cmp(&other.index),
             order => order.reverse(),
         }

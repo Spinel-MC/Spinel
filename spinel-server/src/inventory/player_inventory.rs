@@ -1,7 +1,7 @@
 use crate::entity::EquipmentSlot;
 use crate::inventory::slot_conversion::{
-    OFFHAND_SLOT, convert_minestom_slot_to_player_inventory_slot,
-    convert_minestom_slot_to_window_slot, is_player_inventory_slot,
+    OFFHAND_SLOT, convert_internal_slot_to_player_inventory_slot,
+    convert_internal_slot_to_window_slot, is_player_inventory_slot,
 };
 use spinel_registry::ItemStack;
 use std::collections::{BTreeSet, HashSet};
@@ -145,10 +145,10 @@ impl PlayerInventory {
     pub fn packet_slot(slot: i32) -> PlayerInventoryPacketSlot {
         if is_player_inventory_slot(slot) {
             return PlayerInventoryPacketSlot::PlayerInventory(
-                convert_minestom_slot_to_player_inventory_slot(slot),
+                convert_internal_slot_to_player_inventory_slot(slot),
             );
         }
-        PlayerInventoryPacketSlot::Window(convert_minestom_slot_to_window_slot(slot))
+        PlayerInventoryPacketSlot::Window(convert_internal_slot_to_window_slot(slot))
     }
 
     pub fn slot_for_equipment(&self, equipment_slot: EquipmentSlot, held_slot: i32) -> i32 {

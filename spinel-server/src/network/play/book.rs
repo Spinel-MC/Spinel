@@ -8,9 +8,9 @@ use spinel_registry::ItemStack;
 
 #[fn_packet_listener]
 fn on_edit_book(client: &mut Client, packet: EditBookPacket, server: &mut MinecraftServer) -> bool {
-    let minestom_slot =
-        slot_conversion::convert_player_inventory_slot_to_minestom_slot(packet.slot.0);
-    if !slot_conversion::is_hotbar_or_offhand_slot(minestom_slot) {
+    let internal_slot =
+        slot_conversion::convert_player_inventory_slot_to_internal_slot(packet.slot.0);
+    if !slot_conversion::is_hotbar_or_offhand_slot(internal_slot) {
         return true;
     }
     let Some(player) = server.world_manager.player_pointer_for_client(client) else {
@@ -18,7 +18,7 @@ fn on_edit_book(client: &mut Client, packet: EditBookPacket, server: &mut Minecr
     };
     let item_stack = unsafe { &*player }
         .get_inventory_ref()
-        .get_item_stack(minestom_slot as usize)
+        .get_item_stack(internal_slot as usize)
         .cloned()
         .unwrap_or_else(ItemStack::air);
     let mut event = EditBookEvent::new(player, item_stack, packet.pages, packet.title);

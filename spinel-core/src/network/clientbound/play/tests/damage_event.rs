@@ -2,7 +2,7 @@ use super::super::damage_event::DamageEventPacket;
 use spinel_network::DataType;
 
 #[test]
-fn damage_event_packet_matches_minestom_var_int_optional_position_shape() {
+fn damage_event_packet_matches_var_int_optional_position_shape() {
     let packet = DamageEventPacket {
         target_entity_id: 7,
         damage_type_id: 1,

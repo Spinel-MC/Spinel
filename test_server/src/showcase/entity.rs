@@ -18,7 +18,7 @@ pub struct EntityShowcase;
 
 pub struct EntityShowcaseControls {
     dual_pathfinding_stick: ItemStack,
-    minestom_pathfinding_stick: ItemStack,
+    physics_reference_pathfinding_stick: ItemStack,
     vanilla_pathfinding_stick: ItemStack,
 }
 
@@ -26,7 +26,7 @@ impl EntityShowcaseControls {
     pub fn give_to_player(self, player: &mut Player) -> Vec<bool> {
         player.add_item_stacks(vec![
             self.dual_pathfinding_stick,
-            self.minestom_pathfinding_stick,
+            self.physics_reference_pathfinding_stick,
             self.vanilla_pathfinding_stick,
         ])
     }
@@ -35,8 +35,8 @@ impl EntityShowcaseControls {
         &self.dual_pathfinding_stick
     }
 
-    pub fn minestom_pathfinding_stick(&self) -> &ItemStack {
-        &self.minestom_pathfinding_stick
+    pub fn physics_reference_pathfinding_stick(&self) -> &ItemStack {
+        &self.physics_reference_pathfinding_stick
     }
 
     pub fn vanilla_pathfinding_stick(&self) -> &ItemStack {
@@ -50,7 +50,7 @@ impl EntityShowcase {
         world_id: Uuid,
         origin: EntityPosition,
     ) -> io::Result<EntityShowcaseControls> {
-        let minestom_zombie_position = EntityPosition::new(
+        let physics_reference_zombie_position = EntityPosition::new(
             origin.get_x() + 3.0,
             origin.get_y(),
             origin.get_z(),
@@ -77,12 +77,13 @@ impl EntityShowcase {
                 "Player world was not found.",
             ));
         };
-        let minestom_zombie = Self::zombie(minestom_zombie_position, "Minestom Physics");
-        let minestom_zombie_id = minestom_zombie.get_entity_id();
-        if !minestom_zombie.set_world(world) {
+        let physics_reference_zombie =
+            Self::zombie(physics_reference_zombie_position, "Minestom Physics");
+        let physics_reference_zombie_id = physics_reference_zombie.get_entity_id();
+        if !physics_reference_zombie.set_world(world) {
             return Err(io::Error::new(
                 io::ErrorKind::Interrupted,
-                "Minestom physics zombie add cancelled.",
+                "Physics reference zombie add cancelled.",
             ));
         }
         let mut vanilla_zombie = Self::zombie(vanilla_zombie_position, "Vanilla Physics");
@@ -102,13 +103,13 @@ impl EntityShowcase {
         world.spawn_item_entity(ItemStack::of(Material::DIAMOND), item_position)?;
         Ok(EntityShowcaseControls {
             dual_pathfinding_stick: Self::dual_pathfinding_stick(
-                minestom_zombie_id,
+                physics_reference_zombie_id,
                 vanilla_zombie_id,
             ),
-            minestom_pathfinding_stick: Self::single_pathfinding_stick(
-                "Minestom Zombie Pathfinder",
-                Self::minestom_zombie_id_tag(),
-                minestom_zombie_id,
+            physics_reference_pathfinding_stick: Self::single_pathfinding_stick(
+                "Physics Reference Pathfinder",
+                Self::physics_reference_zombie_id_tag(),
+                physics_reference_zombie_id,
             ),
             vanilla_pathfinding_stick: Self::single_pathfinding_stick(
                 "Vanilla Zombie Pathfinder",
@@ -123,17 +124,18 @@ impl EntityShowcase {
         pathfinding_stick: &ItemStack,
         block_position: BlockPosition,
     ) -> bool {
-        let minestom_zombie_id = pathfinding_stick.get_tag(&Self::minestom_zombie_id_tag());
+        let physics_reference_zombie_id =
+            pathfinding_stick.get_tag(&Self::physics_reference_zombie_id_tag());
         let vanilla_zombie_id = pathfinding_stick.get_tag(&Self::vanilla_zombie_id_tag());
-        if minestom_zombie_id.is_none() && vanilla_zombie_id.is_none() {
+        if physics_reference_zombie_id.is_none() && vanilla_zombie_id.is_none() {
             return false;
         }
         let destination = Self::pathfinding_destination(world, block_position);
-        let minestom_path_was_accepted = minestom_zombie_id
+        let physics_reference_path_was_accepted = physics_reference_zombie_id
             .is_some_and(|zombie_id| Self::pathfind_zombie(world, zombie_id, destination));
         let vanilla_path_was_accepted = vanilla_zombie_id
             .is_some_and(|zombie_id| Self::pathfind_zombie(world, zombie_id, destination));
-        minestom_path_was_accepted || vanilla_path_was_accepted
+        physics_reference_path_was_accepted || vanilla_path_was_accepted
     }
 
     fn pathfinding_destination(world: &mut World, block_position: BlockPosition) -> EntityPosition {
@@ -169,14 +171,14 @@ impl EntityShowcase {
     }
 
     fn dual_pathfinding_stick(
-        minestom_zombie_id: EntityId,
+        physics_reference_zombie_id: EntityId,
         vanilla_zombie_id: EntityId,
     ) -> ItemStack {
         ItemStack::of(Material::STICK)
             .with_custom_name(Component::text("Dual Zombie Pathfinder").build())
             .with_tag(
-                &Self::minestom_zombie_id_tag(),
-                Some(minestom_zombie_id.get_value()),
+                &Self::physics_reference_zombie_id_tag(),
+                Some(physics_reference_zombie_id.get_value()),
             )
             .with_tag(
                 &Self::vanilla_zombie_id_tag(),
@@ -207,8 +209,8 @@ impl EntityShowcase {
             })
     }
 
-    fn minestom_zombie_id_tag() -> Tag<i32> {
-        Tag::<i32>::integer("spinel_showcase_minestom_zombie_id")
+    fn physics_reference_zombie_id_tag() -> Tag<i32> {
+        Tag::<i32>::integer("spinel_showcase_physics_reference_zombie_id")
     }
 
     fn vanilla_zombie_id_tag() -> Tag<i32> {

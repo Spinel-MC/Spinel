@@ -1,7 +1,7 @@
 use crate::inventory::click::Click;
 use crate::inventory::player_inventory::{INNER_INVENTORY_SIZE, INVENTORY_SIZE};
 use crate::inventory::slot_conversion::{
-    convert_window_0_slot_to_minestom_slot, convert_window_slot_to_minestom_slot,
+    convert_window_0_slot_to_internal_slot, convert_window_slot_to_internal_slot,
 };
 use spinel_core::network::serverbound::play::container_click::ContainerClickPacket;
 
@@ -113,9 +113,9 @@ fn converted_slot(slot: i16, container_size: Option<usize>) -> i32 {
         return -999;
     }
     match container_size {
-        None => convert_window_0_slot_to_minestom_slot(slot as i32),
+        None => convert_window_0_slot_to_internal_slot(slot as i32),
         Some(size) if slot as usize >= size => {
-            size as i32 + convert_window_slot_to_minestom_slot(slot as i32, size as i32)
+            size as i32 + convert_window_slot_to_internal_slot(slot as i32, size as i32)
         }
         Some(_) => slot as i32,
     }

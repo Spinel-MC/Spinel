@@ -7,7 +7,7 @@ use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use uuid::Uuid;
 
 #[test]
-fn entity_showcase_controls_minestom_and_vanilla_physics_zombies_together() {
+fn entity_showcase_controls_reference_and_vanilla_physics_zombies_together() {
     let mut server = MinecraftServer::new();
     let world_id = server.world_manager.create_world(DimensionType::OVERWORLD);
     let world = server.world_manager.world_mut(world_id).unwrap();
@@ -61,7 +61,7 @@ fn entity_showcase_controls_minestom_and_vanilla_physics_zombies_together() {
 }
 
 #[test]
-fn entity_showcase_controls_minestom_and_vanilla_physics_zombies_individually() {
+fn entity_showcase_controls_reference_and_vanilla_physics_zombies_individually() {
     let mut server = MinecraftServer::new();
     let world_id = server.world_manager.create_world(DimensionType::OVERWORLD);
     let world = server.world_manager.world_mut(world_id).unwrap();
@@ -88,18 +88,18 @@ fn entity_showcase_controls_minestom_and_vanilla_physics_zombies_individually() 
         })
         .collect::<Vec<_>>();
     starts.sort_by(|left, right| left.get_z().total_cmp(&right.get_z()));
-    let minestom_start = starts[0];
+    let reference_start = starts[0];
     let vanilla_start = starts[1];
 
     assert!(EntityShowcase::pathfind(
         world,
-        controls.minestom_pathfinding_stick(),
+        controls.physics_reference_pathfinding_stick(),
         BlockPosition::new(8, 64, 0),
     ));
     world.tick();
-    let positions_after_minestom_stick = creature_positions_by_z(world);
-    assert!(positions_after_minestom_stick[0].get_x() != minestom_start.get_x());
-    assert_eq!(positions_after_minestom_stick[1], vanilla_start);
+    let positions_after_reference_stick = creature_positions_by_z(world);
+    assert!(positions_after_reference_stick[0].get_x() != reference_start.get_x());
+    assert_eq!(positions_after_reference_stick[1], vanilla_start);
 
     assert!(EntityShowcase::pathfind(
         world,
@@ -169,7 +169,7 @@ fn entity_showcase_pathfinding_sticks_are_added_without_replacing_occupied_slots
     assert!(positions_after_pathfind[1].get_x() != starts[1].get_x());
 }
 #[test]
-fn entity_showcase_minestom_stick_targets_selected_block_collision_surface() {
+fn entity_showcase_reference_stick_targets_selected_block_collision_surface() {
     let mut server = MinecraftServer::new();
     let world_id = server.world_manager.create_world(DimensionType::OVERWORLD);
     let world = server.world_manager.world_mut(world_id).unwrap();
@@ -194,13 +194,13 @@ fn entity_showcase_minestom_stick_targets_selected_block_collision_surface() {
 
     assert!(EntityShowcase::pathfind(
         world,
-        controls.minestom_pathfinding_stick(),
+        controls.physics_reference_pathfinding_stick(),
         BlockPosition::new(8, 65, 1),
     ));
 
-    let minestom_goal_position = creature_goal_positions_by_z(world)[0];
+    let reference_goal_position = creature_goal_positions_by_z(world)[0];
     assert_eq!(
-        minestom_goal_position,
+        reference_goal_position,
         Some(EntityPosition::new(8.5, 65.5, 1.5, 0.0, 0.0))
     );
 }

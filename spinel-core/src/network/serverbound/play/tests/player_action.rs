@@ -4,7 +4,7 @@ use spinel_network::{DataType, Position};
 use std::io::Cursor;
 
 #[test]
-fn player_action_decodes_minestom_swap_item_hand_shape() {
+fn player_action_decodes_swap_item_hand_shape() {
     let mut payload = Vec::new();
     VarIntWrapper(6).encode(&mut payload).unwrap();
     Position { x: 0, y: 0, z: 0 }.encode(&mut payload).unwrap();

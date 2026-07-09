@@ -40,7 +40,7 @@ fn on_set_creative_mode_slot(
         return false;
     }
 
-    let slot = slot_conversion::convert_window_0_slot_to_minestom_slot(packet.slot as i32);
+    let slot = slot_conversion::convert_window_0_slot_to_internal_slot(packet.slot as i32);
     let mut event = CreativeInventoryActionEvent::new(
         player as *mut crate::entity::Player,
         slot,

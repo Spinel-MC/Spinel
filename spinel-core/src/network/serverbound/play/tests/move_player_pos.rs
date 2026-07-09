@@ -1,7 +1,7 @@
 use super::super::move_player_pos::MovePlayerPosPacket;
 
 #[test]
-fn move_player_position_decodes_minestom_status_flags() {
+fn move_player_position_decodes_status_flags() {
     let packet = MovePlayerPosPacket {
         x: 1.0,
         y: 2.0,

@@ -191,12 +191,15 @@ fn collide_with_blocks(
         let Some(intersection) =
             earliest_block_intersection(current_position, remaining_delta, bounding_box, world)
         else {
-            current_position =
-                offset_position(current_position, minestom_swept_delta(remaining_delta));
+            current_position = offset_position(
+                current_position,
+                swept_delta_before_collision(remaining_delta),
+            );
             break;
         };
         let travelled_ratio = intersection.intersection.ratio.min(COLLISION_RATIO_LIMIT);
-        let travelled_delta = minestom_resolved_delta(remaining_delta, travelled_ratio);
+        let travelled_delta =
+            resolved_delta_after_collision_ratio(remaining_delta, travelled_ratio);
         current_position = offset_position(current_position, travelled_delta);
         remaining_delta = subtract_vector(remaining_delta, travelled_delta);
         let collision_axis = match intersection.intersection.normal {
@@ -394,8 +397,8 @@ fn intersect_block_shape(
         z: shape.max_z - ray_center.z + f64::from(block_position.z) + half_depth,
     };
     let expanded_shape = RaycastBoundingBox::new(
-        minestom_collision_offsets(expanded_minimum, delta),
-        minestom_collision_offsets(expanded_maximum, delta),
+        collision_offsets_for_raycast(expanded_minimum, delta),
+        collision_offsets_for_raycast(expanded_maximum, delta),
     );
     RaycastIntersection::between_ray_and_box(zero_vector(), delta, expanded_shape)
         .map(|intersection| {
@@ -588,7 +591,7 @@ fn multiply_vector(vector: Vector3d, multiplier: f64) -> Vector3d {
     }
 }
 
-fn minestom_resolved_delta(delta: Vector3d, ratio: f64) -> Vector3d {
+fn resolved_delta_after_collision_ratio(delta: Vector3d, ratio: f64) -> Vector3d {
     let resolved_delta = multiply_vector(delta, ratio);
     Vector3d {
         x: clamp_velocity(resolved_delta.x),
@@ -597,30 +600,30 @@ fn minestom_resolved_delta(delta: Vector3d, ratio: f64) -> Vector3d {
     }
 }
 
-fn minestom_collision_offsets(offsets: Vector3d, direction: Vector3d) -> Vector3d {
+fn collision_offsets_for_raycast(offsets: Vector3d, direction: Vector3d) -> Vector3d {
     Vector3d {
-        x: minestom_collision_offset(offsets.x, direction.x),
-        y: minestom_collision_offset(offsets.y, direction.y),
-        z: minestom_collision_offset(offsets.z, direction.z),
+        x: collision_offset_for_raycast_axis(offsets.x, direction.x),
+        y: collision_offset_for_raycast_axis(offsets.y, direction.y),
+        z: collision_offset_for_raycast_axis(offsets.z, direction.z),
     }
 }
 
-fn minestom_collision_offset(offset: f64, direction: f64) -> f64 {
+fn collision_offset_for_raycast_axis(offset: f64, direction: f64) -> f64 {
     if direction != 0.0 && (offset / direction).abs() < VELOCITY_EPSILON {
         return 0.0;
     }
     offset
 }
 
-fn minestom_swept_delta(delta: Vector3d) -> Vector3d {
+fn swept_delta_before_collision(delta: Vector3d) -> Vector3d {
     Vector3d {
-        x: minestom_swept_component(delta.x),
-        y: minestom_swept_component(delta.y),
-        z: minestom_swept_component(delta.z),
+        x: swept_component_before_collision(delta.x),
+        y: swept_component_before_collision(delta.y),
+        z: swept_component_before_collision(delta.z),
     }
 }
 
-fn minestom_swept_component(component: f64) -> f64 {
+fn swept_component_before_collision(component: f64) -> f64 {
     let swept_component = component * COLLISION_RATIO_LIMIT;
     if swept_component.abs() < VELOCITY_EPSILON {
         return 0.0;

@@ -1,5 +1,5 @@
 use crate::entity::Player;
-use crate::inventory::slot_conversion::convert_minestom_slot_to_window_slot;
+use crate::inventory::slot_conversion::convert_internal_slot_to_window_slot;
 use crate::inventory::{Inventory, PlayerInventoryPacketSlot};
 use crate::network::client::instance::Client;
 use spinel_core::network::clientbound::play::container_set_content::ContainerSetContentPacket;
@@ -106,7 +106,7 @@ impl Player {
             self.get_inventory_ref().get_size()
         ];
         for (slot, item_stack) in self.get_inventory_ref().item_stacks().iter().enumerate() {
-            let window_slot = convert_minestom_slot_to_window_slot(slot as i32) as usize;
+            let window_slot = convert_internal_slot_to_window_slot(slot as i32) as usize;
             window_slots[window_slot] = Slot::from_item_stack(item_stack);
         }
         window_slots

@@ -14,7 +14,7 @@ pub fn is_hotbar_or_offhand_slot(slot: i32) -> bool {
     (0..9).contains(&slot) || slot == OFFHAND_SLOT
 }
 
-pub fn convert_window_0_slot_to_minestom_slot(slot: i32) -> i32 {
+pub fn convert_window_0_slot_to_internal_slot(slot: i32) -> i32 {
     match slot {
         0 => CRAFT_RESULT,
         1 => CRAFT_SLOT_1,
@@ -25,11 +25,11 @@ pub fn convert_window_0_slot_to_minestom_slot(slot: i32) -> i32 {
         6 => CHESTPLATE_SLOT,
         7 => LEGGINGS_SLOT,
         8 => BOOTS_SLOT,
-        _ => convert_window_slot_to_minestom_slot(slot, WINDOW_0_OFFSET),
+        _ => convert_window_slot_to_internal_slot(slot, WINDOW_0_OFFSET),
     }
 }
 
-pub fn convert_window_slot_to_minestom_slot(slot: i32, offset: i32) -> i32 {
+pub fn convert_window_slot_to_internal_slot(slot: i32, offset: i32) -> i32 {
     let slot = slot - offset;
     if (27..36).contains(&slot) {
         slot % 9
@@ -42,7 +42,7 @@ pub fn is_player_inventory_slot(slot: i32) -> bool {
     !(CRAFT_RESULT..=CRAFT_SLOT_4).contains(&slot)
 }
 
-pub fn convert_minestom_slot_to_player_inventory_slot(slot: i32) -> i32 {
+pub fn convert_internal_slot_to_player_inventory_slot(slot: i32) -> i32 {
     match slot {
         HELMET_SLOT..=BOOTS_SLOT => (3 - (slot - HELMET_SLOT)) + 36,
         OFFHAND_SLOT => 40,
@@ -50,7 +50,7 @@ pub fn convert_minestom_slot_to_player_inventory_slot(slot: i32) -> i32 {
     }
 }
 
-pub fn convert_minestom_slot_to_window_slot(slot: i32) -> i32 {
+pub fn convert_internal_slot_to_window_slot(slot: i32) -> i32 {
     match slot {
         0..=8 => slot + 36,
         9..=35 => slot,
@@ -61,7 +61,7 @@ pub fn convert_minestom_slot_to_window_slot(slot: i32) -> i32 {
     }
 }
 
-pub fn convert_player_inventory_slot_to_minestom_slot(slot: i32) -> i32 {
+pub fn convert_player_inventory_slot_to_internal_slot(slot: i32) -> i32 {
     match slot {
         0..=35 => slot,
         36 => BOOTS_SLOT,
