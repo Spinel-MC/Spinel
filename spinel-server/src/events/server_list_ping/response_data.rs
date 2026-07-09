@@ -6,7 +6,6 @@ use spinel_utils::{
 
 use crate::events::server_list_ping::{favicon::Favicon, player_sample::PlayerSample};
 
-#[derive(Default)]
 pub struct ServerListPingEventResponseData {
     pub online_players: Option<i32>,
     pub max_players: Option<i32>,
@@ -14,12 +13,12 @@ pub struct ServerListPingEventResponseData {
     pub brand: Option<String>,
     pub protocol: u16,
     pub player_sample: Option<Vec<PlayerSample>>,
-    pub favicon: Option<Favicon>, //TODO: Create a Favicon struct(for creating favicons with less boilerplate)
+    pub favicon: Option<Favicon>,
     pub enforce_secure_chat: Option<bool>,
 }
 
-impl ServerListPingEventResponseData {
-    pub fn new() -> Self {
+impl Default for ServerListPingEventResponseData {
+    fn default() -> Self {
         Self {
             online_players: None,
             max_players: None,
@@ -31,75 +30,134 @@ impl ServerListPingEventResponseData {
             enforce_secure_chat: None,
         }
     }
+}
+
+impl ServerListPingEventResponseData {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn with_online_players(mut self, online_players: i32) -> Self {
+        self.online_players = Some(online_players);
+        self
+    }
+
+    pub fn with_max_players(mut self, max_players: i32) -> Self {
+        self.max_players = Some(max_players);
+        self
+    }
+
+    pub fn with_description(mut self, description: impl Into<TextComponent>) -> Self {
+        self.description = Some(description.into());
+        self
+    }
+
+    pub fn with_brand(mut self, brand: impl Into<String>) -> Self {
+        self.brand = Some(brand.into());
+        self
+    }
+
+    pub fn with_protocol(mut self, protocol: u16) -> Self {
+        self.protocol = protocol;
+        self
+    }
+
+    pub fn with_player_sample(mut self, player_sample: Vec<PlayerSample>) -> Self {
+        self.player_sample = Some(player_sample);
+        self
+    }
+
+    pub fn without_player_sample(mut self) -> Self {
+        self.player_sample = None;
+        self
+    }
+
+    pub fn with_favicon(mut self, favicon: Favicon) -> Self {
+        self.favicon = Some(favicon);
+        self
+    }
+
+    pub fn with_enforce_secure_chat(mut self, enforce_secure_chat: bool) -> Self {
+        self.enforce_secure_chat = Some(enforce_secure_chat);
+        self
+    }
 
     pub fn to_status_response_json(&self, hide_players: bool) -> String {
         let mut root_json_map = Map::new();
+        root_json_map.insert("version".to_string(), self.version_json_value());
 
+        if !hide_players {
+            insert_if_some(&mut root_json_map, "players", self.players_json_value());
+        }
+
+        for (json_key, json_value) in [
+            ("description", self.description_json_value()),
+            ("favicon", self.favicon_json_value()),
+            (
+                "enforcesSecureChat",
+                self.enforce_secure_chat.map(Value::from),
+            ),
+        ] {
+            insert_if_some(&mut root_json_map, json_key, json_value);
+        }
+
+        Value::Object(root_json_map).to_string()
+    }
+
+    fn version_json_value(&self) -> Value {
         let mut version_json_map = Map::new();
         version_json_map.insert("protocol".to_string(), json!(self.protocol));
         insert_if_some(
             &mut version_json_map,
             "name",
-            self.brand.as_ref().map(|s| Value::from(s.as_str())),
+            self.brand.as_ref().map(|brand| Value::from(brand.as_str())),
         );
-        root_json_map.insert("version".to_string(), Value::Object(version_json_map));
+        Value::Object(version_json_map)
+    }
 
-        if !hide_players {
-            let players_json_value = {
-                let mut players_json_map = Map::new();
-                insert_if_some(
-                    &mut players_json_map,
-                    "max",
-                    self.max_players.map(Value::from),
-                );
-                insert_if_some(
-                    &mut players_json_map,
-                    "online",
-                    self.online_players.map(Value::from),
-                );
+    fn players_json_value(&self) -> Option<Value> {
+        let mut players_json_map = Map::new();
 
-                let player_sample_json_list = self.player_sample.as_ref().and_then(|player_sample_vec_ref| {
-                                        if player_sample_vec_ref.is_empty() {
-                                        None
-                                        } else {
-                                        let formatted_sample: Vec<Value> = player_sample_vec_ref
-                                                .iter()
-                                                .map(|player| json!({"name": player.name.to_plain_string(), "id": player.uuid.to_string()}))
-                                                .collect();
-                                        Some(Value::Array(formatted_sample))
-                                        }
-                                });
-                insert_if_some(&mut players_json_map, "sample", player_sample_json_list);
-
-                if players_json_map.is_empty() {
-                    None
-                } else {
-                    Some(Value::Object(players_json_map))
-                }
-            };
-            insert_if_some(&mut root_json_map, "players", players_json_value);
+        for (json_key, json_value) in [
+            ("max", self.max_players.map(Value::from)),
+            ("online", self.online_players.map(Value::from)),
+            ("sample", self.player_sample_json_value()),
+        ] {
+            insert_if_some(&mut players_json_map, json_key, json_value);
         }
 
-        let description_json_value = self.description.as_ref().map(|description_component_ref| {
-            serde_json::to_value(description_component_ref).unwrap_or(Value::Null)
-        });
-        insert_if_some(&mut root_json_map, "description", description_json_value);
+        object_json_value_if_not_empty(players_json_map)
+    }
 
-        insert_if_some(
-            &mut root_json_map,
-            "favicon",
-            self.favicon
-                .as_ref()
-                .map(|s| Value::from(s.base64.as_str())),
-        );
+    fn player_sample_json_value(&self) -> Option<Value> {
+        let player_sample = self.player_sample.as_ref()?;
 
-        insert_if_some(
-            &mut root_json_map,
-            "enforcesSecureChat",
-            self.enforce_secure_chat.map(Value::from),
-        );
+        if player_sample.is_empty() {
+            return None;
+        }
 
-        Value::Object(root_json_map).to_string()
+        Some(Value::Array(
+            player_sample
+                .iter()
+                .map(|player_sample_entry| {
+                    json!({
+                        "name": player_sample_entry.name.to_plain_string(),
+                        "id": player_sample_entry.uuid.to_string(),
+                    })
+                })
+                .collect(),
+        ))
+    }
+
+    fn description_json_value(&self) -> Option<Value> {
+        let description = self.description.as_ref()?;
+        serde_json::to_value(description).ok()
+    }
+
+    fn favicon_json_value(&self) -> Option<Value> {
+        self.favicon
+            .as_ref()
+            .map(|favicon| Value::from(favicon.base64.as_str()))
     }
 }
 
@@ -107,4 +165,12 @@ fn insert_if_some(map: &mut Map<String, Value>, key: &str, value: Option<Value>)
     if let Some(actual_value) = value {
         map.insert(key.to_string(), actual_value);
     }
+}
+
+fn object_json_value_if_not_empty(map: Map<String, Value>) -> Option<Value> {
+    if map.is_empty() {
+        return None;
+    }
+
+    Some(Value::Object(map))
 }

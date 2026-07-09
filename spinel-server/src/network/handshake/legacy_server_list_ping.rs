@@ -4,6 +4,7 @@ use crate::events::server_list_ping::ping_type::ServerListPingType;
 use crate::network::client::instance::Client;
 use spinel_core::network::serverbound::handshake::legacy_server_list_ping::LegacyServerListPingPacket;
 use spinel_macros::fn_packet_listener;
+use spinel_utils::component::text::TextComponent;
 use std::io::Read;
 
 #[fn_packet_listener()]
@@ -50,20 +51,24 @@ pub fn dispatch_legacy_server_list_ping_response(
     client: &mut Client,
 ) {
     let data = event.response_data;
+    let description = data
+        .description
+        .unwrap_or_else(TextComponent::empty)
+        .to_legacy_string();
 
     let payload_str = if supports_versions {
         format!(
             "Â§1\u{0000}{}\u{0000}{}\u{0000}{}\u{0000}{}\u{0000}{}",
             127,
             data.brand.unwrap_or_default(),
-            data.description.unwrap_or_default().to_legacy_string(),
+            description,
             data.online_players.unwrap_or_default(),
             data.max_players.unwrap_or_default()
         )
     } else {
         format!(
             "{}Â§{}Â§{}",
-            data.description.unwrap_or_default().to_legacy_string(),
+            description,
             data.online_players.unwrap_or_default(),
             data.max_players.unwrap_or_default()
         )
