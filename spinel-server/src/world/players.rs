@@ -84,7 +84,7 @@ impl World {
             Some(player) => player.spawn_chunks(self.view_distance),
             None => Vec::new(),
         };
-        self.schedule_initial_player_chunk_loads(client.addr, &chunks)?;
+        self.load_initial_player_chunks(client.addr, &chunks)?;
         self.finish_player_entry(client, ticks_per_second, registries, chunks)
     }
 

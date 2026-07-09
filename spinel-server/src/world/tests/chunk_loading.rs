@@ -223,7 +223,7 @@ fn generation_errors_propagate_through_fallible_chunk_load_api() {
 }
 
 #[test]
-fn enter_player_queues_the_initial_spawn_view_without_blocking_on_chunk_loads() {
+fn enter_player_loads_initial_spawn_view_before_entering_world() {
     let generation_callback_count = Arc::new(AtomicUsize::new(0));
     let registries = Registries::new_vanilla();
     let (mut client, mut peer_stream) = test_client_pair();
@@ -232,7 +232,6 @@ fn enter_player_queues_the_initial_spawn_view_without_blocking_on_chunk_loads() 
     world.set_chunk_loader(StoredChunkLoader {
         generation_callback_count,
     });
-    world.load_chunk(ChunkPosition::new(0, 0)).unwrap();
     world.add_entity(Entity::Player(Player::new(
         Uuid::new_v4(),
         "ChunkQueue".to_string(),
@@ -252,16 +251,23 @@ fn enter_player_queues_the_initial_spawn_view_without_blocking_on_chunk_loads() 
             .player_by_addr(&client.addr)
             .is_some_and(|player| player.has_entered_world())
     );
-    assert!(world.chunks().count() < initial_spawn_chunk_count);
+    assert_eq!(world.chunks().count(), initial_spawn_chunk_count);
     let initial_packet_ids = read_available_packet_frames(&mut peer_stream)
         .into_iter()
         .map(|(packet_id, _)| packet_id)
         .collect::<Vec<_>>();
-    assert!(initial_packet_ids.contains(&ChunkDataAndUpdateLightPacket::get_id()));
+    let chunk_packet_count = initial_packet_ids
+        .iter()
+        .filter(|packet_id| **packet_id == ChunkDataAndUpdateLightPacket::get_id())
+        .count();
+    assert!(initial_packet_ids.contains(&ChunkBatchStartPacket::get_id()));
+    assert_eq!(chunk_packet_count, 9);
+    assert!(initial_packet_ids.contains(&ChunkBatchFinishedPacket::get_id()));
+    assert!(initial_packet_ids.contains(&SyncPlayerPositionPacket::get_id()));
 }
 
 #[test]
-fn enter_player_with_parallel_loader_enters_before_initial_chunks_finish_loading() {
+fn enter_player_with_parallel_loader_waits_for_initial_chunks_before_entering_world() {
     let registries = Registries::new_vanilla();
     let (mut client, mut peer_stream) = test_client_pair();
     let can_load = Arc::new(AtomicBool::new(false));
@@ -276,25 +282,27 @@ fn enter_player_with_parallel_loader_enters_before_initial_chunks_finish_loading
         0,
         client.addr,
     )));
+    let release_loader = thread::spawn(move || {
+        can_load.store(true, Ordering::SeqCst);
+    });
 
     world.enter_player(&mut client, 20, &registries).unwrap();
+    release_loader.join().unwrap();
 
     let initial_packet_ids = read_available_packet_frames(&mut peer_stream)
         .into_iter()
         .map(|(packet_id, _)| packet_id)
         .collect::<Vec<_>>();
 
-    assert!(!initial_packet_ids.contains(&ChunkBatchStartPacket::get_id()));
-    assert!(!initial_packet_ids.contains(&ChunkBatchFinishedPacket::get_id()));
-    assert!(!initial_packet_ids.contains(&ChunkDataAndUpdateLightPacket::get_id()));
-    assert!(!initial_packet_ids.contains(&SyncPlayerPositionPacket::get_id()));
+    assert!(initial_packet_ids.contains(&ChunkBatchStartPacket::get_id()));
+    assert!(initial_packet_ids.contains(&ChunkBatchFinishedPacket::get_id()));
+    assert!(initial_packet_ids.contains(&ChunkDataAndUpdateLightPacket::get_id()));
+    assert!(initial_packet_ids.contains(&SyncPlayerPositionPacket::get_id()));
     assert!(
         world
             .player_by_addr(&client.addr)
             .is_some_and(|player| player.has_entered_world())
     );
-    can_load.store(true, Ordering::SeqCst);
-    world.process_completed_chunk_loads().unwrap();
 }
 
 fn test_world() -> World {

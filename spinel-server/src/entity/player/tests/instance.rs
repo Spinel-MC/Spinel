@@ -105,8 +105,8 @@ fn chunk_batch_acknowledgement_matches_minestom_target_and_lead_rules() {
     );
 
     assert_eq!(player.get_chunk_batch_lead(), 0);
-    assert_eq!(player.get_max_chunk_batch_lead(), 2);
-    assert_eq!(player.get_target_chunks_per_tick(), 10.0);
+    assert_eq!(player.get_max_chunk_batch_lead(), 1);
+    assert_eq!(player.get_target_chunks_per_tick(), 9.0);
 
     player.on_chunk_batch_received(1000.0);
 
@@ -139,7 +139,7 @@ fn chunk_queue_reset_preserves_minestom_batch_lead_state() {
     assert_eq!(player.get_queued_chunk_count(), 0);
     assert_eq!(player.get_chunk_batch_lead(), 4);
     assert_eq!(player.get_max_chunk_batch_lead(), 10);
-    assert_eq!(player.get_target_chunks_per_tick(), 10.0);
+    assert_eq!(player.get_target_chunks_per_tick(), 9.0);
     assert_eq!(player.get_pending_chunk_count(), 0.0);
     assert!(player.needs_chunk_position_sync);
 }
@@ -442,7 +442,7 @@ fn unchanged_chunk_queue_is_not_resorted_between_batches() {
     assert_eq!(player.chunk_queue_sort_count, 2);
 }
 #[test]
-fn unavailable_queued_chunks_wait_without_starting_empty_batch() {
+fn unavailable_queued_chunks_match_minestom_empty_batch_skip() {
     let (mut client, mut peer_stream) = test_client_pair();
     let mut player = Player::new(
         Uuid::nil(),
@@ -459,10 +459,13 @@ fn unavailable_queued_chunks_wait_without_starting_empty_batch() {
 
     let packet_frames = read_available_packet_frames(&mut peer_stream);
 
-    assert!(packet_frames.is_empty());
-    assert_eq!(player.get_chunk_batch_lead(), 0);
-    assert_eq!(player.get_pending_chunk_count(), 10.0);
-    assert_eq!(player.get_queued_chunk_count(), 1);
+    assert_eq!(packet_frames.len(), 3);
+    assert_eq!(packet_frames[0].0, ChunkBatchStartPacket::get_id());
+    assert_eq!(packet_frames[1].0, ChunkBatchFinishedPacket::get_id());
+    assert_eq!(packet_frames[2].0, SyncPlayerPositionPacket::get_id());
+    assert_eq!(player.get_chunk_batch_lead(), 1);
+    assert_eq!(player.get_pending_chunk_count(), 9.0);
+    assert_eq!(player.get_queued_chunk_count(), 0);
 }
 #[test]
 fn unavailable_queued_chunks_wait_after_partial_batch() {
@@ -585,7 +588,7 @@ fn ordinary_chunk_border_crossing_keeps_throttled_queue_state() {
     );
     assert_eq!(player.get_chunk_batch_lead(), 0);
     assert_eq!(player.get_pending_chunk_count(), 0.0);
-    assert_eq!(player.get_target_chunks_per_tick(), 10.0);
+    assert_eq!(player.get_target_chunks_per_tick(), 9.0);
     assert!(!player.needs_chunk_position_sync);
 }
 

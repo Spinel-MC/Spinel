@@ -594,8 +594,7 @@ impl Player {
             return Ok(());
         }
         let mut sent_chunk_count = 0;
-        let mut batch_started = false;
-        let mut unavailable_chunks = Vec::new();
+        ChunkBatchStartPacket.dispatch(client)?;
         while !self.chunk_queue.is_empty() && self.pending_chunk_count >= 1.0 {
             if !client.is_online() {
                 self.discard_pending_chunk_delivery();
@@ -605,13 +604,8 @@ impl Player {
                 break;
             };
             let Some(packet) = packet_for_chunk(&mut queued_chunk)? else {
-                unavailable_chunks.push(queued_chunk);
                 continue;
             };
-            if !batch_started {
-                ChunkBatchStartPacket.dispatch(client)?;
-                batch_started = true;
-            }
             let chunk = queued_chunk.chunk;
             packet.dispatch(client)?;
             self.client_sent_chunks
@@ -619,13 +613,6 @@ impl Player {
             self.dispatch_player_chunk_load_event(client, chunk.x, chunk.z);
             self.pending_chunk_count -= 1.0;
             sent_chunk_count += 1;
-        }
-        unavailable_chunks
-            .into_iter()
-            .rev()
-            .for_each(|queued_chunk| self.chunk_queue.push_front(queued_chunk));
-        if !batch_started {
-            return Ok(());
         }
         ChunkBatchFinishedPacket::new(sent_chunk_count).dispatch(client)?;
         self.chunk_batch_lead += 1;
@@ -668,7 +655,7 @@ impl Player {
         self.client_sent_chunks.clear();
         self.chunk_queue_requires_sorting = false;
         self.needs_chunk_position_sync = true;
-        self.target_chunks_per_tick = 10.0;
+        self.target_chunks_per_tick = 9.0;
         self.pending_chunk_count = 0.0;
     }
 

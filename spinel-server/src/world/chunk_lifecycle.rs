@@ -583,26 +583,42 @@ impl World {
         generation_result.map(|_| true)
     }
 
-    fn schedule_initial_player_chunk_loads(
+    fn load_initial_player_chunks(
         &mut self,
         player_address: SocketAddr,
         chunks: &[PlayerChunk],
     ) -> Result<()> {
-        for chunk in chunks {
-            let position = ChunkPosition::from(*chunk);
-            if self.is_chunk_loaded(position) {
-                self.queue_loaded_chunk_for_player(player_address, *chunk);
-                continue;
+        let chunk_load_tickets = chunks
+            .iter()
+            .copied()
+            .map(|chunk| self.initial_player_chunk_load_ticket(player_address, chunk))
+            .collect::<Result<Vec<_>>>()?;
+        for chunk_load_ticket in chunk_load_tickets.into_iter().flatten() {
+            while !self.complete_chunk_load(&chunk_load_ticket)? {
+                std::thread::yield_now();
             }
-            if self.load_optional_chunk_future(position)?.is_none() {
-                continue;
-            }
-            self.player_chunk_load_waiters
-                .entry(position)
-                .or_default()
-                .push(player_address);
         }
         Ok(())
+    }
+
+    fn initial_player_chunk_load_ticket(
+        &mut self,
+        player_address: SocketAddr,
+        chunk: PlayerChunk,
+    ) -> Result<Option<ChunkLoadTicket>> {
+        let position = ChunkPosition::from(chunk);
+        if self.is_chunk_loaded(position) {
+            self.queue_loaded_chunk_for_player(player_address, chunk);
+            return Ok(None);
+        }
+        let Some(chunk_load_ticket) = self.load_optional_chunk_future(position)? else {
+            return Ok(None);
+        };
+        self.player_chunk_load_waiters
+            .entry(position)
+            .or_default()
+            .push(player_address);
+        Ok(Some(chunk_load_ticket))
     }
 
     pub(super) fn schedule_player_chunk_loads(
@@ -1114,4 +1130,5 @@ fn generate_chunk(
     chunk.replace_sections(sections);
     Ok(generation_forks)
 }
+
 

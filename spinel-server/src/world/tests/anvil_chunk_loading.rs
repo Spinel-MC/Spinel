@@ -1,6 +1,7 @@
 use super::super::instance::World;
 use crate::world::{AnvilChunkLoader, Block, BlockPosition, Chunk, ChunkPosition};
 use spinel_network::types::Identifier;
+use spinel_registry::Registries;
 use std::fs;
 use std::io;
 use std::path::PathBuf;
@@ -61,6 +62,50 @@ fn anvil_stored_chunk_skips_generation_and_remains_lighting_capable() -> io::Res
     Ok(())
 }
 
+#[test]
+fn anvil_spawn_area_loaded_packets_preserve_light_for_every_chunk() -> io::Result<()> {
+    let world_directory = unique_test_world_directory("spawn_area_packet_lighting");
+    let _ = fs::remove_dir_all(&world_directory);
+    let positions = (-1..=1)
+        .flat_map(|x| (-1..=1).map(move |z| ChunkPosition::new(x, z)))
+        .collect::<Vec<_>>();
+    let save_loader = AnvilChunkLoader::new(world_directory.clone())?;
+    positions.iter().try_for_each(|position| {
+        let mut chunk = Chunk::new_lighting_with_generation(*position, false);
+        chunk.set_block(BlockPosition::new(0, 0, 0), Block::BEDROCK);
+        chunk
+            .section_mut(4)
+            .unwrap()
+            .set_sky_light(&vec![255; 2048])
+            .unwrap();
+        crate::world::ChunkLoader::save_chunk(&save_loader, &chunk)
+    })?;
+    let mut world = test_world();
+    let registries = Registries::new_vanilla();
+    world.set_chunk_loader(AnvilChunkLoader::new(world_directory.clone())?);
+    world.set_chunk_supplier(Chunk::new_lighting);
+
+    positions.iter().try_for_each(|position| {
+        world.load_chunk(*position)?;
+        let packet = world
+            .chunk(*position)
+            .unwrap()
+            .full_data_packet(&registries)
+            .unwrap();
+        assert!(
+            !packet.light_data.sky_light_mask.is_empty(),
+            "chunk {position:?} had no sky light mask"
+        );
+        assert!(
+            !packet.light_data.sky_light_arrays.is_empty(),
+            "chunk {position:?} had no sky light arrays"
+        );
+        Ok::<_, io::Error>(())
+    })?;
+
+    fs::remove_dir_all(world_directory)?;
+    Ok(())
+}
 fn test_world() -> World {
     World::new_with_dimension_name(
         uuid::Uuid::new_v4(),
