@@ -34,18 +34,18 @@ impl ServerListPingListener {
         )];
 
         event.response_data = ServerListPingEventResponseData::new()
-            .with_online_players(0)
-            .with_max_players(100)
-            .with_description(
+            .set_online_players(0)
+            .set_max_players(100)
+            .set_description(
                 Component::text("Minecraft, your way!")
                     .color(TextColor::from_hex("#ff47d7".to_owned())),
             )
-            .with_brand(SERVER_BRAND)
-            .with_protocol(PROTOCOL_VERSION)
-            .with_player_sample(sample)
-            .with_favicon(Favicon::from_bytes(
+            .set_brand(SERVER_BRAND)
+            .set_protocol(PROTOCOL_VERSION)
+            .set_player_sample(sample)
+            .set_favicon(Favicon::from_bytes(
                 fs::read("test_server/assets/favicon.png").unwrap(),
             ))
-            .with_enforce_secure_chat(true);
+            .set_enforce_secure_chat(true);
     }
 }

@@ -25,7 +25,7 @@ impl Default for ServerListPingEventResponseData {
             description: None,
             brand: Some(SERVER_BRAND.to_owned()),
             protocol: PROTOCOL_VERSION,
-            player_sample: Some(vec![]),
+            player_sample: None,
             favicon: None,
             enforce_secure_chat: None,
         }
@@ -37,48 +37,47 @@ impl ServerListPingEventResponseData {
         Self::default()
     }
 
-    pub fn with_online_players(mut self, online_players: i32) -> Self {
+    pub fn set_online_players(mut self, online_players: i32) -> Self {
         self.online_players = Some(online_players);
         self
     }
 
-    pub fn with_max_players(mut self, max_players: i32) -> Self {
+    pub fn set_max_players(mut self, max_players: i32) -> Self {
         self.max_players = Some(max_players);
         self
     }
 
-    pub fn with_description(mut self, description: impl Into<TextComponent>) -> Self {
+    pub fn set_description(mut self, description: impl Into<TextComponent>) -> Self {
         self.description = Some(description.into());
         self
     }
 
-    pub fn with_brand(mut self, brand: impl Into<String>) -> Self {
+    pub fn set_brand(mut self, brand: impl Into<String>) -> Self {
         self.brand = Some(brand.into());
         self
     }
 
-    pub fn with_protocol(mut self, protocol: u16) -> Self {
+    pub fn set_protocol(mut self, protocol: u16) -> Self {
         self.protocol = protocol;
         self
     }
 
-    pub fn with_player_sample(mut self, player_sample: Vec<PlayerSample>) -> Self {
+    pub fn set_player_sample(mut self, player_sample: Vec<PlayerSample>) -> Self {
         self.player_sample = Some(player_sample);
         self
     }
 
-    pub fn without_player_sample(mut self) -> Self {
-        self.player_sample = None;
-        self
-    }
-
-    pub fn with_favicon(mut self, favicon: Favicon) -> Self {
+    pub fn set_favicon(mut self, favicon: Favicon) -> Self {
         self.favicon = Some(favicon);
         self
     }
 
-    pub fn with_enforce_secure_chat(mut self, enforce_secure_chat: bool) -> Self {
-        self.enforce_secure_chat = Some(enforce_secure_chat);
+    pub fn set_enforce_secure_chat(mut self, enforce_secure_chat: bool) -> Self {
+        self.enforce_secure_chat = if enforce_secure_chat {
+            Some(true)
+        } else {
+            None
+        };
         self
     }
 
