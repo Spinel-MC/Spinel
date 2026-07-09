@@ -308,11 +308,12 @@ impl World {
 
     pub fn tick_chunks(&mut self, time: u64) -> usize {
         if self.chunks.values().any(Chunk::lighting_update_is_due) {
-            WorldLighting::relight(
-                &mut self.chunks,
-                self.cached_dimension_type.has_skylight,
-                None,
-            );
+            let has_skylight = self.cached_dimension_type.has_skylight;
+            self.chunks
+                .values_mut()
+                .for_each(|chunk| {
+                    chunk.relight_invalidated_sections(has_skylight);
+                });
         }
         let mut lighting_packets = Vec::new();
         let ticked_block_count = self
@@ -698,11 +699,11 @@ impl World {
         position: ChunkPosition,
         registries: &Registries,
     ) -> Result<Option<ChunkDataAndUpdateLightPacket>> {
-        let lighting_requires_update = chunks
-            .get(&position)
-            .is_some_and(Chunk::lighting_is_invalidated);
-        if lighting_requires_update {
-            WorldLighting::relight(chunks, has_skylight, Some(&[position]));
+        if let Some(chunk) = chunks
+            .get_mut(&position)
+            .filter(|chunk| chunk.lighting_is_invalidated())
+        {
+            chunk.relight_invalidated_sections(has_skylight);
         }
         let Some(chunk) = chunks.get(&position) else {
             return Ok(None);
@@ -1130,5 +1131,7 @@ fn generate_chunk(
     chunk.replace_sections(sections);
     Ok(generation_forks)
 }
+
+
 
 

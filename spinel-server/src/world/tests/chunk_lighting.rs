@@ -23,6 +23,21 @@ fn partial_light_data_contains_only_invalidated_sections_and_is_consumed_once() 
 }
 
 #[test]
+fn invalidated_chunk_sections_relight_before_full_light_data() {
+    let mut chunk = Chunk::new_lighting(ChunkPosition::new(0, 0));
+
+    chunk.set_block(BlockPosition::new(1, 64, 1), Block::TORCH);
+
+    assert!(chunk.lighting_is_invalidated());
+    assert!(chunk.relight_invalidated_sections(true));
+    assert!(!chunk.lighting_is_invalidated());
+
+    let light_data = chunk.light_data();
+    assert!(!light_data.sky_light_mask.is_empty());
+    assert!(!light_data.block_light_mask.is_empty());
+}
+
+#[test]
 fn chunk_storage_preserves_concrete_block_states() {
     let mut chunk = Chunk::new(ChunkPosition::new(0, 0));
     let position = BlockPosition::new(1, 64, 1);

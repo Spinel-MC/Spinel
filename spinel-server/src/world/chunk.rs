@@ -511,6 +511,21 @@ impl Chunk {
             .for_each(ChunkSection::clear_light);
     }
 
+    pub(crate) fn relight_invalidated_sections(&mut self, has_skylight: bool) -> bool {
+        if !self.is_lighting_chunk() {
+            return false;
+        }
+
+        Arc::make_mut(&mut self.sections).iter_mut().fold(
+            false,
+            |light_was_recalculated, section| {
+                let block_light_was_recalculated = section.relight_block_light();
+                let sky_light_was_recalculated = has_skylight && section.relight_sky_light();
+                light_was_recalculated || block_light_was_recalculated || sky_light_was_recalculated
+            },
+        )
+    }
+
     pub(crate) fn set_block_light(&mut self, position: BlockPosition, level: u8) {
         let Some(section) = self.section_at_block_y_mut(position.y) else {
             return;
