@@ -99,31 +99,12 @@ impl WorldLighting {
 
     fn affected_positions(
         chunks: &HashMap<ChunkPosition, Chunk>,
-        requested_positions: Option<&[ChunkPosition]>,
+        _requested_positions: Option<&[ChunkPosition]>,
     ) -> Vec<ChunkPosition> {
-        let Some(requested_positions) = requested_positions else {
-            return chunks
-                .iter()
-                .filter(|(_, chunk)| chunk.is_loaded() && chunk.is_lighting_chunk())
-                .map(|(position, _)| *position)
-                .collect();
-        };
-        requested_positions
+        chunks
             .iter()
-            .flat_map(|position| {
-                (-1..=1).flat_map(move |offset_x| {
-                    (-1..=1).map(move |offset_z| {
-                        ChunkPosition::new(position.x + offset_x, position.z + offset_z)
-                    })
-                })
-            })
-            .filter(|position| {
-                chunks
-                    .get(position)
-                    .is_some_and(|chunk| chunk.is_loaded() && chunk.is_lighting_chunk())
-            })
-            .collect::<std::collections::HashSet<_>>()
-            .into_iter()
+            .filter(|(_, chunk)| chunk.is_loaded() && chunk.is_lighting_chunk())
+            .map(|(position, _)| *position)
             .collect()
     }
 

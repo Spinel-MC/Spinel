@@ -364,15 +364,14 @@
             return;
         }
         let section_y = position.y.div_euclid(16);
-        affected_lighting_chunk_positions(position)
-            .into_iter()
-            .for_each(|chunk_position| {
-                if let Some(chunk) = self.chunks.get_mut(&chunk_position) {
-                    ((section_y - 1)..=(section_y + 1)).for_each(|section_y| {
-                        chunk.invalidate_section(section_y);
-                    });
-                    chunk.schedule_lighting_update();
-                }
+        self.chunks
+            .values_mut()
+            .filter(|chunk| chunk.is_loaded() && chunk.is_lighting_chunk())
+            .for_each(|chunk| {
+                ((section_y - 1)..=(section_y + 1)).for_each(|section_y| {
+                    chunk.invalidate_section(section_y);
+                });
+                chunk.schedule_lighting_update();
             });
     }
 
@@ -384,19 +383,14 @@
         {
             return;
         }
-        (-1..=1)
-            .flat_map(|x_offset| {
-                (-1..=1).map(move |z_offset| {
-                    ChunkPosition::new(position.x + x_offset, position.z + z_offset)
-                })
-            })
-            .for_each(|chunk_position| {
-                if let Some(chunk) = self.chunks.get_mut(&chunk_position) {
-                    (chunk.min_section()..chunk.max_section()).for_each(|section_y| {
-                        chunk.invalidate_section(section_y);
-                    });
-                    chunk.schedule_generated_lighting_update();
-                }
+        self.chunks
+            .values_mut()
+            .filter(|chunk| chunk.is_loaded() && chunk.is_lighting_chunk())
+            .for_each(|chunk| {
+                (chunk.min_section()..chunk.max_section()).for_each(|section_y| {
+                    chunk.invalidate_section(section_y);
+                });
+                chunk.schedule_generated_lighting_update();
             });
     }
 
@@ -1074,16 +1068,6 @@ fn block_is_air(block: Block) -> bool {
     matches!(block, Block::AIR | Block::CAVE_AIR | Block::VOID_AIR)
 }
 
-fn affected_lighting_chunk_positions(position: BlockPosition) -> Vec<ChunkPosition> {
-    let changed_chunk = ChunkPosition::from(position);
-    (-1..=1)
-        .flat_map(|x_offset| {
-            (-1..=1).map(move |z_offset| {
-                ChunkPosition::new(changed_chunk.x + x_offset, changed_chunk.z + z_offset)
-            })
-        })
-        .collect()
-}
 
 fn block_is_sight_block(block: Block) -> bool {
     !block_is_air(block)
@@ -1297,5 +1281,3 @@ fn boxes_strictly_intersect(
         && first_start.z < second_end.z
         && first_end.z > second_start.z
 }
-
-

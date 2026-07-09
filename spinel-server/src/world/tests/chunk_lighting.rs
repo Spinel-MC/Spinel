@@ -223,12 +223,12 @@ fn bulk_relight_returns_all_loaded_affected_chunks() {
     let mut affected = world.relight_chunks(&[first]);
     affected.sort_by_key(|position| (position.x, position.z));
 
-    assert_eq!(affected, vec![first, second]);
+    assert_eq!(affected, vec![first, second, distant]);
     assert!(world.relight_chunks(&[ChunkPosition::new(5, 5)]).is_empty());
 }
 
 #[test]
-fn requested_relight_keeps_unrelated_invalidated_chunks_pending() {
+fn requested_relight_updates_all_loaded_lighting_chunks() {
     let mut world = lighting_world("requested_relight_scope");
     let requested = ChunkPosition::new(0, 0);
     let neighbor = ChunkPosition::new(1, 0);
@@ -242,13 +242,13 @@ fn requested_relight_keeps_unrelated_invalidated_chunks_pending() {
     let mut affected = world.relight_chunks(&[requested]);
     affected.sort_by_key(|position| (position.x, position.z));
 
-    assert_eq!(affected, vec![requested, neighbor]);
+    assert_eq!(affected, vec![requested, neighbor, unrelated]);
     assert!(!world.chunk(requested).unwrap().lighting_is_invalidated());
-    assert!(world.chunk(unrelated).unwrap().lighting_is_invalidated());
+    assert!(!world.chunk(unrelated).unwrap().lighting_is_invalidated());
 }
 
 #[test]
-fn block_change_coalesces_delayed_light_updates_for_loaded_neighbor_chunks() {
+fn block_change_coalesces_delayed_light_updates_for_loaded_lighting_chunks() {
     let mut world = lighting_world("overworld");
     let affected_positions = (-1..=1)
         .flat_map(|x| (-1..=1).map(move |z| ChunkPosition::new(x, z)))
@@ -315,7 +315,7 @@ fn block_change_coalesces_delayed_light_updates_for_loaded_neighbor_chunks() {
         );
     });
     assert!(
-        !unrelated_client
+        unrelated_client
             .queued_outbound_packet_ids()
             .contains(&LightUpdatePacket::get_id())
     );
