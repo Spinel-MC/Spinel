@@ -3,7 +3,7 @@ use crate::entity::{Entity, EntityId, EntityPosition, Player, PlayerChunk};
 use crate::events::player_move::PlayerMoveEvent;
 use crate::network::client::instance::Client;
 use crate::server::MinecraftServer;
-use crate::world::{Biome, Block, BlockPosition, Chunk, ChunkPosition, SetChunkBlockResult};
+use crate::world::{Biome, Block, BlockPosition, Chunk, ChunkLoader, ChunkPosition, SetChunkBlockResult};
 use spinel_core::network::clientbound::play::chunk_data::ChunkDataAndUpdateLightPacket;
 use spinel_core::network::clientbound::play::disconnect::PlayDisconnectPacket;
 use spinel_core::network::clientbound::play::forget_level_chunk::ForgetLevelChunkPacket;
@@ -1195,4 +1195,45 @@ fn world_tick_advances_time_like_reference() {
 
     assert_eq!(world.world_age(), 2);
     assert_eq!(world.time(), 1);
+}
+
+struct CountingChunkLoader {
+    load_count: Arc<AtomicUsize>,
+}
+
+impl ChunkLoader for CountingChunkLoader {
+    fn load_chunk(&self, _position: ChunkPosition) -> std::io::Result<Option<Chunk>> {
+        self.load_count.fetch_add(1, Ordering::SeqCst);
+        Ok(None)
+    }
+
+    fn save_chunk(&self, _chunk: &Chunk) -> std::io::Result<()> {
+        Ok(())
+    }
+
+    fn unload_chunk(&self, _chunk: &mut Chunk) -> std::io::Result<()> {
+        Ok(())
+    }
+}
+
+#[test]
+fn render_distance_refresh_uses_effective_world_capped_chunk_radius() {
+    let (mut client, _peer_stream) = test_client_pair();
+    let mut world = world_with_entered_player(&mut client);
+    let load_count = Arc::new(AtomicUsize::new(0));
+    world.set_view_distance(8);
+    world.set_chunk_loader(CountingChunkLoader {
+        load_count: Arc::clone(&load_count),
+    });
+
+    let mut near_settings = spinel_network::types::ClientInformation::default();
+    near_settings.view_distance = 3;
+    world.refresh_player_settings(&mut client, near_settings).unwrap();
+    assert_eq!(load_count.load(Ordering::SeqCst), 0);
+
+    let mut far_settings = spinel_network::types::ClientInformation::default();
+    far_settings.view_distance = 32;
+    world.refresh_player_settings(&mut client, far_settings).unwrap();
+
+    assert_eq!(load_count.load(Ordering::SeqCst), 280);
 }
