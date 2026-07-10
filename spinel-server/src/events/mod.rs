@@ -99,6 +99,7 @@ pub mod projectile_uncollide;
 pub mod remove_entity_from_world;
 pub mod server_list_ping;
 pub mod server_started;
+pub mod server_tick_end;
 pub mod shutdown;
 pub mod signal;
 pub mod startup;

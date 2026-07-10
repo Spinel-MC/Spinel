@@ -177,7 +177,7 @@ impl ServerSocketRuntime {
         client: Arc<Mutex<Client>>,
         mut read_stream: std::net::TcpStream,
         connection_status: Arc<AtomicBool>,
-        addr: SocketAddr,
+        _addr: SocketAddr,
     ) {
         let mut decoder = spinel_network::decoder::PacketDecoder::new();
 
@@ -201,9 +201,6 @@ impl ServerSocketRuntime {
 
         connection_status.store(false, Ordering::SeqCst);
         let _ = read_stream.shutdown(Shutdown::Both);
-        if let Ok(mut server) = server_arc.lock() {
-            server.handle_connection_closed(addr);
-        }
     }
 
     fn read_frame(

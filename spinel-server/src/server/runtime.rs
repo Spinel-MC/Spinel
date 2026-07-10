@@ -1,3 +1,4 @@
+use crate::events::server_tick_end::ServerTickEndEvent;
 use crate::network::socket::start_tcp_listener;
 use crate::server::MinecraftServer;
 use std::sync::atomic::Ordering;
@@ -131,6 +132,7 @@ impl MinecraftServer {
         self.flush_outbound_packets();
         self.world_manager.tick(&self.registries, server_ptr);
         self.scheduler().process_tick_end();
+        ServerTickEndEvent::new(self.current_tick).dispatch(self);
         self.flush_outbound_packets();
         self.process_lifecycle_request();
     }

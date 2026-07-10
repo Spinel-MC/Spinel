@@ -66,10 +66,11 @@ impl MinecraftServer {
         }
 
         let client_arc = self.connection_manager.client(&address);
-        if let Some(client_arc) = client_arc
-            && let Ok(mut client) = client_arc.lock()
-        {
-            self.handle_connection_closed_with_client(address, &mut client);
+        if let Some(client_arc) = client_arc {
+            if let Ok(mut client) = client_arc.lock() {
+                self.dispatch_player_disconnect_event_with_client(address, &mut client);
+            }
+            self.remove_closed_connection(address);
             return;
         }
 
@@ -183,3 +184,4 @@ impl MinecraftServer {
         let _ = self.kick(&mut client, TextComponent::literal("Timed out"));
     }
 }
+

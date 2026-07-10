@@ -884,38 +884,16 @@ impl World {
     }
 
     pub(crate) fn remove_entity_by_addr(&mut self, addr: &SocketAddr) -> Result<()> {
-        let removed_players = self
+        let removed_player_ids = self
             .entities
             .iter()
             .filter_map(|entity| match entity {
-                Entity::Player(player) if player.addr == *addr => {
-                    Some((player.get_entity_id(), player.uuid))
-                }
+                Entity::Player(player) if player.addr == *addr => Some(player.get_entity_id()),
                 _ => None,
             })
             .collect::<Vec<_>>();
-        self.entities
-            .iter_mut()
-            .filter_map(|entity| match entity {
-                Entity::Player(player) if player.addr != *addr && player.has_entered_world() => {
-                    Some(player)
-                }
-                _ => None,
-            })
-            .filter_map(Player::get_client_mut)
-            .try_for_each(|viewer_client| {
-                removed_players.iter().try_for_each(|(entity_id, uuid)| {
-                    PlayerInfoRemovePacket::new(*uuid).dispatch(viewer_client)?;
-                    RemoveEntitiesPacket::new(vec![entity_id.get_value()]).dispatch(viewer_client)
-                })
-            })?;
-        self.entities.retain(|entity| match entity {
-            Entity::Creature(_) => true,
-            Entity::ExperienceOrb(_) => true,
-            Entity::Generic(_) => true,
-            Entity::Item(_) => true,
-            Entity::Player(player) => player.addr != *addr,
-            Entity::Projectile(_) => true,
+        removed_player_ids.into_iter().for_each(|player_id| {
+            let _ = self.take_entity_from_world(player_id);
         });
         Ok(())
     }
@@ -986,3 +964,4 @@ fn dispatch_player_spawn_event(
     let server = unsafe { &mut *(server_ptr as *mut crate::server::MinecraftServer) };
     PlayerSpawnEvent::new(player, world, first_spawn).dispatch(server, client);
 }
+
