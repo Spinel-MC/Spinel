@@ -117,14 +117,11 @@ fn active_item_stack_grant_syncs_inserted_inventory_slots_immediately() {
     let mut client = queued_client();
     player.set_client(&mut client);
 
-    assert_eq!(
-        player.add_item_stacks(vec![
-            ItemStack::of(Material::STICK),
-            ItemStack::of(Material::EMERALD),
-            ItemStack::of(Material::DIAMOND),
-        ]),
-        vec![true, true, true]
-    );
+    player.add_item_stacks(vec![
+        ItemStack::of(Material::STICK),
+        ItemStack::of(Material::EMERALD),
+        ItemStack::of(Material::DIAMOND),
+    ]);
 
     assert_eq!(
         client.queued_outbound_packet_ids(),

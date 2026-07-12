@@ -113,7 +113,7 @@ fn remove_passenger_clears_both_entity_sides_and_is_idempotent() {
 }
 
 #[test]
-fn taking_an_entity_detaches_its_vehicle_and_passenger_relations() {
+fn removing_an_entity_detaches_its_vehicle_and_passenger_relations() {
     let mut world = World::new_with_dimension_name(
         uuid::Uuid::new_v4(),
         spinel_registry::dimension_type::DimensionType::OVERWORLD,
@@ -127,7 +127,7 @@ fn taking_an_entity_detaches_its_vehicle_and_passenger_relations() {
     world.add_entity(passenger);
     world.add_passenger(vehicle_id, passenger_id).unwrap();
 
-    world.take_entity(vehicle_id).unwrap();
+    world.remove_entity(vehicle_id).unwrap();
 
     assert_eq!(
         world.entity_by_id(passenger_id).unwrap().get_vehicle(),
@@ -136,7 +136,7 @@ fn taking_an_entity_detaches_its_vehicle_and_passenger_relations() {
 }
 
 #[test]
-fn taking_a_passenger_removes_it_from_its_vehicle() {
+fn removing_a_passenger_removes_it_from_its_vehicle() {
     let mut world = World::new_with_dimension_name(
         uuid::Uuid::new_v4(),
         spinel_registry::dimension_type::DimensionType::OVERWORLD,
@@ -150,7 +150,7 @@ fn taking_a_passenger_removes_it_from_its_vehicle() {
     world.add_entity(passenger);
     world.add_passenger(vehicle_id, passenger_id).unwrap();
 
-    world.take_entity(passenger_id).unwrap();
+    world.remove_entity(passenger_id).unwrap();
 
     assert!(
         world

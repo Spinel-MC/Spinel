@@ -3,18 +3,22 @@ use crate::world::World;
 use spinel_macros::event_dispatcher;
 
 #[event_dispatcher]
-pub struct RemoveEntityFromWorldEvent {
-    world: *mut World,
+pub struct RemoveEntityFromInstanceEvent {
+    instance: *mut World,
     entity: *mut Entity,
 }
 
-impl RemoveEntityFromWorldEvent {
-    pub fn new(world: *mut World, entity: *mut Entity) -> Self {
-        Self { world, entity }
+impl RemoveEntityFromInstanceEvent {
+    pub fn new(instance: *mut World, entity: *mut Entity) -> Self {
+        Self { instance, entity }
+    }
+
+    pub fn get_instance(&mut self) -> &mut World {
+        unsafe { &mut *self.instance }
     }
 
     pub fn get_world(&mut self) -> &mut World {
-        unsafe { &mut *self.world }
+        self.get_instance()
     }
 
     pub fn get_entity(&mut self) -> &mut Entity {

@@ -6,7 +6,6 @@ use crate::entity::{
     ExperienceOrb, GenericEntity, ItemEntity, Player, PlayerChunk, PlayerChunkTransition,
     TimedPotionEffect,
 };
-use crate::events::add_entity_to_world::AddEntityToWorldEvent;
 use crate::events::chunk_loader_error::ChunkLoaderErrorEvent;
 use crate::events::entity_attack::EntityAttackEvent;
 use crate::events::entity_damage::EntityDamageEvent;
@@ -23,6 +22,8 @@ use crate::events::entity_spawn::EntitySpawnEvent;
 use crate::events::entity_teleport::EntityTeleportEvent;
 use crate::events::entity_tick::EntityTickEvent;
 use crate::events::entity_velocity::EntityVelocityEvent;
+use crate::events::instance::add_entity_to_instance::AddEntityToInstanceEvent;
+use crate::events::instance::remove_entity_from_instance::RemoveEntityFromInstanceEvent;
 use crate::events::pickup_experience::PickupExperienceEvent;
 use crate::events::pickup_item::PickupItemEvent;
 use crate::events::player_block_break::PlayerBlockBreakEvent;
@@ -34,7 +35,6 @@ use crate::events::player_tick_end::PlayerTickEndEvent;
 use crate::events::projectile_collide_with_block::ProjectileCollideWithBlockEvent;
 use crate::events::projectile_collide_with_entity::ProjectileCollideWithEntityEvent;
 use crate::events::projectile_uncollide::ProjectileUncollideEvent;
-use crate::events::remove_entity_from_world::RemoveEntityFromWorldEvent;
 use crate::events::world_block_update::WorldBlockUpdateEvent;
 use crate::events::world_chunk_load::WorldChunkLoadEvent;
 use crate::events::world_chunk_unload::WorldChunkUnloadEvent;

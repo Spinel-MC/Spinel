@@ -568,7 +568,7 @@ fn tracker_scopes_chunk_and_entity_packets_to_actual_viewers() {
     assert!(far_client.queued_outbound_packet_ids().is_empty());
     viewer_client.discard_queued_outbound_packets();
 
-    assert!(world.take_entity(target_id).is_some());
+    assert!(world.remove_entity(target_id).is_some());
 
     assert_eq!(
         viewer_client.queued_outbound_packet_ids(),

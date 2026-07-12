@@ -38,6 +38,6 @@ fn send_command_feedback(player: *mut crate::entity::Player, command_result: &Co
         .feedback_components()
         .into_iter()
         .for_each(|feedback_component| {
-            let _ = unsafe { &mut *player }.send_system_message(feedback_component);
+            unsafe { &mut *player }.send_message(feedback_component);
         });
 }

@@ -3,7 +3,9 @@ use crate::entity::{Entity, EntityId, EntityPosition, Player, PlayerChunk};
 use crate::events::player_move::PlayerMoveEvent;
 use crate::network::client::instance::Client;
 use crate::server::MinecraftServer;
-use crate::world::{Biome, Block, BlockPosition, Chunk, ChunkLoader, ChunkPosition, SetChunkBlockResult};
+use crate::world::{
+    Biome, Block, BlockPosition, Chunk, ChunkLoader, ChunkPosition, SetChunkBlockResult,
+};
 use spinel_core::network::clientbound::play::chunk_data::ChunkDataAndUpdateLightPacket;
 use spinel_core::network::clientbound::play::disconnect::PlayDisconnectPacket;
 use spinel_core::network::clientbound::play::forget_level_chunk::ForgetLevelChunkPacket;
@@ -1228,12 +1230,16 @@ fn render_distance_refresh_uses_effective_world_capped_chunk_radius() {
 
     let mut near_settings = spinel_network::types::ClientInformation::default();
     near_settings.view_distance = 3;
-    world.refresh_player_settings(&mut client, near_settings).unwrap();
+    world
+        .refresh_player_settings(&mut client, near_settings)
+        .unwrap();
     assert_eq!(load_count.load(Ordering::SeqCst), 0);
 
     let mut far_settings = spinel_network::types::ClientInformation::default();
     far_settings.view_distance = 32;
-    world.refresh_player_settings(&mut client, far_settings).unwrap();
+    world
+        .refresh_player_settings(&mut client, far_settings)
+        .unwrap();
 
     assert_eq!(load_count.load(Ordering::SeqCst), 280);
 }

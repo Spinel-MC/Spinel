@@ -883,7 +883,7 @@ impl World {
         )
     }
 
-    pub(crate) fn remove_entity_by_addr(&mut self, addr: &SocketAddr) -> Result<()> {
+    pub(crate) fn remove_player_by_connection_address(&mut self, addr: &SocketAddr) -> Result<()> {
         let removed_player_ids = self
             .entities
             .iter()
@@ -893,7 +893,7 @@ impl World {
             })
             .collect::<Vec<_>>();
         removed_player_ids.into_iter().for_each(|player_id| {
-            let _ = self.take_entity_from_world(player_id);
+            let _ = self.remove_entity_from_instance(player_id);
         });
         Ok(())
     }

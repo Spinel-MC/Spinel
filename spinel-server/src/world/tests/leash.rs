@@ -81,7 +81,7 @@ fn removing_a_leash_holder_detaches_every_leashed_entity() {
     world.add_entity(Entity::Generic(leashed));
     world.set_leash_holder(leashed_id, Some(holder_id)).unwrap();
 
-    world.take_entity(holder_id).unwrap();
+    world.remove_entity(holder_id).unwrap();
 
     assert_eq!(
         world.get_entity(leashed_id).unwrap().get_leash_holder(),

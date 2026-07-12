@@ -104,7 +104,9 @@ impl MinecraftServer {
 
     fn remove_closed_connection(&mut self, address: SocketAddr) {
         DisconnectionEvent::new(address).dispatch(self);
-        let _ = self.world_manager.remove_entity_by_addr(&address);
+        let _ = self
+            .world_manager
+            .remove_player_by_connection_address(&address);
         self.connection_manager.remove_connection(&address);
     }
 
@@ -184,4 +186,3 @@ impl MinecraftServer {
         let _ = self.kick(&mut client, TextComponent::literal("Timed out"));
     }
 }
-

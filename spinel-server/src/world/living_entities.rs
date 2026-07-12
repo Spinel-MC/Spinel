@@ -408,7 +408,7 @@ impl World {
                 ) {
                     return;
                 }
-                self.take_entity(experience_orb_id);
+                self.remove_entity(experience_orb_id);
             });
     }
 
@@ -469,7 +469,7 @@ impl World {
                     pickup_item_count,
                 },
             );
-            self.take_entity(item_entity_id);
+            self.remove_entity(item_entity_id);
         });
     }
 
@@ -594,7 +594,7 @@ impl World {
             return;
         };
         source_item_entity.set_item_metadata(result);
-        self.take_entity(merged_item_entity_id);
+        self.remove_entity(merged_item_entity_id);
     }
 
     fn dispatch_entity_item_merge_event(

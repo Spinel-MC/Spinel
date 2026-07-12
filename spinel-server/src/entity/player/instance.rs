@@ -893,12 +893,16 @@ impl Player {
         self.send_plugin_message(channel, data.into().into_bytes())
     }
 
-    pub fn send_system_message(&mut self, message: TextComponent) -> io::Result<()> {
-        self.send_packet(SystemChatPacket::new(message, false))
+    pub fn send_message(&mut self, message: TextComponent) {
+        let _ = self.send_packet(SystemChatPacket::new(message, false));
     }
 
-    pub fn send_action_bar(&mut self, message: TextComponent) -> io::Result<()> {
-        self.send_packet(SystemChatPacket::new(message, true))
+    pub fn send_system_message(&mut self, message: TextComponent) {
+        self.send_message(message);
+    }
+
+    pub fn send_action_bar(&mut self, message: TextComponent) {
+        let _ = self.send_packet(SystemChatPacket::new(message, true));
     }
 
     pub fn send_message_from(
@@ -1985,10 +1989,14 @@ impl Player {
         &self.inventory
     }
 
-    pub fn add_item_stacks(&mut self, item_stacks: Vec<ItemStack>) -> Vec<bool> {
-        let added_item_stacks = self.inventory.add_item_stacks(item_stacks);
+    pub fn add_item_stack(&mut self, item_stack: ItemStack) {
+        let _ = self.inventory.add_item_stack(item_stack);
         let _ = self.sync_dirty_player_inventory_slots();
-        added_item_stacks
+    }
+
+    pub fn add_item_stacks(&mut self, item_stacks: Vec<ItemStack>) {
+        let _ = self.inventory.add_item_stacks(item_stacks);
+        let _ = self.sync_dirty_player_inventory_slots();
     }
 
     fn sync_dirty_player_inventory_slots(&mut self) -> bool {

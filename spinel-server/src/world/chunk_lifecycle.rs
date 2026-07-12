@@ -415,7 +415,7 @@ impl World {
             .map(Entity::get_entity_id)
             .collect::<Vec<_>>();
         removed_entity_ids.into_iter().for_each(|entity_id| {
-            self.take_entity(entity_id);
+            self.remove_entity(entity_id);
         });
     }
 

@@ -1,12 +1,12 @@
 impl World {
-    pub(crate) fn dispatch_add_entity_to_world_event(&mut self, entity: &mut Entity) -> bool {
+    pub(crate) fn dispatch_add_entity_to_instance_event(&mut self, entity: &mut Entity) -> bool {
         let Some(server_ptr) = self.event_dispatcher else {
             return false;
         };
         let server = unsafe { &mut *(server_ptr as *mut crate::server::MinecraftServer) };
         let world = self as *mut World;
         let entity = entity as *mut Entity;
-        let mut event = AddEntityToWorldEvent::new(world, entity);
+        let mut event = AddEntityToInstanceEvent::new(world, entity);
         event.dispatch(server);
         event.is_cancelled()
     }
@@ -40,7 +40,7 @@ impl World {
         EntityDespawnEvent::new(entity).dispatch(server);
     }
 
-    fn dispatch_remove_entity_from_world_event(&mut self, entity_id: EntityId) {
+    fn dispatch_remove_entity_from_instance_event(&mut self, entity_id: EntityId) {
         let Some(server_ptr) = self.event_dispatcher else {
             return;
         };
@@ -52,18 +52,18 @@ impl World {
         };
         let server = unsafe { &mut *(server_ptr as *mut crate::server::MinecraftServer) };
         let world = self as *mut World;
-        RemoveEntityFromWorldEvent::new(world, entity).dispatch(server);
+        RemoveEntityFromInstanceEvent::new(world, entity).dispatch(server);
     }
 
     pub(crate) fn add_entity(&mut self, mut entity: Entity) -> bool {
-        if self.dispatch_add_entity_to_world_event(&mut entity) {
+        if self.dispatch_add_entity_to_instance_event(&mut entity) {
             return false;
         }
-        self.add_entity_after_world_event(entity);
+        self.add_entity_after_instance_event(entity);
         true
     }
 
-    pub(crate) fn add_entity_after_world_event(&mut self, mut entity: Entity) {
+    pub(crate) fn add_entity_after_instance_event(&mut self, mut entity: Entity) {
         entity.assign_world(self.uuid);
         if let Entity::Creature(creature) = &mut entity {
             creature.set_event_dispatcher(self.event_dispatcher);
@@ -76,13 +76,13 @@ impl World {
         self.dispatch_entity_spawn_event(entity_id);
     }
 
-    pub(crate) fn take_entity(&mut self, entity_id: EntityId) -> Option<Entity> {
+    pub(crate) fn remove_entity(&mut self, entity_id: EntityId) -> Option<Entity> {
         self.dispatch_entity_despawn_event(entity_id);
-        self.take_entity_from_world(entity_id)
+        self.remove_entity_from_instance(entity_id)
     }
 
-    pub(crate) fn take_entity_from_world(&mut self, entity_id: EntityId) -> Option<Entity> {
-        self.dispatch_remove_entity_from_world_event(entity_id);
+    pub(crate) fn remove_entity_from_instance(&mut self, entity_id: EntityId) -> Option<Entity> {
+        self.dispatch_remove_entity_from_instance_event(entity_id);
         self.detach_entity_passenger_relations(entity_id);
         self.detach_leashed_entities(entity_id);
         let _ = self.hide_entity_from_all_viewers(entity_id);
@@ -94,14 +94,14 @@ impl World {
         Some(self.entities.remove(entity_index))
     }
 
-    pub(crate) fn take_player_by_uuid(&mut self, player_uuid: Uuid) -> Option<Player> {
+    pub(crate) fn remove_player_by_uuid(&mut self, player_uuid: Uuid) -> Option<Player> {
         let player_id = self.entities.iter().find_map(|entity| match entity {
             Entity::Player(player) if player.get_uuid() == player_uuid => {
                 Some(entity.get_entity_id())
             }
             _ => None,
         })?;
-        let Entity::Player(player) = self.take_entity_from_world(player_id)? else {
+        let Entity::Player(player) = self.remove_entity_from_instance(player_id)? else {
             return None;
         };
         Some(player)

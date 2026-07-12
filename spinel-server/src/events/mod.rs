@@ -1,7 +1,6 @@
 pub use crate::server::{EventHandler, EventHandlerEntry, GlobalEventHandler, ServerEventHandler};
 pub use spinel_events::*;
 
-pub mod add_entity_to_world;
 pub mod advancement_tab;
 pub mod chunk_loader_error;
 pub mod connection;
@@ -23,6 +22,7 @@ pub mod entity_spawn;
 pub mod entity_teleport;
 pub mod entity_tick;
 pub mod entity_velocity;
+pub mod instance;
 pub mod intention;
 pub mod inventory_click;
 pub mod inventory_close;
@@ -96,7 +96,6 @@ pub mod projectile_collide;
 pub mod projectile_collide_with_block;
 pub mod projectile_collide_with_entity;
 pub mod projectile_uncollide;
-pub mod remove_entity_from_world;
 pub mod server_list_ping;
 pub mod server_started;
 pub mod server_tick_end;

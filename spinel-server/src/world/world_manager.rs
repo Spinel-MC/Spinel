@@ -282,17 +282,17 @@ impl WorldManager {
         let entity = source_world
             .entity_by_id_mut(entity_id)
             .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "Entity not found."))?;
-        if target_world.dispatch_add_entity_to_world_event(entity) {
+        if target_world.dispatch_add_entity_to_instance_event(entity) {
             return Err(io::Error::new(
                 io::ErrorKind::Interrupted,
                 "Entity add cancelled.",
             ));
         }
-        let Some(mut entity) = source_world.take_entity_from_world(entity_id) else {
+        let Some(mut entity) = source_world.remove_entity_from_instance(entity_id) else {
             return Err(io::Error::new(io::ErrorKind::NotFound, "Entity not found."));
         };
         entity.set_position(position);
-        target_world.add_entity_after_world_event(entity);
+        target_world.add_entity_after_instance_event(entity);
         Ok(())
     }
 
@@ -540,7 +540,7 @@ impl WorldManager {
         let target_world = self
             .world_mut(transition.target_world)
             .ok_or(io::ErrorKind::NotFound)?;
-        target_world.add_entity_after_world_event(Entity::Player(player));
+        target_world.add_entity_after_instance_event(Entity::Player(player));
         target_world.schedule_player_chunk_loads(player_address, &chunks)?;
         let player = target_world
             .player_by_addr_mut(&player_address)
@@ -638,7 +638,7 @@ impl WorldManager {
                 .world_mut_ptr(target_world)
                 .ok_or(io::ErrorKind::NotFound)?;
             let is_cancelled = unsafe { &mut *target_world }
-                .dispatch_add_entity_to_world_event(&mut player_entity);
+                .dispatch_add_entity_to_instance_event(&mut player_entity);
             let player = match player_entity {
                 Entity::Player(player) => player,
                 _ => return Err(io::ErrorKind::InvalidData.into()),
@@ -657,7 +657,7 @@ impl WorldManager {
         let player = source_world
             .entity_by_uuid_mut(player_uuid)
             .ok_or(io::ErrorKind::NotFound)?;
-        Ok(target_world.dispatch_add_entity_to_world_event(player))
+        Ok(target_world.dispatch_add_entity_to_instance_event(player))
     }
 
     fn take_transition_player(
@@ -668,7 +668,7 @@ impl WorldManager {
         if let Some(current_world) = current_world {
             return self
                 .world_mut(current_world)
-                .and_then(|world| world.take_player_by_uuid(player_uuid));
+                .and_then(|world| world.remove_player_by_uuid(player_uuid));
         }
         let player_index = self
             .inactive_players
@@ -895,10 +895,13 @@ impl WorldManager {
         let _ = self.synchronize_online_player_tab_list();
     }
 
-    pub(crate) fn remove_entity_by_addr(&mut self, addr: &SocketAddr) -> io::Result<()> {
+    pub(crate) fn remove_player_by_connection_address(
+        &mut self,
+        addr: &SocketAddr,
+    ) -> io::Result<()> {
         self.worlds
             .iter_mut()
-            .try_for_each(|world| world.remove_entity_by_addr(addr))
+            .try_for_each(|world| world.remove_player_by_connection_address(addr))
     }
 
     pub(crate) fn player_mut_for_client(&mut self, client: &Client) -> Option<&mut Player> {

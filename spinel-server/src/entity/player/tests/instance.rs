@@ -2907,9 +2907,7 @@ fn player_sound_effect_action_bar_and_boss_bar_apis_send_reference_packets() {
         0,
     );
 
-    player
-        .send_action_bar(TextComponent::literal("action"))
-        .unwrap();
+    player.send_action_bar(TextComponent::literal("action"));
     player.play_sound(SoundEvent::Id(2)).unwrap();
     player
         .play_sound_at_position(
