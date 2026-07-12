@@ -893,22 +893,22 @@ impl Player {
         self.send_plugin_message(channel, data.into().into_bytes())
     }
 
-    pub fn send_message(&mut self, message: TextComponent) {
-        let _ = self.send_packet(SystemChatPacket::new(message, false));
+    pub fn send_message(&mut self, message: impl Into<TextComponent>) {
+        let _ = self.send_packet(SystemChatPacket::new(message.into(), false));
     }
 
-    pub fn send_system_message(&mut self, message: TextComponent) {
+    pub fn send_system_message(&mut self, message: impl Into<TextComponent>) {
         self.send_message(message);
     }
 
-    pub fn send_action_bar(&mut self, message: TextComponent) {
-        let _ = self.send_packet(SystemChatPacket::new(message, true));
+    pub fn send_action_bar(&mut self, message: impl Into<TextComponent>) {
+        let _ = self.send_packet(SystemChatPacket::new(message.into(), true));
     }
 
     pub fn send_message_from(
         &mut self,
         _source: Uuid,
-        message: TextComponent,
+        message: impl Into<TextComponent>,
         message_type: PlayerMessageType,
     ) -> io::Result<()> {
         if !message_type.is_accepted_by_chat_mode(self.settings.chat_mode) {

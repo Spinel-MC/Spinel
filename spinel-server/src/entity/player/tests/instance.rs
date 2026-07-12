@@ -2515,14 +2515,14 @@ fn player_message_type_respects_reference_chat_visibility_modes() {
     player
         .send_message_from(
             Uuid::nil(),
-            TextComponent::literal("chat"),
+            Component::text("chat"),
             PlayerMessageType::Chat,
         )
         .unwrap();
     player
         .send_message_from(
             Uuid::nil(),
-            TextComponent::literal("system"),
+            Component::text("system"),
             PlayerMessageType::System,
         )
         .unwrap();
@@ -2907,7 +2907,7 @@ fn player_sound_effect_action_bar_and_boss_bar_apis_send_reference_packets() {
         0,
     );
 
-    player.send_action_bar(TextComponent::literal("action"));
+    player.send_action_bar(Component::text("action"));
     player.play_sound(SoundEvent::Id(2)).unwrap();
     player
         .play_sound_at_position(

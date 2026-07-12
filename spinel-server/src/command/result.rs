@@ -84,15 +84,21 @@ impl CommandResult {
     pub fn feedback_components(&self) -> Vec<TextComponent> {
         match self.result_type {
             CommandResultType::Unknown => vec![
-                TextComponent::translatable("command.unknown.command").build(),
+                Self::command_error_component("command.unknown.command"),
                 Self::command_context_component(&self.input),
             ],
             CommandResultType::InvalidSyntax => vec![
-                TextComponent::translatable("command.unknown.argument").build(),
+                Self::command_error_component("command.unknown.argument"),
                 Self::command_context_component(&self.input),
             ],
             CommandResultType::Success | CommandResultType::Cancelled => Vec::new(),
         }
+    }
+
+    fn command_error_component(key: impl Into<String>) -> TextComponent {
+        TextComponent::translatable(key)
+            .color(TextColor::from_named(NamedTextColor::Red))
+            .build()
     }
 
     fn command_context_component(input: &str) -> TextComponent {

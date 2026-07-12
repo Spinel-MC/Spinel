@@ -30,12 +30,11 @@ impl PlayerShowcase {
             ItemStack::of(Material::DIAMOND_LEGGINGS),
         );
         player.set_equipment(EquipmentSlot::Boots, ItemStack::of(Material::DIAMOND_BOOTS));
-        player.send_system_message(Component::text("Player showcase applied.").build())?;
-        player.send_action_bar(
-            Component::text("Inventory, permissions, flight, equipment").build(),
-        )?;
-        player.send_title(Component::text("Spinel Player API").build())?;
-        player.send_subtitle(Component::text("Current implemented surface").build())?;
+        player.send_system_message(Component::text("Player showcase applied.").build());
+        player
+            .send_action_bar(Component::text("Inventory, permissions, flight, equipment").build());
+        player.send_title(Component::text("Spinel Player API").build());
+        player.send_subtitle(Component::text("Current implemented surface").build());
         player.show_boss_bar(&BossBar::new(
             Component::text("Player API").build(),
             1.0,

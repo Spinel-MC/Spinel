@@ -179,6 +179,11 @@ impl CommandManager {
                 parsed_command.context().input(),
                 None,
             ),
+            CommandParseResult::Incomplete(parsed_command) => CommandResult::new(
+                CommandResultType::Unknown,
+                parsed_command.context().input(),
+                None,
+            ),
             CommandParseResult::Unknown => {
                 CommandResult::new(CommandResultType::Unknown, command_line, None)
             }

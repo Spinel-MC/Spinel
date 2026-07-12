@@ -23,7 +23,7 @@ pub struct EntityShowcaseControls {
 }
 
 impl EntityShowcaseControls {
-    pub fn give_to_player(self, player: &mut Player) -> Vec<bool> {
+    pub fn give_to_player(self, player: &mut Player) {
         player.add_item_stacks(vec![
             self.dual_pathfinding_stick,
             self.physics_reference_pathfinding_stick,

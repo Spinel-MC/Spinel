@@ -142,7 +142,7 @@ fn entity_showcase_pathfinding_sticks_are_added_without_replacing_occupied_slots
     assert!(player.get_inventory().set_item_stack(0, diamond.clone()));
     assert!(player.get_inventory().set_item_stack(1, emerald.clone()));
 
-    assert_eq!(controls.give_to_player(&mut player), vec![true, true, true]);
+    controls.give_to_player(&mut player);
     assert_eq!(player.get_inventory_ref().get_item_stack(0), Some(&diamond));
     assert_eq!(player.get_inventory_ref().get_item_stack(1), Some(&emerald));
     let stored_pathfinding_sticks = player

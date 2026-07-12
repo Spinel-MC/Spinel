@@ -16,6 +16,7 @@ pub struct ParsedCommand<'a> {
 
 pub enum CommandParseResult<'a> {
     Valid(ParsedCommand<'a>),
+    Incomplete(ParsedCommand<'a>),
     Invalid(ParsedCommand<'a>),
     Unknown,
 }
@@ -34,14 +35,17 @@ impl CommandParser {
         };
         let (command, command_arguments) =
             Self::parse_subcommand(root_command, command_arguments.trim());
-        let Some((context, syntax)) =
-            Self::parse_context(command, trimmed_command_line, command_arguments)
-        else {
-            return CommandParseResult::Invalid(ParsedCommand {
+        let parse_context = Self::parse_context(command, trimmed_command_line, command_arguments);
+        let Some((context, syntax)) = parse_context else {
+            let parsed_command = ParsedCommand {
                 command,
                 syntax: None,
                 context: CommandContext::empty(trimmed_command_line),
-            });
+            };
+            if command_arguments.is_empty() {
+                return CommandParseResult::Incomplete(parsed_command);
+            }
+            return CommandParseResult::Invalid(parsed_command);
         };
         CommandParseResult::Valid(ParsedCommand {
             command,
@@ -97,6 +101,7 @@ impl CommandParser {
             .or_else(|| {
                 command
                     .default_executor()
+                    .filter(|_| command_arguments.trim().is_empty())
                     .map(|_| (CommandContext::empty(command_input), None))
             })
     }

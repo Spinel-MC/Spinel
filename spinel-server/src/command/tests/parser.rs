@@ -47,7 +47,9 @@ fn parser_rejects_mixed_local_and_world_relative_vec3_shape() {
 
     match CommandParser::parse(&commands, "spawn zombie ^ ~ ^") {
         CommandParseResult::Invalid(_) => {}
-        CommandParseResult::Valid(_) | CommandParseResult::Unknown => {
+        CommandParseResult::Valid(_)
+        | CommandParseResult::Incomplete(_)
+        | CommandParseResult::Unknown => {
             panic!("expected invalid command")
         }
     }
@@ -92,6 +94,42 @@ fn parser_reads_word_argument_raw_context() {
     assert_eq!(parsed_command.context().raw("mode"), Some("survival"));
     assert_eq!(parsed_command.context().string("mode"), Some("survival"));
 }
+
+#[test]
+fn parser_marks_known_command_with_missing_required_argument_as_incomplete() {
+    let command = Command::new("flyspeed")
+        .with_syntax(unused_executor, vec![CommandArgument::float("speed")]);
+    let commands = [command];
+
+    match CommandParser::parse(&commands, "flyspeed") {
+        CommandParseResult::Incomplete(parsed_command) => {
+            assert_eq!(parsed_command.context().input(), "flyspeed");
+        }
+        CommandParseResult::Valid(_)
+        | CommandParseResult::Invalid(_)
+        | CommandParseResult::Unknown => {
+            panic!("expected incomplete command")
+        }
+    }
+}
+
+#[test]
+fn parser_marks_known_command_with_unknown_trailing_argument_as_invalid() {
+    let command = Command::new("flyspeed").with_default_executor(unused_executor);
+    let commands = [command];
+
+    match CommandParser::parse(&commands, "flyspeed extra") {
+        CommandParseResult::Invalid(parsed_command) => {
+            assert_eq!(parsed_command.context().input(), "flyspeed extra");
+        }
+        CommandParseResult::Valid(_)
+        | CommandParseResult::Incomplete(_)
+        | CommandParseResult::Unknown => {
+            panic!("expected invalid command")
+        }
+    }
+}
+
 #[test]
 fn parser_executes_nested_subcommand_with_shared_root_prefix() {
     let command = Command::new("showcase")
@@ -127,7 +165,9 @@ fn unused_executor(
 fn valid_command(command_parse_result: CommandParseResult<'_>) -> ParsedCommand<'_> {
     match command_parse_result {
         CommandParseResult::Valid(parsed_command) => parsed_command,
-        CommandParseResult::Invalid(_) | CommandParseResult::Unknown => {
+        CommandParseResult::Incomplete(_)
+        | CommandParseResult::Invalid(_)
+        | CommandParseResult::Unknown => {
             panic!("expected valid command")
         }
     }

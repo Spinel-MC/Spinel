@@ -1,3 +1,4 @@
+use super::flyspeed::FlyspeedCommand;
 use super::gamemode_command::GamemodeCommand;
 use super::showcase::ShowcaseCommand;
 use super::spawn_command::SpawnCommand;
@@ -7,6 +8,7 @@ pub struct TestServerCommands;
 
 impl TestServerCommands {
     pub fn register(server: &mut MinecraftServer) {
+        server.command_manager.register(FlyspeedCommand::new());
         server.command_manager.register(GamemodeCommand::new());
         server.command_manager.register(SpawnCommand::command());
         server.command_manager.register(ShowcaseCommand::command());

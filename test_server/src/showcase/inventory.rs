@@ -16,7 +16,8 @@ impl InventoryShowcase {
         player.set_item_in_hand(PlayerHand::Off, Self::offhand_stack());
         player.set_equipment(EquipmentSlot::Helmet, Self::helmet_stack());
         player.open_inventory(Self::inventory());
-        player.send_system_message(Component::text("Inventory showcase opened.").build())
+        player.send_system_message(Component::text("Inventory showcase opened.").build());
+        Ok(())
     }
 
     fn inventory() -> Inventory {
