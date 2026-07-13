@@ -1,6 +1,7 @@
 use crate::command::{
-    Command, CommandArgument, CommandConditionContext, CommandContext, CommandExecutionResult,
-    CommandManager, CommandSender, CommandSenderKind, Suggestion, SuggestionEntry,
+    ArgumentType, Command, CommandArgument, CommandConditionContext, CommandContext,
+    CommandExecutionResult, CommandManager, CommandSender, CommandSenderKind, Suggestion,
+    SuggestionEntry,
 };
 use crate::server::MinecraftServer;
 use spinel_core::network::clientbound::play::commands::ArgumentParserType;
@@ -44,6 +45,30 @@ fn command_manager_filters_root_suggestions_by_source_condition() {
     assert!(!suggestion_has_entry(&ordinary_suggestions, "op"));
     assert!(suggestion_has_entry(&ordinary_suggestions, "tell"));
     assert!(suggestion_has_entry(&admin_suggestions, "op"));
+}
+
+#[test]
+fn entity_argument_types_suggest_vanilla_selector_roots() {
+    let mut command_manager = CommandManager::new();
+    command_manager.register(
+        Command::new("flyspeed")
+            .with_syntax(unused_executor, vec![ArgumentType::Players("targets")]),
+    );
+    command_manager.register(
+        Command::new("kill").with_syntax(unused_executor, vec![ArgumentType::Entities("targets")]),
+    );
+
+    let player_target_suggestions =
+        command_manager.suggest_for_source(CommandConditionContext::player(2), "/flyspeed @");
+    let entity_target_suggestions =
+        command_manager.suggest_for_source(CommandConditionContext::player(2), "/kill @");
+
+    assert!(suggestion_has_entry(&player_target_suggestions, "@s"));
+    assert!(suggestion_has_entry(&player_target_suggestions, "@p"));
+    assert!(suggestion_has_entry(&player_target_suggestions, "@a"));
+    assert!(suggestion_has_entry(&player_target_suggestions, "@r"));
+    assert!(!suggestion_has_entry(&player_target_suggestions, "@e"));
+    assert!(suggestion_has_entry(&entity_target_suggestions, "@e"));
 }
 fn custom_argument_with_suggestions(id: &str) -> CommandArgument {
     let mut argument = CommandArgument::custom_parser(id, ArgumentParserType::String, "String");
