@@ -10,7 +10,7 @@ use crate::network::connection_manager::ConnectionManager;
 use crate::registry_cache::RegistryCache;
 use crate::scheduler::{Scheduler, Task, TaskSchedule};
 use crate::server::packet_router::PacketRouter;
-use crate::server::{EventHandler, GlobalEventHandler, GlobalPacketHandler, PacketHandler};
+use crate::server::{Auth, EventHandler, GlobalEventHandler, GlobalPacketHandler, PacketHandler};
 use crate::world::WorldManager;
 use spinel_network::ConnectionState;
 use spinel_network::types::ClientInformation;
@@ -30,6 +30,7 @@ pub struct MinecraftServer {
     pub command_manager: CommandManager,
     pub ticks_per_second: u32,
     pub current_tick: u64,
+    auth: Auth,
     pub is_ticking: Arc<AtomicBool>,
     restart_requested: AtomicBool,
     stop_requested: AtomicBool,
@@ -45,7 +46,7 @@ impl MinecraftServer {
         &mut self.world_manager
     }
 
-    pub fn new() -> Self {
+    pub fn init(auth: Auth) -> Self {
         let registries = Registries::new_vanilla();
         let registry_cache = RegistryCache::new(&registries);
 
@@ -57,6 +58,7 @@ impl MinecraftServer {
             command_manager: CommandManager::new(),
             ticks_per_second: DEFAULT_TICKS_PER_SECOND,
             current_tick: 0,
+            auth,
             is_ticking: Arc::new(AtomicBool::new(false)),
             restart_requested: AtomicBool::new(false),
             stop_requested: AtomicBool::new(false),
@@ -66,6 +68,14 @@ impl MinecraftServer {
             global_event_handler: GlobalEventHandler::new(),
             global_packet_handler: GlobalPacketHandler::new(),
         }
+    }
+
+    pub fn new() -> Self {
+        Self::init(Auth::Offline)
+    }
+
+    pub fn auth(&self) -> &Auth {
+        &self.auth
     }
 
     pub fn scheduler(&mut self) -> &mut Scheduler {

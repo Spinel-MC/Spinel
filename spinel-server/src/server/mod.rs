@@ -1,3 +1,4 @@
+mod auth;
 mod connections;
 mod event_handler;
 mod instance;
@@ -8,6 +9,7 @@ mod runtime;
 #[cfg(test)]
 mod tests;
 
+pub use auth::{Auth, OnlineAuth};
 pub use event_handler::{EventHandler, EventHandlerEntry, GlobalEventHandler, ServerEventHandler};
 pub use instance::MinecraftServer;
 pub use packet_handler::{

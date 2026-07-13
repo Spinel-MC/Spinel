@@ -5,14 +5,17 @@ pub struct LoginMetadata {
     pub protocol_version: i32,
     pub game_profile: Option<GameProfile>,
     pub private_key: Option<RsaPrivateKey>,
+    pub public_key_der: Option<Vec<u8>>,
     pub verify_token: Option<Vec<u8>>,
     pub pending_plugin_completion: Option<PendingPluginLoginCompletion>,
 }
 
-pub struct PendingPluginLoginCompletion {
-    pub should_authenticate: bool,
-    pub public_key_der: Vec<u8>,
-    pub verify_token: Vec<u8>,
+pub enum PendingPluginLoginCompletion {
+    Offline,
+    Online {
+        public_key_der: Vec<u8>,
+        verify_token: Vec<u8>,
+    },
 }
 
 impl LoginMetadata {
@@ -21,6 +24,7 @@ impl LoginMetadata {
             protocol_version,
             game_profile: None,
             private_key: None,
+            public_key_der: None,
             verify_token: None,
             pending_plugin_completion: None,
         }

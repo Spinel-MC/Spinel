@@ -7,7 +7,9 @@ pub use spinel_utils as utils;
 
 #[cfg(feature = "server")]
 pub mod server {
+    pub use spinel_server::Auth;
     pub use spinel_server::MinecraftServer;
+    pub use spinel_server::OnlineAuth;
     pub use spinel_server::ServerPacketListener;
     pub use spinel_server::command;
     pub use spinel_server::entity;

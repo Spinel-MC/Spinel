@@ -14,7 +14,7 @@ pub mod world;
 mod listeners;
 
 pub use entity::Player;
-pub use server::MinecraftServer;
+pub use server::{Auth, MinecraftServer, OnlineAuth};
 pub use world::World;
 
 use spinel_network::ConnectionState;

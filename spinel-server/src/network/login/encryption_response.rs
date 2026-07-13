@@ -1,4 +1,5 @@
 use crate::network::client::instance::Client;
+use crate::network::login::session::MojangSessionVerifier;
 use crate::server::MinecraftServer;
 use rsa::Pkcs1v15Encrypt;
 use rsa::RsaPrivateKey;
@@ -10,6 +11,7 @@ use spinel_utils::component::Component;
 struct VerifiedLoginMetadata {
     private_key: RsaPrivateKey,
     expected_verify_token: Vec<u8>,
+    public_key_der: Vec<u8>,
     game_profile: GameProfile,
 }
 
@@ -50,11 +52,13 @@ impl<'a> EncryptionResponseHandler<'a> {
         let login_metadata = self.client.login_metadata.as_ref()?;
         let private_key = login_metadata.private_key.clone()?;
         let expected_verify_token = login_metadata.verify_token.clone()?;
+        let public_key_der = login_metadata.public_key_der.clone()?;
         let game_profile = login_metadata.game_profile.clone()?;
 
         Some(VerifiedLoginMetadata {
             private_key,
             expected_verify_token,
+            public_key_der,
             game_profile,
         })
     }
@@ -80,15 +84,29 @@ impl<'a> EncryptionResponseHandler<'a> {
         shared_secret: &[u8],
     ) -> bool {
         self.client.enable_encryption(shared_secret);
+        let Some(verified_game_profile) = MojangSessionVerifier::verify_joined_profile(
+            &login_metadata.game_profile.username,
+            shared_secret,
+            &login_metadata.public_key_der,
+        ) else {
+            return self.kick_for_failed_session_verification();
+        };
 
         if self
             .client
-            .transition_login_to_configuration(login_metadata.game_profile)
+            .transition_login_to_configuration(verified_game_profile)
             .is_err()
         {
             return false;
         }
 
+        true
+    }
+
+    fn kick_for_failed_session_verification(&mut self) -> bool {
+        let _ = self
+            .server
+            .kick(self.client, Component::text("Failed to verify username."));
         true
     }
 
