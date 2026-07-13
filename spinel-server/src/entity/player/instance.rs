@@ -51,7 +51,9 @@ use spinel_core::network::clientbound::play::open_book::OpenBookPacket;
 use spinel_core::network::clientbound::play::player_abilities::PlayerAbilitiesPacket;
 use spinel_core::network::clientbound::play::player_combat_kill::PlayerCombatKillPacket;
 use spinel_core::network::clientbound::play::player_info_remove::PlayerInfoRemovePacket;
-use spinel_core::network::clientbound::play::player_info_update::PlayerInfoUpdatePacket;
+use spinel_core::network::clientbound::play::player_info_update::{
+    PlayerInfoActions, PlayerInfoEntry, PlayerInfoUpdatePacket,
+};
 use spinel_core::network::clientbound::play::player_look_at::{FacePoint, PlayerLookAtPacket};
 use spinel_core::network::clientbound::play::plugin_message::PlayCustomPayloadPacket;
 use spinel_core::network::clientbound::play::recipe_book_add::RecipeBookAddPacket;
@@ -89,8 +91,8 @@ use spinel_network::types::MainHand;
 use spinel_network::types::entity_metadata::MetadataValue;
 use spinel_network::types::sound::SoundEvent;
 use spinel_network::types::{
-    ClientInformation, GlobalPos, Identifier, IntList, Particle, Position, Slot, TeleportFlags,
-    Vector3d, Velocity,
+    Array, ClientInformation, GlobalPos, Identifier, IntList, Particle, Position, Slot,
+    TeleportFlags, Vector3d, Velocity,
 };
 use spinel_network::{ConnectionState, PacketSender, PacketStruct};
 use spinel_registry::dialog::Dialog;
@@ -109,6 +111,7 @@ const MAX_CHUNKS_PER_TICK: f32 = 64.0;
 const CHUNKS_PER_TICK_MULTIPLIER: f32 = 1.0;
 const DEFAULT_CLIENT_CHUNK_VIEW_DISTANCE: i32 = 8;
 const PLAYER_CHUNK_UPDATE_LIMITER_HISTORY_SIZE: usize = 5;
+const HAT_DISPLAYED_SKIN_PART_MASK: u8 = 0x40;
 const SERVER_TICKS_PER_SECOND: f64 = 20.0;
 
 pub struct Player {
@@ -721,6 +724,8 @@ impl Player {
         self.client_chunk_view_distance = settings.view_distance.clamp(2, 32) as i32;
         self.settings = settings;
         self.settings.view_distance = self.settings.view_distance.clamp(2, 32);
+        self.set_displayed_skin_parts(self.settings.displayed_skin_parts as i8);
+        self.set_main_hand(client_information_main_hand(self.settings.main_hand));
         previous_view_distance != self.client_chunk_view_distance
     }
 
@@ -2919,12 +2924,22 @@ impl Player {
             .as_ref()
             .map(|skin| vec![skin.get_property()])
             .unwrap_or_default();
-        PlayerInfoUpdatePacket::add_player_with_properties(
-            self.uuid,
-            self.username.clone(),
-            self.listed,
-            properties,
-        )
+        let display_hat = self.settings.displayed_skin_parts & HAT_DISPLAYED_SKIN_PART_MASK
+            == HAT_DISPLAYED_SKIN_PART_MASK;
+        PlayerInfoUpdatePacket {
+            actions: PlayerInfoActions::all(),
+            entries: Array(vec![PlayerInfoEntry {
+                uuid: self.uuid,
+                username: self.username.clone(),
+                properties,
+                listed: self.listed,
+                latency: self.latency,
+                game_mode: self.game_mode,
+                display_name: self.display_name.clone(),
+                list_order: 0,
+                display_hat,
+            }]),
+        }
     }
 
     pub(crate) fn get_game_mode_packet(&self) -> GameEventPacket {
@@ -3349,6 +3364,12 @@ impl PlayerHand {
     }
 }
 
+fn client_information_main_hand(main_hand: i32) -> MainHand {
+    match main_hand {
+        0 => MainHand::Left,
+        _ => MainHand::Right,
+    }
+}
 impl PermissionHandler for Player {
     fn get_permission_set(&self) -> &PermissionSet {
         &self.permissions

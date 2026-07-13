@@ -52,6 +52,19 @@ impl PlayerInfoActions {
         Self(Self::ADD_PLAYER | Self::UPDATE_LISTED)
     }
 
+    pub const fn all() -> Self {
+        Self(
+            Self::ADD_PLAYER
+                | Self::INITIALIZE_CHAT
+                | Self::UPDATE_GAME_MODE
+                | Self::UPDATE_LISTED
+                | Self::UPDATE_LATENCY
+                | Self::UPDATE_DISPLAY_NAME
+                | Self::UPDATE_LIST_ORDER
+                | Self::UPDATE_HAT,
+        )
+    }
+
     pub const fn update_game_mode() -> Self {
         Self(Self::UPDATE_GAME_MODE)
     }

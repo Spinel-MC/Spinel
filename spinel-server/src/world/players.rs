@@ -501,10 +501,19 @@ impl World {
         };
         let current_center = player.chunks_loaded_by_client;
         let previous_view_distance = player.get_effective_chunk_view_distance(world_view_distance);
-        if !player.refresh_settings(settings) {
+        let view_distance_changed = player.refresh_settings(settings);
+        let next_view_distance = player.get_effective_chunk_view_distance(world_view_distance);
+        let player_entity_id = player.get_entity_id();
+        let metadata_packet = player.get_dirty_metadata_packet();
+        if let Some(metadata_packet) = metadata_packet {
+            let metadata_entity_id = metadata_packet.entity_id;
+            let metadata_entries = metadata_packet.entries.0;
+            SetEntityDataPacket::new(metadata_entity_id, metadata_entries.clone()).dispatch(client)?;
+            self.broadcast_player_metadata(player_entity_id, metadata_entity_id, metadata_entries)?;
+        }
+        if !view_distance_changed {
             return Ok(());
         }
-        let next_view_distance = player.get_effective_chunk_view_distance(world_view_distance);
         let previous_chunks = current_center
             .surrounding(previous_view_distance)
             .into_iter()

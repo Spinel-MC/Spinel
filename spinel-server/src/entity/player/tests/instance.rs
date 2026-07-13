@@ -884,6 +884,22 @@ fn player_settings_locale_and_view_distance_match_reference_refresh_surface() {
     assert!(!player.get_settings().chat_colors);
     assert_eq!(player.get_settings().displayed_skin_parts, 3);
     assert_eq!(player.get_settings().main_hand, 0);
+    assert_eq!(player.get_displayed_skin_parts(), 3);
+    assert_eq!(player.get_main_hand(), MainHand::Left);
+    let player_info_packet = player.get_player_info_packet();
+    assert_eq!(player_info_packet.actions, PlayerInfoActions::all());
+    assert!(!player_info_packet.entries.0[0].display_hat);
+    let metadata_packet = player.get_dirty_metadata_packet().unwrap();
+    assert!(metadata_packet.entries.0.iter().any(|entry| {
+        entry.index == 15 && entry.value == MetadataValue::MainHand(MainHand::Left)
+    }));
+    assert!(
+        metadata_packet
+            .entries
+            .0
+            .iter()
+            .any(|entry| { entry.index == 16 && entry.value == MetadataValue::Byte(3) })
+    );
     assert!(player.get_settings().enable_text_filtering);
     assert!(!player.get_settings().allow_server_listings);
     assert_eq!(player.get_settings().particle_status, 2);
@@ -1613,6 +1629,8 @@ fn player_skin_is_state_only_before_world_entry_and_is_used_in_player_info() {
         player.get_skin().unwrap().get_signature(),
         Some("signature-data")
     );
+    assert_eq!(player_info_packet.actions, PlayerInfoActions::all());
+    assert!(player_info_packet.entries.0[0].display_hat);
     assert_eq!(player_info_packet.entries.0[0].properties.len(), 1);
     assert_eq!(
         player_info_packet.entries.0[0].properties[0].name,

@@ -120,7 +120,7 @@ impl Notification {
                     parent_identifier: None,
                     display_data: Some(AdvancementDisplayData {
                         title: self.title.clone(),
-                        description: Component::text("okay bro like bro okay bro..").build(),
+                        description: Component::text("okay.").build(),
                         icon: self.icon.clone(),
                         frame_type: self.frame_type,
                         flags: 0x6,
