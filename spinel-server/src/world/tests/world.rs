@@ -12,10 +12,12 @@ use spinel_core::network::clientbound::play::forget_level_chunk::ForgetLevelChun
 use spinel_core::network::clientbound::play::light_update::LightUpdatePacket;
 use spinel_core::network::clientbound::play::remove_entities::RemoveEntitiesPacket;
 use spinel_core::network::clientbound::play::set_chunk_cache_center::SetChunkCacheCenterPacket;
+use spinel_core::network::clientbound::play::set_entity_data::SetEntityDataPacket;
 use spinel_core::network::clientbound::play::set_player_inventory::SetPlayerInventoryPacket;
 use spinel_core::network::clientbound::play::sync_player_pos::SyncPlayerPositionPacket;
 use spinel_macros::fn_event_listener;
 use spinel_network::types::Identifier;
+use spinel_network::types::entity_metadata::MetadataValue;
 use spinel_network::{ConnectionState, DataType, VarIntWrapper};
 use spinel_registry::EntityType;
 use spinel_registry::ItemStack;
@@ -1218,6 +1220,31 @@ impl ChunkLoader for CountingChunkLoader {
     }
 }
 
+#[test]
+fn player_settings_refresh_sends_skin_part_metadata_to_source_client() {
+    let (mut client, mut peer_stream) = test_client_pair();
+    let mut world = world_with_entered_player(&mut client);
+    let mut settings = spinel_network::types::ClientInformation::default();
+    settings.displayed_skin_parts = 0x02;
+
+    world
+        .refresh_player_settings(&mut client, settings)
+        .unwrap();
+
+    let metadata_packets = read_available_packet_frames(&mut peer_stream)
+        .into_iter()
+        .filter(|(packet_id, _)| *packet_id == SetEntityDataPacket::get_id())
+        .map(|(_, payload)| SetEntityDataPacket::decode(&mut payload.as_slice()).unwrap())
+        .collect::<Vec<_>>();
+
+    assert!(metadata_packets.iter().any(|packet| {
+        packet
+            .entries
+            .0
+            .iter()
+            .any(|entry| entry.index == 16 && entry.value == MetadataValue::Byte(0x02))
+    }));
+}
 #[test]
 fn render_distance_refresh_uses_effective_world_capped_chunk_radius() {
     let (mut client, _peer_stream) = test_client_pair();

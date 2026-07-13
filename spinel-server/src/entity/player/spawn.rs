@@ -64,6 +64,7 @@ impl Player {
         client.enter_play();
         self.last_completed_client_tick = 0;
         self.set_on_ground(false);
+        self.get_metadata_packet().dispatch(client)?;
         self.send_tick_rate(client, ticks_per_second)?;
         self.load_world(
             client,
@@ -104,6 +105,7 @@ impl Player {
         client.enter_play();
         self.last_completed_client_tick = 0;
         self.set_on_ground(false);
+        self.get_metadata_packet().dispatch(client)?;
         self.send_tick_rate(client, ticks_per_second)?;
         self.load_world_chunk_positions(
             client,

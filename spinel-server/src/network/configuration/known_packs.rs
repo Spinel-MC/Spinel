@@ -90,7 +90,7 @@ impl<'a, 'b> ConfigurationCompletion<'a, 'b> {
     }
 }
 
-fn create_player(client: &mut Client, server: &mut MinecraftServer) -> Option<Player> {
+pub(super) fn create_player(client: &mut Client, server: &mut MinecraftServer) -> Option<Player> {
     let login_metadata = client.login_metadata.as_ref()?;
     let game_profile = login_metadata.game_profile.clone()?;
     let mut player = server

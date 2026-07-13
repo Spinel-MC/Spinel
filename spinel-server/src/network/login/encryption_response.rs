@@ -92,6 +92,10 @@ impl<'a> EncryptionResponseHandler<'a> {
             return self.kick_for_failed_session_verification();
         };
 
+        if let Some(login_metadata) = self.client.login_metadata.as_mut() {
+            login_metadata.game_profile = Some(verified_game_profile.clone());
+        }
+
         if self
             .client
             .transition_login_to_configuration(verified_game_profile)

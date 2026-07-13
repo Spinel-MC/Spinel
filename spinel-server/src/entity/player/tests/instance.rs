@@ -308,6 +308,47 @@ fn enter_world_sends_reference_chunk_batch_then_position_sync_sequence() {
 }
 
 #[test]
+fn enter_world_sends_configuration_skin_part_metadata_snapshot() {
+    let (mut client, mut peer_stream) = test_client_pair();
+    let mut player = Player::new(
+        Uuid::nil(),
+        "Player".to_string(),
+        0,
+        SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 25565),
+    );
+    let mut settings = ClientInformation::default();
+    settings.displayed_skin_parts = 0x02;
+    player.set_client(&mut client);
+    player.refresh_settings(settings);
+
+    player
+        .enter_world(
+            &mut client,
+            20,
+            0,
+            Identifier::minecraft("overworld"),
+            vec![empty_chunk_packet(0, 0)],
+            WorldBorder::DEFAULT.initialize_packet(WorldBorder::DEFAULT.diameter(), 0),
+            SetTimePacket::new(42, 18000, true),
+            Weather::CLEAR,
+        )
+        .unwrap();
+
+    let metadata_packets = read_available_packet_frames(&mut peer_stream)
+        .into_iter()
+        .filter(|(packet_id, _)| *packet_id == SetEntityDataPacket::get_id())
+        .map(|(_, payload)| SetEntityDataPacket::decode(&mut payload.as_slice()).unwrap())
+        .collect::<Vec<_>>();
+
+    assert!(metadata_packets.iter().any(|packet| {
+        packet
+            .entries
+            .0
+            .iter()
+            .any(|entry| entry.index == 16 && entry.value == MetadataValue::Byte(0x02))
+    }));
+}
+#[test]
 fn first_spawn_inventory_sync_waits_until_client_starts_waiting_for_chunks() {
     let (mut client, mut peer_stream) = test_client_pair();
     client.state = ConnectionState::Play;
