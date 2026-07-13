@@ -92,13 +92,10 @@ impl<'a, 'b> ConfigurationCompletion<'a, 'b> {
 
 fn create_player(client: &mut Client, server: &mut MinecraftServer) -> Option<Player> {
     let login_metadata = client.login_metadata.as_ref()?;
-    let game_profile = login_metadata.game_profile.as_ref()?;
-    let mut player = Player::new(
-        game_profile.uuid,
-        game_profile.username.clone(),
-        login_metadata.protocol_version,
-        client.addr,
-    );
+    let game_profile = login_metadata.game_profile.clone()?;
+    let mut player = server
+        .connection_manager
+        .create_player(client, &game_profile);
     player.apply_skin(game_profile.properties.iter().find_map(|property| {
         (property.name == "textures").then(|| {
             crate::entity::player::PlayerSkin::new(

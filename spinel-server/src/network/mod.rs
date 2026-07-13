@@ -16,3 +16,6 @@ pub use spinel_network::types::{
 };
 pub use spinel_network::wrappers::{JsonTextComponent, NbtTextComponent};
 pub use spinel_network::{ConnectionState, PacketSender, Recipient};
+
+#[cfg(test)]
+mod tests;
