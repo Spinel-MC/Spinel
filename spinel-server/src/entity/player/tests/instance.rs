@@ -874,7 +874,7 @@ fn play_disconnect_packet_bypasses_enabled_outbound_queue() {
 }
 
 #[test]
-fn effective_chunk_view_distance_matches_reference_client_world_cap_plus_one() {
+fn effective_view_distance_matches_minestom_client_world_cap_plus_one() {
     let mut player = Player::new(
         Uuid::nil(),
         "Player".to_string(),
@@ -882,22 +882,22 @@ fn effective_chunk_view_distance_matches_reference_client_world_cap_plus_one() {
         SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 25565),
     );
 
-    assert_eq!(player.get_effective_chunk_view_distance(10), 9);
+    assert_eq!(player.effective_view_distance(10), 9);
 
     player.set_client_chunk_view_distance(4);
 
     assert_eq!(player.get_client_chunk_view_distance(), 4);
-    assert_eq!(player.get_effective_chunk_view_distance(10), 5);
-    assert_eq!(player.get_effective_chunk_view_distance(2), 3);
+    assert_eq!(player.effective_view_distance(10), 5);
+    assert_eq!(player.effective_view_distance(2), 3);
 
     player.set_client_chunk_view_distance(-10);
 
     assert_eq!(player.get_client_chunk_view_distance(), 0);
-    assert_eq!(player.get_effective_chunk_view_distance(10), 1);
+    assert_eq!(player.effective_view_distance(10), 1);
 }
 
 #[test]
-fn player_settings_locale_and_view_distance_match_reference_refresh_surface() {
+fn player_settings_locale_and_view_distance_match_minestom_refresh_surface() {
     let mut player = Player::new(
         Uuid::nil(),
         "Player".to_string(),

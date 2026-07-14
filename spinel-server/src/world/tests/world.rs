@@ -1246,7 +1246,7 @@ fn player_settings_refresh_sends_skin_part_metadata_to_source_client() {
     }));
 }
 #[test]
-fn render_distance_refresh_uses_effective_world_capped_chunk_radius() {
+fn render_distance_refresh_uses_minestom_client_view_distance_radius() {
     let (mut client, _peer_stream) = test_client_pair();
     let mut world = world_with_entered_player(&mut client);
     let load_count = Arc::new(AtomicUsize::new(0));
@@ -1268,5 +1268,5 @@ fn render_distance_refresh_uses_effective_world_capped_chunk_radius() {
         .refresh_player_settings(&mut client, far_settings)
         .unwrap();
 
-    assert_eq!(load_count.load(Ordering::SeqCst), 280);
+    assert_eq!(load_count.load(Ordering::SeqCst), 4176);
 }

@@ -336,12 +336,12 @@ impl Player {
             self.reset_chunk_queue();
         }
         self.loaded_chunk
-            .surrounding(self.get_effective_chunk_view_distance(world_view_distance))
+            .surrounding(self.effective_view_distance(world_view_distance))
     }
 
     pub(crate) fn spawn_chunks(&self, world_view_distance: i32) -> Vec<PlayerChunk> {
         PlayerChunk::from_position(PlayerPosition::from(self.get_respawn_point()))
-            .surrounding(self.get_effective_chunk_view_distance(world_view_distance))
+            .surrounding(self.effective_view_distance(world_view_distance))
     }
 
     pub(crate) fn get_chunk_transition(
@@ -354,7 +354,7 @@ impl Player {
         let position = self.position.at(x, y, z);
         self.chunks_loaded_by_client.transition_to(
             PlayerChunk::from_position(position),
-            self.get_effective_chunk_view_distance(world_view_distance),
+            self.effective_view_distance(world_view_distance),
         )
     }
 
@@ -388,7 +388,7 @@ impl Player {
     ) -> bool {
         chunk.is_within_view_distance(
             self.chunks_loaded_by_client,
-            self.get_effective_chunk_view_distance(world_view_distance),
+            self.effective_view_distance(world_view_distance),
         )
     }
 

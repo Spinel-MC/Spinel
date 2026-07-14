@@ -702,7 +702,7 @@ impl WorldManager {
             (position.get_x().floor() as i32).div_euclid(16),
             (position.get_z().floor() as i32).div_euclid(16),
         );
-        Ok(center.surrounding(player.get_effective_chunk_view_distance(target_view_distance)))
+        Ok(center.surrounding(player.effective_view_distance(target_view_distance)))
     }
 
     fn entity_position(&self, entity_id: EntityId) -> Option<EntityPosition> {
@@ -837,19 +837,6 @@ impl WorldManager {
             return Err(io::Error::new(io::ErrorKind::NotFound, "World not found."));
         };
         world.save_chunks()
-    }
-
-    pub fn save_loaded_chunks(&mut self) -> io::Result<usize> {
-        let mut saved_chunk_count = 0;
-        for world in &mut self.worlds {
-            saved_chunk_count += world.chunks().count();
-            world.save_chunks()?;
-        }
-        for shared_world in &mut self.shared_worlds {
-            saved_chunk_count += shared_world.world().chunks().count();
-            shared_world.world_mut().save_chunks()?;
-        }
-        Ok(saved_chunk_count)
     }
 
     pub fn loaded_chunk_count(&self) -> usize {

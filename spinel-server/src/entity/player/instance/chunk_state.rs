@@ -47,10 +47,14 @@ impl Player {
         self.client_chunk_view_distance = client_chunk_view_distance.max(0);
     }
 
-    pub fn get_effective_chunk_view_distance(&self, world_view_distance: i32) -> i32 {
+    pub fn effective_view_distance(&self, world_view_distance: i32) -> i32 {
         self.client_chunk_view_distance
             .min(world_view_distance)
             .max(0)
             + 1
+    }
+
+    pub fn get_effective_chunk_view_distance(&self, world_view_distance: i32) -> i32 {
+        self.effective_view_distance(world_view_distance)
     }
 }

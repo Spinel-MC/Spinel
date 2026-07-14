@@ -44,8 +44,7 @@ impl Player {
         &self.settings
     }
 
-    pub fn refresh_settings(&mut self, settings: ClientInformation) -> bool {
-        let previous_view_distance = self.client_chunk_view_distance;
+    pub fn refresh_settings(&mut self, settings: ClientInformation) {
         self.client_chunk_view_distance = settings.view_distance.clamp(2, 32) as i32;
         self.settings = settings;
         self.settings.view_distance = self.settings.view_distance.clamp(2, 32);
@@ -57,7 +56,6 @@ impl Player {
             &definitions::avatar::get_main_hand(),
             MetadataValue::MainHand(client_information_main_hand(self.settings.main_hand)),
         );
-        previous_view_distance != self.client_chunk_view_distance
     }
 
     pub fn get_locale(&self) -> &str {
