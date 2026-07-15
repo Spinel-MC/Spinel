@@ -64,6 +64,8 @@ pub struct Chunk {
     loaded: bool,
     read_only: bool,
     invalidated: Cell<bool>,
+    has_unpersisted_changes: bool,
+    snapshot_revision: u64,
 }
 
 impl Chunk {
@@ -120,6 +122,8 @@ impl Chunk {
             loaded: true,
             read_only: false,
             invalidated: Cell::new(false),
+            has_unpersisted_changes: true,
+            snapshot_revision: 0,
         }
     }
 
@@ -219,6 +223,8 @@ impl Chunk {
             loaded: self.loaded,
             read_only: self.read_only,
             invalidated: Cell::new(self.invalidated.get()),
+            has_unpersisted_changes: self.has_unpersisted_changes,
+            snapshot_revision: self.snapshot_revision,
         }
     }
 
@@ -809,11 +815,21 @@ impl Chunk {
 
     pub fn invalidate(&mut self) {
         self.invalidated.set(true);
+        self.has_unpersisted_changes = true;
+        self.snapshot_revision = self.snapshot_revision.wrapping_add(1);
         *self.cached_chunk_data.borrow_mut() = Weak::new();
     }
 
     pub fn is_invalidated(&self) -> bool {
         self.invalidated.get()
+    }
+
+    pub const fn has_unpersisted_changes(&self) -> bool {
+        self.has_unpersisted_changes
+    }
+
+    pub(crate) const fn snapshot_revision(&self) -> u64 {
+        self.snapshot_revision
     }
 
     pub(crate) fn clear_invalidated(&self) {
@@ -834,6 +850,7 @@ impl Chunk {
 
     pub(crate) fn mark_loaded_from_storage(&mut self) {
         self.has_generated = true;
+        self.has_unpersisted_changes = false;
     }
 
     pub fn on_load(&mut self) {
@@ -927,7 +944,7 @@ impl Chunk {
         self.clear_invalidated();
     }
 
-    fn rebuild_special_block_instances_from_sections(&mut self) {
+    pub(crate) fn rebuild_special_block_instances_from_sections(&mut self) {
         let chunk_start_x = self.x() * CHUNK_SIZE_X;
         let chunk_start_z = self.z() * CHUNK_SIZE_Z;
         let special_block_instances = self
@@ -1109,6 +1126,7 @@ impl Taggable for Chunk {
     }
 
     fn tag_handler_mut(&mut self) -> &mut TagHandler {
+        self.invalidate();
         &mut self.tag_handler
     }
 }

@@ -1246,27 +1246,151 @@ fn player_settings_refresh_sends_skin_part_metadata_to_source_client() {
     }));
 }
 #[test]
-fn render_distance_refresh_uses_minestom_client_view_distance_radius() {
+fn render_distance_change_beyond_world_cap_does_not_churn_chunks() {
+    let (mut client, mut peer_stream) = test_client_pair();
+    let mut world = world_with_entered_player(&mut client);
+    world.set_view_distance(4);
+
+    let mut initial_settings = spinel_network::types::ClientInformation::default();
+    initial_settings.view_distance = 5;
+    world
+        .refresh_player_settings(&mut client, initial_settings)
+        .unwrap();
+    read_available_packet_frames(&mut peer_stream);
+
+    let mut reduced_settings = spinel_network::types::ClientInformation::default();
+    reduced_settings.view_distance = 4;
+    world
+        .refresh_player_settings(&mut client, reduced_settings)
+        .unwrap();
+
+    let forgotten_chunk_count = read_available_packet_frames(&mut peer_stream)
+        .into_iter()
+        .filter(|(packet_id, _)| *packet_id == ForgetLevelChunkPacket::get_id())
+        .count();
+
+    assert_eq!(forgotten_chunk_count, 0);
+}
+
+#[test]
+fn render_distance_expansion_loads_the_complete_effective_view_ring() {
     let (mut client, _peer_stream) = test_client_pair();
     let mut world = world_with_entered_player(&mut client);
     let load_count = Arc::new(AtomicUsize::new(0));
-    world.set_view_distance(8);
+    world.set_view_distance(300);
     world.set_chunk_loader(CountingChunkLoader {
         load_count: Arc::clone(&load_count),
     });
 
-    let mut near_settings = spinel_network::types::ClientInformation::default();
-    near_settings.view_distance = 3;
+    let mut initial_settings = spinel_network::types::ClientInformation::default();
+    initial_settings.view_distance = 5;
     world
-        .refresh_player_settings(&mut client, near_settings)
-        .unwrap();
-    assert_eq!(load_count.load(Ordering::SeqCst), 0);
-
-    let mut far_settings = spinel_network::types::ClientInformation::default();
-    far_settings.view_distance = 32;
-    world
-        .refresh_player_settings(&mut client, far_settings)
+        .refresh_player_settings(&mut client, initial_settings)
         .unwrap();
 
-    assert_eq!(load_count.load(Ordering::SeqCst), 4176);
+    let mut expanded_settings = spinel_network::types::ClientInformation::default();
+    expanded_settings.view_distance = 6;
+    world
+        .refresh_player_settings(&mut client, expanded_settings)
+        .unwrap();
+
+    assert_eq!(load_count.load(Ordering::SeqCst), 56);
+}
+
+#[test]
+fn render_distance_reduction_removes_departed_chunks_from_the_delivery_queue() {
+    let (mut client, _peer_stream) = test_client_pair();
+    let mut world = world_with_entered_player(&mut client);
+    world.set_view_distance(300);
+
+    let mut initial_settings = spinel_network::types::ClientInformation::default();
+    initial_settings.view_distance = 5;
+    world
+        .refresh_player_settings(&mut client, initial_settings)
+        .unwrap();
+    world
+        .player_by_addr_mut(&client.addr)
+        .unwrap()
+        .queue_loaded_chunk(PlayerChunk::new(6, 0));
+
+    let mut reduced_settings = spinel_network::types::ClientInformation::default();
+    reduced_settings.view_distance = 4;
+    world
+        .refresh_player_settings(&mut client, reduced_settings)
+        .unwrap();
+
+    assert_eq!(
+        world
+            .player_by_addr(&client.addr)
+            .unwrap()
+            .get_queued_chunk_count(),
+        0
+    );
+}
+
+#[test]
+fn completed_loads_outside_a_reduced_render_distance_are_not_queued() {
+    let (mut client, _peer_stream) = test_client_pair();
+    let mut world = world_with_entered_player(&mut client);
+    world.set_view_distance(300);
+    world.set_generator(|_| {
+        std::thread::sleep(Duration::from_millis(25));
+    });
+
+    let mut reduced_settings = spinel_network::types::ClientInformation::default();
+    reduced_settings.view_distance = 4;
+    world
+        .refresh_player_settings(&mut client, reduced_settings.clone())
+        .unwrap();
+
+    let mut expanded_settings = spinel_network::types::ClientInformation::default();
+    expanded_settings.view_distance = 5;
+    world
+        .refresh_player_settings(&mut client, expanded_settings)
+        .unwrap();
+    world
+        .refresh_player_settings(&mut client, reduced_settings)
+        .unwrap();
+
+    let completion_deadline = Instant::now() + Duration::from_secs(2);
+    while world.chunks().count() < 48 {
+        assert!(Instant::now() < completion_deadline);
+        world.process_completed_chunk_loads().unwrap();
+        std::thread::yield_now();
+    }
+
+    assert_eq!(
+        world
+            .player_by_addr(&client.addr)
+            .unwrap()
+            .get_queued_chunk_count(),
+        0
+    );
+}
+
+#[test]
+fn render_distance_reduction_forgets_the_complete_effective_view_ring() {
+    let (mut client, mut peer_stream) = test_client_pair();
+    let mut world = world_with_entered_player(&mut client);
+    world.set_view_distance(300);
+
+    let mut initial_settings = spinel_network::types::ClientInformation::default();
+    initial_settings.view_distance = 5;
+    world
+        .refresh_player_settings(&mut client, initial_settings)
+        .unwrap();
+    read_available_packet_frames(&mut peer_stream);
+
+    let mut reduced_settings = spinel_network::types::ClientInformation::default();
+    reduced_settings.view_distance = 4;
+    world
+        .refresh_player_settings(&mut client, reduced_settings)
+        .unwrap();
+
+    let forgotten_chunk_count = read_available_packet_frames(&mut peer_stream)
+        .into_iter()
+        .filter(|(packet_id, _)| *packet_id == ForgetLevelChunkPacket::get_id())
+        .count();
+
+    assert_eq!(forgotten_chunk_count, 48);
 }

@@ -1,8 +1,8 @@
 use crate::world::anvil::region_file::RegionFile;
 use crate::world::{
     Biome, BlockEntity, BlockInstance, BlockLookupCondition, BlockPosition, Chunk, ChunkLoader,
-    ChunkLoaderFailure, ChunkLoaderOperation, ChunkPosition, ChunkSection, World,
-    WorldPersistentTags,
+    ChunkLoaderFailure, ChunkLoaderOperation, ChunkPosition, ChunkSection,
+    ChunkSectionBlockPalette, SectionPalette, World, WorldPersistentTags,
 };
 use flate2::{Compression, read::GzDecoder, write::GzEncoder};
 use log::debug;
@@ -280,6 +280,7 @@ fn decode_chunk(position: ChunkPosition, mut chunk_data: NbtCompound) -> io::Res
     let mut chunk = Chunk::new_lighting_with_generation(position, false);
     if chunk_has_full_status(&chunk_data) {
         load_sections(&mut chunk, &chunk_data)?;
+        chunk.rebuild_special_block_instances_from_sections();
         load_block_entities(&mut chunk, &chunk_data);
         if let Some(Nbt::Compound(heightmaps)) = chunk_data.get("Heightmaps") {
             chunk.load_heightmaps_from_nbt(heightmaps);
@@ -385,15 +386,18 @@ fn load_section_blocks(
     }
     let block_indices =
         read_palette_indices::<CHUNK_SECTION_BLOCK_COUNT>(block_states, block_palette.len(), 4);
-    for (block_index, palette_index) in block_indices.into_iter().enumerate() {
-        let Some(block_state) = block_palette.get(palette_index).copied() else {
-            continue;
-        };
-        let x = (block_index & 15) as i32;
-        let z = ((block_index >> 4) & 15) as i32;
-        let y = ((block_index >> 8) & 15) as i32 + (section_y << 4);
-        chunk.set_block_state(BlockPosition::new(x, y, z), block_state);
-    }
+    let Some(storage_palette) =
+        ChunkSectionBlockPalette::from_storage_entries(block_palette, &block_indices)
+    else {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            "Anvil block-state palette indices are invalid.",
+        ));
+    };
+    let Some(section) = chunk.section_mut(section_y) else {
+        return Ok(());
+    };
+    section.load_block_palette_from_storage(storage_palette);
     Ok(())
 }
 fn load_block_entities(chunk: &mut Chunk, chunk_data: &NbtCompound) {
@@ -461,7 +465,7 @@ fn section_nbt(section: &ChunkSection) -> NbtCompound {
     }
     section_data.insert(
         "block_states".to_string(),
-        block_states_nbt(section.block_palette().entries()),
+        block_states_nbt(section.block_palette()),
     );
     section_data.insert(
         "biomes".to_string(),
@@ -470,35 +474,37 @@ fn section_nbt(section: &ChunkSection) -> NbtCompound {
     section_data
 }
 
-fn block_states_nbt(block_states: Vec<crate::world::BlockState>) -> NbtCompound {
-    let mut palette_indices = BTreeMap::new();
-    let mut palette = Vec::new();
-    let block_indices = block_states
-        .iter()
-        .map(|block_state| {
+fn block_states_nbt(block_states: &ChunkSectionBlockPalette) -> NbtCompound {
+    let mut block_state_data = NbtCompound::new();
+    match block_states {
+        SectionPalette::Single(block_state) => {
             let block_instance = BlockInstance::from(*block_state);
-            let state = block_instance.state();
-            if let Some(index) = palette_indices.get(&state) {
-                return *index;
-            }
-            let index = palette.len();
-            palette_indices.insert(state.clone(), index);
-            palette.push(block_state_nbt(&block_instance));
-            index
-        })
-        .collect::<Vec<_>>();
-    let mut block_states = NbtCompound::new();
-    block_states.insert(
-        "palette".to_string(),
-        Nbt::List(palette.into_iter().map(Nbt::Compound).collect()),
-    );
-    if palette_indices.len() > 1 {
-        block_states.insert(
-            "data".to_string(),
-            Nbt::LongArray(pack_indices(&block_indices, 4)),
-        );
+            block_state_data.insert(
+                "palette".to_string(),
+                Nbt::List(vec![Nbt::Compound(block_state_nbt(&block_instance))].into_boxed_slice()),
+            );
+        }
+        SectionPalette::Indirect {
+            palette,
+            packed_indices,
+            ..
+        } => {
+            let palette = palette
+                .iter()
+                .map(|block_state| BlockInstance::from(*block_state))
+                .map(|block_instance| Nbt::Compound(block_state_nbt(&block_instance)))
+                .collect::<Vec<_>>()
+                .into_boxed_slice();
+            let packed_indices = packed_indices
+                .iter()
+                .map(|packed_indices| *packed_indices as i64)
+                .collect::<Vec<_>>()
+                .into_boxed_slice();
+            block_state_data.insert("palette".to_string(), Nbt::List(palette));
+            block_state_data.insert("data".to_string(), Nbt::LongArray(packed_indices));
+        }
     }
-    block_states
+    block_state_data
 }
 
 fn block_state_nbt(block_instance: &BlockInstance) -> NbtCompound {

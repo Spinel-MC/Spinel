@@ -34,6 +34,8 @@ impl World {
             entities: Vec::new(),
             entity_tracker: EntityTracker::new(),
             chunks: HashMap::new(),
+            unviewed_chunk_ticks: HashMap::new(),
+            cached_snapshot_chunks: RefCell::new(Arc::new(HashMap::new())),
             block_handlers: BlockHandlerRegistry::default(),
             block_placement_rules: BlockPlacementRuleRegistry::default(),
             linked_shared_worlds: Vec::new(),
@@ -193,6 +195,31 @@ impl World {
 
     pub fn update_snapshot(&self) -> WorldSnapshot {
         WorldSnapshot::from_world(self)
+    }
+
+    pub(crate) fn snapshot_chunks(&self) -> Arc<HashMap<ChunkPosition, ChunkSnapshot>> {
+        let mut cached_snapshot_chunks = self.cached_snapshot_chunks.borrow_mut();
+        let snapshot_chunks = Arc::make_mut(&mut cached_snapshot_chunks);
+        snapshot_chunks.retain(|position, _| self.is_chunk_loaded(*position));
+        self.chunks().for_each(|chunk| {
+            let position = ChunkPosition::new(chunk.x(), chunk.z());
+            let entity_ids = self
+                .chunk_entities(position)
+                .into_iter()
+                .map(|entity| entity.get_entity_id())
+                .collect::<Vec<_>>();
+            let cached_snapshot_is_current = snapshot_chunks
+                .get(&position)
+                .is_some_and(|snapshot| snapshot.matches_chunk(chunk, &entity_ids));
+            if cached_snapshot_is_current {
+                return;
+            }
+            snapshot_chunks.insert(
+                position,
+                ChunkSnapshot::from_chunk_with_entity_ids(chunk, entity_ids),
+            );
+        });
+        Arc::clone(&cached_snapshot_chunks)
     }
 
     fn refresh_creature_pathfinding_worlds(&mut self) {

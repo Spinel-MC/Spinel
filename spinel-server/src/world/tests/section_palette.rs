@@ -28,3 +28,18 @@ fn block_palette_upsizes_without_changing_existing_entries() {
     assert_eq!(palette.get(17), Some(0));
     assert_eq!(palette.allocated_index_bytes(), 2736);
 }
+#[test]
+fn storage_palette_builds_packed_indices_without_incremental_repacking() {
+    let entries = vec![Block::AIR.default_state(), Block::STONE.default_state()];
+    let palette_indices = (0..4096)
+        .map(|entry_index| entry_index % entries.len())
+        .collect::<Vec<_>>();
+
+    let palette = SectionPalette::<_, 4096, 4>::from_storage_entries(entries, &palette_indices)
+        .expect("valid storage palette should build");
+
+    assert_eq!(palette.get(0), Some(Block::AIR.default_state()));
+    assert_eq!(palette.get(1), Some(Block::STONE.default_state()));
+    assert_eq!(palette.get(4095), Some(Block::STONE.default_state()));
+    assert_eq!(palette.allocated_index_bytes(), 2048);
+}

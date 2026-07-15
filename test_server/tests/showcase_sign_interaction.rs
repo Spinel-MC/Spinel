@@ -5,13 +5,14 @@ use spinel::server::MinecraftServer;
 use spinel::server::entity::{Entity, EntityPosition, GenericEntity, Player, PlayerHand};
 use spinel::server::world::{Block, BlockPosition, ChunkPosition};
 use std::net::{IpAddr, Ipv4Addr, SocketAddr, TcpListener, TcpStream};
+use test_server::events::TestServerEventHandlers;
 use test_server::showcase::ShowcaseSigns;
 use uuid::Uuid;
 
 #[test]
 fn entity_showcase_sign_interaction_keeps_player_valid_after_spawning_entities() {
-    assert_showcase_block_interaction_listener_is_registered();
     let mut server = MinecraftServer::new();
+    TestServerEventHandlers::register(&mut server);
     let (mut client, _peer_stream) = test_client_pair();
     client.state = ConnectionState::Play;
     let world_id = server.world_manager.create_world(DimensionType::OVERWORLD);
@@ -46,8 +47,8 @@ fn entity_showcase_sign_interaction_keeps_player_valid_after_spawning_entities()
 
 #[test]
 fn repeated_entity_showcase_sign_interactions_keep_player_valid() {
-    assert_showcase_block_interaction_listener_is_registered();
     let mut server = MinecraftServer::new();
+    TestServerEventHandlers::register(&mut server);
     let (mut client, _peer_stream) = test_client_pair();
     client.state = ConnectionState::Play;
     let world_id = server.world_manager.create_world(DimensionType::OVERWORLD);
@@ -137,13 +138,6 @@ fn creature_count(server: &MinecraftServer, world_id: Uuid) -> usize {
         .entities()
         .filter(|entity| matches!(entity, Entity::Creature(_)))
         .count()
-}
-
-fn assert_showcase_block_interaction_listener_is_registered() {
-    assert!(
-        spinel::events::inventory::iter::<&'static spinel::events::RegisteredListener>()
-            .any(|listener| listener.event_name == "player_block_interact")
-    );
 }
 
 fn test_client_pair() -> (Client, TcpStream) {

@@ -20,28 +20,24 @@ pub struct WorldSnapshot {
     world_age: i64,
     time: i64,
     world_border: WorldBorder,
-    chunks: HashMap<ChunkPosition, ChunkSnapshot>,
+    chunks: Arc<HashMap<ChunkPosition, ChunkSnapshot>>,
     entity_ids: Vec<EntityId>,
     entities: Vec<EntityObservation>,
     tag_handler: TagHandler,
 }
 
+#[derive(Clone)]
 pub struct ChunkSnapshot {
     position: ChunkPosition,
     sections: Arc<Vec<ChunkSection>>,
     entity_ids: Vec<EntityId>,
     tag_handler: TagHandler,
+    revision: u64,
 }
 
 impl WorldSnapshot {
     pub(crate) fn from_world(world: &World) -> Self {
-        let chunks = world
-            .chunks()
-            .map(|chunk| {
-                let position = ChunkPosition::new(chunk.x(), chunk.z());
-                (position, ChunkSnapshot::from_chunk(world, chunk))
-            })
-            .collect();
+        let chunks = world.snapshot_chunks();
         let entities = world
             .entities()
             .map(|entity| {
@@ -110,6 +106,11 @@ impl WorldSnapshot {
 
     pub fn chunks(&self) -> impl Iterator<Item = &ChunkSnapshot> {
         self.chunks.values()
+    }
+
+    #[cfg(test)]
+    pub(crate) fn chunk_map_storage_address(&self) -> usize {
+        Arc::as_ptr(&self.chunks) as usize
     }
 
     pub fn block(&self, position: BlockPosition) -> Block {
@@ -182,19 +183,18 @@ fn eye_position(entity: EntityObservation) -> Vector3d {
 }
 
 impl ChunkSnapshot {
-    fn from_chunk(world: &World, chunk: &Chunk) -> Self {
-        let position = ChunkPosition::new(chunk.x(), chunk.z());
-        let entity_ids = world
-            .chunk_entities(position)
-            .into_iter()
-            .map(|entity| entity.get_entity_id())
-            .collect();
+    pub(crate) fn from_chunk_with_entity_ids(chunk: &Chunk, entity_ids: Vec<EntityId>) -> Self {
         Self {
-            position,
+            position: ChunkPosition::new(chunk.x(), chunk.z()),
             sections: chunk.snapshot_sections(),
             entity_ids,
             tag_handler: chunk.tag_handler().readable_copy(),
+            revision: chunk.snapshot_revision(),
         }
+    }
+
+    pub(crate) fn matches_chunk(&self, chunk: &Chunk, entity_ids: &[EntityId]) -> bool {
+        self.revision == chunk.snapshot_revision() && self.entity_ids == entity_ids
     }
 
     pub const fn position(&self) -> ChunkPosition {

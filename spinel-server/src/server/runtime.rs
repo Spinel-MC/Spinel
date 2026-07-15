@@ -6,6 +6,14 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 const MAX_TICK_CATCH_UP: u32 = 5;
+const TICK_WAIT_SLEEP_GUARD: Duration = Duration::from_millis(1);
+const TICK_WAIT_SPIN_GUARD: Duration = Duration::from_micros(200);
+
+pub(crate) enum TickWaitAction {
+    Sleep(Duration),
+    Yield,
+    Spin,
+}
 
 impl MinecraftServer {
     pub async fn start(self, address: &str, port: u16) {
@@ -109,18 +117,24 @@ impl MinecraftServer {
     }
 
     fn wait(next_tick_at: Instant) {
-        let sleep_threshold_millis = if cfg!(target_os = "windows") { 17 } else { 2 };
         while Instant::now() < next_tick_at {
             let remaining = next_tick_at.saturating_duration_since(Instant::now());
-            let remaining_millis = remaining.as_millis() as u64;
-
-            if remaining_millis >= sleep_threshold_millis {
-                std::thread::sleep(Duration::from_millis(remaining_millis / 2));
-                continue;
+            match Self::wait_action(remaining) {
+                TickWaitAction::Sleep(duration) => std::thread::sleep(duration),
+                TickWaitAction::Yield => std::thread::yield_now(),
+                TickWaitAction::Spin => std::hint::spin_loop(),
             }
-
-            std::hint::spin_loop();
         }
+    }
+
+    pub(crate) fn wait_action(remaining: Duration) -> TickWaitAction {
+        if remaining > TICK_WAIT_SLEEP_GUARD {
+            return TickWaitAction::Sleep(remaining - TICK_WAIT_SLEEP_GUARD);
+        }
+        if remaining > TICK_WAIT_SPIN_GUARD {
+            return TickWaitAction::Yield;
+        }
+        TickWaitAction::Spin
     }
 
     fn tick(&mut self) {

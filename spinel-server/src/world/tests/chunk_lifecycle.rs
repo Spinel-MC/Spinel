@@ -265,6 +265,60 @@ fn explicit_teleport_chunks_finish_loading_before_position_sync() {
     assert_eq!(player.get_last_sent_teleport_id(), 0);
 }
 
+struct TrackingUnloadChunkLoader {
+    unloaded_positions: Arc<Mutex<Vec<ChunkPosition>>>,
+}
+
+impl ChunkLoader for TrackingUnloadChunkLoader {
+    fn load_chunk(&self, _position: ChunkPosition) -> io::Result<Option<Chunk>> {
+        Ok(None)
+    }
+
+    fn save_chunk(&self, _chunk: &Chunk) -> io::Result<()> {
+        Ok(())
+    }
+
+    fn unload_chunk(&self, chunk: &mut Chunk) -> io::Result<()> {
+        self.unloaded_positions
+            .lock()
+            .unwrap()
+            .push(ChunkPosition::new(chunk.x(), chunk.z()));
+        Ok(())
+    }
+}
+
+#[test]
+fn automatic_chunk_eviction_retains_unviewed_chunks_for_grace_window() {
+    let unloaded_positions = Arc::new(Mutex::new(Vec::new()));
+    let mut world = crate::world::World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("chunk_residency"),
+    );
+    world.set_chunk_loader(TrackingUnloadChunkLoader {
+        unloaded_positions: Arc::clone(&unloaded_positions),
+    });
+    world.set_view_distance(0);
+    let retained_position = ChunkPosition::new(10, 10);
+    world.load_chunk(retained_position).unwrap();
+    let mut client = queued_client();
+    let mut player = Player::new(Uuid::new_v4(), "ChunkResidency".to_owned(), 0, client.addr);
+    player.set_client(&mut client);
+    player.mark_entered_world();
+    world.add_entity(Entity::Player(player));
+
+    for _ in 0..99 {
+        assert_eq!(world.unload_chunks_without_online_viewers().unwrap(), 0);
+    }
+
+    assert!(world.is_chunk_loaded(retained_position));
+    assert_eq!(world.unload_chunks_without_online_viewers().unwrap(), 1);
+    assert!(!world.is_chunk_loaded(retained_position));
+    assert_eq!(
+        unloaded_positions.lock().unwrap().as_slice(),
+        [retained_position]
+    );
+}
 fn queued_client() -> Client {
     let listener = TcpListener::bind(SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 0)).unwrap();
     let addr = listener.local_addr().unwrap();

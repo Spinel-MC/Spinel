@@ -76,6 +76,22 @@ fn restart_after_current_tick_preserves_restart_request_at_lifecycle_boundary() 
     assert!(!server.is_ticking.load(std::sync::atomic::Ordering::SeqCst));
     assert!(server.restart_was_requested());
 }
+#[test]
+fn deadline_wait_sleeps_until_the_sub_millisecond_guard() {
+    assert!(matches!(
+        MinecraftServer::wait_action(Duration::from_millis(10)),
+        super::super::runtime::TickWaitAction::Sleep(duration)
+            if duration == Duration::from_millis(9)
+    ));
+    assert!(matches!(
+        MinecraftServer::wait_action(Duration::from_micros(500)),
+        super::super::runtime::TickWaitAction::Yield
+    ));
+    assert!(matches!(
+        MinecraftServer::wait_action(Duration::from_micros(100)),
+        super::super::runtime::TickWaitAction::Spin
+    ));
+}
 fn available_loopback_port() -> u16 {
     let listener = TcpListener::bind(SocketAddr::from((Ipv4Addr::LOCALHOST, 0))).unwrap();
     listener.local_addr().unwrap().port()

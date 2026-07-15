@@ -539,6 +539,22 @@ fn unavailable_queued_chunks_wait_after_partial_batch() {
             .iter()
             .any(|queued_chunk| queued_chunk.chunk == PlayerChunk::new(1, 0))
     );
+
+    player.on_chunk_batch_received(64.0);
+    player
+        .send_pending_chunks_with(&mut client, |queued_chunk| {
+            Ok(Some(empty_chunk_packet(
+                queued_chunk.chunk.x,
+                queued_chunk.chunk.z,
+            )))
+        })
+        .unwrap();
+
+    let _ = read_packet_frame(&mut peer_stream);
+    let _ = read_packet_frame(&mut peer_stream);
+    let _ = read_packet_frame(&mut peer_stream);
+
+    assert_eq!(player.get_queued_chunk_count(), 0);
 }
 #[test]
 fn ordinary_chunk_border_crossing_sends_no_position_sync() {
@@ -634,7 +650,7 @@ fn ordinary_chunk_border_crossing_keeps_throttled_queue_state() {
 }
 
 #[test]
-fn ordinary_chunk_border_crossing_unloads_departing_chunk_without_pruning_queue() {
+fn ordinary_chunk_border_crossing_removes_departing_chunk_from_queue() {
     let (mut client, mut peer_stream) = test_client_pair();
     let mut player = Player::new(
         Uuid::nil(),
@@ -668,12 +684,12 @@ fn ordinary_chunk_border_crossing_unloads_departing_chunk_without_pruning_queue(
 
     assert_eq!(cache_center_packet_id, SetChunkCacheCenterPacket::get_id());
     assert_eq!(forget_chunk_packet_id, ForgetLevelChunkPacket::get_id());
-    assert_eq!(player.get_queued_chunk_count(), 2);
+    assert_eq!(player.get_queued_chunk_count(), 1);
     assert!(
         player
             .chunk_queue
             .iter()
-            .any(|queued_chunk| queued_chunk.chunk == PlayerChunk::new(0, 0))
+            .all(|queued_chunk| queued_chunk.chunk != PlayerChunk::new(0, 0))
     );
 }
 
@@ -720,7 +736,7 @@ fn slow_chunk_acknowledgements_do_not_block_multi_border_player_movement() {
 }
 
 #[test]
-fn sharp_turn_keeps_completed_chunks_queued_like_reference() {
+fn sharp_turn_removes_departed_chunks_from_the_delivery_queue() {
     let (mut client, _peer_stream) = test_client_pair();
     let mut player = Player::new(
         Uuid::nil(),
@@ -765,12 +781,12 @@ fn sharp_turn_keeps_completed_chunks_queued_like_reference() {
         .unwrap();
 
     assert_eq!(player.chunks_loaded_by_client, PlayerChunk::new(0, 0));
-    assert_eq!(player.get_queued_chunk_count(), 4);
+    assert_eq!(player.get_queued_chunk_count(), 2);
     assert!(
         player
             .chunk_queue
             .iter()
-            .any(|queued_chunk| queued_chunk.chunk == PlayerChunk::new(10, 0))
+            .all(|queued_chunk| queued_chunk.chunk.x < 10)
     );
 }
 

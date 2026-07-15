@@ -28,6 +28,7 @@ use spinel_core::network::clientbound::play::sync_player_pos::{
     SyncPlayerPositionPacket, SyncPlayerPositionSpec,
 };
 use spinel_network::types::{GlobalPos, Identifier, Position};
+use std::collections::HashSet;
 use std::io;
 
 impl Player {
@@ -606,6 +607,10 @@ impl Player {
                 break;
             };
             let Some(packet) = packet_for_chunk(&mut queued_chunk)? else {
+                if sent_chunk_count > 0 {
+                    self.chunk_queue.push_front(queued_chunk);
+                    break;
+                }
                 continue;
             };
             let chunk = queued_chunk.chunk;
@@ -667,7 +672,10 @@ impl Player {
     }
 
     fn forget_chunks(&mut self, client: &mut Client, chunks: Vec<PlayerChunk>) -> io::Result<()> {
-        chunks
+        let departing_chunks = chunks.into_iter().collect::<HashSet<_>>();
+        self.chunk_queue
+            .retain(|queued_chunk| !departing_chunks.contains(&queued_chunk.chunk));
+        departing_chunks
             .into_iter()
             .try_for_each(|chunk| self.unload_chunk_from_client_view(client, chunk))
     }

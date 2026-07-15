@@ -32,7 +32,7 @@ fn anvil_chunk_loader_round_trips_chunk_data() -> io::Result<()> {
     section.set_block_light(&vec![17; 2048]).unwrap();
     loader.save_chunk(&chunk)?;
 
-    let loaded_chunk = loader
+    let mut loaded_chunk = loader
         .load_chunk(position)?
         .expect("saved chunk should load");
 
@@ -41,6 +41,9 @@ fn anvil_chunk_loader_round_trips_chunk_data() -> io::Result<()> {
     assert_eq!(loaded_chunk.biome(biome_position), Biome::DESERT);
     assert_eq!(loaded_chunk.sky_light(BlockPosition::new(0, 0, 0)), 15);
     assert_eq!(loaded_chunk.block_light(BlockPosition::new(0, 0, 0)), 1);
+    assert!(!loaded_chunk.has_unpersisted_changes());
+    loaded_chunk.set_block(BlockPosition::new(2, 4, 2), Block::DIRT);
+    assert!(loaded_chunk.has_unpersisted_changes());
 
     fs::remove_dir_all(world_directory)?;
     Ok(())

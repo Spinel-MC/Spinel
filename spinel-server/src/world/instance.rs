@@ -53,9 +53,10 @@ use crate::world::{
     BlockHandlerPlacement, BlockHandlerRegistry, BlockHandlerTouch, BlockInstance,
     BlockLookupCondition, BlockPlacementRule, BlockPlacementRuleRegistry, BlockPlacementState,
     BlockPosition, BlockReplacement, BlockSize, BlockState, BlockUpdateState, BossBar, Chunk,
-    ChunkLoader, ChunkLoaderFailure, ChunkLoaderOperation, ChunkPosition, EntityTracker,
-    EntityTrackerTarget, ExplosionSupplier, GenerationUnit, NoopChunkLoader, Weather, WorldBorder,
-    WorldEventNode, WorldIdentity, WorldPointers, WorldScheduler, WorldSnapshot, WorldSoundEmitter,
+    ChunkLoader, ChunkLoaderFailure, ChunkLoaderOperation, ChunkPosition, ChunkSnapshot,
+    EntityTracker, EntityTrackerTarget, ExplosionSupplier, GenerationUnit, NoopChunkLoader,
+    Weather, WorldBorder, WorldEventNode, WorldIdentity, WorldPointers, WorldScheduler,
+    WorldSnapshot, WorldSoundEmitter,
 };
 use spinel_core::entity::game_mode::GameMode;
 use spinel_core::network::clientbound::play::block_action::BlockActionPacket;
@@ -107,6 +108,7 @@ use spinel_registry::{
     EntityBoundingBox, EntityType, ItemStack, MobEffect, Registries, RegistryKey,
 };
 use spinel_utils::component::Component;
+use std::cell::RefCell;
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::io::{Error, ErrorKind, Result};
 use std::net::SocketAddr;
@@ -120,6 +122,8 @@ use uuid::Uuid;
 const MAX_PLAYER_COORDINATE: f64 = 30_000_000.0;
 const DEFAULT_TIME_SYNCHRONIZATION_TICKS: i32 = 20;
 const DEFAULT_CHUNK_VIEW_DISTANCE: i32 = 8;
+const AUTOMATIC_CHUNK_UNLOAD_GRACE_TICKS: u16 = 100;
+const MAX_RETAINED_UNVIEWED_CHUNKS: usize = 1024;
 const DESTROY_BLOCK_WORLD_EVENT_ID: i32 = 2001;
 const ENTITY_VIEW_DISTANCE: i32 = 5;
 
@@ -129,6 +133,8 @@ pub struct World {
     entities: Vec<Entity>,
     entity_tracker: EntityTracker,
     chunks: HashMap<ChunkPosition, Chunk>,
+    unviewed_chunk_ticks: HashMap<ChunkPosition, u16>,
+    cached_snapshot_chunks: RefCell<Arc<HashMap<ChunkPosition, ChunkSnapshot>>>,
     block_handlers: BlockHandlerRegistry,
     block_placement_rules: BlockPlacementRuleRegistry,
     linked_shared_worlds: Vec<Uuid>,

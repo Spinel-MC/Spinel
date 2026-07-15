@@ -291,6 +291,7 @@ impl World {
 
     pub fn unload_chunk(&mut self, chunk: impl Into<ChunkPosition>) -> Result<bool> {
         let position = chunk.into();
+        self.unviewed_chunk_ticks.remove(&position);
         if !self.chunks.contains_key(&position) {
             return Ok(false);
         }
@@ -309,11 +310,9 @@ impl World {
     pub fn tick_chunks(&mut self, time: u64) -> usize {
         if self.chunks.values().any(Chunk::lighting_update_is_due) {
             let has_skylight = self.cached_dimension_type.has_skylight;
-            self.chunks
-                .values_mut()
-                .for_each(|chunk| {
-                    chunk.relight_invalidated_sections(has_skylight);
-                });
+            self.chunks.values_mut().for_each(|chunk| {
+                chunk.relight_invalidated_sections(has_skylight);
+            });
         }
         let mut lighting_packets = Vec::new();
         let ticked_block_count = self
@@ -467,16 +466,50 @@ impl World {
         })
     }
 
-    fn unload_chunks_without_online_viewers(&mut self) -> Result<usize> {
+    pub(crate) fn unload_chunks_without_online_viewers(&mut self) -> Result<usize> {
         if !self.has_online_players() {
+            self.unviewed_chunk_ticks.clear();
             return Ok(0);
         }
-        let unload_positions = self
+        let chunk_view_states = self
             .chunks
             .keys()
             .copied()
-            .filter(|position| !self.chunk_has_online_viewer(*position))
+            .map(|position| (position, self.chunk_has_online_viewer(position)))
             .collect::<Vec<_>>();
+        let mut unload_positions = Vec::new();
+        chunk_view_states
+            .into_iter()
+            .for_each(|(position, has_online_viewer)| {
+                if has_online_viewer {
+                    self.unviewed_chunk_ticks.remove(&position);
+                    return;
+                }
+                let unviewed_ticks = self.unviewed_chunk_ticks.entry(position).or_default();
+                *unviewed_ticks = unviewed_ticks.saturating_add(1);
+                if *unviewed_ticks >= AUTOMATIC_CHUNK_UNLOAD_GRACE_TICKS {
+                    unload_positions.push(position);
+                }
+            });
+        let retained_chunk_excess = self
+            .unviewed_chunk_ticks
+            .len()
+            .saturating_sub(MAX_RETAINED_UNVIEWED_CHUNKS);
+        if retained_chunk_excess > 0 {
+            let mut eviction_candidates = self
+                .unviewed_chunk_ticks
+                .iter()
+                .map(|(position, unviewed_ticks)| (*position, *unviewed_ticks))
+                .collect::<Vec<_>>();
+            eviction_candidates.sort_by(|left, right| right.1.cmp(&left.1));
+            unload_positions.extend(
+                eviction_candidates
+                    .into_iter()
+                    .take(retained_chunk_excess)
+                    .map(|(position, _)| position),
+            );
+        }
+        let unload_positions = unload_positions.into_iter().collect::<HashSet<_>>();
         let mut unloaded_chunk_count = 0;
         for position in unload_positions {
             if self.unload_chunk(position)? {
@@ -642,6 +675,25 @@ impl World {
                 .push(player_address);
         }
         Ok(())
+    }
+
+    pub(super) fn cancel_player_chunk_loads(
+        &mut self,
+        player_address: SocketAddr,
+        chunks: &[PlayerChunk],
+    ) {
+        let positions_without_waiters = chunks
+            .iter()
+            .filter_map(|chunk| {
+                let position = ChunkPosition::from(*chunk);
+                let player_addresses = self.player_chunk_load_waiters.get_mut(&position)?;
+                player_addresses.retain(|address| *address != player_address);
+                player_addresses.is_empty().then_some(position)
+            })
+            .collect::<Vec<_>>();
+        positions_without_waiters.into_iter().for_each(|position| {
+            self.player_chunk_load_waiters.remove(&position);
+        });
     }
 
     pub(crate) fn process_completed_chunk_loads(&mut self) -> Result<()> {
@@ -830,7 +882,8 @@ impl World {
                 .insert(ticket.id, (ticket.clone(), prepared_chunk_load));
             self.async_chunk_loads.insert(position, ticket.clone());
             return Ok(Some(ticket));
-        }        let completed_chunk_load_sender = self.completed_chunk_load_sender.clone();
+        }
+        let completed_chunk_load_sender = self.completed_chunk_load_sender.clone();
         let executor_ticket = ticket.clone();
         ChunkLoadingExecutor::global().execute(move || {
             let prepared_chunk_load = catch_unwind(AssertUnwindSafe(|| {
@@ -1131,7 +1184,3 @@ fn generate_chunk(
     chunk.replace_sections(sections);
     Ok(generation_forks)
 }
-
-
-
-

@@ -22,6 +22,40 @@ where
         Self::Single(default_entry)
     }
 
+    pub(crate) fn from_storage_entries(palette: Vec<T>, palette_indices: &[usize]) -> Option<Self> {
+        let storage_is_valid = !palette.is_empty()
+            && palette_indices.len() == ENTRY_COUNT
+            && palette_indices
+                .iter()
+                .all(|palette_index| *palette_index < palette.len());
+        if !storage_is_valid {
+            return None;
+        }
+        if palette.len() == 1 {
+            return palette.into_iter().next().map(Self::Single);
+        }
+        let bits_per_entry =
+            MINIMUM_BITS_PER_ENTRY.max(bits_to_represent(palette.len().saturating_sub(1)));
+        let mut packed_indices = vec![0; packed_index_word_count(ENTRY_COUNT, bits_per_entry)];
+        palette_indices
+            .iter()
+            .copied()
+            .enumerate()
+            .for_each(|(entry_index, palette_index)| {
+                write_packed_index(
+                    &mut packed_indices,
+                    bits_per_entry,
+                    entry_index,
+                    palette_index,
+                );
+            });
+        Some(Self::Indirect {
+            palette,
+            packed_indices,
+            bits_per_entry,
+        })
+    }
+
     pub fn get(&self, entry_index: usize) -> Option<T> {
         if entry_index >= ENTRY_COUNT {
             return None;

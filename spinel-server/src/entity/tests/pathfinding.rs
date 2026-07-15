@@ -1916,7 +1916,11 @@ impl PathfindingTraceScenarioKind {
 }
 
 fn reference_reference_trace() -> BTreeMap<String, PathfindingTraceScenario> {
-    let output = Command::new(gradle_executable())
+    let mut gradle_command = Command::new(gradle_executable());
+    if let Some(java_home) = gradle_java_home() {
+        gradle_command.env("JAVA_HOME", java_home);
+    }
+    let output = gradle_command
         .arg("-q")
         .arg("pathfindingTrace")
         .current_dir(reference_pathfinding_showcase_dir())
@@ -2197,7 +2201,25 @@ fn parse_bool(value: &str, line: &str) -> bool {
 }
 
 fn reference_pathfinding_showcase_dir() -> PathBuf {
-    workspace_root().join("reference-pathfinding-showcase")
+    workspace_root().join("minestom-pathfinding-showcase")
+}
+
+fn gradle_java_home() -> Option<PathBuf> {
+    if let Some(configured_java_home) = env::var_os("SPINEL_JAVA_HOME") {
+        return Some(PathBuf::from(configured_java_home));
+    }
+    if !cfg!(windows) {
+        return env::var_os("JAVA_HOME").map(PathBuf::from);
+    }
+    let jetbrains_root = PathBuf::from(env::var_os("ProgramFiles")?).join("JetBrains");
+    let mut java_homes = fs::read_dir(jetbrains_root)
+        .ok()?
+        .flatten()
+        .map(|entry| entry.path().join("jbr"))
+        .filter(|java_home| java_home.join("bin").join("java.exe").is_file())
+        .collect::<Vec<_>>();
+    java_homes.sort();
+    java_homes.pop()
 }
 
 fn gradle_executable() -> PathBuf {

@@ -2178,6 +2178,68 @@ fn unchanged_world_snapshots_share_chunk_section_storage_until_mutation() {
 }
 
 #[test]
+fn sequential_world_snapshots_reuse_chunk_map_storage() {
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("snapshot_cache"),
+    );
+    world.load_chunk(ChunkPosition::new(0, 0)).unwrap();
+
+    let first_snapshot = world.update_snapshot();
+    let first_storage_address = first_snapshot.chunk_map_storage_address();
+    drop(first_snapshot);
+    let second_snapshot = world.update_snapshot();
+
+    assert_eq!(
+        first_storage_address,
+        second_snapshot.chunk_map_storage_address()
+    );
+}
+
+#[test]
+#[ignore]
+fn measure_world_snapshot_chunk_cache() {
+    let chunk_count = 1024usize;
+    let cached_snapshot_count = 256usize;
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("snapshot_cache_measurement"),
+    );
+    (0..chunk_count).for_each(|chunk_index| {
+        world
+            .load_chunk(ChunkPosition::new(chunk_index as i32, 0))
+            .unwrap();
+    });
+
+    let cold_snapshot_started_at = std::time::Instant::now();
+    let cold_snapshot = world.update_snapshot();
+    let cold_snapshot_elapsed = cold_snapshot_started_at.elapsed();
+    let chunk_map_storage_address = cold_snapshot.chunk_map_storage_address();
+    drop(cold_snapshot);
+
+    let cached_snapshots_started_at = std::time::Instant::now();
+    for _ in 0..cached_snapshot_count {
+        let snapshot = world.update_snapshot();
+        assert_eq!(
+            snapshot.chunk_map_storage_address(),
+            chunk_map_storage_address
+        );
+    }
+    let cached_snapshots_elapsed = cached_snapshots_started_at.elapsed();
+
+    eprintln!(
+        "world snapshot chunks: count={} cold={:?} cached_count={} cached_total={:?} cached_ns_per_op={:.2}",
+        chunk_count,
+        cold_snapshot_elapsed,
+        cached_snapshot_count,
+        cached_snapshots_elapsed,
+        cached_snapshots_elapsed.as_nanos() as f64 / cached_snapshot_count as f64
+    );
+}
+
+#[test]
 fn completed_chunk_load_ticket_remains_complete_without_world_history() {
     let mut world = World::new_with_dimension_name(
         uuid::Uuid::new_v4(),

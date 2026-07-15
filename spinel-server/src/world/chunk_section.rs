@@ -57,6 +57,23 @@ impl ChunkSection {
         )
     }
 
+    pub(crate) fn load_block_palette_from_storage(
+        &mut self,
+        block_palette: ChunkSectionBlockPalette,
+    ) {
+        self.blocks = block_palette;
+        self.block_writes = SectionBlockWrites::Complete;
+        self.special_blocks = (0..CHUNK_SECTION_BLOCK_COUNT)
+            .filter_map(|block_index| {
+                self.blocks
+                    .get(block_index)
+                    .map(|block_state| block_state.block())
+                    .filter(|block| block.block_entity_type().is_some())
+                    .map(|block| (block_index, block))
+            })
+            .collect();
+    }
+
     pub fn to_network_section(
         &self,
         registries: &Registries,

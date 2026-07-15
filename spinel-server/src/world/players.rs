@@ -495,13 +495,14 @@ impl World {
         client: &mut Client,
         settings: ClientInformation,
     ) -> Result<()> {
+        let world_view_distance = self.view_distance;
         let Some(player) = self.player_by_addr_mut(&client.addr) else {
             return Err(Error::new(ErrorKind::NotFound, "Player not found."));
         };
         let current_center = player.chunks_loaded_by_client;
-        let previous_view_distance = player.get_client_chunk_view_distance();
+        let previous_view_distance = player.effective_view_distance(world_view_distance);
         player.refresh_settings(settings);
-        let next_view_distance = player.get_client_chunk_view_distance();
+        let next_view_distance = player.effective_view_distance(world_view_distance);
         let view_distance_changed = previous_view_distance != next_view_distance;
         let player_entity_id = player.get_entity_id();
         let metadata_packet = player.get_dirty_metadata_packet();
@@ -530,6 +531,7 @@ impl World {
             .difference(&next_chunks)
             .copied()
             .collect::<Vec<_>>();
+        self.cancel_player_chunk_loads(client.addr, &departing);
         self.schedule_player_chunk_loads(client.addr, &arriving)?;
         let Some(player) = self.player_by_addr_mut(&client.addr) else {
             return Err(Error::new(ErrorKind::NotFound, "Player not found."));
