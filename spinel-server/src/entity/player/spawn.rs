@@ -63,6 +63,11 @@ impl Player {
         )
         .dispatch(client)?;
         client.enter_play();
+        EntityStatusPacket {
+            entity_id: self.get_entity_id().get_value(),
+            status: (24 + self.get_permission_level()) as i8,
+        }
+        .dispatch(client)?;
         self.last_completed_client_tick = 0;
         self.set_on_ground(false);
         self.get_metadata_packet().dispatch(client)?;
@@ -104,6 +109,11 @@ impl Player {
         )
         .dispatch(client)?;
         client.enter_play();
+        EntityStatusPacket {
+            entity_id: self.get_entity_id().get_value(),
+            status: (24 + self.get_permission_level()) as i8,
+        }
+        .dispatch(client)?;
         self.last_completed_client_tick = 0;
         self.set_on_ground(false);
         self.get_metadata_packet().dispatch(client)?;

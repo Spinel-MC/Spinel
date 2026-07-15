@@ -308,6 +308,46 @@ fn enter_world_sends_reference_chunk_batch_then_position_sync_sequence() {
 }
 
 #[test]
+fn enter_world_sends_configured_permission_level_to_joining_player() {
+    let (mut client, mut peer_stream) = test_client_pair();
+    let mut player = Player::new(
+        Uuid::nil(),
+        "Player".to_string(),
+        0,
+        SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 25565),
+    );
+    player.set_client(&mut client);
+    player.set_permission_level(4).unwrap();
+    player
+        .enter_world(
+            &mut client,
+            20,
+            0,
+            Identifier::minecraft("overworld"),
+            vec![empty_chunk_packet(0, 0)],
+            WorldBorder::DEFAULT.initialize_packet(WorldBorder::DEFAULT.diameter(), 0),
+            SetTimePacket::new(42, 18000, true),
+            Weather::CLEAR,
+        )
+        .unwrap();
+
+    let permission_status_packet = read_available_packet_frames(&mut peer_stream)
+        .into_iter()
+        .find_map(|(packet_id, payload)| {
+            if packet_id != EntityStatusPacket::get_id() {
+                return None;
+            }
+            Some(EntityStatusPacket::decode(&mut payload.as_slice()).unwrap())
+        })
+        .unwrap();
+
+    assert_eq!(
+        permission_status_packet.entity_id,
+        player.get_entity_id().get_value()
+    );
+    assert_eq!(permission_status_packet.status, 28);
+}
+#[test]
 fn enter_world_sends_configuration_skin_part_metadata_snapshot() {
     let (mut client, mut peer_stream) = test_client_pair();
     let mut player = Player::new(
