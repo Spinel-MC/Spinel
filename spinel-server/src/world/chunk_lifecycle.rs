@@ -291,7 +291,6 @@ impl World {
 
     pub fn unload_chunk(&mut self, chunk: impl Into<ChunkPosition>) -> Result<bool> {
         let position = chunk.into();
-        self.unviewed_chunk_ticks.remove(&position);
         if !self.chunks.contains_key(&position) {
             return Ok(false);
         }
@@ -463,78 +462,6 @@ impl World {
             self.invalidate_generated_chunk_lighting(position);
             self.queue_chunk_for_viewers(position);
             true
-        })
-    }
-
-    pub(crate) fn unload_chunks_without_online_viewers(&mut self) -> Result<usize> {
-        if !self.has_online_players() {
-            self.unviewed_chunk_ticks.clear();
-            return Ok(0);
-        }
-        let chunk_view_states = self
-            .chunks
-            .keys()
-            .copied()
-            .map(|position| (position, self.chunk_has_online_viewer(position)))
-            .collect::<Vec<_>>();
-        let mut unload_positions = Vec::new();
-        chunk_view_states
-            .into_iter()
-            .for_each(|(position, has_online_viewer)| {
-                if has_online_viewer {
-                    self.unviewed_chunk_ticks.remove(&position);
-                    return;
-                }
-                let unviewed_ticks = self.unviewed_chunk_ticks.entry(position).or_default();
-                *unviewed_ticks = unviewed_ticks.saturating_add(1);
-                if *unviewed_ticks >= AUTOMATIC_CHUNK_UNLOAD_GRACE_TICKS {
-                    unload_positions.push(position);
-                }
-            });
-        let retained_chunk_excess = self
-            .unviewed_chunk_ticks
-            .len()
-            .saturating_sub(MAX_RETAINED_UNVIEWED_CHUNKS);
-        if retained_chunk_excess > 0 {
-            let mut eviction_candidates = self
-                .unviewed_chunk_ticks
-                .iter()
-                .map(|(position, unviewed_ticks)| (*position, *unviewed_ticks))
-                .collect::<Vec<_>>();
-            eviction_candidates.sort_by(|left, right| right.1.cmp(&left.1));
-            unload_positions.extend(
-                eviction_candidates
-                    .into_iter()
-                    .take(retained_chunk_excess)
-                    .map(|(position, _)| position),
-            );
-        }
-        let unload_positions = unload_positions.into_iter().collect::<HashSet<_>>();
-        let mut unloaded_chunk_count = 0;
-        for position in unload_positions {
-            if self.unload_chunk(position)? {
-                unloaded_chunk_count += 1;
-            }
-        }
-        Ok(unloaded_chunk_count)
-    }
-
-    fn has_online_players(&self) -> bool {
-        self.entities.iter().any(|entity| match entity {
-            Entity::Player(player) => player.has_entered_world() && player.is_online(),
-            _ => false,
-        })
-    }
-
-    fn chunk_has_online_viewer(&self, position: ChunkPosition) -> bool {
-        let player_chunk = PlayerChunk::new(position.x, position.z);
-        self.entities.iter().any(|entity| match entity {
-            Entity::Player(player) => {
-                player.has_entered_world()
-                    && player.is_online()
-                    && player.has_chunk_loaded_by_client(player_chunk, self.view_distance)
-            }
-            _ => false,
         })
     }
 

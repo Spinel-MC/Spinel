@@ -1053,7 +1053,7 @@ fn client_command_perform_respawn_respawns_dead_player() {
 }
 
 #[test]
-fn client_command_perform_respawn_loads_respawn_chunks_and_releases_death_chunks() {
+fn client_command_perform_respawn_loads_respawn_chunks_and_retains_death_chunks() {
     let _scope = ListenerParityScope::new();
     let (mut server, mut client, mut peer_stream, world_uuid, _player_id) =
         server_with_play_player(GameMode::Survival);
@@ -1097,10 +1097,7 @@ fn client_command_perform_respawn_loads_respawn_chunks_and_releases_death_chunks
     assert_eq!(sync_position_packet.z, 0.0);
     let world = server.world_manager.world_mut(world_uuid).unwrap();
     assert!(world.is_chunk_loaded(spawn_chunk));
-    for _ in 0..100 {
-        world.unload_chunks_without_online_viewers().unwrap();
-    }
-    assert!(!world.is_chunk_loaded(death_chunk));
+    assert!(world.is_chunk_loaded(death_chunk));
 }
 
 #[test]

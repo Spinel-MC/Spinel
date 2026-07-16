@@ -1,6 +1,7 @@
 use crate::events::server_tick_end::ServerTickEndEvent;
 use crate::network::socket::start_tcp_listener;
 use crate::server::MinecraftServer;
+use log::error;
 use std::sync::atomic::Ordering;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
@@ -36,7 +37,12 @@ impl MinecraftServer {
             return;
         }
 
-        let _ = start_tcp_listener(server_arc.clone(), address, port).await;
+        if let Err(error) = start_tcp_listener(server_arc.clone(), address, port).await {
+            error!(
+                target: "Server",
+                "Server failed to start on {address}:{port}: {error}"
+            );
+        }
 
         Self::stop_loop(&server_arc);
     }

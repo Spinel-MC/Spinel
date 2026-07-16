@@ -122,8 +122,6 @@ use uuid::Uuid;
 const MAX_PLAYER_COORDINATE: f64 = 30_000_000.0;
 const DEFAULT_TIME_SYNCHRONIZATION_TICKS: i32 = 20;
 const DEFAULT_CHUNK_VIEW_DISTANCE: i32 = 8;
-const AUTOMATIC_CHUNK_UNLOAD_GRACE_TICKS: u16 = 100;
-const MAX_RETAINED_UNVIEWED_CHUNKS: usize = 1024;
 const DESTROY_BLOCK_WORLD_EVENT_ID: i32 = 2001;
 const ENTITY_VIEW_DISTANCE: i32 = 5;
 
@@ -133,7 +131,6 @@ pub struct World {
     entities: Vec<Entity>,
     entity_tracker: EntityTracker,
     chunks: HashMap<ChunkPosition, Chunk>,
-    unviewed_chunk_ticks: HashMap<ChunkPosition, u16>,
     cached_snapshot_chunks: RefCell<Arc<HashMap<ChunkPosition, ChunkSnapshot>>>,
     block_handlers: BlockHandlerRegistry,
     block_placement_rules: BlockPlacementRuleRegistry,

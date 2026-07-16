@@ -262,7 +262,6 @@ impl World {
         player_addresses.into_iter().for_each(|address| {
             let _ = self.send_pending_chunks_for_player_address(address, registries);
         });
-        let _ = self.unload_chunks_without_online_viewers();
         item_use_completions.into_iter().for_each(|completion| {
             let _ = self.finish_player_item_use(completion);
         });

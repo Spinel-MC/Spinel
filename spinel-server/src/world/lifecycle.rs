@@ -34,7 +34,6 @@ impl World {
             entities: Vec::new(),
             entity_tracker: EntityTracker::new(),
             chunks: HashMap::new(),
-            unviewed_chunk_ticks: HashMap::new(),
             cached_snapshot_chunks: RefCell::new(Arc::new(HashMap::new())),
             block_handlers: BlockHandlerRegistry::default(),
             block_placement_rules: BlockPlacementRuleRegistry::default(),
