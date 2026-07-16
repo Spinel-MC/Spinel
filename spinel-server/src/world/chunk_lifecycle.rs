@@ -1,4 +1,4 @@
-const MAX_COMPLETED_CHUNK_LOADS_PER_TICK: usize = 256;
+const MAX_COMPLETED_CHUNK_LOADS_PER_TICK: usize = 32;
 
 impl World {
     pub fn generator(&self) -> Option<&(dyn Generator + Send + Sync)> {
@@ -102,14 +102,6 @@ impl World {
 
     pub const fn has_enabled_auto_chunk_load(&self) -> bool {
         self.auto_chunk_load
-    }
-
-    pub fn enable_automatic_chunk_unload(&mut self, enable: bool) {
-        self.automatic_chunk_unload = enable;
-    }
-
-    pub const fn has_enabled_automatic_chunk_unload(&self) -> bool {
-        self.automatic_chunk_unload
     }
 
     pub fn load_chunk(&mut self, position: ChunkPosition) -> Result<&mut Chunk> {
@@ -475,10 +467,6 @@ impl World {
     }
 
     pub(crate) fn unload_chunks_without_online_viewers(&mut self) -> Result<usize> {
-        if !self.automatic_chunk_unload {
-            self.unviewed_chunk_ticks.clear();
-            return Ok(0);
-        }
         if !self.has_online_players() {
             self.unviewed_chunk_ticks.clear();
             return Ok(0);

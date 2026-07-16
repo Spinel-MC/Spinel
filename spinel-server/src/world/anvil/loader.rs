@@ -56,24 +56,6 @@ impl AnvilChunkLoader {
         Self::new(path.into())
     }
 
-    pub fn stored_chunk_positions(&self) -> io::Result<Vec<ChunkPosition>> {
-        if !self.region_directory.exists() {
-            return Ok(Vec::new());
-        }
-        let mut positions = fs::read_dir(&self.region_directory)?
-            .filter_map(Result::ok)
-            .filter_map(|entry| stored_region_position(entry.path()))
-            .map(|(region_x, region_z, path)| {
-                RegionFile::open(&path).map(|region| region.chunk_positions(region_x, region_z))
-            })
-            .collect::<io::Result<Vec<_>>>()?
-            .into_iter()
-            .flatten()
-            .collect::<Vec<_>>();
-        positions.sort_by_key(|position| (position.x, position.z));
-        Ok(positions)
-    }
-
     fn get_region_file(
         &self,
         position: ChunkPosition,
@@ -297,20 +279,6 @@ impl ChunkLoader for AnvilChunkLoader {
 enum RegionFileCreation {
     Existing,
     Create,
-}
-
-fn stored_region_position(path: PathBuf) -> Option<(i32, i32, PathBuf)> {
-    let file_name = path.file_name()?.to_string_lossy();
-    let mut parts = file_name.split('.');
-    if parts.next()? != "r" {
-        return None;
-    }
-    let region_x = parts.next()?.parse::<i32>().ok()?;
-    let region_z = parts.next()?.parse::<i32>().ok()?;
-    if parts.next()? != "mca" || parts.next().is_some() {
-        return None;
-    }
-    Some((region_x, region_z, path))
 }
 
 fn anvil_panic_message(panic_payload: Box<dyn std::any::Any + Send>) -> String {
