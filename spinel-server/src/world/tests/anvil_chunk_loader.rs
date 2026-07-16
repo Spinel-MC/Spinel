@@ -4,7 +4,9 @@ use crate::world::{
 use spinel_registry::biome::Biome;
 use std::fs;
 use std::io;
-use std::time::{Instant, SystemTime, UNIX_EPOCH};
+use std::sync::{Arc, Barrier, mpsc};
+use std::thread;
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 #[test]
 fn anvil_chunk_loader_supports_parallel_io() -> io::Result<()> {
@@ -44,6 +46,45 @@ fn anvil_chunk_loader_round_trips_chunk_data() -> io::Result<()> {
     assert!(!loaded_chunk.has_unpersisted_changes());
     loaded_chunk.set_block(BlockPosition::new(2, 4, 2), Block::DIRT);
     assert!(loaded_chunk.has_unpersisted_changes());
+
+    fs::remove_dir_all(world_directory)?;
+    Ok(())
+}
+
+#[test]
+fn concurrent_anvil_chunk_save_and_unload_complete_without_bookkeeping_deadlock() -> io::Result<()>
+{
+    let world_directory = unique_test_world_directory("concurrent_save_unload");
+    let loader = Arc::new(AnvilChunkLoader::new(world_directory.clone())?);
+    let position = ChunkPosition::new(0, 0);
+    loader.save_chunk(&measured_chunk(position))?;
+
+    for _concurrency_round in 0..32 {
+        let operation_barrier = Arc::new(Barrier::new(3));
+        let (completion_sender, completion_receiver) = mpsc::channel();
+        let save_loader = Arc::clone(&loader);
+        let save_barrier = Arc::clone(&operation_barrier);
+        let save_completion_sender = completion_sender.clone();
+        thread::spawn(move || {
+            let chunk = measured_chunk(position);
+            save_barrier.wait();
+            let _ = save_completion_sender.send(save_loader.save_chunk(&chunk));
+        });
+        let unload_loader = Arc::clone(&loader);
+        let unload_barrier = Arc::clone(&operation_barrier);
+        thread::spawn(move || {
+            let mut chunk = measured_chunk(position);
+            unload_barrier.wait();
+            let _ = completion_sender.send(unload_loader.unload_chunk(&mut chunk));
+        });
+
+        operation_barrier.wait();
+        for _completed_operation in 0..2 {
+            completion_receiver
+                .recv_timeout(Duration::from_secs(2))
+                .map_err(|_| io::Error::other("Concurrent Anvil save and unload deadlocked"))??;
+        }
+    }
 
     fs::remove_dir_all(world_directory)?;
     Ok(())

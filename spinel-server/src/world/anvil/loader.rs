@@ -25,10 +25,15 @@ pub struct AnvilChunkLoader {
     level_path: PathBuf,
     region_directory: PathBuf,
     file_creation_lock: Mutex<()>,
-    loaded_region_files: Mutex<HashMap<String, Arc<Mutex<RegionFile>>>>,
+    loaded_regions: Mutex<LoadedAnvilRegions>,
     missing_region_files: Mutex<HashSet<String>>,
-    loaded_chunks_by_region: Mutex<HashMap<(i32, i32), HashSet<(i32, i32)>>>,
     failures: Mutex<VecDeque<ChunkLoaderFailure>>,
+}
+
+#[derive(Default)]
+struct LoadedAnvilRegions {
+    region_files: HashMap<String, Arc<Mutex<RegionFile>>>,
+    chunk_positions_by_region: HashMap<(i32, i32), HashSet<(i32, i32)>>,
 }
 
 impl AnvilChunkLoader {
@@ -41,9 +46,8 @@ impl AnvilChunkLoader {
             level_path,
             region_directory,
             file_creation_lock: Mutex::new(()),
-            loaded_region_files: Mutex::new(HashMap::new()),
+            loaded_regions: Mutex::new(LoadedAnvilRegions::default()),
             missing_region_files: Mutex::new(HashSet::new()),
-            loaded_chunks_by_region: Mutex::new(HashMap::new()),
             failures: Mutex::new(VecDeque::new()),
         })
     }
@@ -59,7 +63,8 @@ impl AnvilChunkLoader {
     ) -> io::Result<Option<Arc<Mutex<RegionFile>>>> {
         let region_position = region_position(position);
         let region_file_name = RegionFile::file_name(region_position.0, region_position.1);
-        if let Some(region_file) = lock_mutex(&self.loaded_region_files)?
+        if let Some(region_file) = lock_mutex(&self.loaded_regions)?
+            .region_files
             .get(&region_file_name)
             .cloned()
         {
@@ -71,8 +76,8 @@ impl AnvilChunkLoader {
             return Ok(None);
         }
         let creation_guard = lock_mutex(&self.file_creation_lock)?;
-        let mut loaded_region_files = lock_mutex(&self.loaded_region_files)?;
-        if let Some(region_file) = loaded_region_files.get(&region_file_name).cloned() {
+        let mut loaded_regions = lock_mutex(&self.loaded_regions)?;
+        if let Some(region_file) = loaded_regions.region_files.get(&region_file_name).cloned() {
             drop(creation_guard);
             return Ok(Some(region_file));
         }
@@ -100,8 +105,11 @@ impl AnvilChunkLoader {
             );
         }
         let region_file = Arc::new(Mutex::new(RegionFile::open(&region_file_path)?));
-        loaded_region_files.insert(region_file_name, Arc::clone(&region_file));
-        lock_mutex(&self.loaded_chunks_by_region)?
+        loaded_regions
+            .region_files
+            .insert(region_file_name, Arc::clone(&region_file));
+        loaded_regions
+            .chunk_positions_by_region
             .entry(region_position)
             .or_default();
         drop(creation_guard);
@@ -109,7 +117,8 @@ impl AnvilChunkLoader {
     }
 
     fn record_loaded_chunk(&self, position: ChunkPosition) -> io::Result<()> {
-        lock_mutex(&self.loaded_chunks_by_region)?
+        lock_mutex(&self.loaded_regions)?
+            .chunk_positions_by_region
             .entry(region_position(position))
             .or_default()
             .insert((position.x, position.z));
@@ -118,17 +127,22 @@ impl AnvilChunkLoader {
 
     fn unload_region_if_empty(&self, position: ChunkPosition) -> io::Result<()> {
         let region_position = region_position(position);
-        let mut loaded_chunks_by_region = lock_mutex(&self.loaded_chunks_by_region)?;
-        let Some(loaded_chunks) = loaded_chunks_by_region.get_mut(&region_position) else {
+        let mut loaded_regions = lock_mutex(&self.loaded_regions)?;
+        let Some(loaded_chunks) = loaded_regions
+            .chunk_positions_by_region
+            .get_mut(&region_position)
+        else {
             return Ok(());
         };
         loaded_chunks.remove(&(position.x, position.z));
         if !loaded_chunks.is_empty() {
             return Ok(());
         }
-        loaded_chunks_by_region.remove(&region_position);
+        loaded_regions
+            .chunk_positions_by_region
+            .remove(&region_position);
         let region_file_name = RegionFile::file_name(region_position.0, region_position.1);
-        lock_mutex(&self.loaded_region_files)?.remove(&region_file_name);
+        loaded_regions.region_files.remove(&region_file_name);
         Ok(())
     }
 
