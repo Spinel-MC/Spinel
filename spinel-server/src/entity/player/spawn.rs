@@ -359,6 +359,25 @@ impl Player {
             .surrounding(self.effective_view_distance(world_view_distance))
     }
 
+    pub(crate) fn reset_chunks_after_respawn(
+        &mut self,
+        respawn_position: crate::entity::EntityPosition,
+        world_view_distance: i32,
+    ) -> Vec<PlayerChunk> {
+        let respawn_chunk = PlayerChunk::from_position(PlayerPosition::new(
+            respawn_position.get_x(),
+            respawn_position.get_y(),
+            respawn_position.get_z(),
+            respawn_position.get_yaw(),
+            respawn_position.get_pitch(),
+        ));
+        self.loaded_chunk = respawn_chunk;
+        self.chunks_loaded_by_client = respawn_chunk;
+        self.chunk_update_limit_checker.clear_history();
+        self.reset_chunk_queue();
+        respawn_chunk.surrounding(self.effective_view_distance(world_view_distance))
+    }
+
     pub(crate) fn get_chunk_transition(
         &self,
         x: f64,

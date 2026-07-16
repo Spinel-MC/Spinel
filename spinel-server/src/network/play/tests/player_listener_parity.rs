@@ -1053,6 +1053,57 @@ fn client_command_perform_respawn_respawns_dead_player() {
 }
 
 #[test]
+fn client_command_perform_respawn_loads_respawn_chunks_and_releases_death_chunks() {
+    let _scope = ListenerParityScope::new();
+    let (mut server, mut client, mut peer_stream, world_uuid, _player_id) =
+        server_with_play_player(GameMode::Survival);
+    attach_client_to_player(&mut server, &mut client);
+    let spawn_chunk = ChunkPosition::new(0, 0);
+    let death_chunk = ChunkPosition::new(10, 0);
+    {
+        let world = server.world_manager.world_mut(world_uuid).unwrap();
+        world.set_view_distance(0);
+        world.load_chunk(death_chunk).unwrap();
+        assert!(!world.is_chunk_loaded(spawn_chunk));
+        let world_view_distance = world.view_distance();
+        let player = world.player_by_addr_mut(&client.addr).unwrap();
+        player.set_respawn_point(PlayerSpawnPoint::new(0.0, 4.0, 0.0, 0.0, 0.0));
+        player.set_world_position(
+            EntityPosition::new(160.0, 4.0, 0.0, 0.0, 0.0),
+            world_view_distance,
+            true,
+        );
+    }
+
+    player_for_client(&mut server, &client).kill().unwrap();
+    let _death_packet = read_packet_frame(&mut peer_stream);
+
+    assert!(dispatch_packet(
+        &mut server,
+        &mut client,
+        ClientCommandPacket {
+            action: ClientCommandPacket::PERFORM_RESPAWN,
+        }
+    ));
+
+    let _respawn_packet = read_packet_frame_with_id(&mut peer_stream, RespawnPacket::get_id());
+    let (_sync_position_packet_id, sync_position_payload) =
+        read_packet_frame_with_id(&mut peer_stream, SyncPlayerPositionPacket::get_id());
+    let sync_position_packet =
+        SyncPlayerPositionPacket::decode(&mut sync_position_payload.as_slice()).unwrap();
+
+    assert_eq!(sync_position_packet.x, 0.0);
+    assert_eq!(sync_position_packet.y, 4.0);
+    assert_eq!(sync_position_packet.z, 0.0);
+    let world = server.world_manager.world_mut(world_uuid).unwrap();
+    assert!(world.is_chunk_loaded(spawn_chunk));
+    for _ in 0..100 {
+        world.unload_chunks_without_online_viewers().unwrap();
+    }
+    assert!(!world.is_chunk_loaded(death_chunk));
+}
+
+#[test]
 fn creative_inventory_action_listener_applies_destroy_slot_air_and_refreshes_slot() {
     let _scope = ListenerParityScope::new();
     let (mut server, mut client, mut peer_stream, _world_uuid, _player_id) =

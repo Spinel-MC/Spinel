@@ -1495,12 +1495,12 @@ fn player_respawn_is_noop_when_alive_and_refreshes_client_state_when_dead() {
     player.set_client(&mut client);
     player.mark_entered_world();
 
-    assert!(!player.respawn().unwrap());
+    assert!(player.respawn().unwrap().is_none());
 
     player.kill().unwrap();
     let _ = read_packet_frame(&mut peer_stream);
 
-    assert!(player.respawn().unwrap());
+    assert!(player.respawn().unwrap().is_some());
 
     let (respawn_packet_id, _respawn_payload) = read_packet_frame(&mut peer_stream);
     let (game_event_packet_id, _game_event_payload) = read_packet_frame(&mut peer_stream);
@@ -1543,15 +1543,15 @@ fn player_respawn_event_can_mutate_respawn_position() {
     let _ = read_packet_frame(&mut peer_stream);
     *PLAYER_RESPAWN_EVENT_TARGET.lock().unwrap() = Some(player_uuid);
 
-    assert!(player.respawn().unwrap());
+    let respawn_position = player.respawn().unwrap().unwrap();
 
     let event_position = PLAYER_RESPAWN_EVENT_POSITION.lock().unwrap().unwrap();
     assert_eq!(event_position.x, 12.0);
     assert_eq!(event_position.y, 70.0);
     assert_eq!(event_position.z, -4.0);
-    assert_eq!(player.get_position().get_x(), 12.0);
-    assert_eq!(player.get_position().get_y(), 70.0);
-    assert_eq!(player.get_position().get_z(), -4.0);
+    assert_eq!(respawn_position.get_x(), 12.0);
+    assert_eq!(respawn_position.get_y(), 70.0);
+    assert_eq!(respawn_position.get_z(), -4.0);
     *PLAYER_RESPAWN_EVENT_TARGET.lock().unwrap() = None;
     *PLAYER_RESPAWN_EVENT_POSITION.lock().unwrap() = None;
 }
@@ -1660,7 +1660,7 @@ fn respawn_chunk_reload_sends_respawn_state_then_chunk_batch_and_position_sync()
     player.kill().unwrap();
     let _ = read_packet_frame(&mut peer_stream);
 
-    assert!(player.respawn().unwrap());
+    assert!(player.respawn().unwrap().is_some());
     player.reset_chunk_queue();
     player.send_chunk(empty_chunk_packet(0, 0));
     player.send_pending_chunks().unwrap();

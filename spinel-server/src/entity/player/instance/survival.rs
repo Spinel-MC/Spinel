@@ -240,9 +240,9 @@ impl Player {
             .build()
     }
 
-    pub fn respawn(&mut self) -> io::Result<bool> {
+    pub fn respawn(&mut self) -> io::Result<Option<EntityPosition>> {
         if !self.living.is_dead() {
-            return Ok(false);
+            return Ok(None);
         }
         let respawn_dimension = self
             .world_name
@@ -262,8 +262,14 @@ impl Player {
         let respawn_point = self.dispatch_player_respawn_event();
         self.living.revive();
         self.refresh_pose();
-        self.position = PlayerPosition::from(respawn_point);
-        Ok(true)
+        let respawn_position = PlayerPosition::from(respawn_point);
+        Ok(Some(EntityPosition::new(
+            respawn_position.x,
+            respawn_position.y,
+            respawn_position.z,
+            respawn_position.yaw,
+            respawn_position.pitch,
+        )))
     }
 
     pub(super) fn dispatch_player_death_event(

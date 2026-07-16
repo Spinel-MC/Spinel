@@ -21,6 +21,36 @@ impl World {
         )
     }
 
+    pub(crate) fn respawn_player(&mut self, client: &mut Client) -> Result<bool> {
+        self.use_client_event_dispatcher(client);
+        let world_view_distance = self.view_distance;
+        let (player_uuid, player_id, respawn_position, respawn_chunks) = {
+            let Some(player) = self.player_by_addr_mut(&client.addr) else {
+                return Err(Error::new(ErrorKind::NotFound, "Player not found."));
+            };
+            let Some(respawn_position) = player.respawn()? else {
+                return Ok(false);
+            };
+            let respawn_chunks = player.reset_chunks_after_respawn(respawn_position, world_view_distance);
+            (
+                player.get_uuid(),
+                player.get_entity_id(),
+                respawn_position,
+                respawn_chunks,
+            )
+        };
+        self.remove_player_from_delivered_chunk_viewers(player_id);
+        self.schedule_player_chunk_loads(client.addr, &respawn_chunks)?;
+        self.teleport_player(
+            player_uuid,
+            respawn_position,
+            None,
+            TeleportFlags::absolute(),
+            true,
+        )?;
+        Ok(true)
+    }
+
     pub fn teleport_player_with_velocity(
         &mut self,
         player_uuid: Uuid,

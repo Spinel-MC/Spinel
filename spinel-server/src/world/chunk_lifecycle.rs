@@ -770,6 +770,12 @@ impl World {
         });
     }
 
+    fn remove_player_from_delivered_chunk_viewers(&mut self, player_id: EntityId) {
+        self.chunks.values_mut().for_each(|chunk| {
+            chunk.remove_viewer(player_id);
+        });
+    }
+
     fn loaded_chunk_packet(
         chunks: &mut HashMap<ChunkPosition, Chunk>,
         has_skylight: bool,
