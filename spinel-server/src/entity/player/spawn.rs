@@ -588,6 +588,7 @@ impl Player {
 
     fn send_pending_chunks_to(&mut self, client: &mut Client) -> io::Result<()> {
         self.send_pending_chunks_with(client, |queued_chunk| Ok(queued_chunk.packet.take()))
+            .map(|_| ())
     }
 
     pub(crate) fn send_pending_chunks_with(
@@ -596,41 +597,39 @@ impl Player {
         mut packet_for_chunk: impl FnMut(
             &mut QueuedPlayerChunk,
         ) -> io::Result<Option<ChunkDataAndUpdateLightPacket>>,
-    ) -> io::Result<()> {
+    ) -> io::Result<Vec<PlayerChunk>> {
         if !client.is_online() {
             self.discard_pending_chunk_delivery();
-            return Ok(());
+            return Ok(Vec::new());
         }
         if self.chunk_queue.is_empty() || self.chunk_batch_lead >= self.max_chunk_batch_lead {
-            return Ok(());
+            return Ok(Vec::new());
         }
         self.sort_queued_chunks_by_distance_when_required();
         self.pending_chunk_count =
             (self.pending_chunk_count + self.target_chunks_per_tick).min(64.0);
         if self.pending_chunk_count < 1.0 {
-            return Ok(());
+            return Ok(Vec::new());
         }
         let mut sent_chunk_count = 0;
+        let mut sent_chunks = Vec::new();
         ChunkBatchStartPacket.dispatch(client)?;
         while !self.chunk_queue.is_empty() && self.pending_chunk_count >= 1.0 {
             if !client.is_online() {
                 self.discard_pending_chunk_delivery();
-                return Ok(());
+                return Ok(sent_chunks);
             }
             let Some(mut queued_chunk) = self.chunk_queue.pop_front() else {
                 break;
             };
             let Some(packet) = packet_for_chunk(&mut queued_chunk)? else {
-                if sent_chunk_count > 0 {
-                    self.chunk_queue.push_front(queued_chunk);
-                    break;
-                }
                 continue;
             };
             let chunk = queued_chunk.chunk;
             packet.dispatch(client)?;
             self.client_sent_chunks
                 .insert(PlayerChunk::new(chunk.x, chunk.z));
+            sent_chunks.push(chunk);
             self.dispatch_player_chunk_load_event(client, chunk.x, chunk.z);
             self.pending_chunk_count -= 1.0;
             sent_chunk_count += 1;
@@ -641,7 +640,7 @@ impl Player {
             self.sync_position(client)?;
             self.needs_chunk_position_sync = false;
         }
-        Ok(())
+        Ok(sent_chunks)
     }
 
     fn discard_pending_chunk_delivery(&mut self) {

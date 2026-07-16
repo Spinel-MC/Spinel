@@ -43,6 +43,11 @@ impl Player {
         self.client_chunk_view_distance
     }
 
+    pub(crate) const fn get_chunks_loaded_by_client(
+        &self,
+    ) -> crate::entity::player::chunks::PlayerChunk {
+        self.chunks_loaded_by_client
+    }
     pub fn set_client_chunk_view_distance(&mut self, client_chunk_view_distance: i32) {
         self.client_chunk_view_distance = client_chunk_view_distance.max(0);
     }

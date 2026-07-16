@@ -698,18 +698,31 @@ impl World {
 
     pub(crate) fn process_completed_chunk_loads(&mut self) -> Result<()> {
         self.receive_completed_chunk_loads();
-        let completed_tickets = self
+        let mut completed_tickets = self
             .prepared_chunk_loads
             .values()
-            .take(MAX_COMPLETED_CHUNK_LOADS_PER_TICK)
             .map(|(ticket, _)| ticket.clone())
             .collect::<Vec<_>>();
-        for ticket in completed_tickets {
-            self.complete_chunk_load(&ticket)?;
-        }
-        Ok(())
+        completed_tickets.sort_by_key(|ticket| self.completed_chunk_load_priority(ticket));
+        completed_tickets
+            .into_iter()
+            .take(MAX_COMPLETED_CHUNK_LOADS_PER_TICK)
+            .try_for_each(|ticket| self.complete_chunk_load(&ticket).map(|_| ()))
     }
 
+    fn completed_chunk_load_priority(&self, ticket: &ChunkLoadTicket) -> (i32, u64) {
+        let chunk = PlayerChunk::new(ticket.position.x, ticket.position.z);
+        let distance_to_waiting_player = self
+            .player_chunk_load_waiters
+            .get(&ticket.position)
+            .into_iter()
+            .flatten()
+            .filter_map(|player_address| self.player_by_addr(player_address))
+            .map(|player| chunk.distance_to(player.get_chunks_loaded_by_client()))
+            .min()
+            .unwrap_or(i32::MAX);
+        (distance_to_waiting_player, ticket.id)
+    }
     fn receive_completed_chunk_loads(&mut self) {
         while let Ok(completed_chunk_load) = self.completed_chunk_load_receiver.try_recv() {
             self.prepared_chunk_loads.insert(
@@ -733,16 +746,28 @@ impl World {
     }
 
     fn queue_loaded_chunk_for_player(&mut self, player_address: SocketAddr, chunk: PlayerChunk) {
-        let Some(player_id) = self.player_by_addr_mut(&player_address).map(|player| {
+        if let Some(player) = self.player_by_addr_mut(&player_address) {
             player.queue_loaded_chunk(chunk);
-            player.get_entity_id()
-        }) else {
+        }
+    }
+
+    fn add_player_to_delivered_chunk_viewers(
+        &mut self,
+        player_address: SocketAddr,
+        chunks: impl IntoIterator<Item = PlayerChunk>,
+    ) {
+        let Some(player_id) = self
+            .player_by_addr(&player_address)
+            .map(|player| player.get_entity_id())
+        else {
             return;
         };
-        let position = ChunkPosition::from(chunk);
-        if let Some(world_chunk) = self.chunks.get_mut(&position) {
-            world_chunk.add_viewer(player_id);
-        }
+        chunks.into_iter().for_each(|chunk| {
+            let position = ChunkPosition::from(chunk);
+            if let Some(world_chunk) = self.chunks.get_mut(&position) {
+                world_chunk.add_viewer(player_id);
+            }
+        });
     }
 
     fn loaded_chunk_packet(
@@ -783,10 +808,12 @@ impl World {
         };
         let chunks = &mut self.chunks as *mut HashMap<ChunkPosition, Chunk>;
         let has_skylight = self.cached_dimension_type.has_skylight;
-        unsafe { &mut *player }.send_pending_chunks_with(client, |queued_chunk| {
+        let sent_chunks = unsafe { &mut *player }.send_pending_chunks_with(client, |queued_chunk| {
             let position = ChunkPosition::from(queued_chunk.chunk);
             Self::loaded_chunk_packet(unsafe { &mut *chunks }, has_skylight, position, registries)
-        })
+        })?;
+        self.add_player_to_delivered_chunk_viewers(client.addr, sent_chunks);
+        Ok(())
     }
 
     fn send_pending_chunks_for_player_address(
@@ -803,10 +830,12 @@ impl World {
         let client = client as *mut Client;
         let chunks = &mut self.chunks as *mut HashMap<ChunkPosition, Chunk>;
         let has_skylight = self.cached_dimension_type.has_skylight;
-        unsafe { &mut *player }.send_pending_chunks_with(unsafe { &mut *client }, |queued_chunk| {
+        let sent_chunks = unsafe { &mut *player }.send_pending_chunks_with(unsafe { &mut *client }, |queued_chunk| {
             let position = ChunkPosition::from(queued_chunk.chunk);
             Self::loaded_chunk_packet(unsafe { &mut *chunks }, has_skylight, position, registries)
-        })
+        })?;
+        self.add_player_to_delivered_chunk_viewers(address, sent_chunks);
+        Ok(())
     }
 
     fn movement_enters_unloaded_chunk(&self, transition: Option<&PlayerChunkTransition>) -> bool {

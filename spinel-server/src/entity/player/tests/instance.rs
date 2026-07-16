@@ -554,7 +554,7 @@ fn unavailable_queued_chunks_match_reference_empty_batch_skip() {
     assert_eq!(player.get_queued_chunk_count(), 0);
 }
 #[test]
-fn unavailable_queued_chunks_wait_after_partial_batch() {
+fn unavailable_queued_chunks_are_discarded_after_partial_batch() {
     let (mut client, mut peer_stream) = test_client_pair();
     let mut player = Player::new(
         Uuid::nil(),
@@ -573,33 +573,15 @@ fn unavailable_queued_chunks_wait_after_partial_batch() {
         })
         .unwrap();
 
-    let _ = read_packet_frame(&mut peer_stream);
-    let _ = read_packet_frame(&mut peer_stream);
-    let _ = read_packet_frame(&mut peer_stream);
+    let packet_frames = read_available_packet_frames(&mut peer_stream);
 
-    assert_eq!(player.get_queued_chunk_count(), 1);
-    assert!(
-        player
-            .chunk_queue
-            .iter()
-            .any(|queued_chunk| queued_chunk.chunk == PlayerChunk::new(1, 0))
-    );
-
-    player.on_chunk_batch_received(64.0);
-    player
-        .send_pending_chunks_with(&mut client, |queued_chunk| {
-            Ok(Some(empty_chunk_packet(
-                queued_chunk.chunk.x,
-                queued_chunk.chunk.z,
-            )))
-        })
-        .unwrap();
-
-    let _ = read_packet_frame(&mut peer_stream);
-    let _ = read_packet_frame(&mut peer_stream);
-    let _ = read_packet_frame(&mut peer_stream);
-
+    assert_eq!(packet_frames.len(), 3);
+    assert_eq!(packet_frames[0].0, ChunkBatchStartPacket::get_id());
+    assert_eq!(packet_frames[1].0, ChunkDataAndUpdateLightPacket::get_id());
+    assert_eq!(packet_frames[2].0, ChunkBatchFinishedPacket::get_id());
     assert_eq!(player.get_queued_chunk_count(), 0);
+    assert_eq!(player.get_pending_chunk_count(), 8.0);
+    assert_eq!(player.get_chunk_batch_lead(), 1);
 }
 #[test]
 fn ordinary_chunk_border_crossing_sends_no_position_sync() {

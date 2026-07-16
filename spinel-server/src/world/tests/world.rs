@@ -6,6 +6,7 @@ use crate::server::MinecraftServer;
 use crate::world::{
     Biome, Block, BlockPosition, Chunk, ChunkLoader, ChunkPosition, SetChunkBlockResult,
 };
+use spinel_core::network::clientbound::play::chunk_batch_start::ChunkBatchStartPacket;
 use spinel_core::network::clientbound::play::chunk_data::ChunkDataAndUpdateLightPacket;
 use spinel_core::network::clientbound::play::disconnect::PlayDisconnectPacket;
 use spinel_core::network::clientbound::play::forget_level_chunk::ForgetLevelChunkPacket;
@@ -965,6 +966,89 @@ fn chunk_viewer_membership_matches_reference_no_op_edges() {
     assert!(chunk.viewers().next().is_none());
 }
 
+#[test]
+fn loaded_player_chunk_becomes_viewed_only_after_delivery_like_reference() {
+    let (mut client, _peer_stream) = test_client_pair();
+    client.enable_outbound_packet_queue();
+    let registries = Registries::new_vanilla();
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
+    let chunk = PlayerChunk::new(0, 0);
+    let chunk_position = ChunkPosition::from(chunk);
+    let mut player = Player::new(Uuid::nil(), "Player".to_string(), 0, client.addr);
+    player.set_client(&mut client);
+    player.mark_entered_world();
+    let player_id = player.get_entity_id();
+
+    world.load_chunk(chunk_position).unwrap();
+    world.add_entity(Entity::Player(player));
+    world
+        .schedule_player_chunk_loads(client.addr, &[chunk])
+        .unwrap();
+
+    assert!(
+        world
+            .chunk(chunk_position)
+            .unwrap()
+            .viewers()
+            .next()
+            .is_none()
+    );
+
+    world
+        .send_pending_chunks_for_client(&mut client, &registries)
+        .unwrap();
+
+    assert_eq!(
+        world
+            .chunk(chunk_position)
+            .unwrap()
+            .viewers()
+            .collect::<Vec<_>>(),
+        vec![player_id.get_value()]
+    );
+}
+#[test]
+fn completed_player_chunk_loads_are_admitted_nearest_to_current_center_like_reference() {
+    let (mut client, mut peer_stream) = test_client_pair();
+    let registries = Registries::new_vanilla();
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
+    let mut player = Player::new(Uuid::nil(), "Player".to_string(), 0, client.addr);
+    player.set_client(&mut client);
+    player.mark_entered_world();
+    world.add_entity(Entity::Player(player));
+    let mut requested_chunks = (100..140)
+        .map(|chunk_x| PlayerChunk::new(chunk_x, 0))
+        .collect::<Vec<_>>();
+    requested_chunks.push(PlayerChunk::new(0, 0));
+
+    world
+        .schedule_player_chunk_loads(client.addr, &requested_chunks)
+        .unwrap();
+    world.process_completed_chunk_loads().unwrap();
+    world
+        .send_pending_chunks_for_client(&mut client, &registries)
+        .unwrap();
+
+    let (batch_start_packet_id, _) = read_packet_frame(&mut peer_stream);
+    let (first_chunk_packet_id, first_chunk_payload) = read_packet_frame(&mut peer_stream);
+    let first_chunk_x = i32::from_be_bytes(first_chunk_payload[0..4].try_into().unwrap());
+    let first_chunk_z = i32::from_be_bytes(first_chunk_payload[4..8].try_into().unwrap());
+
+    assert_eq!(batch_start_packet_id, ChunkBatchStartPacket::get_id());
+    assert_eq!(
+        first_chunk_packet_id,
+        ChunkDataAndUpdateLightPacket::get_id()
+    );
+    assert_eq!((first_chunk_x, first_chunk_z), (0, 0));
+}
 #[test]
 fn empty_chunk_light_data_uses_empty_section_masks_like_reference() {
     let chunk = Chunk::new(ChunkPosition::new(0, 0));
