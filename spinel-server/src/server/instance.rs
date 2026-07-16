@@ -131,6 +131,10 @@ impl MinecraftServer {
         self.stop_requested.store(true, Ordering::SeqCst);
     }
 
+    pub fn stop_was_requested(&self) -> bool {
+        self.stop_requested.load(Ordering::SeqCst)
+    }
+
     pub fn restart(&mut self) {
         self.restart_requested.store(true, Ordering::SeqCst);
         self.stop();
@@ -609,3 +613,4 @@ impl Default for MinecraftServer {
         Self::new()
     }
 }
+

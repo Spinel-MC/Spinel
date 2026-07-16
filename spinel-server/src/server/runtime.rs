@@ -1,4 +1,5 @@
 use crate::events::server_tick_end::ServerTickEndEvent;
+use crate::events::signal::ServerSignal;
 use crate::network::socket::start_tcp_listener;
 use crate::server::MinecraftServer;
 use log::error;
@@ -37,6 +38,8 @@ impl MinecraftServer {
             return;
         }
 
+        let ctrl_c_signal_task = Self::spawn_ctrl_c_signal_task(server_arc.clone());
+
         if let Err(error) = start_tcp_listener(server_arc.clone(), address, port).await {
             error!(
                 target: "Server",
@@ -44,6 +47,7 @@ impl MinecraftServer {
             );
         }
 
+        ctrl_c_signal_task.abort();
         Self::stop_loop(&server_arc);
     }
 
@@ -70,6 +74,22 @@ impl MinecraftServer {
         if let Ok(server) = server_arc.lock() {
             server.is_ticking.store(false, Ordering::SeqCst);
         }
+    }
+
+    fn spawn_ctrl_c_signal_task(server_arc: Arc<Mutex<Self>>) -> tokio::task::JoinHandle<()> {
+        tokio::spawn(async move {
+            if tokio::signal::ctrl_c().await.is_err() {
+                return;
+            }
+
+            let Ok(mut server) = server_arc.lock() else {
+                return;
+            };
+            if !server.is_ticking.load(Ordering::SeqCst) {
+                return;
+            }
+            server.on_signal(ServerSignal::CtrlC);
+        })
     }
 
     fn clear_shared_restart_request(server_arc: &Arc<Mutex<Self>>) {
