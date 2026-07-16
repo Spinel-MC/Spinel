@@ -351,15 +351,7 @@ impl ChunkSection {
         if !self.block_light_invalidated {
             return false;
         }
-        let mut light = [0; CHUNK_SECTION_LIGHT_BYTES];
-        (0..CHUNK_SECTION_BLOCK_COUNT).for_each(|block_index| {
-            let block_state = self
-                .blocks
-                .get(block_index)
-                .unwrap_or_else(|| Block::AIR.default_state());
-            Self::set_light_level(&mut light, block_index, block_state.light_emission());
-        });
-        self.block_light = Self::stored_light(&light);
+        self.block_light = self.rebuilt_light(|block_state| block_state.light_emission());
         self.block_light_invalidated = false;
         true
     }
@@ -368,22 +360,48 @@ impl ChunkSection {
         if !self.sky_light_invalidated {
             return false;
         }
+        self.sky_light = self.rebuilt_light(|block_state| {
+            if block_state.propagates_skylight_down() {
+                return 15;
+            }
+            15u8.saturating_sub(block_state.light_block())
+        });
+        self.sky_light_invalidated = false;
+        true
+    }
+
+    fn rebuilt_light(
+        &self,
+        light_level_for_block_state: impl Fn(BlockState) -> u8,
+    ) -> Option<Arc<[u8; CHUNK_SECTION_LIGHT_BYTES]>> {
+        if let SectionPalette::Single(block_state) = &self.blocks {
+            return Self::stored_uniform_light(light_level_for_block_state(*block_state));
+        }
         let mut light = [0; CHUNK_SECTION_LIGHT_BYTES];
         (0..CHUNK_SECTION_BLOCK_COUNT).for_each(|block_index| {
             let block_state = self
                 .blocks
                 .get(block_index)
                 .unwrap_or_else(|| Block::AIR.default_state());
-            let light_level = if block_state.propagates_skylight_down() {
-                15
-            } else {
-                15u8.saturating_sub(block_state.light_block())
-            };
-            Self::set_light_level(&mut light, block_index, light_level);
+            Self::set_light_level(
+                &mut light,
+                block_index,
+                light_level_for_block_state(block_state),
+            );
         });
-        self.sky_light = Self::stored_light(&light);
-        self.sky_light_invalidated = false;
-        true
+        Self::stored_light(&light)
+    }
+
+    fn stored_uniform_light(light_level: u8) -> Option<Arc<[u8; CHUNK_SECTION_LIGHT_BYTES]>> {
+        let light_level = light_level.min(15);
+        let packed_light_level = light_level | (light_level << 4);
+        if packed_light_level == 0 {
+            return None;
+        }
+        if packed_light_level == u8::MAX {
+            return Some(Arc::clone(Self::fully_lit_storage()));
+        }
+        Some(Arc::new([packed_light_level; CHUNK_SECTION_LIGHT_BYTES]))
     }
 
     pub fn sky_light_is_invalidated(&self) -> bool {
