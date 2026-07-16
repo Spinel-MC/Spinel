@@ -3,6 +3,7 @@ use crate::command::{
     CommandResult, CommandResultType, CommandSender, CommandSenderKind, Suggestion,
     SuggestionEntry,
 };
+use crate::entity::Player;
 use crate::events::player_command::PlayerCommandEvent;
 use crate::network::client::instance::Client;
 use crate::server::MinecraftServer;
@@ -19,40 +20,43 @@ impl CommandManager {
         }
     }
 
-    pub fn register(&mut self, command: Command) -> bool {
-        if command.names().iter().any(|name| self.command_exists(name)) {
-            return false;
-        }
+    pub fn register(&mut self, command: Command) {
+        let duplicate_command_name = command
+            .names()
+            .into_iter()
+            .find(|command_name| self.command_exists(command_name));
+        assert!(
+            duplicate_command_name.is_none(),
+            "A command with the name {} is already registered!",
+            duplicate_command_name.unwrap_or_default()
+        );
         self.commands.push(command);
-        true
     }
 
-    pub fn unregister(&mut self, command_name: &str) -> bool {
-        let original_command_count = self.commands.len();
+    pub fn unregister(&mut self, command: &Command) {
         self.commands
-            .retain(|command| command.name() != command_name);
-        self.commands.len() != original_command_count
+            .retain(|registered_command| registered_command.name() != command.name());
     }
 
-    pub fn command(&self, command_name: &str) -> Option<&Command> {
+    pub fn get_command(&self, command_name: &str) -> Option<&Command> {
         self.commands
             .iter()
             .find(|command| command.name_matches(command_name))
     }
 
-    pub fn commands(&self) -> &[Command] {
+    pub fn get_commands(&self) -> &[Command] {
         &self.commands
     }
 
     pub fn command_exists(&self, command_name: &str) -> bool {
-        self.command(command_name).is_some()
+        self.get_command(command_name).is_some()
     }
 
-    pub fn suggest(&self, sender_kind: CommandSenderKind, input: &str) -> Suggestion {
+    pub(crate) fn suggest(&self, sender_kind: CommandSenderKind, input: &str) -> Suggestion {
         self.suggest_for_source(CommandConditionContext::from(sender_kind), input)
     }
 
-    pub fn suggest_for_source(
+    pub(crate) fn suggest_for_source(
         &self,
         condition_context: CommandConditionContext,
         input: &str,
@@ -60,7 +64,7 @@ impl CommandManager {
         self.suggest_for_source_with_server(None, condition_context, input)
     }
 
-    pub fn suggest_for_source_with_server(
+    pub(crate) fn suggest_for_source_with_server(
         &self,
         server: Option<&MinecraftServer>,
         condition_context: CommandConditionContext,
@@ -88,6 +92,12 @@ impl CommandManager {
         suggestion
     }
 
+    pub fn create_declare_commands_packet(&self, player: &Player) -> CommandsPacket {
+        self.declare_commands_packet_for_source(CommandConditionContext::player(
+            player.get_permission_level(),
+        ))
+    }
+
     fn normalized_suggestion_input(input: &str) -> String {
         input.to_string()
     }
@@ -98,7 +108,7 @@ impl CommandManager {
         typed_command_name: &str,
     ) -> Suggestion {
         let mut suggestion = Suggestion::new(typed_command_name, 0, typed_command_name.len());
-        self.commands
+        self.get_commands()
             .iter()
             .filter(|command| Self::command_condition_allows(command, condition_context, None))
             .flat_map(Command::names)
@@ -117,7 +127,7 @@ impl CommandManager {
         command_parts: &[&str],
     ) -> Suggestion {
         let command_name = command_parts.first().copied().unwrap_or_default();
-        let Some(command) = self.command(command_name) else {
+        let Some(command) = self.get_command(command_name) else {
             return Suggestion::new(command_text, command_text.len(), 0);
         };
         if !Self::command_condition_allows(command, condition_context, Some(command_text)) {
@@ -156,7 +166,7 @@ impl CommandManager {
         suggestion
     }
 
-    pub fn execute(
+    pub(crate) fn execute(
         &self,
         server: &mut MinecraftServer,
         client: &mut Client,
@@ -170,7 +180,7 @@ impl CommandManager {
             }
         };
 
-        match CommandParser::parse(&self.commands, &command_line) {
+        match CommandParser::parse(self.get_commands(), &command_line) {
             CommandParseResult::Valid(mut parsed_command) => {
                 self.execute_parsed_command(server, client, &mut parsed_command)
             }
@@ -254,17 +264,17 @@ impl CommandManager {
         CommandResult::from_execution_result(parsed_command, execution_result)
     }
 
-    pub fn declare_commands_packet(&self) -> CommandsPacket {
+    pub(crate) fn declare_commands_packet(&self) -> CommandsPacket {
         self.declare_commands_packet_for_source(CommandConditionContext::server())
     }
 
-    pub fn declare_commands_packet_for_source(
+    pub(crate) fn declare_commands_packet_for_source(
         &self,
         condition_context: CommandConditionContext,
     ) -> CommandsPacket {
         let mut nodes = vec![CommandNode::root(Vec::new())];
         let root_children = self
-            .commands
+            .get_commands()
             .iter()
             .filter(|command| Self::command_condition_allows(command, condition_context, None))
             .map(|command| self.append_command_node(command, condition_context, &mut nodes))

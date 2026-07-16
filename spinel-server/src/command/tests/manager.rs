@@ -13,8 +13,13 @@ use spinel_network::DataType;
 fn command_manager_rejects_duplicate_roots_and_aliases() {
     let mut command_manager = CommandManager::new();
 
-    assert!(command_manager.register(Command::new("spawn").with_alias("summon")));
-    assert!(!command_manager.register(Command::new("summon")));
+    command_manager.register(Command::new("spawn").with_alias("summon"));
+
+    let duplicate_registration = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        command_manager.register(Command::new("summon"));
+    }));
+
+    assert!(duplicate_registration.is_err());
 }
 
 #[test]
@@ -180,6 +185,17 @@ fn command_manager_filters_declared_commands_by_source_condition() {
     assert!(!root_command_exists(&ordinary_packet, "op"));
     assert!(root_command_exists(&admin_packet, "op"));
 }
+
+#[test]
+fn command_manager_unregisters_registered_command_names() {
+    let mut command_manager = CommandManager::new();
+    command_manager.register(Command::new("spawn").with_alias("summon"));
+    command_manager.unregister(&Command::new("spawn").with_alias("summon"));
+
+    assert!(!command_manager.command_exists("spawn"));
+    assert!(!command_manager.command_exists("summon"));
+}
+
 fn spawn_command() -> Command {
     Command::new("spawn").with_syntax(
         unused_executor,
@@ -247,3 +263,4 @@ fn root_command_exists(commands_packet: &CommandsPacket, command_name: &str) -> 
 fn requires_admin(condition_context: CommandConditionContext, _input: Option<&str>) -> bool {
     condition_context.permission_level() >= 3
 }
+
