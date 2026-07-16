@@ -45,6 +45,7 @@ impl Player {
         ticks_per_second: u32,
         dimension_type_id: i32,
         world_name: Identifier,
+        chunk_radius: i32,
         chunk_packets: Vec<ChunkDataAndUpdateLightPacket>,
         world_border_packet: InitializeWorldBorderPacket,
         time_packet: SetTimePacket,
@@ -60,6 +61,7 @@ impl Player {
             self.get_game_mode(),
             dimension_type_id,
             world_name.clone(),
+            chunk_radius,
         )
         .dispatch(client)?;
         client.enter_play();
@@ -91,6 +93,7 @@ impl Player {
         ticks_per_second: u32,
         dimension_type_id: i32,
         world_name: Identifier,
+        chunk_radius: i32,
         chunks: Vec<PlayerChunk>,
         world_border_packet: InitializeWorldBorderPacket,
         time_packet: SetTimePacket,
@@ -106,6 +109,7 @@ impl Player {
             self.get_game_mode(),
             dimension_type_id,
             world_name.clone(),
+            chunk_radius,
         )
         .dispatch(client)?;
         client.enter_play();

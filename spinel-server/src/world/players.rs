@@ -113,6 +113,7 @@ impl World {
         let weather = self.weather;
         let world_name = self.name.clone();
         let world_uuid = self.uuid;
+        let world_view_distance = self.view_distance;
         let world_border_packet = self
             .world_border
             .initialize_packet(self.world_border.diameter(), 0);
@@ -134,6 +135,7 @@ impl World {
                 ticks_per_second,
                 dimension_type_id,
                 world_name.clone(),
+                world_view_distance,
                 chunks,
                 world_border_packet,
                 time_packet,

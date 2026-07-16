@@ -219,6 +219,7 @@ fn enter_world_sends_reference_chunk_batch_then_position_sync_sequence() {
             20,
             0,
             Identifier::minecraft("overworld"),
+            16,
             vec![empty_chunk_packet(0, 0)],
             WorldBorder::DEFAULT.initialize_packet(WorldBorder::DEFAULT.diameter(), 0),
             SetTimePacket::new(42, 18000, true),
@@ -227,6 +228,7 @@ fn enter_world_sends_reference_chunk_batch_then_position_sync_sequence() {
         .unwrap();
 
     let packet_frames = read_available_packet_frames(&mut peer_stream);
+    let login_packet = LoginPlayPacket::decode(&mut packet_frames[0].1.as_slice()).unwrap();
     let packet_ids = packet_frames
         .iter()
         .map(|(packet_id, _)| *packet_id)
@@ -267,6 +269,7 @@ fn enter_world_sends_reference_chunk_batch_then_position_sync_sequence() {
     let mut set_time_payload = Cursor::new(packet_frames[set_time_index].1.clone());
 
     assert_eq!(packet_ids[0], LoginPlayPacket::get_id());
+    assert_eq!(login_packet.chunk_radius.0, 16);
     assert!(world_border_index < set_time_index);
     assert!(set_time_index < game_event_index);
     assert_eq!(weather_events[0].event, GameEvent::BeginRaining.event_id());
@@ -324,6 +327,7 @@ fn enter_world_sends_configured_permission_level_to_joining_player() {
             20,
             0,
             Identifier::minecraft("overworld"),
+            8,
             vec![empty_chunk_packet(0, 0)],
             WorldBorder::DEFAULT.initialize_packet(WorldBorder::DEFAULT.diameter(), 0),
             SetTimePacket::new(42, 18000, true),
@@ -367,6 +371,7 @@ fn enter_world_sends_configuration_skin_part_metadata_snapshot() {
             20,
             0,
             Identifier::minecraft("overworld"),
+            8,
             vec![empty_chunk_packet(0, 0)],
             WorldBorder::DEFAULT.initialize_packet(WorldBorder::DEFAULT.diameter(), 0),
             SetTimePacket::new(42, 18000, true),

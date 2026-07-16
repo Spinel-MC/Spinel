@@ -27,6 +27,7 @@ impl LoginPlayPacket {
             GameMode::Survival,
             0,
             Identifier::minecraft("overworld"),
+            8,
         )
     }
 
@@ -35,13 +36,14 @@ impl LoginPlayPacket {
         game_mode: GameMode,
         dimension_type_id: i32,
         dimension_name: Identifier,
+        chunk_radius: i32,
     ) -> Self {
         Self {
             player_id,
             is_hardcore: false,
             levels: Array(vec![dimension_name.clone()]),
             max_players: VarIntWrapper(20),
-            chunk_radius: VarIntWrapper(8),
+            chunk_radius: VarIntWrapper(chunk_radius),
             simulation_distance: VarIntWrapper(8),
             has_reduced_debug_info: false,
             should_show_death_screen: true,
