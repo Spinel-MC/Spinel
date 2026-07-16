@@ -27,7 +27,7 @@ use spinel_core::network::clientbound::play::update_recipes::UpdateRecipesPacket
 use spinel_core::network::clientbound::play::world_event::WorldEventPacket;
 use spinel_network::types::sound::SoundEvent;
 use spinel_network::types::{Identifier, Position, Vector3d};
-use spinel_network::{ConnectionState, PacketSender, PacketStruct};
+use spinel_network::{ConnectionState, DataType, PacketSender, PacketStruct};
 use spinel_registry::RegistryKey;
 use spinel_registry::dialog::Dialog;
 use spinel_utils::component::text::TextComponent;
@@ -93,7 +93,9 @@ impl Player {
         channel: impl Into<String>,
         data: impl Into<String>,
     ) -> io::Result<()> {
-        self.send_plugin_message(channel, data.into().into_bytes())
+        let mut encoded_payload = Vec::new();
+        data.into().encode(&mut encoded_payload)?;
+        self.send_plugin_message(channel, encoded_payload)
     }
 
     pub fn send_message(&mut self, message: impl Into<TextComponent>) {

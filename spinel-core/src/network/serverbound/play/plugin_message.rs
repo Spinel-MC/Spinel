@@ -1,11 +1,11 @@
 use spinel_network::encoder::NetworkBuffer;
-use spinel_network::{ConnectionState, DataType, PacketSender, PacketStruct};
+use spinel_network::{ConnectionState, DataType, PacketSender, PacketStruct, RawBytes};
 use std::io::{self, Read, Write};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ServerboundPlayCustomPayloadPacket {
     pub channel: String,
-    pub data: Vec<u8>,
+    pub data: RawBytes,
 }
 
 impl ServerboundPlayCustomPayloadPacket {
@@ -36,14 +36,14 @@ impl ServerboundPlayCustomPayloadPacket {
 impl DataType for ServerboundPlayCustomPayloadPacket {
     fn encode<W: Write>(&self, writer: &mut W) -> io::Result<()> {
         self.channel.encode(writer)?;
-        writer.write_all(&self.data)
+        self.data.encode(writer)
     }
 
     fn decode<R: Read>(reader: &mut R) -> io::Result<Self> {
-        let channel = String::decode(reader)?;
-        let mut data = Vec::new();
-        reader.read_to_end(&mut data)?;
-        Ok(Self { channel, data })
+        Ok(Self {
+            channel: String::decode(reader)?,
+            data: RawBytes::decode(reader)?,
+        })
     }
 }
 

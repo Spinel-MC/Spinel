@@ -12,7 +12,7 @@ pub use data_type::DataType;
 pub use types::var_int::VarIntWrapper;
 pub use types::var_long::VarLongWrapper;
 pub use types::{Array, Position, Slot, VarInt, VarLong};
-pub use wrappers::{JsonTextComponent, NbtTextComponent};
+pub use wrappers::{JsonTextComponent, NbtTextComponent, RawBytes};
 
 pub use decoder::PacketDecoder;
 pub use encoder as encoder_module;

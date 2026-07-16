@@ -2,6 +2,7 @@ use crate::data_type::DataType;
 use spinel_nbt::{Nbt, NbtCompound};
 use spinel_utils::component::text::TextComponent;
 use std::io::{self, Read, Write};
+use std::ops::{Deref, DerefMut};
 
 #[derive(Debug, Clone)]
 pub struct JsonTextComponent(pub TextComponent);
@@ -57,6 +58,53 @@ impl DataType for NbtCompound {
 }
 
 pub type ByteArray = Vec<u8>;
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct RawBytes(pub Vec<u8>);
+
+impl DataType for RawBytes {
+    fn encode<W: Write>(&self, writer: &mut W) -> io::Result<()> {
+        writer.write_all(&self.0)
+    }
+
+    fn decode<R: Read>(reader: &mut R) -> io::Result<Self> {
+        let mut bytes = Vec::new();
+        reader.read_to_end(&mut bytes)?;
+        Ok(Self(bytes))
+    }
+}
+
+impl Deref for RawBytes {
+    type Target = Vec<u8>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for RawBytes {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+impl From<Vec<u8>> for RawBytes {
+    fn from(bytes: Vec<u8>) -> Self {
+        Self(bytes)
+    }
+}
+
+impl From<RawBytes> for Vec<u8> {
+    fn from(bytes: RawBytes) -> Self {
+        bytes.0
+    }
+}
+
+impl AsRef<[u8]> for RawBytes {
+    fn as_ref(&self) -> &[u8] {
+        &self.0
+    }
+}
 
 impl From<JsonTextComponent> for TextComponent {
     fn from(w: JsonTextComponent) -> Self {

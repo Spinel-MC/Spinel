@@ -1,5 +1,5 @@
 use spinel_macros::packet;
-use spinel_network::types::Array;
+use spinel_network::RawBytes;
 
 #[packet(
     id: "custom_payload",
@@ -8,5 +8,5 @@ use spinel_network::types::Array;
 )]
 pub struct CustomPayloadPacket {
     pub channel: String,
-    pub data: Array<u8>,
+    pub data: RawBytes,
 }

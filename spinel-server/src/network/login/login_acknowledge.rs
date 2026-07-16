@@ -5,7 +5,7 @@ use spinel_core::network::clientbound::configuration::{
 };
 use spinel_core::network::serverbound::login::login_acknowledge::LoginAcknowledgedPacket;
 use spinel_macros::fn_packet_listener;
-use spinel_network::ConnectionState;
+use spinel_network::{ConnectionState, DataType, RawBytes};
 use spinel_utils::constants::{MINECRAFT_VERSION, SERVER_BRAND};
 use std::io;
 
@@ -16,9 +16,13 @@ struct ConfigurationTransition<'a> {
 impl<'a> ConfigurationTransition<'a> {
     fn apply(self) -> io::Result<()> {
         self.client.state = ConnectionState::Configuration;
+
+        let mut brand_payload = Vec::new();
+        SERVER_BRAND.to_string().encode(&mut brand_payload)?;
+
         CustomPayloadPacket {
             channel: "minecraft:brand".to_string(),
-            data: SERVER_BRAND.as_bytes().to_vec(),
+            data: RawBytes::from(brand_payload),
         }
         .dispatch(self.client)?;
         KnownPacksPacket::new(vec![(
