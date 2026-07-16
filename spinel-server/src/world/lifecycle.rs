@@ -62,6 +62,7 @@ impl World {
             cached_dimension_type: DimensionType::default(),
             dimension_name: name.clone(),
             auto_chunk_load: true,
+            automatic_chunk_unload: true,
             world_age: 0,
             time: 0,
             time_rate: 1,

@@ -1,3 +1,4 @@
+use crate::world::ChunkPosition;
 use flate2::{Compression, read::GzDecoder, read::ZlibDecoder, write::ZlibEncoder};
 use spinel_nbt::{Nbt, NbtCompound};
 use std::fs::{File, OpenOptions};
@@ -46,6 +47,19 @@ impl RegionFile {
 
     pub fn has_chunk_data(&self, chunk_x: i32, chunk_z: i32) -> bool {
         self.locations[chunk_region_index(chunk_x, chunk_z)] != 0
+    }
+
+    pub fn chunk_positions(&self, region_x: i32, region_z: i32) -> Vec<ChunkPosition> {
+        (0..32)
+            .flat_map(|local_z| {
+                (0..32).filter_map(move |local_x| {
+                    let chunk_x = region_x * 32 + local_x;
+                    let chunk_z = region_z * 32 + local_z;
+                    self.has_chunk_data(chunk_x, chunk_z)
+                        .then_some(ChunkPosition::new(chunk_x, chunk_z))
+                })
+            })
+            .collect()
     }
 
     pub fn read_chunk_data(

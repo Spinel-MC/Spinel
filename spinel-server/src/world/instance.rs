@@ -167,6 +167,7 @@ pub struct World {
     cached_dimension_type: DimensionType,
     dimension_name: Identifier,
     auto_chunk_load: bool,
+    automatic_chunk_unload: bool,
     world_age: i64,
     time: i64,
     time_rate: i32,
