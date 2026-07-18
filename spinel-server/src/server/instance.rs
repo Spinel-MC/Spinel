@@ -613,4 +613,3 @@ impl Default for MinecraftServer {
         Self::new()
     }
 }
-

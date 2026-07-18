@@ -172,5 +172,3 @@ fn valid_command(command_parse_result: CommandParseResult<'_>) -> ParsedCommand<
         }
     }
 }
-
-

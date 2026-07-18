@@ -17,9 +17,17 @@ pub struct Style {
     pub strikethrough: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub obfuscated: Option<bool>,
-    #[serde(rename = "clickEvent", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "click_event",
+        alias = "clickEvent",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub click_event: Option<ClickEvent>,
-    #[serde(rename = "hoverEvent", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "hover_event",
+        alias = "hoverEvent",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub hover_event: Option<HoverEvent>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub insertion: Option<String>,

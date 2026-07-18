@@ -2886,8 +2886,8 @@ fn player_dimension_statistics_hover_and_leave_bed_api_match_reference_surface()
         panic!("expected show entity hover event");
     };
 
-    assert_eq!(hover_entity.entity_type, "minecraft:player");
-    assert_eq!(hover_entity.id, player.get_uuid().to_string());
+    assert_eq!(hover_entity.id, "minecraft:player");
+    assert_eq!(hover_entity.uuid, player.get_uuid());
     assert!(hover_entity.name.is_some());
 
     let snapshot = player.update_snapshot(|snapshot| {

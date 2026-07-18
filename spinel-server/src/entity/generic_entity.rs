@@ -187,8 +187,8 @@ impl GenericEntity {
 
     pub fn as_hover_event(&self) -> HoverEvent {
         HoverEvent::ShowEntity(HoverEntity {
-            entity_type: self.entity_type.key().to_string(),
-            id: self.uuid.to_string(),
+            id: self.entity_type.key().to_string(),
+            uuid: self.uuid,
             name: self.get_custom_name().map(Box::new),
         })
     }

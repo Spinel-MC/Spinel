@@ -13,6 +13,7 @@ fn on_plugin_message(
     let Some(player) = server.world_manager.player_pointer_for_client(client) else {
         return false;
     };
-    PlayerPluginMessageEvent::new(player, packet.channel, packet.data.into()).dispatch(server, client);
+    PlayerPluginMessageEvent::new(player, packet.channel, packet.data.into())
+        .dispatch(server, client);
     true
 }

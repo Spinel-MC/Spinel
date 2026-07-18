@@ -17,6 +17,8 @@ fn raw_bytes_decode_consumes_remaining_reader_bytes() {
 #[test]
 fn raw_bytes_encode_writes_payload_without_length_prefix() {
     let mut encoded = Vec::new();
-    RawBytes(vec![0xAA, 0xBB, 0xCC]).encode(&mut encoded).unwrap();
+    RawBytes(vec![0xAA, 0xBB, 0xCC])
+        .encode(&mut encoded)
+        .unwrap();
     assert_eq!(encoded, vec![0xAA, 0xBB, 0xCC]);
 }

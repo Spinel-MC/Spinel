@@ -174,8 +174,8 @@ fn generic_entity_hover_event_uses_type_uuid_and_custom_name() {
         panic!("expected show entity hover event");
     };
 
-    assert_eq!(hover_entity.entity_type, "minecraft:zombie");
-    assert_eq!(hover_entity.id, entity.get_uuid().to_string());
+    assert_eq!(hover_entity.id, "minecraft:zombie");
+    assert_eq!(hover_entity.uuid, entity.get_uuid());
     assert!(hover_entity.name.is_some());
 }
 

@@ -75,8 +75,8 @@ impl Player {
 
     pub fn as_hover_event(&self) -> HoverEvent {
         HoverEvent::ShowEntity(HoverEntity {
-            entity_type: self.entity_type.key().to_string(),
-            id: self.uuid.to_string(),
+            id: self.entity_type.key().to_string(),
+            uuid: self.uuid,
             name: Some(Box::new(TextComponent::literal(self.get_username()))),
         })
     }

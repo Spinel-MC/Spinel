@@ -263,4 +263,3 @@ fn root_command_exists(commands_packet: &CommandsPacket, command_name: &str) -> 
 fn requires_admin(condition_context: CommandConditionContext, _input: Option<&str>) -> bool {
     condition_context.permission_level() >= 3
 }
-
