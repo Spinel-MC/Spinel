@@ -346,7 +346,7 @@ fn play_plugin_message_listener_dispatches_exact_channel_and_raw_payload() {
     attach_client_to_player(&mut server, &mut client);
     let packet = ServerboundPlayCustomPayloadPacket {
         channel: "minecraft:brand".to_string(),
-        data: vec![1, 2, 3, 4],
+        data: vec![1, 2, 3, 4].into(),
     };
 
     assert!(dispatch_packet(&mut server, &mut client, packet));

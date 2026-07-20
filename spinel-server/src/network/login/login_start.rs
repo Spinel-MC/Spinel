@@ -9,6 +9,7 @@ use rsa::rand_core::{OsRng, RngCore};
 use spinel_core::network::clientbound::login::encryption_request::EncryptionRequestPacket;
 use spinel_core::network::serverbound::login::login_start::LoginStartPacket;
 use spinel_macros::{fn_event_listener, fn_packet_listener};
+use spinel_network::types::game_profile::GameProfile;
 use spinel_utils::component::Component;
 
 struct LoginAuthenticationArtifacts {
@@ -28,13 +29,12 @@ impl<'a> LoginStartHandler<'a> {
     }
 
     fn handle(mut self, packet: LoginStartPacket) -> bool {
-        let pre_login_event = self.dispatch_pre_login_event(&packet);
-        if pre_login_event.cancelled {
-            return true;
-        }
-
-        let should_authenticate = pre_login_event.should_authenticate;
-        let game_profile = pre_login_event.into_game_profile();
+        let should_authenticate = matches!(self.server.auth(), Auth::Online(_));
+        let game_profile = GameProfile {
+            uuid: packet.uuid,
+            username: packet.name,
+            properties: Vec::new(),
+        };
         let authentication_artifacts = if should_authenticate {
             let Some(authentication_artifacts) = self.create_authentication_artifacts() else {
                 return self.kick_for_invalid_login_sequence();
@@ -48,20 +48,7 @@ impl<'a> LoginStartHandler<'a> {
             return true;
         }
 
-        if self.client.has_pending_login_plugin_requests() {
-            self.store_pending_plugin_completion(authentication_artifacts.as_ref());
-            return true;
-        }
-
         self.dispatch_login_response(game_profile, authentication_artifacts)
-    }
-
-    fn dispatch_pre_login_event(&mut self, packet: &LoginStartPacket) -> PreLoginEvent {
-        let should_authenticate = matches!(self.server.auth(), Auth::Online(_));
-        let mut pre_login_event =
-            PreLoginEvent::new(packet.name.clone(), packet.uuid, should_authenticate);
-        pre_login_event.dispatch(self.server, self.client);
-        pre_login_event
     }
 
     fn create_authentication_artifacts(&self) -> Option<LoginAuthenticationArtifacts> {
@@ -85,7 +72,7 @@ impl<'a> LoginStartHandler<'a> {
 
     fn store_login_metadata(
         &mut self,
-        game_profile: &spinel_network::types::game_profile::GameProfile,
+        game_profile: &GameProfile,
         authentication_artifacts: Option<&LoginAuthenticationArtifacts>,
     ) -> bool {
         let Some(login_metadata) = &mut self.client.login_metadata else {
@@ -103,30 +90,14 @@ impl<'a> LoginStartHandler<'a> {
 
     fn dispatch_login_response(
         &mut self,
-        game_profile: spinel_network::types::game_profile::GameProfile,
+        game_profile: GameProfile,
         authentication_artifacts: Option<LoginAuthenticationArtifacts>,
     ) -> bool {
         let Some(authentication_artifacts) = authentication_artifacts else {
-            return self.dispatch_login_success(game_profile);
+            return self.dispatch_pre_login_and_complete(game_profile);
         };
 
         self.dispatch_encryption_request(authentication_artifacts)
-    }
-
-    fn store_pending_plugin_completion(
-        &mut self,
-        authentication_artifacts: Option<&LoginAuthenticationArtifacts>,
-    ) {
-        let Some(login_metadata) = self.client.login_metadata.as_mut() else {
-            return;
-        };
-        login_metadata.pending_plugin_completion = match authentication_artifacts {
-            Some(authentication_artifacts) => Some(PendingPluginLoginCompletion::Online {
-                public_key_der: authentication_artifacts.public_key_der.clone(),
-                verify_token: authentication_artifacts.verify_token.clone(),
-            }),
-            None => Some(PendingPluginLoginCompletion::Offline),
-        };
     }
 
     fn dispatch_encryption_request(
@@ -147,10 +118,39 @@ impl<'a> LoginStartHandler<'a> {
         true
     }
 
-    fn dispatch_login_success(
+    fn dispatch_pre_login_and_complete(&mut self, game_profile: GameProfile) -> bool {
+        let Some(game_profile) = self.dispatch_authenticated_pre_login_event(game_profile) else {
+            return true;
+        };
+        if self.client.has_pending_login_plugin_requests() {
+            self.store_pending_plugin_completion();
+            return true;
+        }
+        self.dispatch_login_success(game_profile)
+    }
+
+    fn dispatch_authenticated_pre_login_event(
         &mut self,
-        game_profile: spinel_network::types::game_profile::GameProfile,
-    ) -> bool {
+        game_profile: GameProfile,
+    ) -> Option<GameProfile> {
+        let mut pre_login_event =
+            PreLoginEvent::new(game_profile.username.clone(), game_profile.uuid, false);
+        pre_login_event.set_game_profile(game_profile);
+        pre_login_event.dispatch(self.server, self.client);
+        if pre_login_event.cancelled {
+            return None;
+        }
+        Some(pre_login_event.into_game_profile())
+    }
+
+    fn store_pending_plugin_completion(&mut self) {
+        let Some(login_metadata) = self.client.login_metadata.as_mut() else {
+            return;
+        };
+        login_metadata.pending_plugin_completion = Some(PendingPluginLoginCompletion::Offline);
+    }
+
+    fn dispatch_login_success(&mut self, game_profile: GameProfile) -> bool {
         if self
             .client
             .transition_login_to_configuration(game_profile)
@@ -170,7 +170,10 @@ impl<'a> LoginStartHandler<'a> {
     }
 }
 
-pub(crate) fn resume_login_after_plugin_responses(client: &mut Client) -> bool {
+pub(crate) fn resume_login_after_plugin_responses(
+    client: &mut Client,
+    _server: &mut MinecraftServer,
+) -> bool {
     if client.has_pending_login_plugin_requests() {
         return true;
     }

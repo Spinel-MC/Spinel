@@ -8,7 +8,7 @@ use spinel_macros::fn_packet_listener;
 fn on_login_plugin_response(
     client: &mut Client,
     packet: LoginPluginResponsePacket,
-    _server: &mut MinecraftServer,
+    server: &mut MinecraftServer,
 ) -> bool {
     if client
         .complete_login_plugin_response(packet.message_id, packet.data)
@@ -16,5 +16,5 @@ fn on_login_plugin_response(
     {
         return false;
     }
-    resume_login_after_plugin_responses(client)
+    resume_login_after_plugin_responses(client, server)
 }

@@ -1,15 +1,35 @@
+use crate::events::login::PreLoginEvent;
 use crate::network::client::instance::Client;
 use crate::network::client::metadata::LoginMetadata;
 use crate::network::login::login_start::on_login_start;
 use crate::server::{Auth, MinecraftServer, OnlineAuth};
+use spinel_core::network::clientbound::login::disconnect::LoginDisconnectPacket;
 use spinel_core::network::clientbound::login::encryption_request::EncryptionRequestPacket;
 use spinel_core::network::clientbound::login::set_compression::SetCompressionPacket;
 use spinel_core::network::serverbound::login::login_start::LoginStartPacket;
+use spinel_macros::event_listener;
 use spinel_network::{ConnectionState, DataType, PacketDecoder, VarIntWrapper};
 use std::io::Cursor;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr, TcpListener, TcpStream};
 use uuid::Uuid;
 
+struct RejectedAuthenticatedPreLoginTestListener;
+
+#[event_listener]
+impl RejectedAuthenticatedPreLoginTestListener {
+    #[event_handler]
+    fn on_pre_login(event: &mut PreLoginEvent, _server: &mut MinecraftServer) {
+        if event.username() != "RejectedPlayer" {
+            return;
+        }
+        let _ = event
+            .client()
+            .kick(spinel_utils::component::Component::text(
+                "Rejected after authentication",
+            ));
+        event.cancelled = true;
+    }
+}
 #[test]
 fn login_start_sends_encryption_request_when_server_auth_is_online() {
     let (mut client, mut peer_stream) = connected_login_client();
@@ -21,6 +41,29 @@ fn login_start_sends_encryption_request_when_server_auth_is_online() {
     assert_eq!(
         first_clientbound_packet_id(&mut peer_stream),
         EncryptionRequestPacket::get_id()
+    );
+}
+
+#[test]
+fn offline_login_rejection_sends_login_disconnect_after_authenticated_pre_login_event() {
+    let (mut client, mut peer_stream) = connected_login_client();
+    let mut server = MinecraftServer::init(Auth::Offline);
+    server.register_event_handler(RejectedAuthenticatedPreLoginTestListener);
+    let login_start_packet = LoginStartPacket {
+        name: "RejectedPlayer".to_owned(),
+        uuid: Uuid::from_u128(0xaaaaaaaa_bbbb_cccc_dddd_eeeeeeeeeeee),
+    };
+
+    assert!(on_login_start(&mut client, login_start_packet, &mut server));
+
+    let packet_frame = first_clientbound_packet_frame(&mut peer_stream);
+    let mut packet_cursor = Cursor::new(packet_frame);
+    let packet_id = VarIntWrapper::decode(&mut packet_cursor).unwrap().0;
+    let disconnect_packet = LoginDisconnectPacket::decode(&mut packet_cursor).unwrap();
+    assert_eq!(packet_id, LoginDisconnectPacket::get_id());
+    assert_eq!(
+        disconnect_packet.reason.to_plain_string(),
+        "Rejected after authentication"
     );
 }
 
@@ -60,10 +103,13 @@ fn login_start_packet() -> LoginStartPacket {
 }
 
 fn first_clientbound_packet_id(peer_stream: &mut TcpStream) -> i32 {
-    let mut packet_decoder = PacketDecoder::new();
-    let packet_frame = packet_decoder.read_frame(peer_stream).unwrap();
+    let packet_frame = first_clientbound_packet_frame(peer_stream);
     let mut packet_cursor = Cursor::new(packet_frame);
     VarIntWrapper::decode(&mut packet_cursor).unwrap().0
+}
+
+fn first_clientbound_packet_frame(peer_stream: &mut TcpStream) -> Vec<u8> {
+    PacketDecoder::new().read_frame(peer_stream).unwrap()
 }
 
 fn online_auth() -> Auth {

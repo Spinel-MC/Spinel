@@ -96,6 +96,16 @@ impl<'a> EncryptionResponseHandler<'a> {
             login_metadata.game_profile = Some(verified_game_profile.clone());
         }
 
+        let Some(verified_game_profile) =
+            self.dispatch_authenticated_pre_login_event(verified_game_profile)
+        else {
+            return true;
+        };
+        if self.client.has_pending_login_plugin_requests() {
+            self.store_pending_plugin_completion();
+            return true;
+        }
+
         if self
             .client
             .transition_login_to_configuration(verified_game_profile)
@@ -107,6 +117,30 @@ impl<'a> EncryptionResponseHandler<'a> {
         true
     }
 
+    fn dispatch_authenticated_pre_login_event(
+        &mut self,
+        game_profile: GameProfile,
+    ) -> Option<GameProfile> {
+        let mut pre_login_event = crate::events::login::PreLoginEvent::new(
+            game_profile.username.clone(),
+            game_profile.uuid,
+            false,
+        );
+        pre_login_event.set_game_profile(game_profile);
+        pre_login_event.dispatch(self.server, self.client);
+        if pre_login_event.cancelled {
+            return None;
+        }
+        Some(pre_login_event.into_game_profile())
+    }
+
+    fn store_pending_plugin_completion(&mut self) {
+        let Some(login_metadata) = self.client.login_metadata.as_mut() else {
+            return;
+        };
+        login_metadata.pending_plugin_completion =
+            Some(crate::network::client::metadata::PendingPluginLoginCompletion::Offline);
+    }
     fn kick_for_failed_session_verification(&mut self) -> bool {
         let _ = self
             .server
