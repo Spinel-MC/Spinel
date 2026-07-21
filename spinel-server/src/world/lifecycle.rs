@@ -26,6 +26,42 @@ impl World {
         )
     }
 
+    pub fn new_with_registries(
+        registries: &Registries,
+        uuid: Uuid,
+        dimension_type: RegistryKey<DimensionType>,
+    ) -> Result<Self> {
+        Self::new_with_dimension_name_and_registries(
+            registries,
+            uuid,
+            dimension_type.key().clone(),
+            dimension_type,
+        )
+    }
+
+    pub fn new_with_dimension_name_and_registries(
+        registries: &Registries,
+        uuid: Uuid,
+        dimension_name: Identifier,
+        dimension_type: RegistryKey<DimensionType>,
+    ) -> Result<Self> {
+        let cached_dimension_type = registries
+            .dimension_type()
+            .get(&dimension_type)
+            .cloned()
+            .ok_or_else(|| {
+                Error::new(
+                    ErrorKind::InvalidInput,
+                    format!("The dimension {} is not registered.", dimension_type.key()),
+                )
+            })?;
+        Ok(Self::new_with_cached_dimension_type(
+            uuid,
+            dimension_name,
+            dimension_type,
+            cached_dimension_type,
+        ))
+    }
     fn new_base(uuid: Uuid, name: Identifier) -> Self {
         let (completed_chunk_load_sender, completed_chunk_load_receiver) = mpsc::channel();
         Self {

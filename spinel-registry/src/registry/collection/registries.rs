@@ -109,6 +109,14 @@ impl Registries {
         &mut self.biomes
     }
 
+    pub fn dimension_type(&self) -> &DynamicRegistry<dimension_type::DimensionType> {
+        &self.dimension_types
+    }
+
+    pub fn dimension_type_mut(&mut self) -> &mut DynamicRegistry<dimension_type::DimensionType> {
+        &mut self.dimension_types
+    }
+
     pub fn cat_variant(&self) -> &DynamicRegistry<cat_variant::CatVariant> {
         &self.cat_variants
     }

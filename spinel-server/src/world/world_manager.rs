@@ -69,6 +69,16 @@ impl WorldManager {
         world_uuid
     }
 
+    pub fn create_world_with_registries(
+        &mut self,
+        registries: &Registries,
+        dimension_type: RegistryKey<DimensionType>,
+    ) -> io::Result<Uuid> {
+        let world = World::new_with_registries(registries, Uuid::new_v4(), dimension_type)?;
+        let world_uuid = world.uuid;
+        self.register_world(world);
+        Ok(world_uuid)
+    }
     pub fn register_world(&mut self, mut world: World) {
         world.set_registered(true);
         world.dispatch_world_register_event();
@@ -87,10 +97,11 @@ impl WorldManager {
         }
         let shared_world = SharedWorld::new(
             source_world,
-            World::new_with_dimension_name(
+            World::new_with_cached_dimension_type(
                 Uuid::new_v4(),
-                source.get_dimension_type().clone(),
                 source.dimension_name().clone(),
+                source.get_dimension_type().clone(),
+                source.cached_dimension_type().clone(),
             ),
         );
         let shared_world_uuid = shared_world.uuid();

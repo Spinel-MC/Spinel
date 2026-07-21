@@ -2,8 +2,8 @@ use super::super::world_manager::WorldManager;
 use crate::entity::{Entity, EntityPosition, GenericEntity};
 use crate::world::{Chunk, ChunkLoader, ChunkPosition, World};
 use spinel_network::types::Identifier;
-use spinel_registry::EntityType;
 use spinel_registry::dimension_type::DimensionType;
+use spinel_registry::{EntityType, Registries};
 use std::io;
 
 struct ManagerTestChunkLoader;
@@ -72,6 +72,51 @@ fn world_manager_create_and_register_worlds_match_reference_world_manager_surfac
     );
 }
 
+#[test]
+fn world_manager_create_world_with_registries_uses_registered_dimension_bounds() {
+    let mut registries = Registries::new_vanilla();
+    let dimension_type = DimensionType::builder()
+        .vertical_bounds(-32, 256, 128)
+        .build();
+    let dimension_type_key = registries
+        .dimension_type_mut()
+        .register(Identifier::minecraft("custom_height"), dimension_type)
+        .unwrap();
+    let mut worlds = WorldManager::new();
+
+    let world_uuid = worlds
+        .create_world_with_registries(&registries, dimension_type_key.clone())
+        .unwrap();
+    let world = worlds.world(world_uuid).unwrap();
+
+    assert_eq!(world.get_dimension_type(), &dimension_type_key);
+    assert_eq!(world.cached_dimension_type().min_y, -32);
+    assert_eq!(world.cached_dimension_type().height, 256);
+    assert_eq!(world.cached_dimension_type().logical_height, 128);
+}
+#[test]
+fn world_manager_create_shared_world_preserves_source_dimension_bounds() {
+    let mut registries = Registries::new_vanilla();
+    let dimension_type = DimensionType::builder()
+        .vertical_bounds(-32, 256, 128)
+        .build();
+    let dimension_type_key = registries
+        .dimension_type_mut()
+        .register(Identifier::minecraft("shared_height"), dimension_type)
+        .unwrap();
+    let mut worlds = WorldManager::new();
+    let source_world_uuid = worlds
+        .create_world_with_registries(&registries, dimension_type_key.clone())
+        .unwrap();
+
+    let shared_world_uuid = worlds.create_shared_world(source_world_uuid).unwrap();
+    let shared_world = worlds.shared_world(shared_world_uuid).unwrap().world();
+
+    assert_eq!(shared_world.get_dimension_type(), &dimension_type_key);
+    assert_eq!(shared_world.cached_dimension_type().min_y, -32);
+    assert_eq!(shared_world.cached_dimension_type().height, 256);
+    assert_eq!(shared_world.cached_dimension_type().logical_height, 128);
+}
 #[test]
 fn world_manager_add_passenger_moves_passenger_to_vehicle_world_first() {
     let mut worlds = WorldManager::new();

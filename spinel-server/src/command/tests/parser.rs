@@ -179,3 +179,41 @@ fn valid_command(command_parse_result: CommandParseResult<'_>) -> ParsedCommand<
         }
     }
 }
+
+#[test]
+fn parser_records_invalid_trailing_argument_start_after_known_command() {
+    let command = Command::new("flyspeed")
+        .with_default_executor(CommandExecutor::from_function(unused_executor));
+    let commands = [command];
+
+    match CommandParser::parse(&commands, "flyspeed extra") {
+        CommandParseResult::Invalid(parsed_command) => {
+            assert_eq!(parsed_command.error_cursor(), Some("flyspeed ".len()));
+        }
+        CommandParseResult::Valid(_)
+        | CommandParseResult::Incomplete(_)
+        | CommandParseResult::Unknown => {
+            panic!("expected invalid command")
+        }
+    }
+}
+
+#[test]
+fn parser_records_invalid_subcommand_start_after_known_literal_chain() {
+    let command = Command::new("whitelist").with_subcommand(Command::new("on").with_syntax(
+        CommandExecutor::from_function(unused_executor),
+        Vec::<CommandArgument>::new(),
+    ));
+    let commands = [command];
+
+    match CommandParser::parse(&commands, "whitelist onn") {
+        CommandParseResult::Invalid(parsed_command) => {
+            assert_eq!(parsed_command.error_cursor(), Some("whitelist ".len()));
+        }
+        CommandParseResult::Valid(_)
+        | CommandParseResult::Incomplete(_)
+        | CommandParseResult::Unknown => {
+            panic!("expected invalid command")
+        }
+    }
+}

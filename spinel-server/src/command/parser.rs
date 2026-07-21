@@ -12,6 +12,7 @@ pub struct ParsedCommand<'a> {
     command: &'a Command,
     syntax: Option<&'a CommandSyntax>,
     context: CommandContext,
+    error_cursor: Option<usize>,
 }
 
 pub enum CommandParseResult<'a> {
@@ -33,7 +34,7 @@ impl CommandParser {
         else {
             return CommandParseResult::Unknown;
         };
-        let (command, command_arguments) =
+        let (command, command_arguments, command_cursor) =
             Self::parse_subcommand(root_command, command_arguments.trim());
         let parse_context = Self::parse_context(command, trimmed_command_line, command_arguments);
         let Some((context, syntax)) = parse_context else {
@@ -41,6 +42,7 @@ impl CommandParser {
                 command,
                 syntax: None,
                 context: CommandContext::empty(trimmed_command_line),
+                error_cursor: Some(command_cursor),
             };
             if command_arguments.is_empty() {
                 return CommandParseResult::Incomplete(parsed_command);
@@ -51,25 +53,16 @@ impl CommandParser {
             command,
             syntax,
             context,
+            error_cursor: None,
         })
     }
 
     fn parse_subcommand<'a, 'b>(
         command: &'a Command,
         command_arguments: &'b str,
-    ) -> (&'a Command, &'b str) {
-        let (next_word, remaining_input) = next_word(command_arguments);
-        if next_word.is_empty() {
-            return (command, command_arguments);
-        }
-        let Some(subcommand) = command
-            .subcommands()
-            .iter()
-            .find(|subcommand| subcommand.name_matches(next_word))
-        else {
-            return (command, command_arguments);
-        };
-        Self::parse_subcommand(subcommand, remaining_input.trim_start())
+    ) -> (&'a Command, &'b str, usize) {
+        let command_cursor = command.name().len() + usize::from(!command_arguments.is_empty());
+        parse_subcommand_from_cursor(command, command_arguments, command_cursor)
     }
 
     fn parse_context<'a>(
@@ -222,6 +215,10 @@ impl<'a> ParsedCommand<'a> {
         &self.context
     }
 
+    pub const fn error_cursor(&self) -> Option<usize> {
+        self.error_cursor
+    }
+
     pub const fn context_mut(&mut self) -> &mut CommandContext {
         &mut self.context
     }
@@ -235,6 +232,31 @@ struct ParsedArgument<'a> {
 
 fn next_word(input: &str) -> (&str, &str) {
     input.split_once(char::is_whitespace).unwrap_or((input, ""))
+}
+
+fn parse_subcommand_from_cursor<'a, 'b>(
+    command: &'a Command,
+    command_arguments: &'b str,
+    command_cursor: usize,
+) -> (&'a Command, &'b str, usize) {
+    let (next_word, remaining_input) = next_word(command_arguments);
+    if next_word.is_empty() {
+        return (command, command_arguments, command_cursor);
+    }
+    let Some(subcommand) = command
+        .subcommands()
+        .iter()
+        .find(|subcommand| subcommand.name_matches(next_word))
+    else {
+        return (command, command_arguments, command_cursor);
+    };
+    let remaining_command_arguments = remaining_input.trim_start();
+    let consumed_separator_length = usize::from(!remaining_command_arguments.is_empty());
+    parse_subcommand_from_cursor(
+        subcommand,
+        remaining_command_arguments,
+        command_cursor + next_word.len() + consumed_separator_length,
+    )
 }
 
 fn next_quoted_or_word(input: &str) -> (&str, &str) {
