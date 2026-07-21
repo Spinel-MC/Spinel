@@ -71,6 +71,61 @@ fn entity_argument_types_suggest_vanilla_selector_roots() {
     assert!(!suggestion_has_entry(&player_target_suggestions, "@e"));
     assert!(suggestion_has_entry(&entity_target_suggestions, "@e"));
 }
+#[test]
+fn command_manager_suggests_subcommand_arguments_like_minestom_tab_complete() {
+    let mut command_manager = CommandManager::new();
+    let subcommand = Command::new("bar").with_syntax(
+        CommandExecutor::from_function(unused_executor),
+        vec![
+            custom_argument_with_suggestions("wordArg1"),
+            custom_argument_with_suggestions("wordArg2"),
+        ],
+    );
+    command_manager.register(Command::new("foo").with_subcommand(subcommand));
+
+    let suggestions = command_manager.suggest(CommandSenderKind::Player, "/foo bar ");
+
+    assert_eq!(suggestions.start(), "/foo bar ".len());
+    assert_eq!(suggestions.length(), 0);
+    assert_eq!(suggestions.entries()[0].entry(), "Alex");
+}
+
+#[test]
+fn command_manager_uses_suggestion_callback_after_matching_subcommand_literal_branch() {
+    let mut command_manager = CommandManager::new();
+    let first_subcommand = Command::new("literal1").with_syntax(
+        CommandExecutor::from_function(unused_executor),
+        vec![custom_argument_with_suggestions("wordArg1")],
+    );
+    let second_subcommand = Command::new("literal2").with_syntax(
+        CommandExecutor::from_function(unused_executor),
+        vec![custom_argument_with_suggestions("wordArg2")],
+    );
+    command_manager.register(
+        Command::new("foo")
+            .with_subcommand(first_subcommand)
+            .with_subcommand(second_subcommand),
+    );
+
+    let suggestions = command_manager.suggest(CommandSenderKind::Player, "/foo literal2 ");
+
+    assert_eq!(suggestions.start(), "/foo literal2 ".len());
+    assert_eq!(suggestions.length(), 0);
+    assert_eq!(suggestions.entries()[0].entry(), "Alex");
+}
+#[test]
+fn command_manager_does_not_treat_current_literal_token_as_argument_cursor() {
+    let mut command_manager = CommandManager::new();
+    let subcommand = Command::new("bar").with_syntax(
+        CommandExecutor::from_function(unused_executor),
+        vec![custom_argument_with_suggestions("wordArg1")],
+    );
+    command_manager.register(Command::new("foo").with_subcommand(subcommand));
+
+    let suggestions = command_manager.suggest(CommandSenderKind::Player, "/foo bar");
+
+    assert!(suggestions.entries().is_empty());
+}
 fn custom_argument_with_suggestions(id: &str) -> CommandArgument {
     let mut argument = CommandArgument::custom_parser(id, ArgumentParserType::String, "String");
     argument.set_suggestion_callback(SuggestionCallback::from_function(suggest_players));

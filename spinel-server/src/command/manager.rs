@@ -13,6 +13,11 @@ pub struct CommandManager {
     commands: Vec<Command>,
 }
 
+struct SuggestionTarget<'a> {
+    command: &'a Command,
+    consumed_command_part_count: usize,
+}
+
 impl CommandManager {
     pub fn new() -> Self {
         Self {
@@ -133,10 +138,21 @@ impl CommandManager {
         if !Self::command_condition_allows(command, condition_context, Some(command_text)) {
             return Suggestion::new(command_text, command_text.len(), 0);
         }
-        let current_argument_index = if command_ends_with_space {
-            command_parts.len().saturating_sub(1)
-        } else {
-            command_parts.len().saturating_sub(2)
+        let Some(suggestion_target) = Self::resolve_suggestion_target(
+            command,
+            condition_context,
+            command_text,
+            command_ends_with_space,
+            command_parts,
+        ) else {
+            return Suggestion::new(command_text, command_text.len(), 0);
+        };
+        let entered_argument_count = command_parts
+            .len()
+            .saturating_sub(suggestion_target.consumed_command_part_count);
+        let current_argument_index = match command_ends_with_space {
+            true => entered_argument_count,
+            false => entered_argument_count.saturating_sub(1),
         };
         let current_argument_text = if command_ends_with_space {
             ""
@@ -151,7 +167,8 @@ impl CommandManager {
             current_argument_start,
             current_argument_text.len(),
         );
-        command
+        suggestion_target
+            .command
             .syntaxes()
             .iter()
             .filter(|syntax| {
@@ -164,6 +181,42 @@ impl CommandManager {
                 callback.suggest(server, condition_context, &context, &mut suggestion);
             });
         suggestion
+    }
+
+    fn resolve_suggestion_target<'a>(
+        command: &'a Command,
+        condition_context: CommandConditionContext,
+        command_text: &str,
+        command_ends_with_space: bool,
+        command_parts: &[&str],
+    ) -> Option<SuggestionTarget<'a>> {
+        let mut suggestion_command = command;
+        let mut consumed_command_part_count = 1;
+        let consumable_command_part_count = match command_ends_with_space {
+            true => command_parts.len(),
+            false => command_parts.len().saturating_sub(1),
+        };
+        while consumed_command_part_count < consumable_command_part_count {
+            let Some(command_part) = command_parts.get(consumed_command_part_count) else {
+                break;
+            };
+            let Some(subcommand) = suggestion_command
+                .subcommands()
+                .iter()
+                .find(|subcommand| subcommand.name_matches(command_part))
+            else {
+                break;
+            };
+            if !Self::command_condition_allows(subcommand, condition_context, Some(command_text)) {
+                return None;
+            }
+            suggestion_command = subcommand;
+            consumed_command_part_count += 1;
+        }
+        Some(SuggestionTarget {
+            command: suggestion_command,
+            consumed_command_part_count,
+        })
     }
 
     pub(crate) fn execute(
