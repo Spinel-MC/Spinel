@@ -1,7 +1,7 @@
 use crate::command::{
     ArgumentType, Command, CommandArgument, CommandConditionContext, CommandContext,
-    CommandExecutionResult, CommandManager, CommandSender, CommandSenderKind, Suggestion,
-    SuggestionEntry,
+    CommandExecutionResult, CommandExecutor, CommandManager, CommandSender, CommandSenderKind,
+    Suggestion, SuggestionCallback, SuggestionEntry,
 };
 use crate::server::MinecraftServer;
 use spinel_core::network::clientbound::play::commands::ArgumentParserType;
@@ -11,7 +11,7 @@ fn command_manager_suggests_roots_and_argument_callbacks_like_reference_tab_comp
     let mut command_manager = CommandManager::new();
     command_manager.register(Command::new("spawn").with_alias("summon"));
     command_manager.register(Command::new("teleport").with_syntax(
-        unused_executor,
+        CommandExecutor::from_function(unused_executor),
         vec![custom_argument_with_suggestions("target")],
     ));
 
@@ -50,13 +50,14 @@ fn command_manager_filters_root_suggestions_by_source_condition() {
 #[test]
 fn entity_argument_types_suggest_vanilla_selector_roots() {
     let mut command_manager = CommandManager::new();
-    command_manager.register(
-        Command::new("flyspeed")
-            .with_syntax(unused_executor, vec![ArgumentType::Players("targets")]),
-    );
-    command_manager.register(
-        Command::new("kill").with_syntax(unused_executor, vec![ArgumentType::Entities("targets")]),
-    );
+    command_manager.register(Command::new("flyspeed").with_syntax(
+        CommandExecutor::from_function(unused_executor),
+        vec![ArgumentType::Players("targets")],
+    ));
+    command_manager.register(Command::new("kill").with_syntax(
+        CommandExecutor::from_function(unused_executor),
+        vec![ArgumentType::Entities("targets")],
+    ));
 
     let player_target_suggestions =
         command_manager.suggest_for_source(CommandConditionContext::player(2), "/flyspeed @");
@@ -72,7 +73,7 @@ fn entity_argument_types_suggest_vanilla_selector_roots() {
 }
 fn custom_argument_with_suggestions(id: &str) -> CommandArgument {
     let mut argument = CommandArgument::custom_parser(id, ArgumentParserType::String, "String");
-    argument.set_suggestion_callback(suggest_players);
+    argument.set_suggestion_callback(SuggestionCallback::from_function(suggest_players));
     argument
 }
 

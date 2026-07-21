@@ -1,7 +1,7 @@
 use spinel::server::MinecraftServer;
 use spinel::server::command::{
     ArgumentType, Command, CommandConditionContext, CommandContext, CommandExecutionResult,
-    CommandSender,
+    CommandExecutor, CommandSender,
 };
 
 pub struct GamemodeCommand;
@@ -14,8 +14,14 @@ impl GamemodeCommand {
         let mut command = Command::new("gamemode");
 
         command.set_condition(Some(Self::requires_gamemaster));
-        command.add_syntax(Self::execute_gamemode, [gamemode]);
-        command.add_syntax(Self::execute_gamemode, [gamemode, target]);
+        command.add_syntax(
+            CommandExecutor::from_function(Self::execute_gamemode),
+            [gamemode],
+        );
+        command.add_syntax(
+            CommandExecutor::from_function(Self::execute_gamemode),
+            [gamemode, target],
+        );
 
         command
     }

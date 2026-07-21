@@ -6,12 +6,14 @@ use std::cmp::Reverse;
 use std::collections::HashMap;
 
 pub type ServerEventHandler<E> = fn(&mut E, &mut MinecraftServer);
+pub type ServerEventHandlerMethod<T, E> = fn(&T, &mut E, &mut MinecraftServer);
 
-type ErasedServerEventHandler = unsafe fn(usize, *mut (), *mut MinecraftServer);
+type ErasedServerEventHandler = unsafe fn(usize, usize, *mut (), *mut MinecraftServer);
 
 #[derive(Clone, Copy)]
 pub struct EventHandlerEntry {
     priority: Priority,
+    receiver: usize,
     handler: usize,
     dispatch: ErasedServerEventHandler,
 }
@@ -21,7 +23,7 @@ pub struct GlobalEventHandler {
 }
 
 pub trait EventHandler {
-    fn register_event_handlers(self, global_event_handler: &mut GlobalEventHandler);
+    fn register_event_handlers(&self, global_event_handler: &mut GlobalEventHandler);
 }
 
 impl GlobalEventHandler {
@@ -43,8 +45,25 @@ impl GlobalEventHandler {
         let event_handlers = self.handlers.entry(TypeId::of::<E>()).or_default();
         event_handlers.push(EventHandlerEntry {
             priority,
+            receiver: 0,
             handler: handler as usize,
             dispatch: dispatch_server_event::<E>,
+        });
+        event_handlers.sort_by_key(|event_handler| Reverse(event_handler.priority.to_order()));
+    }
+
+    pub fn add_method_listener_with_priority<T, E: Event + 'static>(
+        &mut self,
+        priority: Priority,
+        receiver: &T,
+        handler: ServerEventHandlerMethod<T, E>,
+    ) {
+        let event_handlers = self.handlers.entry(TypeId::of::<E>()).or_default();
+        event_handlers.push(EventHandlerEntry {
+            priority,
+            receiver: receiver as *const T as usize,
+            handler: handler as usize,
+            dispatch: dispatch_server_event_method::<T, E>,
         });
         event_handlers.sort_by_key(|event_handler| Reverse(event_handler.priority.to_order()));
     }
@@ -56,7 +75,12 @@ impl GlobalEventHandler {
         };
         let event_ptr = event as *mut E as *mut ();
         event_handlers.iter().for_each(|event_handler| unsafe {
-            (event_handler.dispatch)(event_handler.handler, event_ptr, server);
+            (event_handler.dispatch)(
+                event_handler.receiver,
+                event_handler.handler,
+                event_ptr,
+                server,
+            );
         });
         self.handlers.insert(event_type, event_handlers);
     }
@@ -76,10 +100,24 @@ impl<E: Event + 'static> EventContext<E> for MinecraftServer {
 }
 
 unsafe fn dispatch_server_event<E: Event + 'static>(
+    _receiver: usize,
     handler: usize,
     event: *mut (),
     server: *mut MinecraftServer,
 ) {
     let handler: ServerEventHandler<E> = unsafe { std::mem::transmute(handler) };
     handler(unsafe { &mut *(event as *mut E) }, unsafe { &mut *server });
+}
+
+unsafe fn dispatch_server_event_method<T, E: Event + 'static>(
+    receiver: usize,
+    handler: usize,
+    event: *mut (),
+    server: *mut MinecraftServer,
+) {
+    let receiver = unsafe { &*(receiver as *const T) };
+    let handler: ServerEventHandlerMethod<T, E> = unsafe { std::mem::transmute(handler) };
+    handler(receiver, unsafe { &mut *(event as *mut E) }, unsafe {
+        &mut *server
+    });
 }

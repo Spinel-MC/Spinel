@@ -1,7 +1,7 @@
 use crate::showcase::{EntityShowcase, InventoryShowcase, PlayerShowcase, WorldShowcase};
 use spinel::server::{
     MinecraftServer,
-    command::{Command, CommandContext, CommandExecutionResult, CommandSender},
+    command::{Command, CommandContext, CommandExecutionResult, CommandExecutor, CommandSender},
 };
 
 pub struct ShowcaseCommand;
@@ -9,10 +9,22 @@ pub struct ShowcaseCommand;
 impl ShowcaseCommand {
     pub fn command() -> Command {
         Command::new("showcase")
-            .with_subcommand(Command::new("player").with_default_executor(Self::player))
-            .with_subcommand(Command::new("entity").with_default_executor(Self::entity))
-            .with_subcommand(Command::new("inventory").with_default_executor(Self::inventory))
-            .with_subcommand(Command::new("world").with_default_executor(Self::world))
+            .with_subcommand(
+                Command::new("player")
+                    .with_default_executor(CommandExecutor::from_function(Self::player)),
+            )
+            .with_subcommand(
+                Command::new("entity")
+                    .with_default_executor(CommandExecutor::from_function(Self::entity)),
+            )
+            .with_subcommand(
+                Command::new("inventory")
+                    .with_default_executor(CommandExecutor::from_function(Self::inventory)),
+            )
+            .with_subcommand(
+                Command::new("world")
+                    .with_default_executor(CommandExecutor::from_function(Self::world)),
+            )
     }
 
     fn player(

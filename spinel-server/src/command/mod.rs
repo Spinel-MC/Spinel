@@ -6,6 +6,7 @@ mod command;
 mod condition;
 mod context;
 mod data;
+mod executor;
 mod manager;
 mod parser;
 mod result;
@@ -22,15 +23,19 @@ pub use argument::{
 };
 pub use argument_facade::ArgumentType;
 pub use callback::{ArgumentCallback, ArgumentSyntaxException};
-pub use command::{Command, CommandExecutor, GlobalCommandListener};
+pub use command::{Command, GlobalCommandListener};
 pub use condition::{CommandCondition, CommandConditionContext};
 pub use context::CommandContext;
 pub use data::CommandData;
+pub use executor::{CommandExecutor, CommandExecutorFunction, CommandExecutorMethod};
 pub use manager::CommandManager;
 pub use parser::{CommandParseResult, CommandParser, ParsedCommand};
 pub use result::{
     CommandExecutionResult, CommandExecutionResultType, CommandResult, CommandResultType,
 };
 pub use sender::{CommandSender, CommandSenderKind};
-pub use suggestion::{Suggestion, SuggestionCallback, SuggestionEntry, SuggestionType};
+pub use suggestion::{
+    Suggestion, SuggestionCallback, SuggestionCallbackFunction, SuggestionCallbackMethod,
+    SuggestionEntry, SuggestionType,
+};
 pub use syntax::CommandSyntax;

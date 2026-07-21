@@ -1,8 +1,27 @@
 use crate::command::{CommandConditionContext, CommandContext};
 use crate::server::MinecraftServer;
 
-pub type SuggestionCallback =
+pub type SuggestionCallbackFunction =
     fn(Option<&MinecraftServer>, CommandConditionContext, &CommandContext, &mut Suggestion);
+
+pub type SuggestionCallbackMethod<T> =
+    fn(&T, Option<&MinecraftServer>, CommandConditionContext, &CommandContext, &mut Suggestion);
+
+type ErasedSuggestionCallback = unsafe fn(
+    usize,
+    usize,
+    Option<&MinecraftServer>,
+    CommandConditionContext,
+    &CommandContext,
+    &mut Suggestion,
+);
+
+#[derive(Clone, Copy)]
+pub struct SuggestionCallback {
+    receiver: usize,
+    callback: usize,
+    dispatch: ErasedSuggestionCallback,
+}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Suggestion {
@@ -24,6 +43,43 @@ pub enum SuggestionType {
     AllRecipes,
     AvailableSounds,
     SummonableEntities,
+}
+
+impl SuggestionCallback {
+    pub fn from_function(callback: SuggestionCallbackFunction) -> Self {
+        Self {
+            receiver: 0,
+            callback: callback as usize,
+            dispatch: dispatch_suggestion_function,
+        }
+    }
+
+    pub fn from_method<T>(receiver: &T, callback: SuggestionCallbackMethod<T>) -> Self {
+        Self {
+            receiver: receiver as *const T as usize,
+            callback: callback as usize,
+            dispatch: dispatch_suggestion_method::<T>,
+        }
+    }
+
+    pub fn suggest(
+        self,
+        server: Option<&MinecraftServer>,
+        condition_context: CommandConditionContext,
+        context: &CommandContext,
+        suggestion: &mut Suggestion,
+    ) {
+        unsafe {
+            (self.dispatch)(
+                self.receiver,
+                self.callback,
+                server,
+                condition_context,
+                context,
+                suggestion,
+            );
+        }
+    }
 }
 
 impl Suggestion {
@@ -98,4 +154,29 @@ impl SuggestionType {
             Self::SummonableEntities => "minecraft:summonable_entities",
         }
     }
+}
+
+unsafe fn dispatch_suggestion_function(
+    _receiver: usize,
+    callback: usize,
+    server: Option<&MinecraftServer>,
+    condition_context: CommandConditionContext,
+    context: &CommandContext,
+    suggestion: &mut Suggestion,
+) {
+    let callback: SuggestionCallbackFunction = unsafe { std::mem::transmute(callback) };
+    callback(server, condition_context, context, suggestion);
+}
+
+unsafe fn dispatch_suggestion_method<T>(
+    receiver: usize,
+    callback: usize,
+    server: Option<&MinecraftServer>,
+    condition_context: CommandConditionContext,
+    context: &CommandContext,
+    suggestion: &mut Suggestion,
+) {
+    let receiver = unsafe { &*(receiver as *const T) };
+    let callback: SuggestionCallbackMethod<T> = unsafe { std::mem::transmute(callback) };
+    callback(receiver, server, condition_context, context, suggestion);
 }

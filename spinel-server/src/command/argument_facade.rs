@@ -55,8 +55,12 @@ fn entity_argument(id: &'static str, single_entity: bool, only_players: bool) ->
     let mut argument = CommandArgument::entity(id);
     argument.set_entity_selector_flags(entity_selector_flags(single_entity, only_players));
     match only_players {
-        true => argument.set_suggestion_callback(suggest_player_targets),
-        false => argument.set_suggestion_callback(suggest_entity_targets),
+        true => argument.set_suggestion_callback(
+            crate::command::SuggestionCallback::from_function(suggest_player_targets),
+        ),
+        false => argument.set_suggestion_callback(
+            crate::command::SuggestionCallback::from_function(suggest_entity_targets),
+        ),
     };
     argument
 }

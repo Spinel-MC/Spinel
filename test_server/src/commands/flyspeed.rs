@@ -1,7 +1,7 @@
 use spinel::server::MinecraftServer;
 use spinel::server::command::{
     Command, CommandArgument, CommandConditionContext, CommandContext, CommandExecutionResult,
-    CommandSender,
+    CommandExecutor, CommandSender,
 };
 use spinel::utils::component::Component;
 
@@ -11,7 +11,10 @@ impl FlyspeedCommand {
     pub fn new() -> Command {
         let mut command = Command::new("flyspeed");
         command.set_condition(Some(Self::requires_gamemaster));
-        command.add_syntax(Self::execute_flyspeed, [CommandArgument::float("speed")]);
+        command.add_syntax(
+            CommandExecutor::from_function(Self::execute_flyspeed),
+            [CommandArgument::float("speed")],
+        );
         command
     }
 

@@ -1,16 +1,11 @@
 use crate::command::{
-    CommandArgument, CommandCondition, CommandContext, CommandExecutionResult, CommandSender,
+    CommandArgument, CommandCondition, CommandContext, CommandExecutor, CommandSender,
     CommandSyntax,
 };
 use crate::server::MinecraftServer;
 use serde_json::{Value, json};
 use std::collections::BTreeSet;
 
-pub type CommandExecutor = for<'a> fn(
-    &mut MinecraftServer,
-    CommandSender<'a>,
-    &mut CommandContext,
-) -> CommandExecutionResult;
 pub type GlobalCommandListener =
     for<'a> fn(&mut MinecraftServer, CommandSender<'a>, &mut CommandContext);
 

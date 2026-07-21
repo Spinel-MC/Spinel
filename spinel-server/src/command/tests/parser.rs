@@ -1,7 +1,7 @@
 use super::super::parser::{CommandParseResult, CommandParser};
 use crate::command::{
-    Command, CommandArgument, CommandArgumentValue, CommandExecutionResult, CommandSender,
-    ParsedCommand, RelativeVec3,
+    Command, CommandArgument, CommandArgumentValue, CommandExecutionResult, CommandExecutor,
+    CommandSender, ParsedCommand, RelativeVec3,
 };
 use crate::server::MinecraftServer;
 use spinel_registry::EntityType;
@@ -58,7 +58,7 @@ fn parser_rejects_mixed_local_and_world_relative_vec3_shape() {
 #[test]
 fn parser_reads_nested_nbt_compound_argument_shape() {
     let command = Command::new("spawn").with_syntax(
-        unused_executor,
+        CommandExecutor::from_function(unused_executor),
         vec![
             CommandArgument::entity_type("entity"),
             CommandArgument::relative_vec3("position"),
@@ -85,8 +85,10 @@ fn parser_reads_nested_nbt_compound_argument_shape() {
 
 #[test]
 fn parser_reads_word_argument_raw_context() {
-    let command = Command::new("gamemode")
-        .with_syntax(unused_executor, vec![CommandArgument::game_mode("mode")]);
+    let command = Command::new("gamemode").with_syntax(
+        CommandExecutor::from_function(unused_executor),
+        vec![CommandArgument::game_mode("mode")],
+    );
     let commands = [command];
 
     let parsed_command = valid_command(CommandParser::parse(&commands, "gamemode survival"));
@@ -97,8 +99,10 @@ fn parser_reads_word_argument_raw_context() {
 
 #[test]
 fn parser_marks_known_command_with_missing_required_argument_as_incomplete() {
-    let command = Command::new("flyspeed")
-        .with_syntax(unused_executor, vec![CommandArgument::float("speed")]);
+    let command = Command::new("flyspeed").with_syntax(
+        CommandExecutor::from_function(unused_executor),
+        vec![CommandArgument::float("speed")],
+    );
     let commands = [command];
 
     match CommandParser::parse(&commands, "flyspeed") {
@@ -115,7 +119,8 @@ fn parser_marks_known_command_with_missing_required_argument_as_incomplete() {
 
 #[test]
 fn parser_marks_known_command_with_unknown_trailing_argument_as_invalid() {
-    let command = Command::new("flyspeed").with_default_executor(unused_executor);
+    let command = Command::new("flyspeed")
+        .with_default_executor(CommandExecutor::from_function(unused_executor));
     let commands = [command];
 
     match CommandParser::parse(&commands, "flyspeed extra") {
@@ -132,8 +137,10 @@ fn parser_marks_known_command_with_unknown_trailing_argument_as_invalid() {
 
 #[test]
 fn parser_executes_nested_subcommand_with_shared_root_prefix() {
-    let command = Command::new("showcase")
-        .with_subcommand(Command::new("player").with_default_executor(unused_executor));
+    let command = Command::new("showcase").with_subcommand(
+        Command::new("player")
+            .with_default_executor(CommandExecutor::from_function(unused_executor)),
+    );
     let commands = [command];
 
     let parsed_command = valid_command(CommandParser::parse(&commands, "showcase player"));
@@ -144,7 +151,7 @@ fn parser_executes_nested_subcommand_with_shared_root_prefix() {
 
 fn spawn_command() -> Command {
     Command::new("spawn").with_syntax(
-        unused_executor,
+        CommandExecutor::from_function(unused_executor),
         vec![
             CommandArgument::entity_type("entity"),
             CommandArgument::relative_vec3("position").with_default_value(

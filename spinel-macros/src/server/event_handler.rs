@@ -54,7 +54,7 @@ pub fn generate(mut input_impl: ItemImpl) -> TokenStream2 {
 
         impl #server_path::events::EventHandler for #listener_type {
             fn register_event_handlers(
-                self,
+                &self,
                 global_event_handler: &mut #server_path::events::GlobalEventHandler,
             ) {
                 #(#event_registrations)*

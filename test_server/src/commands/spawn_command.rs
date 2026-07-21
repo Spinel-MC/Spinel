@@ -3,7 +3,7 @@ use spinel::registry::EntityType;
 use spinel::server::MinecraftServer;
 use spinel::server::command::{
     Command, CommandArgument, CommandArgumentValue, CommandContext, CommandExecutionResult,
-    CommandSender, RelativeVec3,
+    CommandExecutor, CommandSender, RelativeVec3,
 };
 use spinel::server::entity::EntityPosition;
 
@@ -12,7 +12,7 @@ pub struct SpawnCommand;
 impl SpawnCommand {
     pub fn command() -> Command {
         Command::new("spawn").with_syntax(
-            Self::spawn_entity,
+            CommandExecutor::from_function(Self::spawn_entity),
             vec![
                 CommandArgument::entity_type("entity"),
                 CommandArgument::relative_vec3("position").with_default_value(

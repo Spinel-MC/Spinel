@@ -90,6 +90,10 @@ impl MinecraftServer {
         event_handler.register_event_handlers(&mut self.global_event_handler);
     }
 
+    pub fn register_borrowed_event_handler(&mut self, event_handler: &impl EventHandler) {
+        event_handler.register_event_handlers(&mut self.global_event_handler);
+    }
+
     pub fn get_global_packet_handler(&mut self) -> &mut GlobalPacketHandler {
         &mut self.global_packet_handler
     }

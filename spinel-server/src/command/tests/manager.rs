@@ -1,7 +1,7 @@
 use super::super::manager::CommandManager;
 use crate::command::{
     Command, CommandArgument, CommandArgumentValue, CommandConditionContext,
-    CommandExecutionResult, CommandSender, RelativeVec3,
+    CommandExecutionResult, CommandExecutor, CommandSender, RelativeVec3,
 };
 use crate::server::MinecraftServer;
 use spinel_core::network::clientbound::play::commands::{
@@ -51,7 +51,9 @@ fn command_manager_declares_reference_argument_nodes_for_spawn_syntax() {
 #[test]
 fn command_manager_declares_default_executor_literal_as_executable() {
     let mut command_manager = CommandManager::new();
-    command_manager.register(Command::new("stop").with_default_executor(unused_executor));
+    command_manager.register(
+        Command::new("stop").with_default_executor(CommandExecutor::from_function(unused_executor)),
+    );
 
     let commands_packet = command_manager.declare_commands_packet();
     let command_node = root_command_node(&commands_packet, "stop");
@@ -63,9 +65,10 @@ fn command_manager_declares_default_executor_literal_as_executable() {
 #[test]
 fn command_manager_declares_empty_syntax_literal_as_executable() {
     let mut command_manager = CommandManager::new();
-    command_manager.register(
-        Command::new("restart").with_syntax(unused_executor, Vec::<CommandArgument>::new()),
-    );
+    command_manager.register(Command::new("restart").with_syntax(
+        CommandExecutor::from_function(unused_executor),
+        Vec::<CommandArgument>::new(),
+    ));
 
     let commands_packet = command_manager.declare_commands_packet();
     let command_node = root_command_node(&commands_packet, "restart");
@@ -198,7 +201,7 @@ fn command_manager_unregisters_registered_command_names() {
 
 fn spawn_command() -> Command {
     Command::new("spawn").with_syntax(
-        unused_executor,
+        CommandExecutor::from_function(unused_executor),
         vec![
             CommandArgument::entity_type("entity"),
             CommandArgument::relative_vec3("position").with_default_value(
@@ -209,7 +212,10 @@ fn spawn_command() -> Command {
 }
 
 fn command_with_single_argument(command_name: &str, argument: CommandArgument) -> Command {
-    Command::new(command_name).with_syntax(unused_executor, vec![argument])
+    Command::new(command_name).with_syntax(
+        CommandExecutor::from_function(unused_executor),
+        vec![argument],
+    )
 }
 
 fn first_argument_node<'a>(

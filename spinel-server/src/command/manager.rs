@@ -161,7 +161,7 @@ impl CommandManager {
             .filter_map(crate::command::CommandArgument::suggestion_callback)
             .for_each(|callback| {
                 let context = crate::command::CommandContext::empty(command_text);
-                callback(server, condition_context, &context, &mut suggestion);
+                callback.suggest(server, condition_context, &context, &mut suggestion);
             });
         suggestion
     }
@@ -247,13 +247,13 @@ impl CommandManager {
             }
         }
         let execution_result = match parsed_command.syntax() {
-            Some(syntax) => (syntax.executor())(
+            Some(syntax) => syntax.executor().execute(
                 server,
                 CommandSender::Player(client),
                 parsed_command.context_mut(),
             ),
             None => match parsed_command.command().default_executor() {
-                Some(default_executor) => default_executor(
+                Some(default_executor) => default_executor.execute(
                     server,
                     CommandSender::Player(client),
                     parsed_command.context_mut(),
