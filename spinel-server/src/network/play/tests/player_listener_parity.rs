@@ -6,7 +6,6 @@ use crate::events::item_drop::ItemDropEvent;
 use crate::events::player_chat::PlayerChatEvent;
 use crate::events::player_entity_interact::PlayerEntityInteractEvent;
 use crate::events::player_game_mode_request::PlayerGameModeRequestEvent;
-use crate::events::player_game_rules_request::PlayerGameRulesRequestEvent;
 use crate::events::player_input::PlayerInputEvent;
 use crate::events::player_leave_bed::PlayerLeaveBedEvent;
 use crate::events::player_loaded::PlayerLoadedEvent;
@@ -76,7 +75,6 @@ static LISTENER_PARITY_ENTITY_PICKS: Mutex<Vec<(Option<EntityId>, bool)>> = Mute
 static LISTENER_PARITY_SPECTATES: Mutex<Vec<EntityId>> = Mutex::new(Vec::new());
 static LISTENER_PARITY_CHAT_MESSAGES: Mutex<Vec<String>> = Mutex::new(Vec::new());
 static LISTENER_PARITY_GAME_MODE_REQUESTS: Mutex<Vec<GameMode>> = Mutex::new(Vec::new());
-static LISTENER_PARITY_GAME_RULE_REQUESTS: AtomicUsize = AtomicUsize::new(0);
 static LISTENER_PARITY_START_SPRINTING: AtomicUsize = AtomicUsize::new(0);
 static LISTENER_PARITY_STOP_SPRINTING: AtomicUsize = AtomicUsize::new(0);
 static LISTENER_PARITY_START_FLYING: AtomicUsize = AtomicUsize::new(0);
@@ -182,16 +180,6 @@ fn player_game_mode_request_test_listener(
         .lock()
         .unwrap()
         .push(event.requested_game_mode());
-}
-
-#[fn_event_listener]
-fn player_game_rules_request_test_listener(
-    _event: &mut PlayerGameRulesRequestEvent,
-    _server: &mut MinecraftServer,
-) {
-    if LISTENER_PARITY_ENABLED.load(Ordering::SeqCst) {
-        LISTENER_PARITY_GAME_RULE_REQUESTS.fetch_add(1, Ordering::SeqCst);
-    }
 }
 
 #[fn_event_listener]
@@ -1029,24 +1017,6 @@ fn player_loaded_listener_dispatches_after_client_loaded_packet() {
 }
 
 #[test]
-fn client_command_request_gamerule_values_dispatches_game_rule_request() {
-    let _scope = ListenerParityScope::new();
-    let (mut server, mut client, _peer_stream, _world_uuid, _player_id) =
-        server_with_play_player(GameMode::Survival);
-    attach_client_to_player(&mut server, &mut client);
-
-    assert!(dispatch_packet(
-        &mut server,
-        &mut client,
-        ClientCommandPacket {
-            action: ClientCommandPacket::REQUEST_GAMERULE_VALUES,
-        }
-    ));
-
-    assert_eq!(LISTENER_PARITY_GAME_RULE_REQUESTS.load(Ordering::SeqCst), 1);
-}
-
-#[test]
 fn client_command_perform_respawn_respawns_dead_player() {
     let _scope = ListenerParityScope::new();
     let (mut server, mut client, mut peer_stream, _world_uuid, _player_id) =
@@ -1457,7 +1427,6 @@ impl ListenerParityScope {
         LISTENER_PARITY_SPECTATES.lock().unwrap().clear();
         LISTENER_PARITY_CHAT_MESSAGES.lock().unwrap().clear();
         LISTENER_PARITY_GAME_MODE_REQUESTS.lock().unwrap().clear();
-        LISTENER_PARITY_GAME_RULE_REQUESTS.store(0, Ordering::SeqCst);
         LISTENER_PARITY_START_SPRINTING.store(0, Ordering::SeqCst);
         LISTENER_PARITY_STOP_SPRINTING.store(0, Ordering::SeqCst);
         LISTENER_PARITY_START_FLYING.store(0, Ordering::SeqCst);

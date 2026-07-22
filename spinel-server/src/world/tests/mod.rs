@@ -15,7 +15,6 @@ mod entity_attack;
 mod entity_tracker;
 mod entity_world_events;
 mod experience_orb;
-mod game_rule;
 mod item_merge;
 mod leash;
 mod living_damage;
