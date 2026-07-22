@@ -29,7 +29,7 @@ Typed effect component decoding and the extractor's emitted enchantment payload 
 
 ## Current Module State
 
-Unfinished. Vanilla registrations preserve raw NBT and no public `enchantment()` reader was found.
+Unfinished. Vanilla registrations preserve raw NBT and `Registries::get_enchantments()` is documented as the required missing public reader.
 
 ## Module-Level Orchestration Task Tree
 

@@ -37,7 +37,7 @@ The item component owns levels. `Registries` owns resolution to definition data.
 
 ## Implementation Strategy Against Agent.md And DesignDecisionRules.md
 
-Keep a single immutable value type. Any Rust input-shape change for the Java record constructor or codec must remain unresolved until Mapping explicitly approves it.
+Keep a single immutable value type. Map the Java single-enchantment constructor to `new`; use getter naming for the record reader.
 
 ## Dependency-Aware Implementation Order
 
@@ -56,10 +56,10 @@ Keep a single immutable value type. Any Rust input-shape change for the Java rec
 
 | Minestom declaration | Spinel owner | Mapping status | Proof |
 | --- | --- | --- | --- |
-| record reader `enchantments()` and `EMPTY` | `get_enchantments`, `Default` | Naming/default exposure unresolved | unit |
+| record reader `enchantments()` and `EMPTY` | `get_enchantments`, `EMPTY` | Map directly with Rust getter naming | unit |
 | `NETWORK_TYPE`, `CODEC` | no discovered equivalent | Missing | codec |
-| `(RegistryKey<Enchantment>, int)` | `from_enchantment` | Rust name is unresolved caller-shape deviation | unit |
-| `has`, `level`, `with`, `remove` | same-named operations | Present behavior, signature review pending | unit |
+| `(RegistryKey<Enchantment>, int)` | `new` | Static Java construction maps naturally to `new` | unit |
+| `has`, `level`, `with`, `remove` | same-named operations | Map directly; `with` is an immutable update, not a constructor | unit |
 
 ### Required side-by-side mappings
 
@@ -69,8 +69,8 @@ public EnchantmentList(RegistryKey<Enchantment> enchantment, int level)
 
 ```rust
 // Current Spinel
-pub fn from_enchantment(enchantment: RegistryKey<Enchantment>, level: i32) -> Self
-// Unresolved: Minestom's constructor call shape is not yet mapped.
+pub fn new(enchantment: RegistryKey<Enchantment>, level: i32) -> Self
+
 ```
 
 ```java
@@ -81,7 +81,7 @@ public int level(RegistryKey<Enchantment> enchantment)
 pub fn level(&self, enchantment: &RegistryKey<Enchantment>) -> i32
 ```
 
-The borrowed key input is a possible Rust representation difference; record it as unresolved until approved.
+The borrowed key avoids cloning and preserves the one-key lookup operation; Rust borrowing is the only representation difference.
 
 ## Edge Behavior Coverage
 

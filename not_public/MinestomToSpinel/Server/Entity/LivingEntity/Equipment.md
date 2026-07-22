@@ -48,7 +48,7 @@ Minestom declares the behavior on `LivingEntity`, inherited from `EquipmentHandl
 
 ## Implementation Strategy Against Agent.md And DesignDecisionRules.md
 
-Create the smallest shared living concept that preserves receiver availability and avoids copying methods across player/creature types. The exact representation of Minestom inheritance in Rust is unresolved. Do not retain `GenericEntity`-wide equipment merely because it is convenient.
+Create a narrow `EquipmentHandler` shared contract and implement/delegate it through the direct living owner, preserving receiver availability without copying methods across player/creature types. Do not retain `GenericEntity`-wide equipment merely because it is convenient.
 
 ## Dependency-Aware Implementation Order
 
@@ -71,11 +71,11 @@ Create the smallest shared living concept that preserves receiver availability a
 | Minestom declaration | Spinel owner | Mapping status | Proof |
 | --- | --- | --- | --- |
 | `LivingEntity(EntityType, UUID)`, `LivingEntity(EntityType)` | no direct living type | Missing | construction |
-| `getEquipment`, `setEquipment` | `LivingState`, `GenericEntity`, Player state | Owner and return-shape unresolved | unit/integration |
+| `getEquipment`, `setEquipment` | direct living owner through `EquipmentHandler` | `get_equipment` returns `ItemStack`; `set_equipment` returns `Result<(), SetEquipmentError>` | unit/integration |
 | `updateEquipmentAttributes` | `LivingState` / `LivingAttributes` | behavior partial; visibility/owner unresolved | unit |
 | `updateNewViewer` equipment branch | Generic packet builder | integration missing | packet capture |
 | `swingMainHand`, `swingOffHand`, internal client forms | Generic packet constructors | dispatch/receiver behavior unresolved | packet capture |
-| `refreshActiveHand` | Player-only helper | missing on common living owner | metadata test |
+| `refreshActiveHand` | direct living owner | `Result<(), RefreshActiveHandError>` when dispatch/metadata work fails | metadata test |
 
 ### Required side-by-side mappings
 
@@ -87,9 +87,13 @@ public void setEquipment(EquipmentSlot slot, ItemStack itemStack)
 
 ```rust
 // Current Spinel split across GenericEntity and Player
-pub fn get_equipment(&self, equipment_slot: EquipmentSlot) -> &ItemStack
-pub fn set_equipment(&mut self, equipment_slot: EquipmentSlot, item_stack: ItemStack)
-// Unresolved: correct direct living owner and Player's bool return shape.
+pub fn get_equipment(&self, equipment_slot: EquipmentSlot) -> ItemStack
+pub fn set_equipment(
+    &mut self,
+    equipment_slot: EquipmentSlot,
+    item_stack: ItemStack,
+) -> Result<(), SetEquipmentError>
+
 ```
 
 ```java
@@ -97,8 +101,12 @@ public void refreshActiveHand(boolean isHandActive, boolean offHand, boolean rip
 ```
 
 ```rust
-// Current Spinel: Player-only private-facing behavior in player/item_use.rs.
-// Unresolved: direct living-owner declaration and receiver availability.
+pub fn refresh_active_hand(
+    &mut self,
+    is_hand_active: bool,
+    off_hand: bool,
+    riptide_spin_attack: bool,
+) -> Result<(), RefreshActiveHandError>
 ```
 
 ## Edge Behavior Coverage

@@ -37,7 +37,7 @@ All eight values and ID/NBT/hand/armor accessors are present. No selected `NETWO
 
 ## Implementation Strategy Against Agent.md And DesignDecisionRules.md
 
-Keep slot semantics on `EquipmentSlot`; do not create packet-specific duplicate enums. The Rust failure representation for invalid legacy IDs is unresolved.
+Keep slot semantics on `EquipmentSlot`; do not create packet-specific duplicate enums. Map invalid legacy IDs to a named value-operation error.
 
 ## Dependency-Aware Implementation Order
 
@@ -59,8 +59,8 @@ Keep slot semantics on `EquipmentSlot`; do not create packet-specific duplicate 
 | --- | --- | --- | --- |
 | eight enum variants | `EquipmentSlot` | Present | unit |
 | `NETWORK_TYPE`, `CODEC` | none found | Missing | codec |
-| `armors()` | none found | Missing | unit |
-| `fromLegacyProtocolId` | none found | Missing/error-shape unresolved | unit |
+| `armors()` | `EquipmentSlot::get_armors()` | Missing implementation | unit |
+| `fromLegacyProtocolId` | `EquipmentSlot::from_legacy_protocol_id()` | Missing implementation; returns named `Result` | unit |
 | remaining accessors | `get_*`, `is_*` | Rust getter naming accepted; behavior unverified | unit |
 
 ### Required side-by-side mappings
@@ -70,7 +70,7 @@ public static List<EquipmentSlot> armors()
 ```
 
 ```rust
-// Unresolved: no current Spinel equivalent.
+pub fn get_armors() -> &'static [EquipmentSlot]
 ```
 
 ```java
@@ -78,7 +78,9 @@ public static EquipmentSlot fromLegacyProtocolId(int legacyProtocolId)
 ```
 
 ```rust
-// Unresolved: no current Spinel equivalent; invalid-value error representation is undecided.
+pub fn from_legacy_protocol_id(
+    legacy_protocol_id: i32,
+) -> Result<EquipmentSlot, EquipmentSlotFromLegacyProtocolIdError>
 ```
 
 ## Edge Behavior Coverage

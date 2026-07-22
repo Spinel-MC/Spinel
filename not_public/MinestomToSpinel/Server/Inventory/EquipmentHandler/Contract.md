@@ -40,7 +40,7 @@ This is the shared Minestom contract; `LivingEntity` is the concrete receiver. P
 
 ## Implementation Strategy Against Agent.md And DesignDecisionRules.md
 
-Use a narrow Rust trait, shared type, or delegation layer that retains direct receiver operations. The exact choice is unresolved and requires a mapping decision; do not duplicate defaults across player and creature types.
+Use the narrow `EquipmentHandler` Rust trait as the shared contract and implement/delegate it through the direct living owner. Do not duplicate defaults across player and creature types.
 
 ## Dependency-Aware Implementation Order
 
@@ -60,11 +60,11 @@ Use a narrow Rust trait, shared type, or delegation layer that retains direct re
 
 | Minestom declaration | Spinel owner | Mapping status | Proof |
 | --- | --- | --- | --- |
-| abstract `getEquipment`, `setEquipment` | split state/generic/player | Missing common owner | compile/API |
-| six hand default operations | Player-only partial surface | Missing common contract | unit |
-| ten armor/body defaults and `hasEquipment` | none found | Missing | unit |
-| `syncEquipment` overloads | no shared direct operation | Missing | packet |
-| `getEquipmentsPacket` | `GenericEntity::get_equipment_packet` | owner/slot coverage unresolved | packet |
+| abstract `getEquipment`, `setEquipment` | `EquipmentHandler` trait | `get_equipment` returns `ItemStack`; `set_equipment` returns `Result<(), SetEquipmentError>` | compile/API |
+| six hand default operations | `EquipmentHandler` trait defaults | setters return `Result<(), SetEquipmentError>` | unit |
+| ten armor/body defaults and `hasEquipment` | `EquipmentHandler` trait defaults | setters return `Result<(), SetEquipmentError>` | unit |
+| `syncEquipment` overloads | `EquipmentHandler` trait | `Result<(), SyncEquipmentError>` | packet |
+| `getEquipmentsPacket` | `EquipmentHandler` trait | `Result<SetEquipmentPacket, GetEquipmentsPacketError>` | packet |
 
 ### Required side-by-side mappings
 
@@ -74,10 +74,12 @@ public default void setItemInHand(PlayerHand hand, ItemStack stack)
 ```
 
 ```rust
-// Current Spinel: Player-specific methods only.
 pub fn get_item_in_hand(&self, hand: PlayerHand) -> ItemStack
-pub fn set_item_in_hand(&mut self, hand: PlayerHand, item_stack: ItemStack) -> bool
-// Unresolved: shared owner, return type, and borrowing/value semantics.
+pub fn set_item_in_hand(
+    &mut self,
+    hand: PlayerHand,
+    item_stack: ItemStack,
+) -> Result<(), SetEquipmentError>
 ```
 
 ```java
@@ -85,8 +87,7 @@ public default EntityEquipmentPacket getEquipmentsPacket()
 ```
 
 ```rust
-pub fn get_equipment_packet(&self) -> SetEquipmentPacket
-// Unresolved: owner, packet type/name, every-slot coverage, and non-Entity failure contract.
+pub fn get_equipments_packet(&self) -> Result<SetEquipmentPacket, GetEquipmentsPacketError>
 ```
 
 ## Edge Behavior Coverage

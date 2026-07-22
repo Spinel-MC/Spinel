@@ -36,7 +36,7 @@ Owner: Minestom `net.minestom.server.item.enchant.Enchantment`, its concrete `En
    1.6 [ ] Preserve ordered `slots` group values.
    1.7 [ ] Preserve typed `effects` component map; stop on any effect-component branch not source-traced.
 2. [ ] Expose the Minestom registry read operation on the direct Spinel registries owner.
-   2.1 [ ] Provide the `Registries.enchantment()` parity operation or record the exact Rust-shape deviation as unresolved.
+   2.1 [ ] Provide `Registries::get_enchantments()` as the direct Rust getter for the dynamic enchantment registry.
    2.2 [ ] Retain dynamic registration ordering: effect helper registries before vanilla enchantment definitions.
 3. [ ] Integrate dependent consumers without transferring registry ownership.
    3.1 [ ] Ensure [Enchantment list value](../../../Common/Item/Component/EnchantmentList/Value.md) keys resolve through the registry owner.
@@ -48,7 +48,7 @@ Owner: Minestom `net.minestom.server.item.enchant.Enchantment`, its concrete `En
 
 ## Implementation Strategy Against Agent.md And DesignDecisionRules.md
 
-Keep typed entry decoding on the registry value and lookup on `Registries`. Do not introduce an ExampleServer registry adapter or raw-NBT reader. The exact Rust public API shape is not decided here.
+Keep typed entry decoding on the registry value and lookup on `Registries`. Do not introduce an ExampleServer registry adapter or raw-NBT reader.
 
 ## Dependency-Aware Implementation Order
 
@@ -69,12 +69,12 @@ Keep typed entry decoding on the registry value and lookup on `Registries`. Do n
 
 | Minestom declaration | Current / intended Spinel owner | Mapping status | Required proof |
 | --- | --- | --- | --- |
-| `Enchantment.NETWORK_TYPE`, `CODEC`, `REGISTRY_CODEC` | `spinel_registry::Enchantment` | Unresolved: current `RegistryCodec` lacks source-proven typed decode/read linkage | codec and real-entry tests |
+| `Enchantment.NETWORK_TYPE`, `CODEC`, `REGISTRY_CODEC` | `spinel_registry::Enchantment` | Map to the typed registry-key/network/data codec boundary; current raw registration lacks typed decode/read linkage | codec and real-entry tests |
 | `static builder()` | `Enchantment::builder()` | Present construction surface; raw registration bypasses it | builder/default test |
 | `description`, `exclusiveSet`, `supportedItems`, `primaryItems`, `weight`, `maxLevel`, `minCost`, `maxCost`, `anvilCost`, `slots`, `effects` | `Enchantment` getters | Structurally present; vanilla runtime values missing | real-entry reader test per field |
-| nested `Target`, `Effect`, `Cost` | `EnchantmentTarget`, effect types, `EnchantmentCost` | Target/effect linkage unresolved; Cost structurally present | decode each selected branch |
-| `Builder` public setters and `build` | `EnchantmentBuilder` | `effect`, overload/varargs call shapes unresolved | mapping decision before implementation |
-| `Registries.enchantment()` / `VanillaRegistries.enchantment()` | `Registries` | Missing public reader | lookup test |
+| nested `Target`, `Effect`, `Cost` | `EnchantmentTarget`, effect types, `EnchantmentCost` | Cost maps directly; target/effect decode linkage remains implementation work | decode each selected branch |
+| `Builder` public setters and `build` | `EnchantmentBuilder` | Setter shape resolved below | builder and data tests |
+| `Registries.enchantment()` / `VanillaRegistries.enchantment()` | `Registries::get_enchantments()` | Missing implementation | lookup test |
 
 ### Required side-by-side mappings
 
@@ -85,7 +85,7 @@ DynamicRegistry<Enchantment> enchantment();
 
 ```rust
 // Spinel: spinel_registry::Registries
-// Unresolved: no public enchantment registry reader currently exists.
+pub fn get_enchantments(&self) -> &DynamicRegistry<Enchantment>
 ```
 
 ```java
@@ -99,6 +99,19 @@ pub const fn get_max_level(&self) -> i32
 ```
 
 Getter naming is a permitted Rust convention; actual vanilla registered value parity remains unfinished.
+
+```java
+public <T> Builder effect(DataComponent<T> component, T value)
+public Builder effects(DataComponentMap effects)
+``` 
+
+```rust
+// Spinel: spinel_registry::EnchantmentBuilder
+pub fn set_effect<T: DataComponentValue>(self, component: DataComponentType<T>, value: T) -> Self
+pub fn set_effects(self, effects: DataComponentMap) -> Self
+``` 
+
+The two Java effect inputs remain two builder setters. Rust generic bounds express the component/value relation without a caller-visible capability loss.
 
 ## Edge Behavior Coverage
 

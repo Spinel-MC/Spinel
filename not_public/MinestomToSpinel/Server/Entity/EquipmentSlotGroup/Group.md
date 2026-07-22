@@ -38,7 +38,7 @@ Group semantics belong to the entity equipment domain even when used by registry
 
 ## Implementation Strategy Against Agent.md And DesignDecisionRules.md
 
-Retain a fixed semantic enum and implement predicate capability on the group owner. Whether `Predicate` becomes a Rust trait implementation or a named method is unresolved.
+Retain a fixed semantic enum and expose named `contains` behavior on the group owner. Rust has no need to duplicate Java `Predicate.test`; map it through `contains` as the same capability.
 
 ## Dependency-Aware Implementation Order
 
@@ -60,7 +60,7 @@ Retain a fixed semantic enum and implement predicate capability on the group own
 | eleven enum variants | `spinel_registry::EquipmentSlotGroup` | Present type; exact variants unverified | unit |
 | `NETWORK_TYPE`, `CODEC` | no source-proven equivalent | Missing | codec |
 | `equipmentSlots`, `nbtName` | unverified | Unresolved | unit |
-| `contains`, `test` | attribute filtering may be internal | Unresolved public shape | unit |
+| `contains`, `test` | `EquipmentSlotGroup::contains` | `test` maps to the same named Rust predicate capability | unit |
 
 ### Required side-by-side mappings
 
@@ -70,8 +70,7 @@ public boolean contains(EquipmentSlot equipmentSlot)
 ```
 
 ```rust
-// Unresolved: current public EquipmentSlotGroup predicate surface was not found.
-// Any trait representation must preserve direct group receiver capability.
+pub fn contains(&self, equipment_slot: EquipmentSlot) -> bool
 ```
 
 ## Edge Behavior Coverage

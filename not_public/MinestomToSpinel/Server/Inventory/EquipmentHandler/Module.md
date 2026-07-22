@@ -20,7 +20,7 @@ Owns Minestom `net.minestom.server.inventory.EquipmentHandler` shared contract. 
 
 ## Surrounding Modules Or Domains That Block Completion
 
-Rust representation of the shared Java interface and its Entity-only default packet methods remains unresolved.
+The shared Java interface maps to a narrow `EquipmentHandler` Rust trait; Entity-only packet operations use named Result errors.
 
 ## Completion Order
 
