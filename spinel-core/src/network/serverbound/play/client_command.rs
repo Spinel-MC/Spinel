@@ -8,4 +8,5 @@ pub struct ClientCommandPacket {
 impl ClientCommandPacket {
     pub const PERFORM_RESPAWN: i32 = 0;
     pub const REQUEST_STATS: i32 = 1;
+    pub const REQUEST_GAMERULE_VALUES: i32 = 2;
 }
