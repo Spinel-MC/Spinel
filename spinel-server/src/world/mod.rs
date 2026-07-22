@@ -18,6 +18,7 @@ mod chunk_position;
 mod chunk_section;
 mod entity_tracker;
 mod explosion;
+mod game_rule;
 mod generator;
 mod identity;
 mod instance;
@@ -66,6 +67,10 @@ pub use chunk_section::{
 };
 pub use entity_tracker::{EntityTracker, EntityTrackerTarget};
 pub use explosion::{Explosion, ExplosionSupplier};
+pub use game_rule::{
+    AnyGameRule, GameRule, GameRuleRequestEntry, GameRuleValue, GameRuleValueType, WorldGameRules,
+    get_static_game_rule, static_game_rules,
+};
 pub use generator::{
     FallibleGenerator, GenerateChunkError, GenerationUnit, Generator, UnitModifier, UnitWriteError,
 };

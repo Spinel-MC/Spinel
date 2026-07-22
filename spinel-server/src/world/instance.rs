@@ -45,6 +45,7 @@ use crate::events::world_tick_end::WorldTickEndEvent;
 use crate::events::world_unregister::WorldUnregisterEvent;
 use crate::network::client::instance::Client;
 use crate::scoreboard::Team;
+use crate::world::WorldGameRules;
 use crate::world::chunk_loading_executor::ChunkLoadingExecutor;
 use crate::world::generator::{FallibleGenerator, GenerateChunkError, GenerationFork, Generator};
 use crate::world::world_lighting::WorldLighting;
@@ -134,6 +135,7 @@ pub struct World {
     cached_snapshot_chunks: RefCell<Arc<HashMap<ChunkPosition, ChunkSnapshot>>>,
     block_handlers: BlockHandlerRegistry,
     block_placement_rules: BlockPlacementRuleRegistry,
+    pub(crate) game_rules: WorldGameRules,
     linked_shared_worlds: Vec<Uuid>,
     source_world: Option<Uuid>,
     last_block_change_time: u128,

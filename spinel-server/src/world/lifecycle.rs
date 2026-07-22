@@ -73,6 +73,7 @@ impl World {
             cached_snapshot_chunks: RefCell::new(Arc::new(HashMap::new())),
             block_handlers: BlockHandlerRegistry::default(),
             block_placement_rules: BlockPlacementRuleRegistry::default(),
+            game_rules: WorldGameRules::default(),
             linked_shared_worlds: Vec::new(),
             source_world: None,
             last_block_change_time: current_time_nanos(),

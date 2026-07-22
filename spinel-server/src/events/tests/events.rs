@@ -9,9 +9,12 @@ use crate::events::outgoing_transfer::OutgoingTransferEvent;
 use crate::events::pickup_item::PickupItemEvent;
 use crate::events::player_command::PlayerCommandEvent;
 use crate::events::player_configuration::AsyncPlayerConfigurationEvent;
+use crate::events::player_game_rules_request::PlayerGameRulesRequestEvent;
 use crate::events::player_packet::PlayerPacketEvent;
 use crate::events::player_packet_out::PlayerPacketOutEvent;
+use crate::events::player_set_game_rules::PlayerSetGameRulesEvent;
 use crate::events::player_skin_init::PlayerSkinInitEvent;
+use crate::world::{GameRule, GameRuleRequestEntry};
 use spinel_network::types::Identifier;
 use spinel_network::types::game_profile::{GameProfile, GameProfileProperty};
 use spinel_registry::EntityType;
@@ -131,4 +134,23 @@ fn login_and_configuration_events_preserve_profile_and_feature_choices() {
     assert!(configuration.should_clear_chat());
     assert!(!configuration.should_send_registry_data());
     assert_eq!(configuration.spawning_world(), None);
+}
+
+#[test]
+fn player_game_rule_events_expose_requested_rules_and_player_owner() {
+    let player_uuid = Uuid::new_v4();
+    let mut player = Player::new(
+        player_uuid,
+        "Player".to_string(),
+        0,
+        SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 25565),
+    );
+    let player_pointer = &mut player as *mut Player;
+    let mut request_event = PlayerGameRulesRequestEvent::new(player_pointer);
+    let set_rule_entry = GameRuleRequestEntry::new(GameRule::<bool>::PVP.erase(), "false");
+    let mut set_event = PlayerSetGameRulesEvent::new(player_pointer, vec![set_rule_entry.clone()]);
+
+    assert_eq!(request_event.player().get_uuid(), player_uuid);
+    assert_eq!(set_event.player().get_uuid(), player_uuid);
+    assert_eq!(set_event.get_requested_rules(), &[set_rule_entry]);
 }
