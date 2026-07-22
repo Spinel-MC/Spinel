@@ -1,8 +1,11 @@
-use crate::command::{ArgumentCallback, SuggestionCallback, SuggestionType};
+use crate::command::{
+    AnyArgument, ArgumentCallback, ArgumentInteger, SuggestionCallback, SuggestionType,
+};
 use spinel_core::network::clientbound::play::commands::ArgumentParserType;
 use spinel_nbt::NbtCompound;
 use spinel_network::data_type::DataType;
 use spinel_registry::{BlockState, EntityType};
+use std::sync::Arc;
 
 #[derive(Clone)]
 pub struct CommandArgument {
@@ -14,6 +17,7 @@ pub struct CommandArgument {
     suggestion_type: Option<SuggestionType>,
     registry_identifier: Option<String>,
     entity_selector_flags: u8,
+    typed_argument: Option<Arc<dyn AnyArgument>>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -39,6 +43,7 @@ pub enum CommandArgumentValue {
     BlockState(BlockState),
     NbtCompound(NbtCompound),
     String(String),
+    Integer(i32),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -72,6 +77,7 @@ impl CommandArgument {
             suggestion_type: None,
             registry_identifier: None,
             entity_selector_flags: 0,
+            typed_argument: None,
         }
     }
 
@@ -85,6 +91,7 @@ impl CommandArgument {
             suggestion_type: Some(SuggestionType::SummonableEntities),
             registry_identifier: None,
             entity_selector_flags: 0,
+            typed_argument: None,
         }
     }
 
@@ -107,6 +114,7 @@ impl CommandArgument {
             suggestion_type: None,
             registry_identifier: None,
             entity_selector_flags: 0,
+            typed_argument: None,
         }
     }
 
@@ -129,6 +137,7 @@ impl CommandArgument {
             suggestion_type: None,
             registry_identifier: None,
             entity_selector_flags: 0,
+            typed_argument: None,
         }
     }
 
@@ -151,6 +160,7 @@ impl CommandArgument {
             suggestion_type: None,
             registry_identifier: None,
             entity_selector_flags: 0,
+            typed_argument: None,
         }
     }
 
@@ -174,6 +184,7 @@ impl CommandArgument {
             suggestion_type: None,
             registry_identifier: Some(registry_identifier.into()),
             entity_selector_flags: 0,
+            typed_argument: None,
         }
     }
 
@@ -187,6 +198,7 @@ impl CommandArgument {
             suggestion_type: None,
             registry_identifier: None,
             entity_selector_flags: 0,
+            typed_argument: None,
         }
     }
 
@@ -200,6 +212,7 @@ impl CommandArgument {
             suggestion_type: None,
             registry_identifier: None,
             entity_selector_flags: 0,
+            typed_argument: None,
         }
     }
 
@@ -213,6 +226,7 @@ impl CommandArgument {
             suggestion_type: None,
             registry_identifier: None,
             entity_selector_flags: 0,
+            typed_argument: None,
         }
     }
 
@@ -226,9 +240,44 @@ impl CommandArgument {
             suggestion_type: None,
             registry_identifier: None,
             entity_selector_flags: 0,
+            typed_argument: None,
         }
     }
 
+    pub(crate) fn from_integer(argument: ArgumentInteger) -> Self {
+        let typed_argument: Arc<dyn AnyArgument> = Arc::new(argument.into_argument());
+        Self {
+            id: typed_argument.get_id().to_string(),
+            kind: CommandArgumentKind::Parser {
+                parser: typed_argument.get_parser(),
+                syntax_name: "Integer",
+                allows_space: false,
+                uses_remaining_input: false,
+            },
+            default_value: None,
+            callback: None,
+            suggestion_callback: None,
+            suggestion_type: None,
+            registry_identifier: None,
+            entity_selector_flags: 0,
+            typed_argument: Some(typed_argument),
+        }
+    }
+
+    pub(crate) fn parse_typed(&self, input: &str) -> Option<CommandArgumentValue> {
+        self.typed_argument
+            .as_ref()?
+            .parse_erased(&crate::command::CommandSender::Server, input)
+            .ok()
+            .and_then(|value| value.downcast_ref::<i32>().copied())
+            .map(CommandArgumentValue::Integer)
+    }
+
+    pub(crate) fn typed_properties(&self) -> Option<Vec<u8>> {
+        self.typed_argument
+            .as_ref()
+            .and_then(|argument| argument.get_node_properties())
+    }
     pub fn with_default_value(mut self, default_value: CommandArgumentValue) -> Self {
         self.default_value = Some(default_value);
         self

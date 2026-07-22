@@ -110,6 +110,9 @@ impl CommandParser {
                 remaining_input: input,
             });
         }
+        if argument.typed_properties().is_some() {
+            return Self::parse_typed_argument(argument, input);
+        }
         match argument.kind() {
             CommandArgumentKind::Literal => Self::parse_literal(argument, input),
             CommandArgumentKind::EntityType => Self::parse_entity_type(input),
@@ -127,6 +130,18 @@ impl CommandParser {
         }
     }
 
+    fn parse_typed_argument<'a>(
+        argument: &CommandArgument,
+        input: &'a str,
+    ) -> Option<ParsedArgument<'a>> {
+        let trimmed_input = input.trim_start();
+        let (raw_input, remaining_input) = next_word(trimmed_input);
+        argument.parse_typed(raw_input).map(|value| ParsedArgument {
+            raw_input: raw_input.to_string(),
+            value,
+            remaining_input,
+        })
+    }
     fn parse_literal<'a>(argument: &CommandArgument, input: &'a str) -> Option<ParsedArgument<'a>> {
         let trimmed_input = input.trim_start();
         let (literal_input, remaining_input) = next_word(trimmed_input);
