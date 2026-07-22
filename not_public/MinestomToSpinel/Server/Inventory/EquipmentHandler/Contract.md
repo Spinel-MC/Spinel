@@ -9,6 +9,10 @@ Owner: Minestom `EquipmentHandler` interface, including its two abstract operati
 - Minestom: `inventory/EquipmentHandler.java`.
 - Spinel: `entity/living/state.rs`, `living/equipment.rs`, `generic_entity.rs`, `player/instance/inventory_state.rs`, `entity/equipment_slot.rs`.
 
+## Error Owner
+
+The contract uses `spinel_server::entity::Error` from the intended shared `spinel-server/src/entity/error.rs`. No-value operations return `Result<(), Error>`; packet-producing operations return `Result<SetEquipmentPacket, Error>`.
+
 ## Current Spinel State
 
 No shared public contract was found. Player offers hand/equipment methods; `GenericEntity` offers generic equipment; `LivingState` owns storage; packet construction is elsewhere.
@@ -60,11 +64,11 @@ Use the narrow `EquipmentHandler` Rust trait as the shared contract and implemen
 
 | Minestom declaration | Spinel owner | Mapping status | Proof |
 | --- | --- | --- | --- |
-| abstract `getEquipment`, `setEquipment` | `EquipmentHandler` trait | `get_equipment` returns `ItemStack`; `set_equipment` returns `Result<(), SetEquipmentError>` | compile/API |
-| six hand default operations | `EquipmentHandler` trait defaults | setters return `Result<(), SetEquipmentError>` | unit |
-| ten armor/body defaults and `hasEquipment` | `EquipmentHandler` trait defaults | setters return `Result<(), SetEquipmentError>` | unit |
-| `syncEquipment` overloads | `EquipmentHandler` trait | `Result<(), SyncEquipmentError>` | packet |
-| `getEquipmentsPacket` | `EquipmentHandler` trait | `Result<SetEquipmentPacket, GetEquipmentsPacketError>` | packet |
+| abstract `getEquipment`, `setEquipment` | `EquipmentHandler` trait | `get_equipment` returns `ItemStack`; `set_equipment` returns `Result<(), Error>` | compile/API |
+| six hand default operations | `EquipmentHandler` trait defaults | setters return `Result<(), Error>` | unit |
+| ten armor/body defaults and `hasEquipment` | `EquipmentHandler` trait defaults | setters return `Result<(), Error>` | unit |
+| `syncEquipment` overloads | `EquipmentHandler` trait | `Result<(), Error>` | packet |
+| `getEquipmentsPacket` | `EquipmentHandler` trait | `Result<SetEquipmentPacket, Error>` | packet |
 
 ### Required side-by-side mappings
 
@@ -79,7 +83,7 @@ pub fn set_item_in_hand(
     &mut self,
     hand: PlayerHand,
     item_stack: ItemStack,
-) -> Result<(), SetEquipmentError>
+) -> Result<(), Error>
 ```
 
 ```java
@@ -87,7 +91,7 @@ public default EntityEquipmentPacket getEquipmentsPacket()
 ```
 
 ```rust
-pub fn get_equipments_packet(&self) -> Result<SetEquipmentPacket, GetEquipmentsPacketError>
+pub fn get_equipments_packet(&self) -> Result<SetEquipmentPacket, Error>
 ```
 
 ## Edge Behavior Coverage

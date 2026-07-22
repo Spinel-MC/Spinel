@@ -9,6 +9,10 @@ Owner: Minestom `EquipmentSlot` enum, its eight variants, codecs, collection, ac
 - Minestom: `entity/EquipmentSlot.java`.
 - Spinel: `spinel-server/src/entity/equipment_slot.rs`; protocol dependency `spinel-core` set-equipment slot type.
 
+## Error Owner
+
+`EquipmentSlot::from_legacy_protocol_id` returns `Result<EquipmentSlot, spinel_server::entity::Error>`. This uses the shared entity error owner recorded in [Living entity equipment](../LivingEntity/Equipment.md), not an operation-specific error type.
+
 ## Current Spinel State
 
 All eight values and ID/NBT/hand/armor accessors are present. No selected `NETWORK_TYPE`, `CODEC`, `armors`, or `fromLegacyProtocolId` operation was found.
@@ -80,7 +84,7 @@ public static EquipmentSlot fromLegacyProtocolId(int legacyProtocolId)
 ```rust
 pub fn from_legacy_protocol_id(
     legacy_protocol_id: i32,
-) -> Result<EquipmentSlot, EquipmentSlotFromLegacyProtocolIdError>
+) -> Result<EquipmentSlot, Error>
 ```
 
 ## Edge Behavior Coverage

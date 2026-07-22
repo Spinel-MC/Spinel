@@ -10,6 +10,10 @@ Owner: selected public `LivingEntity` equipment/hand API and its `EquipmentHandl
 - Spinel: `entity/living/state.rs`, `living/equipment.rs`, `generic_entity.rs`, `entity.rs`, `entity_creature.rs`, `player/instance/inventory_state.rs`, `player/item_use.rs`, `server/instance.rs`.
 - Missing intended Spinel owner path: a direct living-entity public owner/contract separate from arbitrary `GenericEntity`.
 
+## Error Owner
+
+No existing shared error owner covers this selected entity-equipment surface. The mapped shared owner is `spinel_server::entity::Error`, implemented at the intended path `spinel-server/src/entity/error.rs`; all no-value operations use `Result<(), Error>` and value operations use `Result<T, Error>`.
+
 ## Current Spinel State
 
 `LivingState` stores all eight slots and updates attributes. `GenericEntity` exposes equipment regardless of living type; player inventory owns separate hand/equipment methods returning `bool`. Nonplayer mutation lacks Minestom's event and selected-slot viewer dispatch. Full visible entries omit saddle.
@@ -71,11 +75,11 @@ Create a narrow `EquipmentHandler` shared contract and implement/delegate it thr
 | Minestom declaration | Spinel owner | Mapping status | Proof |
 | --- | --- | --- | --- |
 | `LivingEntity(EntityType, UUID)`, `LivingEntity(EntityType)` | no direct living type | Missing | construction |
-| `getEquipment`, `setEquipment` | direct living owner through `EquipmentHandler` | `get_equipment` returns `ItemStack`; `set_equipment` returns `Result<(), SetEquipmentError>` | unit/integration |
+| `getEquipment`, `setEquipment` | direct living owner through `EquipmentHandler` | `get_equipment` returns `ItemStack`; `set_equipment` returns `Result<(), Error>` | unit/integration |
 | `updateEquipmentAttributes` | `LivingState` / `LivingAttributes` | behavior partial; visibility/owner unresolved | unit |
 | `updateNewViewer` equipment branch | Generic packet builder | integration missing | packet capture |
 | `swingMainHand`, `swingOffHand`, internal client forms | Generic packet constructors | dispatch/receiver behavior unresolved | packet capture |
-| `refreshActiveHand` | direct living owner | `Result<(), RefreshActiveHandError>` when dispatch/metadata work fails | metadata test |
+| `refreshActiveHand` | direct living owner | `Result<(), Error>` when dispatch/metadata work fails | metadata test |
 
 ### Required side-by-side mappings
 
@@ -92,7 +96,7 @@ pub fn set_equipment(
     &mut self,
     equipment_slot: EquipmentSlot,
     item_stack: ItemStack,
-) -> Result<(), SetEquipmentError>
+) -> Result<(), Error>
 
 ```
 
@@ -106,7 +110,7 @@ pub fn refresh_active_hand(
     is_hand_active: bool,
     off_hand: bool,
     riptide_spin_attack: bool,
-) -> Result<(), RefreshActiveHandError>
+) -> Result<(), Error>
 ```
 
 ## Edge Behavior Coverage
