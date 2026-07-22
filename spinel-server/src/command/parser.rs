@@ -3,7 +3,7 @@ use crate::command::{
     CommandSyntax, CoordinateType, RelativeCoordinate, RelativeVec3,
 };
 use spinel_nbt::parse_snbt_compound;
-use spinel_registry::EntityType;
+use spinel_registry::{BlockState, EntityType, vanilla_world_blocks::Block};
 use std::collections::HashMap;
 
 pub struct CommandParser;
@@ -111,8 +111,13 @@ impl CommandParser {
             });
         }
         match argument.kind() {
+            CommandArgumentKind::Literal => Self::parse_literal(argument, input),
             CommandArgumentKind::EntityType => Self::parse_entity_type(input),
             CommandArgumentKind::RelativeVec3 => Self::parse_relative_vec3(input),
+            CommandArgumentKind::RelativeBlockPosition => {
+                Self::parse_relative_block_position(input)
+            }
+            CommandArgumentKind::BlockState => Self::parse_block_state(input),
             CommandArgumentKind::NbtCompound => Self::parse_nbt_compound(input),
             CommandArgumentKind::Parser {
                 allows_space,
@@ -122,6 +127,15 @@ impl CommandParser {
         }
     }
 
+    fn parse_literal<'a>(argument: &CommandArgument, input: &'a str) -> Option<ParsedArgument<'a>> {
+        let trimmed_input = input.trim_start();
+        let (literal_input, remaining_input) = next_word(trimmed_input);
+        (literal_input == argument.id()).then(|| ParsedArgument {
+            raw_input: literal_input.to_string(),
+            value: CommandArgumentValue::String(literal_input.to_string()),
+            remaining_input,
+        })
+    }
     fn parse_entity_type(input: &str) -> Option<ParsedArgument<'_>> {
         let (entity_type_key, remaining_input) = next_word(input);
         let entity_type = EntityType::from_key(entity_type_key)?;
@@ -162,6 +176,46 @@ impl CommandParser {
         })
     }
 
+    fn parse_relative_block_position(input: &str) -> Option<ParsedArgument<'_>> {
+        let trimmed_input = input.trim_start();
+        let (x, x_remaining_input) = next_word(trimmed_input);
+        let (y, y_remaining_input) = next_word(x_remaining_input.trim_start());
+        let (z, remaining_input) = next_word(y_remaining_input.trim_start());
+        let coordinates = [
+            parse_block_coordinate(x)?,
+            parse_block_coordinate(y)?,
+            parse_block_coordinate(z)?,
+        ];
+        let has_local_coordinate = coordinates
+            .iter()
+            .any(|coordinate| coordinate.coordinate_type() == CoordinateType::Local);
+        let has_world_coordinate = coordinates
+            .iter()
+            .any(|coordinate| coordinate.coordinate_type() != CoordinateType::Local);
+        if has_local_coordinate && has_world_coordinate {
+            return None;
+        }
+        Some(ParsedArgument {
+            raw_input: [x, y, z].join(" "),
+            value: CommandArgumentValue::RelativeVec3(RelativeVec3::new(
+                coordinates[0],
+                coordinates[1],
+                coordinates[2],
+            )),
+            remaining_input,
+        })
+    }
+
+    fn parse_block_state(input: &str) -> Option<ParsedArgument<'_>> {
+        let trimmed_input = input.trim_start();
+        let (raw_block_state, remaining_input) = next_word(trimmed_input);
+        let block_state = parse_block_state_input(raw_block_state)?;
+        Some(ParsedArgument {
+            raw_input: raw_block_state.to_string(),
+            value: CommandArgumentValue::BlockState(block_state),
+            remaining_input,
+        })
+    }
     fn parse_nbt_compound(input: &str) -> Option<ParsedArgument<'_>> {
         let nbt_input = input.trim();
         if !nbt_input.starts_with('{') || !nbt_input.ends_with('}') {
@@ -291,4 +345,50 @@ fn parse_coordinate(input: &str) -> Option<RelativeCoordinate> {
             .map(RelativeCoordinate::local);
     }
     input.parse::<f64>().ok().map(RelativeCoordinate::absolute)
+}
+
+fn parse_block_coordinate(input: &str) -> Option<RelativeCoordinate> {
+    if input == "~" {
+        return Some(RelativeCoordinate::relative(0.0));
+    }
+    if let Some(relative_value) = input.strip_prefix('~') {
+        return relative_value
+            .parse::<f64>()
+            .ok()
+            .map(RelativeCoordinate::relative);
+    }
+    if input == "^" {
+        return Some(RelativeCoordinate::local(0.0));
+    }
+    if let Some(local_value) = input.strip_prefix('^') {
+        return local_value
+            .parse::<f64>()
+            .ok()
+            .map(RelativeCoordinate::local);
+    }
+    input
+        .parse::<i32>()
+        .ok()
+        .map(|value| RelativeCoordinate::absolute(f64::from(value)))
+}
+
+fn parse_block_state_input(input: &str) -> Option<BlockState> {
+    let Some(property_start) = input.find('[') else {
+        return Block::from_key(input).map(BlockState::from);
+    };
+    if property_start == 0 || !input.ends_with(']') {
+        return None;
+    }
+    let block_key = &input[..property_start];
+    let properties_input = &input[property_start + 1..input.len() - 1];
+    let block_state = Block::from_key(block_key).map(BlockState::from)?;
+    properties_input
+        .split(',')
+        .filter(|property_input| !property_input.is_empty())
+        .try_fold(block_state, apply_block_state_property)
+}
+
+fn apply_block_state_property(block_state: BlockState, property_input: &str) -> Option<BlockState> {
+    let (property_name, property_value) = property_input.split_once('=')?;
+    block_state.with_property(property_name, property_value)
 }

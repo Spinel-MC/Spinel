@@ -1,7 +1,7 @@
 use crate::command::{
-    Command, CommandConditionContext, CommandExecutionResult, CommandParseResult, CommandParser,
-    CommandResult, CommandResultType, CommandSender, CommandSenderKind, Suggestion,
-    SuggestionEntry,
+    Command, CommandArgument, CommandArgumentKind, CommandConditionContext, CommandExecutionResult,
+    CommandParseResult, CommandParser, CommandResult, CommandResultType, CommandSender,
+    CommandSenderKind, Suggestion, SuggestionEntry,
 };
 use crate::entity::Player;
 use crate::events::player_command::PlayerCommandEvent;
@@ -16,6 +16,22 @@ pub struct CommandManager {
 struct SuggestionTarget<'a> {
     command: &'a Command,
     consumed_command_part_count: usize,
+}
+
+struct DeclarationArgumentNode {
+    argument: CommandArgument,
+    children: Vec<DeclarationArgumentNode>,
+    is_executable: bool,
+}
+
+impl DeclarationArgumentNode {
+    fn new(argument: CommandArgument) -> Self {
+        Self {
+            argument,
+            children: Vec::new(),
+            is_executable: false,
+        }
+    }
 }
 
 impl CommandManager {
@@ -356,12 +372,18 @@ impl CommandManager {
             Vec::new(),
             command_has_literal_executor,
         ));
-        let syntax_children = command
+        let mut declaration_argument_nodes = Vec::new();
+        command
             .syntaxes()
             .iter()
             .filter(|syntax| !syntax.arguments().is_empty())
             .filter(|syntax| Self::syntax_condition_allows(syntax, condition_context, None))
-            .map(|syntax| self.append_argument_chain(syntax.arguments(), 0, nodes))
+            .for_each(|syntax| {
+                insert_declaration_arguments(&mut declaration_argument_nodes, syntax.arguments())
+            });
+        let syntax_children = declaration_argument_nodes
+            .iter()
+            .map(|declaration_node| append_declaration_argument_node(declaration_node, nodes))
             .collect::<Vec<_>>();
         let subcommand_children = command
             .subcommands()
@@ -377,35 +399,6 @@ impl CommandManager {
             .collect();
         command_node_index
     }
-
-    fn append_argument_chain(
-        &self,
-        arguments: &[crate::command::CommandArgument],
-        argument_index: usize,
-        nodes: &mut Vec<CommandNode>,
-    ) -> i32 {
-        let argument = &arguments[argument_index];
-        let node_index = nodes.len() as i32;
-        let has_next_argument = argument_index + 1 < arguments.len();
-        let node_is_executable = arguments[argument_index + 1..]
-            .iter()
-            .all(crate::command::CommandArgument::is_optional);
-        let mut node = CommandNode::argument(
-            argument.id(),
-            argument.parser(),
-            Vec::new(),
-            node_is_executable,
-            argument.suggestions_type(),
-        );
-        node.properties = argument.protocol_properties();
-        nodes.push(node);
-        if has_next_argument {
-            let child_index = self.append_argument_chain(arguments, argument_index + 1, nodes);
-            nodes[node_index as usize].children = vec![child_index];
-        }
-        node_index
-    }
-
     fn condition_context_for_client(
         server: &mut MinecraftServer,
         client: &Client,
@@ -440,6 +433,63 @@ impl CommandManager {
     }
 }
 
+fn insert_declaration_arguments(
+    declaration_nodes: &mut Vec<DeclarationArgumentNode>,
+    arguments: &[CommandArgument],
+) {
+    let Some((argument, remaining_arguments)) = arguments.split_first() else {
+        return;
+    };
+    let declaration_node_index = declaration_nodes
+        .iter()
+        .position(|declaration_node| arguments_match(&declaration_node.argument, argument))
+        .unwrap_or_else(|| {
+            declaration_nodes.push(DeclarationArgumentNode::new(argument.clone()));
+            declaration_nodes.len() - 1
+        });
+    if remaining_arguments.is_empty() {
+        declaration_nodes[declaration_node_index].is_executable = true;
+        return;
+    }
+    insert_declaration_arguments(
+        &mut declaration_nodes[declaration_node_index].children,
+        remaining_arguments,
+    );
+}
+
+fn append_declaration_argument_node(
+    declaration_node: &DeclarationArgumentNode,
+    nodes: &mut Vec<CommandNode>,
+) -> i32 {
+    let node_index = nodes.len() as i32;
+    let mut node = match declaration_node.argument.kind() {
+        CommandArgumentKind::Literal => CommandNode::literal(
+            declaration_node.argument.id(),
+            Vec::new(),
+            declaration_node.is_executable,
+        ),
+        _ => CommandNode::argument(
+            declaration_node.argument.id(),
+            declaration_node.argument.parser(),
+            Vec::new(),
+            declaration_node.is_executable,
+            declaration_node.argument.suggestions_type(),
+        ),
+    };
+    node.properties = declaration_node.argument.protocol_properties();
+    nodes.push(node);
+    let child_indices = declaration_node
+        .children
+        .iter()
+        .map(|child| append_declaration_argument_node(child, nodes))
+        .collect::<Vec<_>>();
+    nodes[node_index as usize].children = child_indices;
+    node_index
+}
+
+fn arguments_match(left: &CommandArgument, right: &CommandArgument) -> bool {
+    left.kind() == right.kind() && left.id() == right.id()
+}
 impl Default for CommandManager {
     fn default() -> Self {
         Self::new()

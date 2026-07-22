@@ -4,7 +4,7 @@ use crate::command::{
     CommandSender, ParsedCommand, RelativeVec3,
 };
 use crate::server::MinecraftServer;
-use spinel_registry::EntityType;
+use spinel_registry::{EntityType, vanilla_world_blocks::Block};
 
 #[test]
 fn parser_uses_default_relative_vec3_for_optional_position() {
@@ -216,4 +216,73 @@ fn parser_records_invalid_subcommand_start_after_known_literal_chain() {
             panic!("expected invalid command")
         }
     }
+}
+
+#[test]
+fn parser_reads_vanilla_setblock_block_position_and_block_state_shape() {
+    let command = Command::new("setblock").with_syntax(
+        CommandExecutor::from_function(unused_executor),
+        vec![
+            CommandArgument::relative_block_position("pos"),
+            CommandArgument::block_state("block"),
+        ],
+    );
+    let commands = [command];
+
+    let parsed_command = valid_command(CommandParser::parse(&commands, "setblock -3 3 4 air"));
+
+    assert_eq!(
+        parsed_command
+            .context()
+            .relative_block_position("pos")
+            .unwrap()
+            .resolve(0.0, 0.0, 0.0),
+        (-3.0, 3.0, 4.0)
+    );
+    assert_eq!(
+        parsed_command.context().block_state("block"),
+        Some(Block::AIR.default_state())
+    );
+}
+
+#[test]
+fn parser_rejects_decimal_absolute_relative_block_position() {
+    let command = Command::new("setblock").with_syntax(
+        CommandExecutor::from_function(unused_executor),
+        vec![
+            CommandArgument::relative_block_position("pos"),
+            CommandArgument::block_state("block"),
+        ],
+    );
+    let commands = [command];
+
+    match CommandParser::parse(&commands, "setblock -3.5 3 4 air") {
+        CommandParseResult::Invalid(_) => {}
+        CommandParseResult::Valid(_)
+        | CommandParseResult::Incomplete(_)
+        | CommandParseResult::Unknown => {
+            panic!("expected invalid command")
+        }
+    }
+}
+
+#[test]
+fn parser_reads_block_state_properties() {
+    let command = Command::new("setblock").with_syntax(
+        CommandExecutor::from_function(unused_executor),
+        vec![
+            CommandArgument::relative_block_position("pos"),
+            CommandArgument::block_state("block"),
+        ],
+    );
+    let commands = [command];
+
+    let parsed_command = valid_command(CommandParser::parse(
+        &commands,
+        "setblock 0 0 0 oak_log[axis=x]",
+    ));
+    let block_state = parsed_command.context().block_state("block").unwrap();
+
+    assert_eq!(block_state.block(), Block::OAK_LOG);
+    assert_eq!(block_state.property("axis"), Some("x"));
 }

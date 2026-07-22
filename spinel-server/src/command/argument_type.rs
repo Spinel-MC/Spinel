@@ -50,10 +50,6 @@ impl CommandArgument {
         Self::custom_parser(id, ArgumentParserType::ResourceLocation, "ResourceLocation")
     }
 
-    pub fn block_state(id: impl Into<String>) -> Self {
-        Self::parser_with_space(id, ArgumentParserType::BlockState, "BlockState")
-    }
-
     pub fn item_stack(id: impl Into<String>) -> Self {
         Self::parser_with_space(id, ArgumentParserType::ItemStack, "ItemStack")
     }
@@ -92,10 +88,6 @@ impl CommandArgument {
 
     pub fn nbt(id: impl Into<String>) -> Self {
         Self::parser_with_space(id, ArgumentParserType::NbtTag, "NBT")
-    }
-
-    pub fn relative_block_position(id: impl Into<String>) -> Self {
-        Self::parser_with_space(id, ArgumentParserType::BlockPos, "RelativeBlockPosition")
     }
 
     pub fn relative_vec2(id: impl Into<String>) -> Self {

@@ -2,7 +2,7 @@ use crate::command::{ArgumentCallback, SuggestionCallback, SuggestionType};
 use spinel_core::network::clientbound::play::commands::ArgumentParserType;
 use spinel_nbt::NbtCompound;
 use spinel_network::data_type::DataType;
-use spinel_registry::EntityType;
+use spinel_registry::{BlockState, EntityType};
 
 #[derive(Clone)]
 pub struct CommandArgument {
@@ -18,8 +18,11 @@ pub struct CommandArgument {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum CommandArgumentKind {
+    Literal,
     EntityType,
     RelativeVec3,
+    RelativeBlockPosition,
+    BlockState,
     NbtCompound,
     Parser {
         parser: ArgumentParserType,
@@ -33,6 +36,7 @@ pub enum CommandArgumentKind {
 pub enum CommandArgumentValue {
     EntityType(EntityType),
     RelativeVec3(RelativeVec3),
+    BlockState(BlockState),
     NbtCompound(NbtCompound),
     String(String),
 }
@@ -58,6 +62,19 @@ pub enum CoordinateType {
 }
 
 impl CommandArgument {
+    pub fn literal(id: impl Into<String>) -> Self {
+        Self {
+            id: id.into(),
+            kind: CommandArgumentKind::Literal,
+            default_value: None,
+            callback: None,
+            suggestion_callback: None,
+            suggestion_type: None,
+            registry_identifier: None,
+            entity_selector_flags: 0,
+        }
+    }
+
     pub fn entity_type(id: impl Into<String>) -> Self {
         Self {
             id: id.into(),
@@ -173,6 +190,32 @@ impl CommandArgument {
         }
     }
 
+    pub fn relative_block_position(id: impl Into<String>) -> Self {
+        Self {
+            id: id.into(),
+            kind: CommandArgumentKind::RelativeBlockPosition,
+            default_value: None,
+            callback: None,
+            suggestion_callback: None,
+            suggestion_type: None,
+            registry_identifier: None,
+            entity_selector_flags: 0,
+        }
+    }
+
+    pub fn block_state(id: impl Into<String>) -> Self {
+        Self {
+            id: id.into(),
+            kind: CommandArgumentKind::BlockState,
+            default_value: None,
+            callback: None,
+            suggestion_callback: None,
+            suggestion_type: None,
+            registry_identifier: None,
+            entity_selector_flags: 0,
+        }
+    }
+
     pub fn nbt_compound(id: impl Into<String>) -> Self {
         Self {
             id: id.into(),
@@ -251,8 +294,11 @@ impl CommandArgument {
 
     pub const fn allows_space(&self) -> bool {
         match self.kind {
-            CommandArgumentKind::RelativeVec3 | CommandArgumentKind::NbtCompound => true,
-            CommandArgumentKind::EntityType => false,
+            CommandArgumentKind::RelativeVec3
+            | CommandArgumentKind::RelativeBlockPosition
+            | CommandArgumentKind::BlockState
+            | CommandArgumentKind::NbtCompound => true,
+            CommandArgumentKind::Literal | CommandArgumentKind::EntityType => false,
             CommandArgumentKind::Parser { allows_space, .. } => allows_space,
         }
     }
@@ -260,7 +306,11 @@ impl CommandArgument {
     pub const fn uses_remaining_input(&self) -> bool {
         match self.kind {
             CommandArgumentKind::NbtCompound => true,
-            CommandArgumentKind::EntityType | CommandArgumentKind::RelativeVec3 => false,
+            CommandArgumentKind::Literal
+            | CommandArgumentKind::EntityType
+            | CommandArgumentKind::RelativeVec3
+            | CommandArgumentKind::RelativeBlockPosition
+            | CommandArgumentKind::BlockState => false,
             CommandArgumentKind::Parser {
                 uses_remaining_input,
                 ..
@@ -270,8 +320,11 @@ impl CommandArgument {
 
     pub const fn parser(&self) -> ArgumentParserType {
         match self.kind {
+            CommandArgumentKind::Literal => ArgumentParserType::String,
             CommandArgumentKind::EntityType => ArgumentParserType::ResourceLocation,
             CommandArgumentKind::RelativeVec3 => ArgumentParserType::Vec3,
+            CommandArgumentKind::RelativeBlockPosition => ArgumentParserType::BlockPos,
+            CommandArgumentKind::BlockState => ArgumentParserType::BlockState,
             CommandArgumentKind::NbtCompound => ArgumentParserType::NbtCompoundTag,
             CommandArgumentKind::Parser { parser, .. } => parser,
         }
@@ -328,8 +381,13 @@ impl CommandArgument {
 
     pub fn syntax_part(&self) -> String {
         match self.kind {
+            CommandArgumentKind::Literal => format!("Literal<{}>", self.id),
             CommandArgumentKind::EntityType => format!("EntityType<{}>", self.id),
             CommandArgumentKind::RelativeVec3 => format!("RelativeVec3<{}>", self.id),
+            CommandArgumentKind::RelativeBlockPosition => {
+                format!("RelativeBlockPosition<{}>", self.id)
+            }
+            CommandArgumentKind::BlockState => format!("BlockState<{}>", self.id),
             CommandArgumentKind::NbtCompound => format!("NbtCompound<{}>", self.id),
             CommandArgumentKind::Parser { syntax_name, .. } => {
                 format!("{syntax_name}<{}>", self.id)

@@ -1,6 +1,6 @@
 use crate::command::{CommandArgument, CommandArgumentValue, CommandData, RelativeVec3};
 use spinel_nbt::NbtCompound;
-use spinel_registry::EntityType;
+use spinel_registry::{BlockState, EntityType};
 use std::collections::HashMap;
 
 pub struct CommandContext {
@@ -77,6 +77,17 @@ impl CommandContext {
     pub fn relative_vec3(&self, argument_id: &str) -> Option<RelativeVec3> {
         match self.arguments.get(argument_id) {
             Some(CommandArgumentValue::RelativeVec3(position)) => Some(*position),
+            _ => None,
+        }
+    }
+
+    pub fn relative_block_position(&self, argument_id: &str) -> Option<RelativeVec3> {
+        self.relative_vec3(argument_id)
+    }
+
+    pub fn block_state(&self, argument_id: &str) -> Option<BlockState> {
+        match self.arguments.get(argument_id) {
+            Some(CommandArgumentValue::BlockState(block_state)) => Some(*block_state),
             _ => None,
         }
     }

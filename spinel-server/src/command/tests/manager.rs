@@ -269,3 +269,54 @@ fn root_command_exists(commands_packet: &CommandsPacket, command_name: &str) -> 
 fn requires_admin(condition_context: CommandConditionContext, _input: Option<&str>) -> bool {
     condition_context.permission_level() >= 3
 }
+
+#[test]
+fn command_manager_merges_typed_argument_prefix_before_literal_children() {
+    let mut command_manager = CommandManager::new();
+    command_manager.register(
+        Command::new("setblock")
+            .with_syntax(
+                CommandExecutor::from_function(unused_executor),
+                vec![
+                    CommandArgument::relative_block_position("pos"),
+                    CommandArgument::block_state("block"),
+                ],
+            )
+            .with_syntax(
+                CommandExecutor::from_function(unused_executor),
+                vec![
+                    CommandArgument::relative_block_position("pos"),
+                    CommandArgument::block_state("block"),
+                    CommandArgument::literal("destroy"),
+                ],
+            )
+            .with_syntax(
+                CommandExecutor::from_function(unused_executor),
+                vec![
+                    CommandArgument::relative_block_position("pos"),
+                    CommandArgument::block_state("block"),
+                    CommandArgument::literal("keep"),
+                ],
+            ),
+    );
+
+    let commands_packet = command_manager.declare_commands_packet();
+    let setblock_node = root_command_node(&commands_packet, "setblock");
+    let position_node = &commands_packet.nodes[setblock_node.children[0] as usize];
+    let block_node = &commands_packet.nodes[position_node.children[0] as usize];
+    let literal_names = block_node
+        .children
+        .iter()
+        .map(|node_index| {
+            commands_packet.nodes[*node_index as usize]
+                .name
+                .as_deref()
+                .unwrap()
+        })
+        .collect::<Vec<_>>();
+
+    assert_eq!(position_node.parser, Some(ArgumentParserType::BlockPos));
+    assert_eq!(block_node.parser, Some(ArgumentParserType::BlockState));
+    assert_ne!(block_node.flags & COMMAND_NODE_IS_EXECUTABLE, 0);
+    assert_eq!(literal_names, vec!["destroy", "keep"]);
+}
