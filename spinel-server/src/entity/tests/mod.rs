@@ -8,5 +8,6 @@ mod item;
 mod pathfinding;
 mod physics;
 mod projectile;
+mod restoration;
 mod summon_nbt;
 mod team;

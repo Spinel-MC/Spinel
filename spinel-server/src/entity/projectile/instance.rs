@@ -8,6 +8,7 @@ use spinel_registry::EntityType;
 use spinel_registry::ItemStack;
 use std::f64::consts::TAU;
 use std::ops::{Deref, DerefMut};
+use uuid::Uuid;
 
 const PROJECTILE_GRAVITY_AIM_COMPENSATION: f64 = 0.20000000298023224;
 const PROJECTILE_SPREAD_SCALE: f64 = 0.007499999832361937;
@@ -21,7 +22,11 @@ pub struct ProjectileEntity {
 
 impl ProjectileEntity {
     pub fn new(shooter: Option<EntityId>, entity_type: EntityType) -> Self {
-        let mut entity = GenericEntity::new(entity_type);
+        Self::with_uuid(shooter, entity_type, Uuid::new_v4())
+    }
+
+    pub fn with_uuid(shooter: Option<EntityId>, entity_type: EntityType, uuid: Uuid) -> Self {
+        let mut entity = GenericEntity::with_uuid(entity_type, uuid);
         entity.set_has_physics(false);
         let mut projectile = Self {
             entity,

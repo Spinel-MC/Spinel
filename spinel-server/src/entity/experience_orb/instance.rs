@@ -5,6 +5,7 @@ use spinel_network::types::entity_metadata::MetadataValue;
 use spinel_network::types::{Vector3d, Velocity};
 use spinel_registry::EntityType;
 use std::ops::{Deref, DerefMut};
+use uuid::Uuid;
 
 pub struct ExperienceOrb {
     entity: GenericEntity,
@@ -15,7 +16,11 @@ pub struct ExperienceOrb {
 
 impl ExperienceOrb {
     pub fn new(experience_count: i16) -> Self {
-        let mut entity = GenericEntity::new(EntityType::EXPERIENCE_ORB);
+        Self::with_uuid(experience_count, Uuid::new_v4())
+    }
+
+    pub fn with_uuid(experience_count: i16, uuid: Uuid) -> Self {
+        let mut entity = GenericEntity::with_uuid(EntityType::EXPERIENCE_ORB, uuid);
         entity.set_bounding_box_dimensions(0.5, 0.5, 0.5);
         entity.get_metadata_mut().set(
             &definitions::experience_orb::get_value(),

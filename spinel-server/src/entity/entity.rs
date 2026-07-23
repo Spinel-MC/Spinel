@@ -272,7 +272,7 @@ impl Entity {
         }
     }
 
-    pub(crate) fn set_position(&mut self, position: EntityPosition) {
+    pub fn set_position(&mut self, position: EntityPosition) {
         match self {
             Self::Creature(entity) => entity.set_position(position),
             Self::ExperienceOrb(entity) => entity.set_position(position),
@@ -314,7 +314,7 @@ impl Entity {
         }
     }
 
-    pub(crate) fn set_velocity(&mut self, velocity: Velocity) {
+    pub fn set_velocity(&mut self, velocity: Velocity) {
         match self {
             Self::Creature(entity) => entity.set_velocity(velocity),
             Self::ExperienceOrb(entity) => entity.set_velocity(velocity),

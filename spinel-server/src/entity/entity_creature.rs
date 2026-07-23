@@ -52,7 +52,11 @@ impl crate::entity::EquipmentHandler for EntityCreature {
 }
 impl EntityCreature {
     pub fn new(entity_type: EntityType) -> Self {
-        let mut entity = LivingEntity::new(entity_type);
+        Self::with_uuid(entity_type, Uuid::new_v4())
+    }
+
+    pub fn with_uuid(entity_type: EntityType, uuid: Uuid) -> Self {
+        let mut entity = LivingEntity::with_uuid(entity_type, uuid);
         entity.heal();
         Self {
             entity,

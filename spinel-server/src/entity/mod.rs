@@ -49,7 +49,6 @@ pub(crate) use leash::EntityLeash;
 pub use living::{
     EntityAttributeState, LivingAttributes, LivingEntity, LivingState, TimedPotionEffect,
 };
-pub use passenger::PassengerError;
 pub use player::PlayerSpawnPoint;
 pub use player::{Player, PlayerHand};
 pub(crate) use player::{PlayerChunk, PlayerChunkTransition};
