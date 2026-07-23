@@ -61,19 +61,6 @@ const SERVER_TICKS_PER_SECOND: f64 = 20.0;
 
 pub struct GenericEntity {
     state: EntityState,
-    falling_block_state: i32,
-    fishing_hook_owner_entity_id: Option<EntityId>,
-    bounding_box: EntityBoundingBox,
-    view: EntityView,
-    position: EntityPosition,
-    previous_position: EntityPosition,
-    velocity: Velocity,
-    vehicle: Option<EntityId>,
-    passengers: BTreeSet<EntityId>,
-    leash: EntityLeash,
-    world: Option<Uuid>,
-    removed: bool,
-    ticks: u64,
     scheduler: ContextScheduler<GenericEntity>,
     tag_handler: TagHandler,
     data_components: DataComponentMap,
@@ -87,7 +74,6 @@ pub struct GenericEntity {
     has_entity_collision: bool,
     prevents_block_placement: bool,
     delayed_remove_ticks: Option<u64>,
-    expired_effects: Vec<TimedPotionEffect>,
     permissions: PermissionSet,
 }
 
@@ -123,23 +109,6 @@ impl GenericEntity {
         let collision_rules = EntityCollisionRules::from_entity_type(entity_type);
         Self {
             state: EntityState::new(entity_id, uuid, entity_type),
-            falling_block_state: spinel_registry::vanilla_world_blocks::Block::STONE.state_id(),
-            fishing_hook_owner_entity_id: None,
-            bounding_box: entity_type.get_bounding_box(),
-            view: EntityView::new(entity_id),
-            position: EntityPosition::default(),
-            previous_position: EntityPosition::default(),
-            velocity: Velocity(Vector3d {
-                x: 0.0,
-                y: 0.0,
-                z: 0.0,
-            }),
-            vehicle: None,
-            passengers: BTreeSet::new(),
-            leash: EntityLeash::new(),
-            world: None,
-            removed: false,
-            ticks: 0,
             scheduler: ContextScheduler::new(),
             tag_handler: TagHandler::new_handler(),
             data_components: DataComponentMap::new(),
@@ -153,7 +122,6 @@ impl GenericEntity {
             has_entity_collision: collision_rules.has_entity_collision(),
             prevents_block_placement: collision_rules.can_prevent_block_placement(),
             delayed_remove_ticks: None,
-            expired_effects: Vec::new(),
             permissions: PermissionSet::new(),
         }
     }
