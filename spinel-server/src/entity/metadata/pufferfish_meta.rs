@@ -1,4 +1,4 @@
-use crate::entity::metadata::{AbstractFishMeta, EntityMeta, PufferfishState, definitions};
+use crate::entity::metadata::{AbstractFishMeta, LivingEntityMeta, PufferfishState, definitions};
 use spinel_network::types::entity_metadata::MetadataValue;
 use spinel_registry::EntityType;
 use std::ops::{Deref, DerefMut};
@@ -8,12 +8,14 @@ pub struct PufferfishMeta<'entity> {
 }
 
 impl<'entity> PufferfishMeta<'entity> {
-    pub(crate) fn from_entity_meta(entity_meta: EntityMeta<'entity>) -> Option<Self> {
-        if entity_meta.get_entity().get_entity_type() != EntityType::PUFFERFISH {
+    pub(crate) fn from_living_entity_meta(
+        living_entity_meta: LivingEntityMeta<'entity>,
+    ) -> Option<Self> {
+        if living_entity_meta.get_entity_type() != EntityType::PUFFERFISH {
             return None;
         }
         let mut pufferfish_meta = Self {
-            abstract_fish_meta: AbstractFishMeta::from_entity_meta(entity_meta),
+            abstract_fish_meta: AbstractFishMeta::from_living_entity_meta(living_entity_meta),
         };
         pufferfish_meta.update_bounding_box(PufferfishState::Unpuffed);
         Some(pufferfish_meta)
@@ -21,7 +23,7 @@ impl<'entity> PufferfishMeta<'entity> {
 
     pub fn get_state(&self) -> PufferfishState {
         match self
-            .get_entity()
+            .get_entity_state()
             .get_metadata()
             .get_value(&definitions::puffer_fish::puff_state())
         {
@@ -33,7 +35,7 @@ impl<'entity> PufferfishMeta<'entity> {
     }
 
     pub fn set_state(&mut self, state: PufferfishState) {
-        self.get_entity_mut().get_metadata_mut().set(
+        self.get_living_entity_mut().get_metadata_mut().set(
             &definitions::puffer_fish::puff_state(),
             MetadataValue::VarInt(state.get_protocol_id()),
         );
@@ -42,7 +44,7 @@ impl<'entity> PufferfishMeta<'entity> {
 
     fn update_bounding_box(&mut self, state: PufferfishState) {
         let size = state.get_bounding_box_size();
-        self.get_entity_mut()
+        self.get_living_entity_mut()
             .set_bounding_box_dimensions(size, size, size);
     }
 }

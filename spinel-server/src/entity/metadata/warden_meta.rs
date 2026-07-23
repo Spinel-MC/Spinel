@@ -1,4 +1,4 @@
-use crate::entity::metadata::{EntityMeta, MonsterMeta, definitions};
+use crate::entity::metadata::{LivingEntityMeta, MonsterMeta, definitions};
 use spinel_network::types::entity_metadata::MetadataValue;
 use spinel_registry::EntityType;
 use std::ops::{Deref, DerefMut};
@@ -8,15 +8,17 @@ pub struct WardenMeta<'entity> {
 }
 
 impl<'entity> WardenMeta<'entity> {
-    pub(crate) fn from_entity_meta(entity_meta: EntityMeta<'entity>) -> Option<Self> {
-        (entity_meta.get_entity().get_entity_type() == EntityType::WARDEN).then(|| Self {
-            monster_meta: MonsterMeta::from_entity_meta(entity_meta),
+    pub(crate) fn from_living_entity_meta(
+        living_entity_meta: LivingEntityMeta<'entity>,
+    ) -> Option<Self> {
+        (living_entity_meta.get_entity_type() == EntityType::WARDEN).then(|| Self {
+            monster_meta: MonsterMeta::from_living_entity_meta(living_entity_meta),
         })
     }
 
     pub fn get_anger_level(&self) -> i32 {
         match self
-            .get_entity()
+            .get_state()
             .get_metadata()
             .get_value(&definitions::warden::get_anger_level())
         {
@@ -26,7 +28,7 @@ impl<'entity> WardenMeta<'entity> {
     }
 
     pub fn set_anger_level(&mut self, anger_level: i32) {
-        self.get_entity_mut().get_metadata_mut().set(
+        self.get_entity_state_mut().get_metadata_mut().set(
             &definitions::warden::get_anger_level(),
             MetadataValue::VarInt(anger_level),
         );

@@ -16,7 +16,7 @@ impl<'entity> AbstractMinecartMeta<'entity> {
 
     pub fn get_custom_block_state(&self) -> Option<BlockState> {
         match self
-            .get_entity()
+            .get_state()
             .get_metadata()
             .get_value(&definitions::abstract_minecart::get_custom_block_state())
         {
@@ -29,7 +29,7 @@ impl<'entity> AbstractMinecartMeta<'entity> {
     }
 
     pub fn set_custom_block_state(&mut self, custom_block_state: Option<BlockState>) {
-        self.get_entity_mut().get_metadata_mut().set(
+        self.get_state_mut().get_metadata_mut().set(
             &definitions::abstract_minecart::get_custom_block_state(),
             MetadataValue::OptionalBlockState(custom_block_state.map_or(0, BlockState::state_id)),
         );
@@ -37,7 +37,7 @@ impl<'entity> AbstractMinecartMeta<'entity> {
 
     pub fn get_custom_block_y_position(&self) -> i32 {
         match self
-            .get_entity()
+            .get_state()
             .get_metadata()
             .get_value(&definitions::abstract_minecart::custom_block_y_position())
         {
@@ -47,7 +47,7 @@ impl<'entity> AbstractMinecartMeta<'entity> {
     }
 
     pub fn set_custom_block_y_position(&mut self, custom_block_y_position: i32) {
-        self.get_entity_mut().get_metadata_mut().set(
+        self.get_state_mut().get_metadata_mut().set(
             &definitions::abstract_minecart::custom_block_y_position(),
             MetadataValue::VarInt(custom_block_y_position),
         );

@@ -1,4 +1,4 @@
-use crate::entity::metadata::{AnimalMeta, EntityMeta, definitions};
+use crate::entity::metadata::{AnimalMeta, LivingEntityMeta, definitions};
 use spinel_network::types::entity_metadata::MetadataValue;
 use spinel_registry::EntityType;
 use std::ops::{Deref, DerefMut};
@@ -8,15 +8,17 @@ pub struct PolarBearMeta<'entity> {
 }
 
 impl<'entity> PolarBearMeta<'entity> {
-    pub(crate) fn from_entity_meta(entity_meta: EntityMeta<'entity>) -> Option<Self> {
-        (entity_meta.get_entity().get_entity_type() == EntityType::POLAR_BEAR).then(|| Self {
-            animal_meta: AnimalMeta::from_entity_meta(entity_meta),
+    pub(crate) fn from_living_entity_meta(
+        living_entity_meta: LivingEntityMeta<'entity>,
+    ) -> Option<Self> {
+        (living_entity_meta.get_entity_type() == EntityType::POLAR_BEAR).then(|| Self {
+            animal_meta: AnimalMeta::from_living_entity_meta(living_entity_meta),
         })
     }
 
     pub fn is_standing_up(&self) -> bool {
         match self
-            .get_entity()
+            .get_state()
             .get_metadata()
             .get_value(&definitions::polar_bear::is_standing_up())
         {
@@ -26,7 +28,7 @@ impl<'entity> PolarBearMeta<'entity> {
     }
 
     pub fn set_standing_up(&mut self, is_standing_up: bool) {
-        self.get_entity_mut().get_metadata_mut().set(
+        self.get_entity_state_mut().get_metadata_mut().set(
             &definitions::polar_bear::is_standing_up(),
             MetadataValue::Boolean(is_standing_up),
         );

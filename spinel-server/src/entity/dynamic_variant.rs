@@ -1,4 +1,4 @@
-use crate::entity::GenericEntity;
+use crate::entity::LivingEntity;
 use crate::entity::metadata::definitions;
 use spinel_network::types::entity_metadata::MetadataValue;
 use spinel_registry::{
@@ -43,7 +43,7 @@ impl Display for UnregisteredEntityVariantError {
 
 impl std::error::Error for UnregisteredEntityVariantError {}
 
-impl GenericEntity {
+impl LivingEntity {
     pub(crate) fn get_cat_variant_metadata(
         &self,
         registries: &Registries,

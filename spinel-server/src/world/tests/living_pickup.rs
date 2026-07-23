@@ -1,5 +1,5 @@
 use crate::entity::player::{Player, PlayerChunk};
-use crate::entity::{Entity, EntityPosition, GenericEntity, ItemEntity};
+use crate::entity::{Entity, EntityPosition, ItemEntity, LivingEntity};
 use crate::events::pickup_item::PickupItemEvent;
 use crate::network::client::instance::Client;
 use crate::server::MinecraftServer;
@@ -33,7 +33,7 @@ fn generic_living_pickup_refreshes_cooldown_sends_removal_and_unregisters_item()
     let living_entity_id = living_entity.get_entity_id();
     let item_entity = positioned_item_entity();
     let item_entity_id = item_entity.get_entity_id();
-    world.add_entity(Entity::Generic(living_entity));
+    world.add_entity(Entity::Living(living_entity));
     world.add_entity(Entity::Item(item_entity));
 
     world.tick_with_registries(&Registries::new_vanilla());
@@ -69,7 +69,7 @@ fn cancelled_living_pickup_preserves_item_entity() {
     let living_entity = positioned_living_entity();
     let item_entity = positioned_item_entity();
     let item_entity_id = item_entity.get_entity_id();
-    world.add_entity(Entity::Generic(living_entity));
+    world.add_entity(Entity::Living(living_entity));
     world.add_entity(Entity::Item(item_entity));
 
     world.tick_with_registries(&Registries::new_vanilla());
@@ -131,8 +131,8 @@ fn player_pickup_sends_collect_packet_and_removes_visible_item() {
     assert!(world.get_entity(item_entity_id).is_none());
 }
 
-fn positioned_living_entity() -> GenericEntity {
-    let mut entity = GenericEntity::new(EntityType::ZOMBIE);
+fn positioned_living_entity() -> LivingEntity {
+    let mut entity = LivingEntity::new(EntityType::ZOMBIE);
     entity.set_position(EntityPosition::new(1.0, 64.0, 1.0, 0.0, 0.0));
     entity
 }
@@ -155,9 +155,9 @@ fn positioned_player(port: u16) -> Player {
     player
 }
 
-fn generic_entity(entity: &Entity) -> Option<&GenericEntity> {
+fn generic_entity(entity: &Entity) -> Option<&LivingEntity> {
     match entity {
-        Entity::Generic(entity) => Some(entity),
+        Entity::Living(entity) => Some(entity),
         _ => None,
     }
 }

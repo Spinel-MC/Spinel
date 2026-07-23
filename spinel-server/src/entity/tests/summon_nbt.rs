@@ -1,4 +1,4 @@
-use crate::entity::{EntityPosition, GenericEntity};
+use crate::entity::{EntityPosition, GenericEntity, LivingEntity};
 use spinel_nbt::parse_snbt_compound;
 use spinel_registry::EntityType;
 
@@ -34,7 +34,7 @@ fn summon_nbt_applies_living_and_type_specific_state_only_to_matching_entities()
         "{Invulnerable:1b,Health:7.5f,Small:1b,ShowArms:1b,NoBasePlate:1b,Marker:1b}",
     )
     .unwrap();
-    let mut armor_stand = GenericEntity::new(EntityType::ARMOR_STAND);
+    let mut armor_stand = LivingEntity::new(EntityType::ARMOR_STAND);
     armor_stand.apply_summon_nbt(&living_nbt);
 
     assert!(armor_stand.is_invulnerable());
@@ -51,7 +51,7 @@ fn summon_nbt_applies_living_and_type_specific_state_only_to_matching_entities()
     }
 
     let slime_nbt = parse_snbt_compound("{Size:4,Health:12.0f}").unwrap();
-    let mut slime = GenericEntity::new(EntityType::SLIME);
+    let mut slime = LivingEntity::new(EntityType::SLIME);
     slime.apply_summon_nbt(&slime_nbt);
     assert_eq!(
         slime
@@ -65,6 +65,5 @@ fn summon_nbt_applies_living_and_type_specific_state_only_to_matching_entities()
 
     let mut item = GenericEntity::new(EntityType::ITEM);
     item.apply_summon_nbt(&slime_nbt);
-    assert_eq!(item.get_health(), 20.0);
-    assert!(item.get_entity_meta_mut().as_slime().is_none());
+    assert_eq!(item.get_entity_type(), EntityType::ITEM);
 }

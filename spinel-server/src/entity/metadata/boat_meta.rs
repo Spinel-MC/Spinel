@@ -9,7 +9,7 @@ pub struct BoatMeta<'entity> {
 
 impl<'entity> BoatMeta<'entity> {
     pub(crate) fn from_entity_meta(entity_meta: EntityMeta<'entity>) -> Option<Self> {
-        is_boat_type(entity_meta.get_entity().get_entity_type()).then(|| Self {
+        is_boat_type(entity_meta.get_state().get_entity_type()).then(|| Self {
             abstract_vehicle_meta: AbstractVehicleMeta::from_entity_meta(entity_meta),
         })
     }
@@ -38,7 +38,7 @@ impl<'entity> BoatMeta<'entity> {
 
     pub fn get_splash_timer(&self) -> i32 {
         match self
-            .get_entity()
+            .get_state()
             .get_metadata()
             .get_value(&definitions::boat::get_splash_timer())
         {
@@ -48,14 +48,14 @@ impl<'entity> BoatMeta<'entity> {
     }
 
     pub fn set_splash_timer(&mut self, splash_timer: i32) {
-        self.get_entity_mut().get_metadata_mut().set(
+        self.get_state_mut().get_metadata_mut().set(
             &definitions::boat::get_splash_timer(),
             MetadataValue::VarInt(splash_timer),
         );
     }
 
     fn boolean(&self, definition: &crate::entity::metadata::MetadataDefinition) -> bool {
-        match self.get_entity().get_metadata().get_value(definition) {
+        match self.get_entity_state().get_metadata().get_value(definition) {
             MetadataValue::Boolean(value) => value,
             _ => false,
         }
@@ -66,7 +66,7 @@ impl<'entity> BoatMeta<'entity> {
         definition: &crate::entity::metadata::MetadataDefinition,
         value: bool,
     ) {
-        self.get_entity_mut()
+        self.get_state_mut()
             .get_metadata_mut()
             .set(definition, MetadataValue::Boolean(value));
     }

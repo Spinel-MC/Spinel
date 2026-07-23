@@ -1,4 +1,6 @@
-use crate::data_components::{DataComponentMap, RegistryTagReference};
+use crate::data_components::{
+    DataComponentMap, DataComponentType, DataComponentValue, RegistryTagReference,
+};
 use crate::{EquipmentSlotGroup, RegistryCodec};
 use spinel_nbt::{Nbt, NbtCompound};
 use spinel_utils::component::text::TextComponent;
@@ -150,7 +152,8 @@ impl Enchantment {
         let anvil_cost = integer_field(data.get("anvil_cost")?)?;
         let slots = slots_from_nbt(data.get("slots")?)?;
         let effects = match data.get("effects") {
-            Some(Nbt::Compound(value)) => DataComponentMap::from_nbt_patch(value.clone()).ok()?,
+            Some(Nbt::Compound(value)) => DataComponentMap::from_nbt_patch(value.clone())
+                .unwrap_or_else(|_| DataComponentMap::new()),
             Some(_) => return None,
             None => DataComponentMap::new(),
         };
@@ -356,7 +359,16 @@ impl EnchantmentBuilder {
     }
 
     #[must_use]
-    pub fn effects(mut self, effects: DataComponentMap) -> Self {
+    pub fn set_effect<T>(mut self, component: DataComponentType<T>, effect: T) -> Self
+    where
+        T: DataComponentValue,
+    {
+        self.effects.set(component, effect);
+        self
+    }
+
+    #[must_use]
+    pub fn set_effects(mut self, effects: DataComponentMap) -> Self {
         self.effects = effects;
         self
     }

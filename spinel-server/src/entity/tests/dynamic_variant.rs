@@ -1,4 +1,4 @@
-use crate::entity::GenericEntity;
+use crate::entity::LivingEntity;
 use spinel_registry::data_components::vanilla_components::{
     CAT_VARIANT, CHICKEN_VARIANT, COW_VARIANT, FROG_VARIANT, PIG_VARIANT, WOLF_SOUND_VARIANT,
     WOLF_VARIANT, ZOMBIE_NAUTILUS_VARIANT,
@@ -68,13 +68,13 @@ fn dynamic_entity_variants_resolve_through_active_registries() {
         )
         .unwrap();
 
-    let mut cat = GenericEntity::new(EntityType::CAT);
-    let mut chicken = GenericEntity::new(EntityType::CHICKEN);
-    let mut cow = GenericEntity::new(EntityType::COW);
-    let mut frog = GenericEntity::new(EntityType::FROG);
-    let mut pig = GenericEntity::new(EntityType::PIG);
-    let mut wolf = GenericEntity::new(EntityType::WOLF);
-    let mut zombie_nautilus = GenericEntity::new(EntityType::ZOMBIE_NAUTILUS);
+    let mut cat = LivingEntity::new(EntityType::CAT);
+    let mut chicken = LivingEntity::new(EntityType::CHICKEN);
+    let mut cow = LivingEntity::new(EntityType::COW);
+    let mut frog = LivingEntity::new(EntityType::FROG);
+    let mut pig = LivingEntity::new(EntityType::PIG);
+    let mut wolf = LivingEntity::new(EntityType::WOLF);
+    let mut zombie_nautilus = LivingEntity::new(EntityType::ZOMBIE_NAUTILUS);
 
     cat.set_component_with_registries(&registries, CAT_VARIANT, cat_variant.clone())
         .unwrap();
@@ -204,7 +204,7 @@ fn dynamic_entity_variant_setters_reject_unregistered_keys_without_mutation() {
         .unwrap();
     let unregistered_variant =
         RegistryKey::<pig_variant::PigVariant>::new(Identifier::new("example", "missing"));
-    let mut pig = GenericEntity::new(EntityType::PIG);
+    let mut pig = LivingEntity::new(EntityType::PIG);
 
     pig.get_entity_meta_mut()
         .as_pig()

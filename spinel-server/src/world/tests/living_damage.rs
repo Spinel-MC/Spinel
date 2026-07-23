@@ -1,5 +1,5 @@
 use crate::entity::player::{Player, PlayerChunk};
-use crate::entity::{Damage, Entity, EntityId, EntityPose, EntityPosition, GenericEntity};
+use crate::entity::{Damage, Entity, EntityId, EntityPose, EntityPosition, LivingEntity};
 use crate::events::entity_damage::EntityDamageEvent;
 use crate::network::client::instance::Client;
 use crate::server::MinecraftServer;
@@ -161,6 +161,7 @@ fn world_damage_entity_uses_player_additional_hearts_before_health_damage() {
             Entity::Creature(_) => None,
             Entity::ExperienceOrb(_) => None,
             Entity::Generic(_) => None,
+            Entity::Living(_) => None,
             Entity::Item(_) => None,
             Entity::Projectile(_) => None,
         })
@@ -187,7 +188,7 @@ fn world_damage_entity_dispatches_damage_event_packet_to_current_viewers() {
     viewer.set_client(&mut viewer_client);
     viewer.mark_entered_world();
     viewer.mark_chunk_sent_to_client(PlayerChunk::new(0, 0));
-    let entity = Entity::Generic(positioned_living_entity());
+    let entity = Entity::Living(positioned_living_entity());
     let entity_id = entity.get_entity_id();
 
     world.add_entity(entity);
@@ -249,7 +250,7 @@ fn lethal_world_damage_runs_living_death_after_damage_and_sound_packets() {
     viewer.set_client(&mut viewer_client);
     viewer.mark_entered_world();
     viewer.mark_chunk_sent_to_client(PlayerChunk::new(0, 0));
-    let entity = Entity::Generic(positioned_living_entity());
+    let entity = Entity::Living(positioned_living_entity());
     let entity_id = entity.get_entity_id();
     world.add_entity(entity);
     world.add_entity(Entity::Player(viewer));
@@ -287,12 +288,12 @@ fn server_with_living_entity() -> MinecraftServer {
         .world_manager
         .world_mut(world_uuid)
         .unwrap()
-        .add_entity(Entity::Generic(positioned_living_entity()));
+        .add_entity(Entity::Living(positioned_living_entity()));
     server
 }
 
-fn positioned_living_entity() -> GenericEntity {
-    let mut entity = GenericEntity::new(EntityType::ZOMBIE);
+fn positioned_living_entity() -> LivingEntity {
+    let mut entity = LivingEntity::new(EntityType::ZOMBIE);
     entity.heal();
     entity.set_position(EntityPosition::new(1.0, 64.0, 1.0, 0.0, 0.0));
     entity
@@ -302,7 +303,7 @@ fn tracked_living_entity_id(server: &MinecraftServer) -> EntityId {
     tracked_living_entity(server).get_entity_id()
 }
 
-fn tracked_living_entity(server: &MinecraftServer) -> &GenericEntity {
+fn tracked_living_entity(server: &MinecraftServer) -> &LivingEntity {
     server.world_manager.worlds()[0].creatures()[0]
 }
 

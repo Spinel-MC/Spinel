@@ -1,4 +1,4 @@
-use crate::entity::metadata::{EntityMeta, MonsterMeta, definitions};
+use crate::entity::metadata::{LivingEntityMeta, MonsterMeta, definitions};
 use spinel_network::types::entity_metadata::MetadataValue;
 use std::ops::{Deref, DerefMut};
 
@@ -7,15 +7,15 @@ pub struct RaiderMeta<'entity> {
 }
 
 impl<'entity> RaiderMeta<'entity> {
-    pub(crate) fn from_entity_meta(entity_meta: EntityMeta<'entity>) -> Self {
+    pub(crate) fn from_living_entity_meta(living_entity_meta: LivingEntityMeta<'entity>) -> Self {
         Self {
-            monster_meta: MonsterMeta::from_entity_meta(entity_meta),
+            monster_meta: MonsterMeta::from_living_entity_meta(living_entity_meta),
         }
     }
 
     pub fn is_celebrating(&self) -> bool {
         match self
-            .get_entity()
+            .get_state()
             .get_metadata()
             .get_value(&definitions::raider::is_celebrating())
         {
@@ -25,7 +25,7 @@ impl<'entity> RaiderMeta<'entity> {
     }
 
     pub fn set_celebrating(&mut self, is_celebrating: bool) {
-        self.get_entity_mut().get_metadata_mut().set(
+        self.get_entity_state_mut().get_metadata_mut().set(
             &definitions::raider::is_celebrating(),
             MetadataValue::Boolean(is_celebrating),
         );

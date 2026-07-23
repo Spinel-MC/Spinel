@@ -10,13 +10,13 @@ pub struct AreaEffectCloudMeta<'entity> {
 
 impl<'entity> AreaEffectCloudMeta<'entity> {
     pub(crate) fn from_entity_meta(entity_meta: EntityMeta<'entity>) -> Option<Self> {
-        (entity_meta.get_entity().get_entity_type() == EntityType::AREA_EFFECT_CLOUD)
+        (entity_meta.get_state().get_entity_type() == EntityType::AREA_EFFECT_CLOUD)
             .then_some(Self { entity_meta })
     }
 
     pub fn get_radius(&self) -> f32 {
         match self
-            .get_entity()
+            .get_state()
             .get_metadata()
             .get_value(&definitions::area_effect_cloud::get_radius())
         {
@@ -26,7 +26,7 @@ impl<'entity> AreaEffectCloudMeta<'entity> {
     }
 
     pub fn set_radius(&mut self, radius: f32) {
-        self.get_entity_mut().get_metadata_mut().set(
+        self.get_state_mut().get_metadata_mut().set(
             &definitions::area_effect_cloud::get_radius(),
             MetadataValue::Float(radius),
         );
@@ -34,7 +34,7 @@ impl<'entity> AreaEffectCloudMeta<'entity> {
 
     pub fn is_waiting(&self) -> bool {
         match self
-            .get_entity()
+            .get_state()
             .get_metadata()
             .get_value(&definitions::area_effect_cloud::waiting())
         {
@@ -44,7 +44,7 @@ impl<'entity> AreaEffectCloudMeta<'entity> {
     }
 
     pub fn set_waiting(&mut self, is_waiting: bool) {
-        self.get_entity_mut().get_metadata_mut().set(
+        self.get_state_mut().get_metadata_mut().set(
             &definitions::area_effect_cloud::waiting(),
             MetadataValue::Boolean(is_waiting),
         );
@@ -52,7 +52,7 @@ impl<'entity> AreaEffectCloudMeta<'entity> {
 
     pub fn get_particle(&self) -> Particle {
         match self
-            .get_entity()
+            .get_state()
             .get_metadata()
             .get_value(&definitions::area_effect_cloud::get_particle())
         {
@@ -62,7 +62,7 @@ impl<'entity> AreaEffectCloudMeta<'entity> {
     }
 
     pub fn set_particle(&mut self, particle: Particle) {
-        self.get_entity_mut().get_metadata_mut().set(
+        self.get_state_mut().get_metadata_mut().set(
             &definitions::area_effect_cloud::get_particle(),
             MetadataValue::Particle(particle),
         );

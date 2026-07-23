@@ -13,7 +13,7 @@ impl World {
             return Ok(false);
         };
         self.entities.iter_mut().for_each(|entity| match entity {
-            Entity::Generic(entity) if entity.get_team() == Some(team_name) => {
+            Entity::Living(entity) if entity.get_team() == Some(team_name) => {
                 entity.set_team(None)
             }
             Entity::Item(_) => {}
@@ -92,13 +92,11 @@ impl World {
         let entity = self.entity_by_id_mut(entity_id)?;
         Some(match entity {
             Entity::Creature(entity) => entity.set_scoreboard_team(previous_team, requested_team),
-            Entity::ExperienceOrb(entity) => {
-                entity.set_scoreboard_team(previous_team, requested_team)
-            }
-            Entity::Generic(entity) => entity.set_scoreboard_team(previous_team, requested_team),
+            Entity::ExperienceOrb(_) | Entity::Generic(_) => Vec::new(),
+            Entity::Living(entity) => entity.set_scoreboard_team(previous_team, requested_team),
             Entity::Item(_) => Vec::new(),
             Entity::Player(player) => player.set_scoreboard_team(previous_team, requested_team),
-            Entity::Projectile(entity) => entity.set_scoreboard_team(previous_team, requested_team),
+            Entity::Projectile(_) => Vec::new(),
         })
     }
 }
@@ -106,10 +104,10 @@ impl World {
 fn entity_scoreboard_team_name(entity: &Entity) -> Option<&str> {
     match entity {
         Entity::Creature(entity) => entity.get_team(),
-        Entity::ExperienceOrb(entity) => entity.get_team(),
-        Entity::Generic(entity) => entity.get_team(),
+        Entity::ExperienceOrb(_) | Entity::Generic(_) => None,
+        Entity::Living(entity) => entity.get_team(),
         Entity::Item(_) => None,
         Entity::Player(player) => player.get_team(),
-        Entity::Projectile(entity) => entity.get_team(),
+        Entity::Projectile(_) => None,
     }
 }

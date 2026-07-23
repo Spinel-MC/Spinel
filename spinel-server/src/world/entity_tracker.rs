@@ -194,6 +194,7 @@ impl EntityTracker {
                 ]
             }
             Entity::Generic(_) => vec![EntityTrackerTarget::Entities],
+            Entity::Living(_) => vec![EntityTrackerTarget::Entities],
             Entity::Projectile(_) => vec![EntityTrackerTarget::Entities],
         }
     }

@@ -1,4 +1,4 @@
-use crate::entity::metadata::{EntityMeta, FlyingMeta, definitions};
+use crate::entity::metadata::{FlyingMeta, LivingEntityMeta, definitions};
 use spinel_network::types::entity_metadata::MetadataValue;
 use spinel_registry::EntityType;
 use std::ops::{Deref, DerefMut};
@@ -8,15 +8,17 @@ pub struct GhastMeta<'entity> {
 }
 
 impl<'entity> GhastMeta<'entity> {
-    pub(crate) fn from_entity_meta(entity_meta: EntityMeta<'entity>) -> Option<Self> {
-        (entity_meta.get_entity().get_entity_type() == EntityType::GHAST).then(|| Self {
-            flying_meta: FlyingMeta::from_entity_meta(entity_meta),
+    pub(crate) fn from_living_entity_meta(
+        living_entity_meta: LivingEntityMeta<'entity>,
+    ) -> Option<Self> {
+        (living_entity_meta.get_entity_type() == EntityType::GHAST).then(|| Self {
+            flying_meta: FlyingMeta::from_living_entity_meta(living_entity_meta),
         })
     }
 
     pub fn is_attacking(&self) -> bool {
         match self
-            .get_entity()
+            .get_state()
             .get_metadata()
             .get_value(&definitions::ghast::is_attacking())
         {
@@ -26,7 +28,7 @@ impl<'entity> GhastMeta<'entity> {
     }
 
     pub fn set_attacking(&mut self, is_attacking: bool) {
-        self.get_entity_mut().get_metadata_mut().set(
+        self.get_entity_state_mut().get_metadata_mut().set(
             &definitions::ghast::is_attacking(),
             MetadataValue::Boolean(is_attacking),
         );

@@ -1,4 +1,4 @@
-use crate::entity::metadata::{AnimalMeta, EntityMeta, definitions};
+use crate::entity::metadata::{AnimalMeta, LivingEntityMeta, definitions};
 use spinel_network::types::entity_metadata::MetadataValue;
 use std::ops::{Deref, DerefMut};
 use uuid::Uuid;
@@ -8,39 +8,39 @@ pub struct TameableAnimalMeta<'entity> {
 }
 
 impl<'entity> TameableAnimalMeta<'entity> {
-    pub(crate) fn from_entity_meta(entity_meta: EntityMeta<'entity>) -> Self {
+    pub(crate) fn from_living_entity_meta(living_entity_meta: LivingEntityMeta<'entity>) -> Self {
         Self {
-            animal_meta: AnimalMeta::from_entity_meta(entity_meta),
+            animal_meta: AnimalMeta::from_living_entity_meta(living_entity_meta),
         }
     }
 
     pub fn is_sitting(&self) -> bool {
-        self.get_entity()
+        self.get_state()
             .get_metadata()
             .get_flag(&definitions::tameable_animal::is_sitting())
     }
 
     pub fn set_sitting(&mut self, is_sitting: bool) {
-        self.get_entity_mut()
+        self.get_entity_state_mut()
             .get_metadata_mut()
             .set_flag(&definitions::tameable_animal::is_sitting(), is_sitting);
     }
 
     pub fn is_tamed(&self) -> bool {
-        self.get_entity()
+        self.get_state()
             .get_metadata()
             .get_flag(&definitions::tameable_animal::is_tamed())
     }
 
     pub fn set_tamed(&mut self, is_tamed: bool) {
-        self.get_entity_mut()
+        self.get_entity_state_mut()
             .get_metadata_mut()
             .set_flag(&definitions::tameable_animal::is_tamed(), is_tamed);
     }
 
     pub fn get_owner(&self) -> Option<Uuid> {
         match self
-            .get_entity()
+            .get_state()
             .get_metadata()
             .get_value(&definitions::tameable_animal::get_owner())
         {
@@ -50,7 +50,7 @@ impl<'entity> TameableAnimalMeta<'entity> {
     }
 
     pub fn set_owner(&mut self, owner: Option<Uuid>) {
-        self.get_entity_mut().get_metadata_mut().set(
+        self.get_entity_state_mut().get_metadata_mut().set(
             &definitions::tameable_animal::get_owner(),
             MetadataValue::OptionalLivingEntityReference(owner),
         );

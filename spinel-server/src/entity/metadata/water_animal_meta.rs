@@ -1,4 +1,4 @@
-use crate::entity::metadata::{EntityMeta, LivingEntityMeta, MobMeta, PathfinderMobMeta};
+use crate::entity::metadata::{LivingEntityMeta, MobMeta, PathfinderMobMeta};
 use std::ops::{Deref, DerefMut};
 
 pub struct WaterAnimalMeta<'entity> {
@@ -6,11 +6,9 @@ pub struct WaterAnimalMeta<'entity> {
 }
 
 impl<'entity> WaterAnimalMeta<'entity> {
-    pub(crate) fn new(entity_meta: EntityMeta<'entity>) -> Self {
+    pub(crate) fn new(living_entity_meta: LivingEntityMeta<'entity>) -> Self {
         Self {
-            pathfinder_mob_meta: PathfinderMobMeta::new(MobMeta::new(LivingEntityMeta::new(
-                entity_meta,
-            ))),
+            pathfinder_mob_meta: PathfinderMobMeta::new(MobMeta::new(living_entity_meta)),
         }
     }
 }

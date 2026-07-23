@@ -10,14 +10,14 @@ pub struct ItemFrameMeta<'entity> {
 
 impl<'entity> ItemFrameMeta<'entity> {
     pub(crate) fn from_entity_meta(entity_meta: EntityMeta<'entity>) -> Option<Self> {
-        is_item_frame_type(entity_meta.get_entity().get_entity_type()).then(|| Self {
+        is_item_frame_type(entity_meta.get_state().get_entity_type()).then(|| Self {
             hanging_meta: HangingMeta::from_entity_meta(entity_meta),
         })
     }
 
     pub fn get_item(&self) -> ItemStack {
         match self
-            .get_entity()
+            .get_state()
             .get_metadata()
             .get_value(&definitions::item_frame::get_item())
         {
@@ -27,7 +27,7 @@ impl<'entity> ItemFrameMeta<'entity> {
     }
 
     pub fn set_item(&mut self, item: ItemStack) {
-        self.get_entity_mut().get_metadata_mut().set(
+        self.get_state_mut().get_metadata_mut().set(
             &definitions::item_frame::get_item(),
             MetadataValue::Slot(Slot::from_item_stack(&item)),
         );
@@ -35,7 +35,7 @@ impl<'entity> ItemFrameMeta<'entity> {
 
     pub fn get_rotation(&self) -> i32 {
         match self
-            .get_entity()
+            .get_state()
             .get_metadata()
             .get_value(&definitions::item_frame::get_rotation())
         {
@@ -45,7 +45,7 @@ impl<'entity> ItemFrameMeta<'entity> {
     }
 
     pub fn set_rotation(&mut self, rotation: i32) {
-        self.get_entity_mut().get_metadata_mut().set(
+        self.get_state_mut().get_metadata_mut().set(
             &definitions::item_frame::get_rotation(),
             MetadataValue::VarInt(rotation),
         );

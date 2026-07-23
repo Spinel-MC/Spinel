@@ -8,7 +8,7 @@ pub struct MinecartMeta<'entity> {
 
 impl<'entity> MinecartMeta<'entity> {
     pub(crate) fn from_entity_meta(entity_meta: EntityMeta<'entity>) -> Option<Self> {
-        (entity_meta.get_entity().get_entity_type() == EntityType::MINECART).then(|| Self {
+        (entity_meta.get_state().get_entity_type() == EntityType::MINECART).then(|| Self {
             abstract_minecart_meta: AbstractMinecartMeta::from_entity_meta(entity_meta),
         })
     }

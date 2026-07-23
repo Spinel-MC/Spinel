@@ -1,4 +1,4 @@
-use crate::entity::metadata::{AnimalMeta, EntityMeta, definitions};
+use crate::entity::metadata::{AnimalMeta, LivingEntityMeta, definitions};
 use spinel_registry::EntityType;
 use spinel_utils::color::DyeColor;
 use std::ops::{Deref, DerefMut};
@@ -8,15 +8,17 @@ pub struct SheepMeta<'entity> {
 }
 
 impl<'entity> SheepMeta<'entity> {
-    pub(crate) fn from_entity_meta(entity_meta: EntityMeta<'entity>) -> Option<Self> {
-        (entity_meta.get_entity().get_entity_type() == EntityType::SHEEP).then(|| Self {
-            animal_meta: AnimalMeta::from_entity_meta(entity_meta),
+    pub(crate) fn from_living_entity_meta(
+        living_entity_meta: LivingEntityMeta<'entity>,
+    ) -> Option<Self> {
+        (living_entity_meta.get_entity_type() == EntityType::SHEEP).then(|| Self {
+            animal_meta: AnimalMeta::from_living_entity_meta(living_entity_meta),
         })
     }
 
     pub fn get_color(&self) -> DyeColor {
         let color_id = self
-            .get_entity()
+            .get_state()
             .get_metadata()
             .get_byte(&definitions::sheep::color_id());
         DyeColor::ALL
@@ -30,19 +32,19 @@ impl<'entity> SheepMeta<'entity> {
             .iter()
             .position(|candidate| candidate == &color)
             .unwrap_or(0) as i8;
-        self.get_entity_mut()
+        self.get_entity_state_mut()
             .get_metadata_mut()
             .set_byte(&definitions::sheep::color_id(), color_id);
     }
 
     pub fn is_sheared(&self) -> bool {
-        self.get_entity()
+        self.get_state()
             .get_metadata()
             .get_flag(&definitions::sheep::is_sheared())
     }
 
     pub fn set_sheared(&mut self, is_sheared: bool) {
-        self.get_entity_mut()
+        self.get_entity_state_mut()
             .get_metadata_mut()
             .set_flag(&definitions::sheep::is_sheared(), is_sheared);
     }

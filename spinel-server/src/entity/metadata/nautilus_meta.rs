@@ -1,4 +1,4 @@
-use crate::entity::metadata::{AbstractNautilusMeta, EntityMeta};
+use crate::entity::metadata::{AbstractNautilusMeta, LivingEntityMeta};
 use spinel_registry::EntityType;
 use std::ops::{Deref, DerefMut};
 
@@ -7,9 +7,13 @@ pub struct NautilusMeta<'entity> {
 }
 
 impl<'entity> NautilusMeta<'entity> {
-    pub(crate) fn from_entity_meta(entity_meta: EntityMeta<'entity>) -> Option<Self> {
-        (entity_meta.get_entity().get_entity_type() == EntityType::NAUTILUS).then(|| Self {
-            abstract_nautilus_meta: AbstractNautilusMeta::from_entity_meta(entity_meta),
+    pub(crate) fn from_living_entity_meta(
+        living_entity_meta: LivingEntityMeta<'entity>,
+    ) -> Option<Self> {
+        (living_entity_meta.get_entity_type() == EntityType::NAUTILUS).then(|| Self {
+            abstract_nautilus_meta: AbstractNautilusMeta::from_living_entity_meta(
+                living_entity_meta,
+            ),
         })
     }
 }

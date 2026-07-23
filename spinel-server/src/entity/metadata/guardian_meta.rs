@@ -1,5 +1,5 @@
 use crate::entity::Entity;
-use crate::entity::metadata::{EntityMeta, MonsterMeta, definitions};
+use crate::entity::metadata::{LivingEntityMeta, MonsterMeta, definitions};
 use spinel_network::types::entity_metadata::MetadataValue;
 use spinel_registry::EntityType;
 use std::ops::{Deref, DerefMut};
@@ -9,19 +9,21 @@ pub struct GuardianMeta<'entity> {
 }
 
 impl<'entity> GuardianMeta<'entity> {
-    pub(crate) fn from_entity_meta(entity_meta: EntityMeta<'entity>) -> Option<Self> {
+    pub(crate) fn from_living_entity_meta(
+        living_entity_meta: LivingEntityMeta<'entity>,
+    ) -> Option<Self> {
         matches!(
-            entity_meta.get_entity().get_entity_type(),
+            living_entity_meta.get_entity_type(),
             EntityType::GUARDIAN | EntityType::ELDER_GUARDIAN
         )
         .then(|| Self {
-            monster_meta: MonsterMeta::from_entity_meta(entity_meta),
+            monster_meta: MonsterMeta::from_living_entity_meta(living_entity_meta),
         })
     }
 
     pub fn is_retracting_spikes(&self) -> bool {
         match self
-            .get_entity()
+            .get_state()
             .get_metadata()
             .get_value(&definitions::guardian::is_retracting_spikes())
         {
@@ -31,7 +33,7 @@ impl<'entity> GuardianMeta<'entity> {
     }
 
     pub fn set_retracting_spikes(&mut self, is_retracting_spikes: bool) {
-        self.get_entity_mut().get_metadata_mut().set(
+        self.get_entity_state_mut().get_metadata_mut().set(
             &definitions::guardian::is_retracting_spikes(),
             MetadataValue::Boolean(is_retracting_spikes),
         );
@@ -39,7 +41,7 @@ impl<'entity> GuardianMeta<'entity> {
 
     pub fn get_target_entity_id(&self) -> i32 {
         match self
-            .get_entity()
+            .get_state()
             .get_metadata()
             .get_value(&definitions::guardian::get_target_entity_id())
         {
@@ -49,7 +51,7 @@ impl<'entity> GuardianMeta<'entity> {
     }
 
     pub fn set_target_entity_id(&mut self, target_entity_id: i32) {
-        self.get_entity_mut().get_metadata_mut().set(
+        self.get_entity_state_mut().get_metadata_mut().set(
             &definitions::guardian::get_target_entity_id(),
             MetadataValue::VarInt(target_entity_id),
         );

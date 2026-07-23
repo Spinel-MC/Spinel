@@ -9,14 +9,14 @@ pub struct BlockDisplayMeta<'entity> {
 
 impl<'entity> BlockDisplayMeta<'entity> {
     pub(crate) fn from_entity_meta(entity_meta: EntityMeta<'entity>) -> Option<Self> {
-        (entity_meta.get_entity().get_entity_type() == EntityType::BLOCK_DISPLAY).then(|| Self {
+        (entity_meta.get_state().get_entity_type() == EntityType::BLOCK_DISPLAY).then(|| Self {
             abstract_display_meta: AbstractDisplayMeta::from_entity_meta(entity_meta),
         })
     }
 
     pub fn get_block_state(&self) -> BlockState {
         let state_id = match self
-            .get_entity()
+            .get_state()
             .get_metadata()
             .get_value(&definitions::block_display::displayed_block_state())
         {
@@ -27,7 +27,7 @@ impl<'entity> BlockDisplayMeta<'entity> {
     }
 
     pub fn set_block_state(&mut self, block_state: BlockState) {
-        self.get_entity_mut().get_metadata_mut().set(
+        self.get_state_mut().get_metadata_mut().set(
             &definitions::block_display::displayed_block_state(),
             MetadataValue::BlockState(block_state.state_id()),
         );

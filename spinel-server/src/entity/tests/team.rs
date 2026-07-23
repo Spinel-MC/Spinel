@@ -1,11 +1,11 @@
-use crate::entity::GenericEntity;
+use crate::entity::LivingEntity;
 use crate::scoreboard::Team;
 use spinel_core::network::clientbound::play::set_player_team::TeamAction;
 use spinel_registry::EntityType;
 
 #[test]
 fn generic_entity_scoreboard_team_uses_uuid_membership_and_removes_previous_team() {
-    let mut entity = GenericEntity::new(EntityType::ZOMBIE);
+    let mut entity = LivingEntity::new(EntityType::ZOMBIE);
     let member = entity.get_uuid().to_string();
     let mut first_team = Team::new("red");
     let mut second_team = Team::new("blue");

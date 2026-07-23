@@ -1,7 +1,7 @@
 use super::super::generic_entity::{EntityAerodynamics, EntityPosition, GenericEntity};
 use crate::entity::TimedPotionEffect;
 use crate::entity::metadata::definitions;
-use crate::entity::{EntityId, EntityPose, EquipmentSlot};
+use crate::entity::{EntityId, EntityPose, EquipmentSlot, LivingEntity};
 use crate::world::ChunkPosition;
 use spinel_core::network::clientbound::play::entity_animation::EntityAnimation;
 use spinel_core::network::clientbound::play::update_attributes::EntityAttributeModifier;
@@ -35,8 +35,8 @@ fn generic_entity_owns_reference_entity_identity_and_type() {
 
 #[test]
 fn generic_living_entities_use_extracted_vanilla_base_attributes() {
-    let zombie = GenericEntity::new(EntityType::ZOMBIE);
-    let cow = GenericEntity::new(EntityType::COW);
+    let zombie = LivingEntity::new(EntityType::ZOMBIE);
+    let cow = LivingEntity::new(EntityType::COW);
 
     assert!(
         (zombie.get_attribute_value(
@@ -240,7 +240,7 @@ fn generic_entity_data_components_match_reference_entity_component_surface() {
 
 #[test]
 fn generic_living_state_damage_fire_and_death_match_reference_surface() {
-    let mut entity = GenericEntity::new(EntityType::ZOMBIE);
+    let mut entity = LivingEntity::new(EntityType::ZOMBIE);
 
     entity.set_arrow_count(4);
     entity.set_fire_ticks(2);
@@ -274,7 +274,7 @@ fn generic_living_state_damage_fire_and_death_match_reference_surface() {
 
 #[test]
 fn generic_living_attributes_effects_animation_and_bed_api_match_reference_surface() {
-    let mut entity = GenericEntity::new(EntityType::ZOMBIE);
+    let mut entity = LivingEntity::new(EntityType::ZOMBIE);
     let modifier = EntityAttributeModifier::base_attack_speed(-2.0);
 
     entity.get_attribute(4, 4.0).add_modifier(modifier.clone());
@@ -355,7 +355,7 @@ fn generic_living_attributes_effects_animation_and_bed_api_match_reference_surfa
 
 #[test]
 fn generic_living_motion_team_and_collision_api_match_reference_surface() {
-    let mut entity = GenericEntity::new(EntityType::ZOMBIE);
+    let mut entity = LivingEntity::new(EntityType::ZOMBIE);
     let aerodynamics = EntityAerodynamics::new(0.8, 0.9, 0.04);
 
     assert_eq!(entity.get_expanded_bounding_box().get_width(), 1.6);
@@ -443,7 +443,7 @@ fn generic_living_motion_team_and_collision_api_match_reference_surface() {
     entity.tick();
     assert!(entity.is_removed());
 
-    let mut duration_entity = GenericEntity::new(EntityType::ZOMBIE);
+    let mut duration_entity = LivingEntity::new(EntityType::ZOMBIE);
     duration_entity.schedule_remove_after_duration(std::time::Duration::from_millis(51));
     duration_entity.tick();
     assert!(!duration_entity.is_removed());
@@ -453,7 +453,7 @@ fn generic_living_motion_team_and_collision_api_match_reference_surface() {
 
 #[test]
 fn generic_entity_knockback_matches_reference_base_and_living_rules() {
-    let mut living_entity = GenericEntity::new(EntityType::ZOMBIE);
+    let mut living_entity = LivingEntity::new(EntityType::ZOMBIE);
     living_entity.set_on_ground(true);
     living_entity
         .get_attribute(Attribute::KNOCKBACK_RESISTANCE.protocol_id(), 0.0)
@@ -464,20 +464,11 @@ fn generic_entity_knockback_matches_reference_base_and_living_rules() {
     assert!((living_entity.get_velocity().0.x + 4.0).abs() < 0.000_001);
     assert!((living_entity.get_velocity().0.y - 4.0).abs() < 0.000_001);
     assert_eq!(living_entity.get_velocity().0.z, 0.0);
-
-    let mut base_entity = GenericEntity::new(EntityType::ITEM);
-    base_entity.set_on_ground(true);
-
-    base_entity.take_knockback(0.4, 1.0, 0.0);
-
-    assert!((base_entity.get_velocity().0.x + 8.0).abs() < 0.000_001);
-    assert!((base_entity.get_velocity().0.y - 8.0).abs() < 0.000_001);
-    assert_eq!(base_entity.get_velocity().0.z, 0.0);
 }
 
 #[test]
 fn generic_living_health_heal_and_kill_state_match_reference() {
-    let mut entity = GenericEntity::new(EntityType::ZOMBIE);
+    let mut entity = LivingEntity::new(EntityType::ZOMBIE);
     entity.set_on_ground(true);
     entity.take_knockback(0.4, 1.0, 0.0);
     entity.set_health(0.0);
@@ -493,7 +484,7 @@ fn generic_living_health_heal_and_kill_state_match_reference() {
         }
     );
 
-    let mut healed_entity = GenericEntity::new(EntityType::ZOMBIE);
+    let mut healed_entity = LivingEntity::new(EntityType::ZOMBIE);
     healed_entity.set_health(4.0);
     healed_entity.heal();
 
@@ -568,12 +559,12 @@ fn generic_entity_metadata_defaults_are_not_redundantly_sent() {
 
 #[test]
 fn generic_entity_builds_reference_equipment_packet_from_owned_equipment() {
-    let mut entity = GenericEntity::new(EntityType::ZOMBIE);
-    entity.set_equipment(
+    let mut entity = LivingEntity::new(EntityType::ZOMBIE);
+    entity.set_equipment_state(
         EquipmentSlot::MainHand,
         ItemStack::of(Material::DIAMOND_SWORD),
     );
-    entity.set_equipment(
+    entity.set_equipment_state(
         EquipmentSlot::Helmet,
         ItemStack::of(Material::DIAMOND_HELMET),
     );

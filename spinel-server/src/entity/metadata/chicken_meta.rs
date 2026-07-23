@@ -1,5 +1,5 @@
 use crate::entity::dynamic_variant::UnregisteredEntityVariantError;
-use crate::entity::metadata::{AnimalMeta, EntityMeta};
+use crate::entity::metadata::{AnimalMeta, LivingEntityMeta};
 use spinel_registry::{EntityType, Registries, RegistryKey, chicken_variant};
 use std::ops::{Deref, DerefMut};
 
@@ -8,9 +8,11 @@ pub struct ChickenMeta<'entity> {
 }
 
 impl<'entity> ChickenMeta<'entity> {
-    pub(crate) fn from_entity_meta(entity_meta: EntityMeta<'entity>) -> Option<Self> {
-        (entity_meta.get_entity().get_entity_type() == EntityType::CHICKEN).then(|| Self {
-            animal_meta: AnimalMeta::from_entity_meta(entity_meta),
+    pub(crate) fn from_living_entity_meta(
+        living_entity_meta: LivingEntityMeta<'entity>,
+    ) -> Option<Self> {
+        (living_entity_meta.get_entity_type() == EntityType::CHICKEN).then(|| Self {
+            animal_meta: AnimalMeta::from_living_entity_meta(living_entity_meta),
         })
     }
 
@@ -18,7 +20,8 @@ impl<'entity> ChickenMeta<'entity> {
         &self,
         registries: &Registries,
     ) -> Option<RegistryKey<chicken_variant::ChickenVariant>> {
-        self.get_entity().get_chicken_variant_metadata(registries)
+        self.get_living_entity()
+            .get_chicken_variant_metadata(registries)
     }
 
     pub fn set_variant(
@@ -26,7 +29,7 @@ impl<'entity> ChickenMeta<'entity> {
         registries: &Registries,
         variant: RegistryKey<chicken_variant::ChickenVariant>,
     ) -> Result<(), UnregisteredEntityVariantError> {
-        self.get_entity_mut()
+        self.get_living_entity_mut()
             .set_chicken_variant_metadata(registries, variant)
     }
 }

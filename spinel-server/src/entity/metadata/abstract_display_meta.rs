@@ -74,7 +74,7 @@ impl<'entity> AbstractDisplayMeta<'entity> {
 
     pub fn get_translation(&self) -> Vector3f {
         match self
-            .get_entity()
+            .get_state()
             .get_metadata()
             .get_value(&definitions::display::get_translation())
         {
@@ -88,7 +88,7 @@ impl<'entity> AbstractDisplayMeta<'entity> {
     }
 
     pub fn set_translation(&mut self, translation: Vector3f) {
-        self.get_entity_mut().get_metadata_mut().set(
+        self.get_state_mut().get_metadata_mut().set(
             &definitions::display::get_translation(),
             MetadataValue::Vector3f(translation),
         );
@@ -96,7 +96,7 @@ impl<'entity> AbstractDisplayMeta<'entity> {
 
     pub fn get_scale(&self) -> Vector3f {
         match self
-            .get_entity()
+            .get_state()
             .get_metadata()
             .get_value(&definitions::display::get_scale())
         {
@@ -110,7 +110,7 @@ impl<'entity> AbstractDisplayMeta<'entity> {
     }
 
     pub fn set_scale(&mut self, scale: Vector3f) {
-        self.get_entity_mut().get_metadata_mut().set(
+        self.get_state_mut().get_metadata_mut().set(
             &definitions::display::get_scale(),
             MetadataValue::Vector3f(scale),
         );
@@ -134,7 +134,7 @@ impl<'entity> AbstractDisplayMeta<'entity> {
 
     pub fn get_billboard_render_constraints(&self) -> BillboardConstraints {
         match self
-            .get_entity()
+            .get_state()
             .get_metadata()
             .get_value(&definitions::display::billboard_constraints())
         {
@@ -144,7 +144,7 @@ impl<'entity> AbstractDisplayMeta<'entity> {
     }
 
     pub fn set_billboard_render_constraints(&mut self, constraints: BillboardConstraints) {
-        self.get_entity_mut().get_metadata_mut().set(
+        self.get_state_mut().get_metadata_mut().set(
             &definitions::display::billboard_constraints(),
             MetadataValue::Byte(constraints.protocol_id()),
         );
@@ -232,7 +232,7 @@ impl<'entity> AbstractDisplayMeta<'entity> {
         definition: &crate::entity::metadata::MetadataDefinition,
         default_value: i32,
     ) -> i32 {
-        match self.get_entity().get_metadata().get_value(definition) {
+        match self.get_entity_state().get_metadata().get_value(definition) {
             MetadataValue::VarInt(value) => value,
             _ => default_value,
         }
@@ -243,7 +243,7 @@ impl<'entity> AbstractDisplayMeta<'entity> {
         definition: &crate::entity::metadata::MetadataDefinition,
         value: i32,
     ) {
-        self.get_entity_mut()
+        self.get_state_mut()
             .get_metadata_mut()
             .set(definition, MetadataValue::VarInt(value));
     }
@@ -253,14 +253,14 @@ impl<'entity> AbstractDisplayMeta<'entity> {
         definition: &crate::entity::metadata::MetadataDefinition,
         default_value: f32,
     ) -> f32 {
-        match self.get_entity().get_metadata().get_value(definition) {
+        match self.get_entity_state().get_metadata().get_value(definition) {
             MetadataValue::Float(value) => value,
             _ => default_value,
         }
     }
 
     fn set_float(&mut self, definition: &crate::entity::metadata::MetadataDefinition, value: f32) {
-        self.get_entity_mut()
+        self.get_state_mut()
             .get_metadata_mut()
             .set(definition, MetadataValue::Float(value));
     }
@@ -269,7 +269,7 @@ impl<'entity> AbstractDisplayMeta<'entity> {
         &self,
         definition: &crate::entity::metadata::MetadataDefinition,
     ) -> Quaternionf {
-        match self.get_entity().get_metadata().get_value(definition) {
+        match self.get_entity_state().get_metadata().get_value(definition) {
             MetadataValue::Quaternionf(rotation) => rotation,
             _ => Quaternionf {
                 x: 0.0,
@@ -285,7 +285,7 @@ impl<'entity> AbstractDisplayMeta<'entity> {
         definition: &crate::entity::metadata::MetadataDefinition,
         rotation: Quaternionf,
     ) {
-        self.get_entity_mut()
+        self.get_state_mut()
             .get_metadata_mut()
             .set(definition, MetadataValue::Quaternionf(rotation));
     }

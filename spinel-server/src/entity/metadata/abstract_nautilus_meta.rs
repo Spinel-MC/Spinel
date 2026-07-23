@@ -1,4 +1,4 @@
-use crate::entity::metadata::{EntityMeta, TameableAnimalMeta, definitions};
+use crate::entity::metadata::{LivingEntityMeta, TameableAnimalMeta, definitions};
 use spinel_network::types::entity_metadata::MetadataValue;
 use std::ops::{Deref, DerefMut};
 
@@ -7,15 +7,15 @@ pub struct AbstractNautilusMeta<'entity> {
 }
 
 impl<'entity> AbstractNautilusMeta<'entity> {
-    pub(crate) fn from_entity_meta(entity_meta: EntityMeta<'entity>) -> Self {
+    pub(crate) fn from_living_entity_meta(living_entity_meta: LivingEntityMeta<'entity>) -> Self {
         Self {
-            tameable_animal_meta: TameableAnimalMeta::from_entity_meta(entity_meta),
+            tameable_animal_meta: TameableAnimalMeta::from_living_entity_meta(living_entity_meta),
         }
     }
 
     pub fn is_dashing(&self) -> bool {
         match self
-            .get_entity()
+            .get_state()
             .get_metadata()
             .get_value(&definitions::abstract_nautilus::is_dashing())
         {
@@ -25,7 +25,7 @@ impl<'entity> AbstractNautilusMeta<'entity> {
     }
 
     pub fn set_dashing(&mut self, is_dashing: bool) {
-        self.get_entity_mut().get_metadata_mut().set(
+        self.get_entity_state_mut().get_metadata_mut().set(
             &definitions::abstract_nautilus::is_dashing(),
             MetadataValue::Boolean(is_dashing),
         );

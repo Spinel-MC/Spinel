@@ -1,5 +1,5 @@
 use crate::entity::player::{Player, PlayerChunk};
-use crate::entity::{Entity, EntityId, EntityPose, EntityPosition, GenericEntity};
+use crate::entity::{Entity, EntityId, EntityPose, EntityPosition, LivingEntity};
 use crate::events::entity_death::EntityDeathEvent;
 use crate::network::client::instance::Client;
 use crate::server::MinecraftServer;
@@ -59,7 +59,7 @@ fn world_kill_entity_sends_death_status_and_applies_generic_death_state_once() {
         z: 3.0,
     }));
 
-    world.add_entity(Entity::Generic(entity));
+    world.add_entity(Entity::Living(entity));
     world.add_entity(Entity::Player(viewer));
     world.process_pending_entity_visibility_refreshes().unwrap();
     viewer_client.discard_queued_outbound_packets();
@@ -133,12 +133,12 @@ fn server_with_living_entity() -> MinecraftServer {
         .world_manager
         .world_mut(world_uuid)
         .unwrap()
-        .add_entity(Entity::Generic(positioned_living_entity()));
+        .add_entity(Entity::Living(positioned_living_entity()));
     server
 }
 
-fn positioned_living_entity() -> GenericEntity {
-    let mut entity = GenericEntity::new(EntityType::ZOMBIE);
+fn positioned_living_entity() -> LivingEntity {
+    let mut entity = LivingEntity::new(EntityType::ZOMBIE);
     entity.set_position(EntityPosition::new(1.0, 64.0, 1.0, 0.0, 0.0));
     entity
 }
@@ -147,7 +147,7 @@ fn tracked_living_entity_id(server: &MinecraftServer) -> EntityId {
     tracked_living_entity(server).get_entity_id()
 }
 
-fn tracked_living_entity(server: &MinecraftServer) -> &GenericEntity {
+fn tracked_living_entity(server: &MinecraftServer) -> &LivingEntity {
     server.world_manager.worlds()[0].creatures()[0]
 }
 

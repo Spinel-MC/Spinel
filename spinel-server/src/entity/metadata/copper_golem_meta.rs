@@ -1,5 +1,5 @@
 use crate::entity::metadata::{
-    AbstractGolemMeta, CopperGolemState, CopperGolemWeatherState, EntityMeta, definitions,
+    AbstractGolemMeta, CopperGolemState, CopperGolemWeatherState, LivingEntityMeta, definitions,
 };
 use spinel_network::types::entity_metadata::MetadataValue;
 use spinel_registry::EntityType;
@@ -10,15 +10,17 @@ pub struct CopperGolemMeta<'entity> {
 }
 
 impl<'entity> CopperGolemMeta<'entity> {
-    pub(crate) fn from_entity_meta(entity_meta: EntityMeta<'entity>) -> Option<Self> {
-        (entity_meta.get_entity().get_entity_type() == EntityType::COPPER_GOLEM).then(|| Self {
-            abstract_golem_meta: AbstractGolemMeta::from_entity_meta(entity_meta),
+    pub(crate) fn from_living_entity_meta(
+        living_entity_meta: LivingEntityMeta<'entity>,
+    ) -> Option<Self> {
+        (living_entity_meta.get_entity_type() == EntityType::COPPER_GOLEM).then(|| Self {
+            abstract_golem_meta: AbstractGolemMeta::from_living_entity_meta(living_entity_meta),
         })
     }
 
     pub fn get_weather_state(&self) -> CopperGolemWeatherState {
         match self
-            .get_entity()
+            .get_entity_state()
             .get_metadata()
             .get_value(&definitions::copper_golem::get_weather_state())
         {
@@ -30,7 +32,7 @@ impl<'entity> CopperGolemMeta<'entity> {
     }
 
     pub fn set_weather_state(&mut self, weather_state: CopperGolemWeatherState) {
-        self.get_entity_mut().get_metadata_mut().set(
+        self.get_entity_state_mut().get_metadata_mut().set(
             &definitions::copper_golem::get_weather_state(),
             MetadataValue::WeatherState(weather_state.get_protocol_id()),
         );
@@ -38,7 +40,7 @@ impl<'entity> CopperGolemMeta<'entity> {
 
     pub fn get_state(&self) -> CopperGolemState {
         match self
-            .get_entity()
+            .get_entity_state()
             .get_metadata()
             .get_value(&definitions::copper_golem::get_state())
         {
@@ -50,7 +52,7 @@ impl<'entity> CopperGolemMeta<'entity> {
     }
 
     pub fn set_state(&mut self, state: CopperGolemState) {
-        self.get_entity_mut().get_metadata_mut().set(
+        self.get_entity_state_mut().get_metadata_mut().set(
             &definitions::copper_golem::get_state(),
             MetadataValue::CopperGolemState(state.get_protocol_id()),
         );

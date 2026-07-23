@@ -1,4 +1,4 @@
-use crate::entity::{EntityPosition, GenericEntity};
+use crate::entity::{EntityPosition, GenericEntity, LivingEntity};
 use spinel_nbt::{Nbt, NbtCompound};
 use spinel_registry::EntityType;
 use spinel_utils::component::text::TextComponent;
@@ -8,8 +8,6 @@ impl GenericEntity {
         self.apply_summon_position(nbt);
         self.apply_summon_rotation(nbt);
         self.apply_summon_base_state(nbt);
-        self.apply_summon_living_state(nbt);
-        self.apply_summon_type_state(nbt);
     }
 
     fn apply_summon_position(&mut self, nbt: &NbtCompound) {
@@ -40,7 +38,7 @@ impl GenericEntity {
         apply_boolean(nbt, "Silent", |value| self.set_silent(value));
         apply_boolean(nbt, "NoGravity", |value| self.set_no_gravity(value));
         apply_boolean(nbt, "CustomNameVisible", |value| {
-            self.set_custom_name_visible(value);
+            self.set_custom_name_visible(value)
         });
         let custom_name = nbt
             .get("CustomName")
@@ -49,6 +47,14 @@ impl GenericEntity {
         if custom_name.is_some() {
             self.set_custom_name(custom_name);
         }
+    }
+}
+
+impl LivingEntity {
+    pub(crate) fn apply_summon_nbt(&mut self, nbt: &NbtCompound) {
+        self.get_entity_mut().apply_summon_nbt(nbt);
+        self.apply_summon_living_state(nbt);
+        self.apply_summon_type_state(nbt);
     }
 
     fn apply_summon_living_state(&mut self, nbt: &NbtCompound) {

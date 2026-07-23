@@ -1,4 +1,4 @@
-use crate::entity::metadata::{AgeableMobMeta, EntityMeta};
+use crate::entity::metadata::{AgeableMobMeta, LivingEntityMeta};
 use std::ops::{Deref, DerefMut};
 
 pub struct AnimalMeta<'entity> {
@@ -6,9 +6,9 @@ pub struct AnimalMeta<'entity> {
 }
 
 impl<'entity> AnimalMeta<'entity> {
-    pub(crate) fn from_entity_meta(entity_meta: EntityMeta<'entity>) -> Self {
+    pub(crate) fn from_living_entity_meta(living_entity_meta: LivingEntityMeta<'entity>) -> Self {
         Self {
-            ageable_mob_meta: AgeableMobMeta::new(entity_meta),
+            ageable_mob_meta: AgeableMobMeta::new(living_entity_meta),
         }
     }
 }

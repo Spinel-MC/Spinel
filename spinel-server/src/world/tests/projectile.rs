@@ -1,4 +1,4 @@
-use crate::entity::{Entity, EntityId, EntityPosition, GenericEntity};
+use crate::entity::{Entity, EntityId, EntityPosition, GenericEntity, LivingEntity};
 use crate::events::entity_shoot::EntityShootEvent;
 use crate::events::projectile_collide::ProjectileCollideEvent;
 use crate::events::projectile_collide_with_block::ProjectileCollideWithBlockEvent;
@@ -100,10 +100,10 @@ fn projectile_shoot_event_can_mutate_power_and_cancel_the_shot() {
         Identifier::minecraft("projectile_shoot"),
     );
     world.use_server_event_dispatcher(server_ptr);
-    let mut shooter = GenericEntity::new(EntityType::ZOMBIE);
+    let mut shooter = LivingEntity::new(EntityType::ZOMBIE);
     shooter.set_position(EntityPosition::new(0.0, 64.0, 0.0, 0.0, 0.0));
     let shooter_id = shooter.get_entity_id();
-    world.add_entity(Entity::Generic(shooter));
+    world.add_entity(Entity::Living(shooter));
     let projectile_id = world
         .spawn_projectile(
             Some(shooter_id),
@@ -299,11 +299,11 @@ fn projectile_tick_emits_entity_collision_for_living_targets() {
     world
         .load_chunk(crate::world::ChunkPosition::new(0, 0))
         .unwrap();
-    let mut target = GenericEntity::new(EntityType::ZOMBIE);
+    let mut target = LivingEntity::new(EntityType::ZOMBIE);
     target.set_position(EntityPosition::new(1.25, 64.0, 0.5, 0.0, 0.0));
     target.set_no_gravity(true);
     let target_id = target.get_entity_id();
-    world.add_entity(Entity::Generic(target));
+    world.add_entity(Entity::Living(target));
     let projectile_id = world
         .spawn_projectile(
             None,
@@ -325,7 +325,7 @@ fn projectile_tick_emits_entity_collision_for_living_targets() {
         world
             .get_entity(target_id)
             .is_some_and(|target| match target {
-                Entity::Generic(target) => target.get_intersects_box_at(
+                Entity::Living(target) => target.get_intersects_box_at(
                     Vector3d {
                         x: 0.75,
                         y: 64.0,
@@ -351,7 +351,7 @@ fn projectile_tick_emits_entity_collision_for_living_targets() {
         world
             .get_entity(target_id)
             .is_some_and(|target| match target {
-                Entity::Generic(target) => target.get_intersects_box_at(
+                Entity::Living(target) => target.get_intersects_box_at(
                     projectile_position.as_vector(),
                     EntityType::ARROW.get_bounding_box(),
                 ),

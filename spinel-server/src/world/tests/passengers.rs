@@ -1,4 +1,4 @@
-use crate::entity::{Entity, EntityPosition, GenericEntity, Player};
+use crate::entity::{Entity, EntityPosition, LivingEntity, Player};
 use crate::network::client::instance::Client;
 use crate::world::World;
 use spinel_core::network::clientbound::play::entity_position_sync::EntityPositionSyncPacket;
@@ -223,7 +223,7 @@ fn vehicle_movement_recursively_refreshes_passenger_chain_positions() {
 
     assert!(
         world
-            .move_generic_entity(
+            .move_living_entity(
                 vehicle_id,
                 EntityPosition::new(40.0, 80.0, 24.0, 0.0, 0.0),
                 true,
@@ -444,7 +444,7 @@ fn visibility_hides_vehicle_and_passenger_chain_recursively() {
     world.process_pending_entity_visibility_refreshes().unwrap();
     viewer_client.discard_queued_outbound_packets();
     world
-        .move_generic_entity(
+        .move_living_entity(
             vehicle_id,
             EntityPosition::new(16.0 * 20.0, 64.0, 0.0, 0.0, 0.0),
             true,
@@ -474,9 +474,9 @@ fn visibility_hides_vehicle_and_passenger_chain_recursively() {
 }
 
 fn positioned_entity(entity_type: EntityType, x: f64, y: f64, z: f64) -> Entity {
-    let mut entity = GenericEntity::new(entity_type);
+    let mut entity = LivingEntity::new(entity_type);
     entity.set_position(EntityPosition::new(x, y, z, 0.0, 0.0));
-    Entity::Generic(entity)
+    Entity::Living(entity)
 }
 
 fn entered_player(client: &mut Client) -> Player {

@@ -1,4 +1,4 @@
-use crate::entity::metadata::{AnimalMeta, EntityMeta, SnifferState, definitions};
+use crate::entity::metadata::{AnimalMeta, LivingEntityMeta, SnifferState, definitions};
 use spinel_network::types::entity_metadata::MetadataValue;
 use spinel_registry::EntityType;
 use std::ops::{Deref, DerefMut};
@@ -8,15 +8,17 @@ pub struct SnifferMeta<'entity> {
 }
 
 impl<'entity> SnifferMeta<'entity> {
-    pub(crate) fn from_entity_meta(entity_meta: EntityMeta<'entity>) -> Option<Self> {
-        (entity_meta.get_entity().get_entity_type() == EntityType::SNIFFER).then(|| Self {
-            animal_meta: AnimalMeta::from_entity_meta(entity_meta),
+    pub(crate) fn from_living_entity_meta(
+        living_entity_meta: LivingEntityMeta<'entity>,
+    ) -> Option<Self> {
+        (living_entity_meta.get_entity_type() == EntityType::SNIFFER).then(|| Self {
+            animal_meta: AnimalMeta::from_living_entity_meta(living_entity_meta),
         })
     }
 
     pub fn get_state(&self) -> SnifferState {
         match self
-            .get_entity()
+            .get_entity_state()
             .get_metadata()
             .get_value(&definitions::sniffer::get_state())
         {
@@ -28,7 +30,7 @@ impl<'entity> SnifferMeta<'entity> {
     }
 
     pub fn set_state(&mut self, state: SnifferState) {
-        self.get_entity_mut().get_metadata_mut().set(
+        self.get_entity_state_mut().get_metadata_mut().set(
             &definitions::sniffer::get_state(),
             MetadataValue::SnifferState(state.get_protocol_id()),
         );
@@ -36,7 +38,7 @@ impl<'entity> SnifferMeta<'entity> {
 
     pub fn get_drop_seed_at_tick(&self) -> i32 {
         match self
-            .get_entity()
+            .get_entity_state()
             .get_metadata()
             .get_value(&definitions::sniffer::get_drop_seed_at_tick())
         {
@@ -46,7 +48,7 @@ impl<'entity> SnifferMeta<'entity> {
     }
 
     pub fn set_drop_seed_at_tick(&mut self, drop_seed_at_tick: i32) {
-        self.get_entity_mut().get_metadata_mut().set(
+        self.get_entity_state_mut().get_metadata_mut().set(
             &definitions::sniffer::get_drop_seed_at_tick(),
             MetadataValue::VarInt(drop_seed_at_tick),
         );

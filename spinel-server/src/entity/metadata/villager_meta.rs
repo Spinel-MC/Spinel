@@ -1,4 +1,4 @@
-use crate::entity::metadata::{AbstractVillagerMeta, EntityMeta, VillagerData, definitions};
+use crate::entity::metadata::{AbstractVillagerMeta, LivingEntityMeta, VillagerData, definitions};
 use spinel_network::types::entity_metadata::MetadataValue;
 use spinel_registry::EntityType;
 use std::ops::{Deref, DerefMut};
@@ -8,15 +8,19 @@ pub struct VillagerMeta<'entity> {
 }
 
 impl<'entity> VillagerMeta<'entity> {
-    pub(crate) fn from_entity_meta(entity_meta: EntityMeta<'entity>) -> Option<Self> {
-        (entity_meta.get_entity().get_entity_type() == EntityType::VILLAGER).then(|| Self {
-            abstract_villager_meta: AbstractVillagerMeta::from_entity_meta(entity_meta),
+    pub(crate) fn from_living_entity_meta(
+        living_entity_meta: LivingEntityMeta<'entity>,
+    ) -> Option<Self> {
+        (living_entity_meta.get_entity_type() == EntityType::VILLAGER).then(|| Self {
+            abstract_villager_meta: AbstractVillagerMeta::from_living_entity_meta(
+                living_entity_meta,
+            ),
         })
     }
 
     pub fn get_villager_data(&self) -> VillagerData {
         match self
-            .get_entity()
+            .get_state()
             .get_metadata()
             .get_value(&definitions::villager::data())
         {
@@ -29,7 +33,7 @@ impl<'entity> VillagerMeta<'entity> {
     }
 
     pub fn set_villager_data(&mut self, villager_data: VillagerData) {
-        self.get_entity_mut().get_metadata_mut().set(
+        self.get_entity_state_mut().get_metadata_mut().set(
             &definitions::villager::data(),
             MetadataValue::VillagerData(
                 villager_data.get_villager_type().protocol_id(),

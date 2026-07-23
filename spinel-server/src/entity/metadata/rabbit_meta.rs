@@ -1,4 +1,4 @@
-use crate::entity::metadata::{AnimalMeta, EntityMeta, RabbitVariant, definitions};
+use crate::entity::metadata::{AnimalMeta, LivingEntityMeta, RabbitVariant, definitions};
 use spinel_network::types::entity_metadata::MetadataValue;
 use spinel_registry::EntityType;
 use std::ops::{Deref, DerefMut};
@@ -8,15 +8,17 @@ pub struct RabbitMeta<'entity> {
 }
 
 impl<'entity> RabbitMeta<'entity> {
-    pub(crate) fn from_entity_meta(entity_meta: EntityMeta<'entity>) -> Option<Self> {
-        (entity_meta.get_entity().get_entity_type() == EntityType::RABBIT).then(|| Self {
-            animal_meta: AnimalMeta::from_entity_meta(entity_meta),
+    pub(crate) fn from_living_entity_meta(
+        living_entity_meta: LivingEntityMeta<'entity>,
+    ) -> Option<Self> {
+        (living_entity_meta.get_entity_type() == EntityType::RABBIT).then(|| Self {
+            animal_meta: AnimalMeta::from_living_entity_meta(living_entity_meta),
         })
     }
 
     pub fn get_variant(&self) -> RabbitVariant {
         match self
-            .get_entity()
+            .get_state()
             .get_metadata()
             .get_value(&definitions::rabbit::kind())
         {
@@ -28,7 +30,7 @@ impl<'entity> RabbitMeta<'entity> {
     }
 
     pub fn set_variant(&mut self, variant: RabbitVariant) {
-        self.get_entity_mut().get_metadata_mut().set(
+        self.get_entity_state_mut().get_metadata_mut().set(
             &definitions::rabbit::kind(),
             MetadataValue::VarInt(variant.protocol_id()),
         );

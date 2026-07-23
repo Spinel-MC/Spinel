@@ -1,4 +1,4 @@
-use crate::entity::{EquipmentSlot, GenericEntity, LivingAttributes, Player};
+use crate::entity::{EquipmentSlot, LivingAttributes, LivingEntity, Player};
 use crate::network::client::instance::Client;
 use spinel_core::network::clientbound::play::set_player_inventory::SetPlayerInventoryPacket;
 use spinel_core::network::clientbound::play::update_attributes::{
@@ -218,8 +218,8 @@ fn equipment_attribute_slot_groups_match_target_slot_names() {
         5.0
     );
 
-    let mut body_entity = GenericEntity::new(EntityType::ZOMBIE);
-    body_entity.set_equipment(
+    let mut body_entity = LivingEntity::new(EntityType::ZOMBIE);
+    body_entity.set_equipment_state(
         EquipmentSlot::Body,
         item_with_modifier(EquipmentSlotGroup::Body, "body_speed", 1.0),
     );
@@ -343,8 +343,8 @@ fn equipment_attribute_every_slot_group_applies_only_to_matching_equipment_slots
         (EquipmentSlotGroup::Body, EquipmentSlot::Body),
     ];
     for (case_index, (slot_group, equipment_slot)) in matching_cases.into_iter().enumerate() {
-        let mut entity = GenericEntity::new(EntityType::ZOMBIE);
-        entity.set_equipment(
+        let mut entity = LivingEntity::new(EntityType::ZOMBIE);
+        entity.set_equipment_state(
             equipment_slot,
             item_with_modifier(slot_group, &format!("matched_speed_{case_index}"), 1.0),
         );
@@ -366,8 +366,8 @@ fn equipment_attribute_every_slot_group_applies_only_to_matching_equipment_slots
         (EquipmentSlotGroup::Body, EquipmentSlot::Chestplate),
     ];
     for (case_index, (slot_group, equipment_slot)) in non_matching_cases.into_iter().enumerate() {
-        let mut entity = GenericEntity::new(EntityType::ZOMBIE);
-        entity.set_equipment(
+        let mut entity = LivingEntity::new(EntityType::ZOMBIE);
+        entity.set_equipment_state(
             equipment_slot,
             item_with_modifier(slot_group, &format!("unmatched_speed_{case_index}"), 1.0),
         );

@@ -158,6 +158,7 @@ impl World {
             Entity::ExperienceOrb(_) => None,
             Entity::Generic(_) => None,
             Entity::Item(_) => None,
+            Entity::Living(_) => None,
             Entity::Projectile(_) => None,
         })
     }
@@ -178,11 +179,11 @@ impl World {
             .collect()
     }
 
-    pub fn creatures(&self) -> Vec<&GenericEntity> {
+    pub fn creatures(&self) -> Vec<&crate::entity::LivingEntity> {
         self.entities
             .iter()
             .filter_map(|entity| match entity {
-                Entity::Generic(entity) if entity.get_entity_type().is_living() => Some(entity),
+                Entity::Living(entity) => Some(entity),
                 _ => None,
             })
             .collect()
@@ -224,6 +225,7 @@ impl World {
             Entity::ExperienceOrb(_) => None,
             Entity::Generic(_) => None,
             Entity::Item(_) => None,
+            Entity::Living(_) => None,
             Entity::Player(player) if player.get_uuid() == player_uuid => Some(player),
             Entity::Player(_) => None,
             Entity::Projectile(_) => None,
@@ -236,13 +238,17 @@ impl World {
         position: EntityPosition,
         nbt: Option<&NbtCompound>,
     ) -> Result<EntityId> {
-        let mut entity = GenericEntity::new(entity_type);
+        let mut entity = Entity::new(entity_type);
         entity.set_position(position);
         if let Some(nbt) = nbt {
-            entity.apply_summon_nbt(nbt);
+            match &mut entity {
+                Entity::Generic(generic_entity) => generic_entity.apply_summon_nbt(nbt),
+                Entity::Living(living_entity) => living_entity.apply_summon_nbt(nbt),
+                _ => {}
+            }
         }
         let entity_id = entity.get_entity_id();
-        if !self.add_entity(Entity::Generic(entity)) {
+        if !self.add_entity(entity) {
             return Err(Error::new(ErrorKind::Interrupted, "Entity add cancelled."));
         }
         Ok(entity_id)

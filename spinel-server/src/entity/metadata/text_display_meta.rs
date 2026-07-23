@@ -32,14 +32,14 @@ pub struct TextDisplayMeta<'entity> {
 
 impl<'entity> TextDisplayMeta<'entity> {
     pub(crate) fn from_entity_meta(entity_meta: EntityMeta<'entity>) -> Option<Self> {
-        (entity_meta.get_entity().get_entity_type() == EntityType::TEXT_DISPLAY).then(|| Self {
+        (entity_meta.get_state().get_entity_type() == EntityType::TEXT_DISPLAY).then(|| Self {
             abstract_display_meta: AbstractDisplayMeta::from_entity_meta(entity_meta),
         })
     }
 
     pub fn get_text(&self) -> TextComponent {
         match self
-            .get_entity()
+            .get_state()
             .get_metadata()
             .get_value(&definitions::text_display::get_text())
         {
@@ -49,7 +49,7 @@ impl<'entity> TextDisplayMeta<'entity> {
     }
 
     pub fn set_text(&mut self, text: TextComponent) {
-        self.get_entity_mut().get_metadata_mut().set(
+        self.get_state_mut().get_metadata_mut().set(
             &definitions::text_display::get_text(),
             MetadataValue::Text(text),
         );
@@ -79,7 +79,7 @@ impl<'entity> TextDisplayMeta<'entity> {
 
     pub fn get_text_opacity(&self) -> i8 {
         match self
-            .get_entity()
+            .get_state()
             .get_metadata()
             .get_value(&definitions::text_display::get_text_opacity())
         {
@@ -89,7 +89,7 @@ impl<'entity> TextDisplayMeta<'entity> {
     }
 
     pub fn set_text_opacity(&mut self, text_opacity: i8) {
-        self.get_entity_mut().get_metadata_mut().set(
+        self.get_state_mut().get_metadata_mut().set(
             &definitions::text_display::get_text_opacity(),
             MetadataValue::Byte(text_opacity),
         );
@@ -143,14 +143,14 @@ impl<'entity> TextDisplayMeta<'entity> {
 
     pub fn get_alignment(&self) -> TextAlignment {
         TextAlignment::from_protocol_id(
-            self.get_entity()
+            self.get_state()
                 .get_metadata()
                 .get_byte(&definitions::text_display::get_alignment()),
         )
     }
 
     pub fn set_alignment(&mut self, alignment: TextAlignment) {
-        self.get_entity_mut().get_metadata_mut().set_byte(
+        self.get_state_mut().get_metadata_mut().set_byte(
             &definitions::text_display::get_alignment(),
             alignment.protocol_id(),
         );
@@ -161,7 +161,7 @@ impl<'entity> TextDisplayMeta<'entity> {
         definition: &crate::entity::metadata::MetadataDefinition,
         default_value: i32,
     ) -> i32 {
-        match self.get_entity().get_metadata().get_value(definition) {
+        match self.get_entity_state().get_metadata().get_value(definition) {
             MetadataValue::VarInt(value) => value,
             _ => default_value,
         }
@@ -172,13 +172,13 @@ impl<'entity> TextDisplayMeta<'entity> {
         definition: &crate::entity::metadata::MetadataDefinition,
         value: i32,
     ) {
-        self.get_entity_mut()
+        self.get_state_mut()
             .get_metadata_mut()
             .set(definition, MetadataValue::VarInt(value));
     }
 
     fn flag(&self, definition: &crate::entity::metadata::MetadataBitMaskDefinition) -> bool {
-        self.get_entity().get_metadata().get_flag(definition)
+        self.get_entity_state().get_metadata().get_flag(definition)
     }
 
     fn set_flag(
@@ -186,7 +186,7 @@ impl<'entity> TextDisplayMeta<'entity> {
         definition: &crate::entity::metadata::MetadataBitMaskDefinition,
         value: bool,
     ) {
-        self.get_entity_mut()
+        self.get_state_mut()
             .get_metadata_mut()
             .set_flag(definition, value);
     }

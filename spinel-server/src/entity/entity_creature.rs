@@ -1,9 +1,9 @@
 use crate::entity::ai::{CreatureAiAction, EntityAiGroup};
-use crate::entity::metadata::EntityMetaCast;
+use crate::entity::metadata::{LivingEntityMetaCast, LivingEntityMetaRef};
 use crate::entity::pathfinding::{
     Navigator, NodeFollowerPhysicsTiming, PathRequest, SetPathToError,
 };
-use crate::entity::{Entity, EntityId, EntityPosition, GenericEntity};
+use crate::entity::{Entity, EntityId, EntityPosition, GenericEntity, LivingEntity};
 use crate::events::entity_attack::EntityAttackEvent;
 use crate::server::MinecraftServer;
 use crate::world::{World, WorldSnapshot};
@@ -28,7 +28,7 @@ pub enum EntityCreatureAttackError {
 }
 
 pub struct EntityCreature {
-    entity: GenericEntity,
+    entity: LivingEntity,
     ai_groups: Vec<EntityAiGroup>,
     navigator: Navigator,
     target: Option<EntityId>,
@@ -52,7 +52,7 @@ impl crate::entity::EquipmentHandler for EntityCreature {
 }
 impl EntityCreature {
     pub fn new(entity_type: EntityType) -> Self {
-        let mut entity = GenericEntity::new(entity_type);
+        let mut entity = LivingEntity::new(entity_type);
         entity.heal();
         Self {
             entity,
@@ -66,15 +66,19 @@ impl EntityCreature {
         }
     }
 
-    pub const fn get_entity(&self) -> &GenericEntity {
+    pub const fn get_entity(&self) -> &LivingEntity {
         &self.entity
     }
 
-    pub fn get_entity_mut(&mut self) -> &mut GenericEntity {
+    pub fn get_entity_mut(&mut self) -> &mut LivingEntity {
         &mut self.entity
     }
 
-    pub fn get_entity_meta_mut(&mut self) -> EntityMetaCast<'_> {
+    pub(crate) fn tick_living_state(&mut self) -> Vec<crate::entity::TimedPotionEffect> {
+        self.entity.tick_living_state()
+    }
+
+    pub fn get_entity_meta_mut(&mut self) -> LivingEntityMetaCast<'_> {
         self.entity.get_entity_meta_mut()
     }
 
@@ -300,7 +304,7 @@ impl EntityCreature {
 }
 
 impl Deref for EntityCreature {
-    type Target = GenericEntity;
+    type Target = LivingEntity;
 
     fn deref(&self) -> &Self::Target {
         &self.entity

@@ -1,4 +1,4 @@
-use crate::entity::metadata::{EntityMeta, MonsterMeta};
+use crate::entity::metadata::{LivingEntityMeta, MonsterMeta};
 use std::ops::{Deref, DerefMut};
 
 pub struct AbstractSkeletonMeta<'entity> {
@@ -6,9 +6,9 @@ pub struct AbstractSkeletonMeta<'entity> {
 }
 
 impl<'entity> AbstractSkeletonMeta<'entity> {
-    pub(crate) fn from_entity_meta(entity_meta: EntityMeta<'entity>) -> Self {
+    pub(crate) fn from_living_entity_meta(living_entity_meta: LivingEntityMeta<'entity>) -> Self {
         Self {
-            monster_meta: MonsterMeta::from_entity_meta(entity_meta),
+            monster_meta: MonsterMeta::from_living_entity_meta(living_entity_meta),
         }
     }
 }

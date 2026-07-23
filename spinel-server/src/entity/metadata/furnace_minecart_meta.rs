@@ -9,14 +9,14 @@ pub struct FurnaceMinecartMeta<'entity> {
 
 impl<'entity> FurnaceMinecartMeta<'entity> {
     pub(crate) fn from_entity_meta(entity_meta: EntityMeta<'entity>) -> Option<Self> {
-        (entity_meta.get_entity().get_entity_type() == EntityType::FURNACE_MINECART).then(|| Self {
+        (entity_meta.get_state().get_entity_type() == EntityType::FURNACE_MINECART).then(|| Self {
             abstract_minecart_meta: AbstractMinecartMeta::from_entity_meta(entity_meta),
         })
     }
 
     pub fn has_fuel(&self) -> bool {
         match self
-            .get_entity()
+            .get_state()
             .get_metadata()
             .get_value(&definitions::furnace_minecart::has_fuel())
         {
@@ -26,7 +26,7 @@ impl<'entity> FurnaceMinecartMeta<'entity> {
     }
 
     pub fn set_has_fuel(&mut self, has_fuel: bool) {
-        self.get_entity_mut().get_metadata_mut().set(
+        self.get_state_mut().get_metadata_mut().set(
             &definitions::furnace_minecart::has_fuel(),
             MetadataValue::Boolean(has_fuel),
         );

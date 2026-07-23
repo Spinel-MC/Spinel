@@ -1,4 +1,4 @@
-use crate::entity::metadata::{AnimalMeta, EntityMeta, definitions};
+use crate::entity::metadata::{AnimalMeta, LivingEntityMeta, definitions};
 use spinel_network::types::entity_metadata::MetadataValue;
 use spinel_registry::EntityType;
 use std::ops::{Deref, DerefMut};
@@ -8,51 +8,53 @@ pub struct BeeMeta<'entity> {
 }
 
 impl<'entity> BeeMeta<'entity> {
-    pub(crate) fn from_entity_meta(entity_meta: EntityMeta<'entity>) -> Option<Self> {
-        (entity_meta.get_entity().get_entity_type() == EntityType::BEE).then(|| Self {
-            animal_meta: AnimalMeta::from_entity_meta(entity_meta),
+    pub(crate) fn from_living_entity_meta(
+        living_entity_meta: LivingEntityMeta<'entity>,
+    ) -> Option<Self> {
+        (living_entity_meta.get_entity_type() == EntityType::BEE).then(|| Self {
+            animal_meta: AnimalMeta::from_living_entity_meta(living_entity_meta),
         })
     }
 
     pub fn is_angry(&self) -> bool {
-        self.get_entity()
+        self.get_state()
             .get_metadata()
             .get_flag(&definitions::bee::is_angry())
     }
 
     pub fn set_angry(&mut self, is_angry: bool) {
-        self.get_entity_mut()
+        self.get_entity_state_mut()
             .get_metadata_mut()
             .set_flag(&definitions::bee::is_angry(), is_angry);
     }
 
     pub fn has_stung(&self) -> bool {
-        self.get_entity()
+        self.get_state()
             .get_metadata()
             .get_flag(&definitions::bee::has_stung())
     }
 
     pub fn set_has_stung(&mut self, has_stung: bool) {
-        self.get_entity_mut()
+        self.get_entity_state_mut()
             .get_metadata_mut()
             .set_flag(&definitions::bee::has_stung(), has_stung);
     }
 
     pub fn has_nectar(&self) -> bool {
-        self.get_entity()
+        self.get_state()
             .get_metadata()
             .get_flag(&definitions::bee::has_nectar())
     }
 
     pub fn set_has_nectar(&mut self, has_nectar: bool) {
-        self.get_entity_mut()
+        self.get_entity_state_mut()
             .get_metadata_mut()
             .set_flag(&definitions::bee::has_nectar(), has_nectar);
     }
 
     pub fn get_anger_ticks(&self) -> i64 {
         match self
-            .get_entity()
+            .get_state()
             .get_metadata()
             .get_value(&definitions::bee::anger_time_ticks())
         {
@@ -62,7 +64,7 @@ impl<'entity> BeeMeta<'entity> {
     }
 
     pub fn set_anger_ticks(&mut self, anger_ticks: i64) {
-        self.get_entity_mut().get_metadata_mut().set(
+        self.get_entity_state_mut().get_metadata_mut().set(
             &definitions::bee::anger_time_ticks(),
             MetadataValue::Long(anger_ticks),
         );

@@ -1,4 +1,4 @@
-use crate::entity::metadata::{BasePiglinMeta, EntityMeta, definitions};
+use crate::entity::metadata::{BasePiglinMeta, LivingEntityMeta, definitions};
 use spinel_network::types::entity_metadata::MetadataValue;
 use spinel_registry::EntityType;
 use std::ops::{Deref, DerefMut};
@@ -8,15 +8,17 @@ pub struct PiglinMeta<'entity> {
 }
 
 impl<'entity> PiglinMeta<'entity> {
-    pub(crate) fn from_entity_meta(entity_meta: EntityMeta<'entity>) -> Option<Self> {
-        (entity_meta.get_entity().get_entity_type() == EntityType::PIGLIN).then(|| Self {
-            base_piglin_meta: BasePiglinMeta::from_entity_meta(entity_meta),
+    pub(crate) fn from_living_entity_meta(
+        living_entity_meta: LivingEntityMeta<'entity>,
+    ) -> Option<Self> {
+        (living_entity_meta.get_entity_type() == EntityType::PIGLIN).then(|| Self {
+            base_piglin_meta: BasePiglinMeta::from_living_entity_meta(living_entity_meta),
         })
     }
 
     pub fn is_baby(&self) -> bool {
         match self
-            .get_entity()
+            .get_entity_state()
             .get_metadata()
             .get_value(&definitions::piglin::is_baby())
         {
@@ -30,14 +32,14 @@ impl<'entity> PiglinMeta<'entity> {
             return;
         }
 
-        let bounding_box = self.get_entity().get_bounding_box();
+        let bounding_box = self.get_entity_state().get_bounding_box();
         let scale = if is_baby { 0.5 } else { 2.0 };
-        self.get_entity_mut().set_bounding_box_dimensions(
+        self.get_living_entity_mut().set_bounding_box_dimensions(
             bounding_box.get_width() * scale,
             bounding_box.get_height() * scale,
             bounding_box.depth() * scale,
         );
-        self.get_entity_mut().get_metadata_mut().set(
+        self.get_entity_state_mut().get_metadata_mut().set(
             &definitions::piglin::is_baby(),
             MetadataValue::Boolean(is_baby),
         );
@@ -45,7 +47,7 @@ impl<'entity> PiglinMeta<'entity> {
 
     pub fn is_charging_crossbow(&self) -> bool {
         match self
-            .get_entity()
+            .get_entity_state()
             .get_metadata()
             .get_value(&definitions::piglin::is_charging_crossbow())
         {
@@ -55,7 +57,7 @@ impl<'entity> PiglinMeta<'entity> {
     }
 
     pub fn set_charging_crossbow(&mut self, is_charging_crossbow: bool) {
-        self.get_entity_mut().get_metadata_mut().set(
+        self.get_entity_state_mut().get_metadata_mut().set(
             &definitions::piglin::is_charging_crossbow(),
             MetadataValue::Boolean(is_charging_crossbow),
         );
@@ -63,7 +65,7 @@ impl<'entity> PiglinMeta<'entity> {
 
     pub fn is_dancing(&self) -> bool {
         match self
-            .get_entity()
+            .get_entity_state()
             .get_metadata()
             .get_value(&definitions::piglin::is_dancing())
         {
@@ -73,7 +75,7 @@ impl<'entity> PiglinMeta<'entity> {
     }
 
     pub fn set_dancing(&mut self, is_dancing: bool) {
-        self.get_entity_mut().get_metadata_mut().set(
+        self.get_entity_state_mut().get_metadata_mut().set(
             &definitions::piglin::is_dancing(),
             MetadataValue::Boolean(is_dancing),
         );

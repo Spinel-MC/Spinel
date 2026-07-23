@@ -1,4 +1,4 @@
-use crate::entity::metadata::{AbstractIllagerMeta, EntityMeta, definitions};
+use crate::entity::metadata::{AbstractIllagerMeta, LivingEntityMeta, definitions};
 use spinel_network::types::entity_metadata::MetadataValue;
 use spinel_registry::EntityType;
 use std::ops::{Deref, DerefMut};
@@ -8,15 +8,17 @@ pub struct PillagerMeta<'entity> {
 }
 
 impl<'entity> PillagerMeta<'entity> {
-    pub(crate) fn from_entity_meta(entity_meta: EntityMeta<'entity>) -> Option<Self> {
-        (entity_meta.get_entity().get_entity_type() == EntityType::PILLAGER).then(|| Self {
-            abstract_illager_meta: AbstractIllagerMeta::from_entity_meta(entity_meta),
+    pub(crate) fn from_living_entity_meta(
+        living_entity_meta: LivingEntityMeta<'entity>,
+    ) -> Option<Self> {
+        (living_entity_meta.get_entity_type() == EntityType::PILLAGER).then(|| Self {
+            abstract_illager_meta: AbstractIllagerMeta::from_living_entity_meta(living_entity_meta),
         })
     }
 
     pub fn is_charging_crossbow(&self) -> bool {
         match self
-            .get_entity()
+            .get_state()
             .get_metadata()
             .get_value(&definitions::pillager::is_charging())
         {
@@ -26,7 +28,7 @@ impl<'entity> PillagerMeta<'entity> {
     }
 
     pub fn set_charging_crossbow(&mut self, is_charging_crossbow: bool) {
-        self.get_entity_mut().get_metadata_mut().set(
+        self.get_entity_state_mut().get_metadata_mut().set(
             &definitions::pillager::is_charging(),
             MetadataValue::Boolean(is_charging_crossbow),
         );

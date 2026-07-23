@@ -163,19 +163,19 @@ fn creature_queries_include_living_generic_entities_only() {
         0,
         local_address(2),
     );
-    let zombie = positioned_entity(EntityType::ZOMBIE, 1.0, 64.0, 1.0);
+    let zombie = positioned_living_entity(EntityType::ZOMBIE, 1.0, 64.0, 1.0);
     let zombie_id = zombie.get_entity_id();
     let item = positioned_entity(EntityType::ITEM, 2.0, 64.0, 1.0);
 
     world.add_entity(Entity::Player(player));
-    world.add_entity(Entity::Generic(zombie));
+    world.add_entity(Entity::Living(zombie));
     world.add_entity(Entity::Generic(item));
 
     assert_eq!(
         world
             .creatures()
             .into_iter()
-            .map(GenericEntity::get_entity_id)
+            .map(crate::entity::LivingEntity::get_entity_id)
             .collect::<Vec<_>>(),
         vec![zombie_id]
     );
@@ -253,4 +253,15 @@ fn ids(mut entity_ids: Vec<EntityId>) -> Vec<EntityId> {
 
 fn ids_from_entities(entities: Vec<&Entity>) -> Vec<EntityId> {
     ids(entities.into_iter().map(Entity::get_entity_id).collect())
+}
+
+fn positioned_living_entity(
+    entity_type: EntityType,
+    x: f64,
+    y: f64,
+    z: f64,
+) -> crate::entity::LivingEntity {
+    let mut entity = crate::entity::LivingEntity::new(entity_type);
+    entity.set_position(EntityPosition::new(x, y, z, 0.0, 0.0));
+    entity
 }

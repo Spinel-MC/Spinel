@@ -1,5 +1,5 @@
 use crate::entity::player::{Player, PlayerChunk};
-use crate::entity::{Entity, EntityId, EntityPosition, GenericEntity, TimedPotionEffect};
+use crate::entity::{Entity, EntityId, EntityPosition, LivingEntity, TimedPotionEffect};
 use crate::events::entity_potion_add::EntityPotionAddEvent;
 use crate::events::entity_potion_remove::EntityPotionRemoveEvent;
 use crate::events::entity_tick::EntityTickEvent;
@@ -313,7 +313,7 @@ fn timed_potion_effect_flags_packets_and_duration_boundaries_match_reference_pot
 #[test]
 fn runtime_effect_collection_does_not_mutate_living_effect_metadata() {
     let effect_particle = Particle::effect();
-    let mut entity = GenericEntity::new(EntityType::ZOMBIE);
+    let mut entity = LivingEntity::new(EntityType::ZOMBIE);
     entity.set_effect_particles(vec![effect_particle.clone()]);
     entity.set_potion_effect_ambient(true);
 
@@ -338,11 +338,11 @@ fn server_with_living_entity_and_viewer() -> (MinecraftServer, EntityId, Box<Cli
     viewer.set_client(&mut viewer_client);
     viewer.mark_entered_world();
     viewer.mark_chunk_sent_to_client(PlayerChunk::new(0, 0));
-    let mut entity = GenericEntity::new(EntityType::ZOMBIE);
+    let mut entity = LivingEntity::new(EntityType::ZOMBIE);
     entity.set_position(EntityPosition::new(1.0, 64.0, 1.0, 0.0, 0.0));
     let entity_id = entity.get_entity_id();
     let world = server.world_manager.world_mut(world_uuid).unwrap();
-    world.add_entity(Entity::Generic(entity));
+    world.add_entity(Entity::Living(entity));
     world.add_entity(Entity::Player(viewer));
     world.process_pending_entity_visibility_refreshes().unwrap();
     viewer_client.discard_queued_outbound_packets();

@@ -10,7 +10,7 @@ pub struct CommandBlockMinecartMeta<'entity> {
 
 impl<'entity> CommandBlockMinecartMeta<'entity> {
     pub(crate) fn from_entity_meta(entity_meta: EntityMeta<'entity>) -> Option<Self> {
-        (entity_meta.get_entity().get_entity_type() == EntityType::COMMAND_BLOCK_MINECART).then(
+        (entity_meta.get_state().get_entity_type() == EntityType::COMMAND_BLOCK_MINECART).then(
             || Self {
                 abstract_minecart_meta: AbstractMinecartMeta::from_entity_meta(entity_meta),
             },
@@ -19,7 +19,7 @@ impl<'entity> CommandBlockMinecartMeta<'entity> {
 
     pub fn get_command(&self) -> String {
         match self
-            .get_entity()
+            .get_state()
             .get_metadata()
             .get_value(&definitions::command_block_minecart::get_command())
         {
@@ -29,7 +29,7 @@ impl<'entity> CommandBlockMinecartMeta<'entity> {
     }
 
     pub fn set_command(&mut self, command: String) {
-        self.get_entity_mut().get_metadata_mut().set(
+        self.get_state_mut().get_metadata_mut().set(
             &definitions::command_block_minecart::get_command(),
             MetadataValue::String(command),
         );
@@ -37,7 +37,7 @@ impl<'entity> CommandBlockMinecartMeta<'entity> {
 
     pub fn get_last_output(&self) -> TextComponent {
         match self
-            .get_entity()
+            .get_state()
             .get_metadata()
             .get_value(&definitions::command_block_minecart::get_last_output())
         {
@@ -47,7 +47,7 @@ impl<'entity> CommandBlockMinecartMeta<'entity> {
     }
 
     pub fn set_last_output(&mut self, last_output: TextComponent) {
-        self.get_entity_mut().get_metadata_mut().set(
+        self.get_state_mut().get_metadata_mut().set(
             &definitions::command_block_minecart::get_last_output(),
             MetadataValue::Text(last_output),
         );

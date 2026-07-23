@@ -10,13 +10,13 @@ pub struct EndCrystalMeta<'entity> {
 
 impl<'entity> EndCrystalMeta<'entity> {
     pub(crate) fn from_entity_meta(entity_meta: EntityMeta<'entity>) -> Option<Self> {
-        (entity_meta.get_entity().get_entity_type() == EntityType::END_CRYSTAL)
+        (entity_meta.get_state().get_entity_type() == EntityType::END_CRYSTAL)
             .then_some(Self { entity_meta })
     }
 
     pub fn get_beam_target(&self) -> Option<Position> {
         match self
-            .get_entity()
+            .get_state()
             .get_metadata()
             .get_value(&definitions::end_crystal::get_beam_target())
         {
@@ -26,7 +26,7 @@ impl<'entity> EndCrystalMeta<'entity> {
     }
 
     pub fn set_beam_target(&mut self, beam_target: Option<Position>) {
-        self.get_entity_mut().get_metadata_mut().set(
+        self.get_state_mut().get_metadata_mut().set(
             &definitions::end_crystal::get_beam_target(),
             MetadataValue::OptionalPosition(beam_target),
         );
@@ -34,7 +34,7 @@ impl<'entity> EndCrystalMeta<'entity> {
 
     pub fn is_showing_bottom(&self) -> bool {
         match self
-            .get_entity()
+            .get_state()
             .get_metadata()
             .get_value(&definitions::end_crystal::show_bottom())
         {
@@ -44,7 +44,7 @@ impl<'entity> EndCrystalMeta<'entity> {
     }
 
     pub fn set_showing_bottom(&mut self, is_showing_bottom: bool) {
-        self.get_entity_mut().get_metadata_mut().set(
+        self.get_state_mut().get_metadata_mut().set(
             &definitions::end_crystal::show_bottom(),
             MetadataValue::Boolean(is_showing_bottom),
         );

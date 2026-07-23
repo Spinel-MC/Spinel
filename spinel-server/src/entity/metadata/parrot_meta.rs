@@ -1,4 +1,4 @@
-use crate::entity::metadata::{EntityMeta, ParrotColor, TameableAnimalMeta, definitions};
+use crate::entity::metadata::{LivingEntityMeta, ParrotColor, TameableAnimalMeta, definitions};
 use spinel_network::types::entity_metadata::MetadataValue;
 use spinel_registry::EntityType;
 use std::ops::{Deref, DerefMut};
@@ -8,15 +8,17 @@ pub struct ParrotMeta<'entity> {
 }
 
 impl<'entity> ParrotMeta<'entity> {
-    pub(crate) fn from_entity_meta(entity_meta: EntityMeta<'entity>) -> Option<Self> {
-        (entity_meta.get_entity().get_entity_type() == EntityType::PARROT).then(|| Self {
-            tameable_animal_meta: TameableAnimalMeta::from_entity_meta(entity_meta),
+    pub(crate) fn from_living_entity_meta(
+        living_entity_meta: LivingEntityMeta<'entity>,
+    ) -> Option<Self> {
+        (living_entity_meta.get_entity_type() == EntityType::PARROT).then(|| Self {
+            tameable_animal_meta: TameableAnimalMeta::from_living_entity_meta(living_entity_meta),
         })
     }
 
     pub fn get_color(&self) -> ParrotColor {
         match self
-            .get_entity()
+            .get_state()
             .get_metadata()
             .get_value(&definitions::parrot::get_variant())
         {
@@ -28,7 +30,7 @@ impl<'entity> ParrotMeta<'entity> {
     }
 
     pub fn set_color(&mut self, color: ParrotColor) {
-        self.get_entity_mut().get_metadata_mut().set(
+        self.get_entity_state_mut().get_metadata_mut().set(
             &definitions::parrot::get_variant(),
             MetadataValue::VarInt(color.protocol_id()),
         );

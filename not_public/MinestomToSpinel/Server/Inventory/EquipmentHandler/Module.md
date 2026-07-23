@@ -2,7 +2,8 @@
 
 ## Module Boundary
 
-Owns Minestom `net.minestom.server.inventory.EquipmentHandler` shared contract. `LivingEntity` owns concrete behavior; `EquipmentSlot` owns enum semantics.
+Owns Minestom
+et.minestom.server.inventory.EquipmentHandler` shared contract. `LivingEntity` owns concrete behavior; `EquipmentSlot` owns enum semantics.
 
 ## Reviewed Source Coverage
 

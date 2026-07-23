@@ -5,7 +5,9 @@ use crate::entity::metadata::{
     SnifferState, SpellcasterIllagerSpell, TropicalFishPattern, TropicalFishVariant, VillagerData,
     VillagerLevel,
 };
-use crate::entity::{EntityId, EntityPose, EntityPosition, GenericEntity, PlayerHand};
+use crate::entity::{
+    EntityId, EntityPose, EntityPosition, GenericEntity, LivingEntity, PlayerHand,
+};
 use crate::network::client::instance::Client;
 use spinel_core::network::clientbound::play::entity_animation::EntityAnimation;
 use spinel_core::network::clientbound::play::remove_entities::RemoveEntitiesPacket;
@@ -26,7 +28,7 @@ use std::sync::atomic::{AtomicI32, Ordering};
 
 #[test]
 fn generic_entity_teleport_overloads_update_position_velocity_chunks_and_flags() {
-    let mut entity = GenericEntity::new(EntityType::ZOMBIE);
+    let mut entity = LivingEntity::new(EntityType::ZOMBIE);
     let position = EntityPosition::new(1.0, 64.0, 2.0, 90.0, 45.0);
     let velocity = Velocity(Vector3d {
         x: 0.1,
@@ -65,7 +67,7 @@ fn generic_entity_teleport_overloads_update_position_velocity_chunks_and_flags()
 
 #[test]
 fn generic_entity_teleport_resolves_reference_relative_position_and_velocity_flags() {
-    let mut entity = GenericEntity::new(EntityType::ZOMBIE);
+    let mut entity = LivingEntity::new(EntityType::ZOMBIE);
     entity.set_position(EntityPosition::new(10.0, 20.0, 30.0, 40.0, 50.0));
     entity.set_velocity(Velocity(Vector3d {
         x: 1.0,
@@ -135,7 +137,7 @@ fn generic_entity_teleport_resolves_reference_relative_position_and_velocity_fla
 
 #[test]
 fn generic_entity_refresh_position_packet_control_overloads_update_owned_position() {
-    let mut entity = GenericEntity::new(EntityType::ZOMBIE);
+    let mut entity = LivingEntity::new(EntityType::ZOMBIE);
 
     entity.refresh_position_with_packet_controls(
         EntityPosition::new(1.0, 2.0, 3.0, 4.0, 5.0),
@@ -151,7 +153,7 @@ fn generic_entity_refresh_position_packet_control_overloads_update_owned_positio
 
 #[test]
 fn generic_entity_from_cient_swing_overloads_preserve_hand_animation() {
-    let entity = GenericEntity::new(EntityType::ZOMBIE);
+    let entity = LivingEntity::new(EntityType::ZOMBIE);
 
     assert_eq!(
         entity.swing_main_hand_from_client(true).animation,
@@ -165,7 +167,7 @@ fn generic_entity_from_cient_swing_overloads_preserve_hand_animation() {
 
 #[test]
 fn generic_entity_hover_event_uses_type_uuid_and_custom_name() {
-    let mut entity = GenericEntity::new(EntityType::ZOMBIE);
+    let mut entity = LivingEntity::new(EntityType::ZOMBIE);
     entity.set_custom_name(Some(spinel_utils::component::text::TextComponent::literal(
         "Zombie",
     )));
@@ -181,7 +183,7 @@ fn generic_entity_hover_event_uses_type_uuid_and_custom_name() {
 
 #[test]
 fn generic_entity_base_metadata_api_matches_reference_entity_meta_defaults() {
-    let mut entity = GenericEntity::new(EntityType::ZOMBIE);
+    let mut entity = LivingEntity::new(EntityType::ZOMBIE);
 
     assert!(!entity.is_on_fire());
     assert!(!entity.is_sneaking());
@@ -230,7 +232,7 @@ fn generic_entity_base_metadata_api_matches_reference_entity_meta_defaults() {
 
 #[test]
 fn generic_entity_living_mob_and_ageable_metadata_api_matches_reference_meta_surface() {
-    let mut entity = GenericEntity::new(EntityType::ZOMBIE);
+    let mut entity = LivingEntity::new(EntityType::ZOMBIE);
     let original_bounding_box = entity.get_bounding_box();
     let effect_particle = Particle::effect();
     let bed_position = Position { x: 1, y: 64, z: 2 };
@@ -309,9 +311,9 @@ fn generic_entity_living_mob_and_ageable_metadata_api_matches_reference_meta_sur
 #[test]
 fn generic_entity_vehicle_avatar_player_and_mannequin_metadata_api_matches_reference_meta_surface()
 {
-    let mut entity = GenericEntity::new(EntityType::PLAYER);
+    let mut entity = LivingEntity::new(EntityType::PLAYER);
     let mut player_meta = entity.get_entity_meta_mut().as_player().unwrap();
-    let mut mannequin = GenericEntity::new(EntityType::MANNEQUIN);
+    let mut mannequin = LivingEntity::new(EntityType::MANNEQUIN);
     let description = spinel_utils::component::text::TextComponent::literal("description");
     let profile = ResolvableProfile::default();
 
@@ -740,7 +742,7 @@ fn typed_object_metadata_api_matches_reference_other_meta_surface() {
 fn generic_entity_object_data_provider_velocity_rules_match_reference() {
     let llama_spit_type = EntityType::from_key("minecraft:llama_spit").unwrap();
     let shulker_bullet_type = EntityType::from_key("minecraft:shulker_bullet").unwrap();
-    let mut zombie = GenericEntity::new(EntityType::ZOMBIE);
+    let mut zombie = LivingEntity::new(EntityType::ZOMBIE);
     let mut llama_spit = GenericEntity::new(llama_spit_type);
     let mut shulker_bullet = GenericEntity::new(shulker_bullet_type);
     let velocity = Velocity(Vector3d {
@@ -773,7 +775,7 @@ fn generic_entity_object_data_provider_velocity_rules_match_reference() {
 
 #[test]
 fn typed_armor_stand_metadata_api_matches_reference_meta_surface() {
-    let mut armor_stand = GenericEntity::new(EntityType::ARMOR_STAND);
+    let mut armor_stand = LivingEntity::new(EntityType::ARMOR_STAND);
     let rotation = Vector3f {
         x: 1.0,
         y: 2.0,
@@ -833,8 +835,8 @@ fn typed_armor_stand_metadata_api_matches_reference_meta_surface() {
 }
 #[test]
 fn typed_slime_metadata_api_matches_reference_meta_surface() {
-    let mut slime = GenericEntity::new(EntityType::SLIME);
-    let mut magma_cube = GenericEntity::new(EntityType::MAGMA_CUBE);
+    let mut slime = LivingEntity::new(EntityType::SLIME);
+    let mut magma_cube = LivingEntity::new(EntityType::MAGMA_CUBE);
 
     assert_eq!(
         slime
@@ -887,7 +889,7 @@ fn typed_slime_metadata_api_matches_reference_meta_surface() {
 }
 #[test]
 fn typed_ender_dragon_metadata_api_matches_reference_meta_surface() {
-    let mut ender_dragon = GenericEntity::new(EntityType::ENDER_DRAGON);
+    let mut ender_dragon = LivingEntity::new(EntityType::ENDER_DRAGON);
 
     assert_eq!(
         ender_dragon
@@ -916,9 +918,9 @@ fn typed_ender_dragon_metadata_api_matches_reference_meta_surface() {
 
 #[test]
 fn bat_and_bee_metadata_owners_match_reference_meta_surface() {
-    let mut bat = GenericEntity::new(EntityType::BAT);
-    let mut bee = GenericEntity::new(EntityType::BEE);
-    let mut zombie = GenericEntity::new(EntityType::ZOMBIE);
+    let mut bat = LivingEntity::new(EntityType::BAT);
+    let mut bee = LivingEntity::new(EntityType::BEE);
+    let mut zombie = LivingEntity::new(EntityType::ZOMBIE);
 
     {
         let mut bat_meta = bat
@@ -959,9 +961,9 @@ fn bat_and_bee_metadata_owners_match_reference_meta_surface() {
 
 #[test]
 fn allay_armadillo_and_sniffer_metadata_owners_match_reference() {
-    let mut allay = GenericEntity::new(EntityType::ALLAY);
-    let mut armadillo = GenericEntity::new(EntityType::ARMADILLO);
-    let mut sniffer = GenericEntity::new(EntityType::SNIFFER);
+    let mut allay = LivingEntity::new(EntityType::ALLAY);
+    let mut armadillo = LivingEntity::new(EntityType::ARMADILLO);
+    let mut sniffer = LivingEntity::new(EntityType::SNIFFER);
 
     {
         let mut allay_meta = allay
@@ -1011,10 +1013,10 @@ fn allay_armadillo_and_sniffer_metadata_owners_match_reference() {
 
 #[test]
 fn generic_entity_blaze_creeper_and_golem_metadata_match_reference() {
-    let mut blaze = GenericEntity::new(EntityType::BLAZE);
-    let mut creeper = GenericEntity::new(EntityType::CREEPER);
-    let mut iron_golem = GenericEntity::new(EntityType::IRON_GOLEM);
-    let mut snow_golem = GenericEntity::new(EntityType::SNOW_GOLEM);
+    let mut blaze = LivingEntity::new(EntityType::BLAZE);
+    let mut creeper = LivingEntity::new(EntityType::CREEPER);
+    let mut iron_golem = LivingEntity::new(EntityType::IRON_GOLEM);
+    let mut snow_golem = LivingEntity::new(EntityType::SNOW_GOLEM);
 
     assert!(
         !blaze
@@ -1106,9 +1108,9 @@ fn generic_entity_blaze_creeper_and_golem_metadata_match_reference() {
 
 #[test]
 fn generic_entity_copper_golem_shulker_and_spellcaster_metadata_match_reference() {
-    let mut copper_golem = GenericEntity::new(EntityType::COPPER_GOLEM);
-    let mut shulker = GenericEntity::new(EntityType::SHULKER);
-    let mut evoker = GenericEntity::new(EntityType::EVOKER);
+    let mut copper_golem = LivingEntity::new(EntityType::COPPER_GOLEM);
+    let mut shulker = LivingEntity::new(EntityType::SHULKER);
+    let mut evoker = LivingEntity::new(EntityType::EVOKER);
 
     assert_eq!(
         copper_golem
@@ -1245,10 +1247,10 @@ fn generic_entity_copper_golem_shulker_and_spellcaster_metadata_match_reference(
 
 #[test]
 fn generic_entity_bogged_creaking_spider_and_vex_metadata_match_reference() {
-    let mut bogged = GenericEntity::new(EntityType::BOGGED);
-    let mut creaking = GenericEntity::new(EntityType::CREAKING);
-    let mut spider = GenericEntity::new(EntityType::SPIDER);
-    let mut vex = GenericEntity::new(EntityType::VEX);
+    let mut bogged = LivingEntity::new(EntityType::BOGGED);
+    let mut creaking = LivingEntity::new(EntityType::CREAKING);
+    let mut spider = LivingEntity::new(EntityType::SPIDER);
+    let mut vex = LivingEntity::new(EntityType::VEX);
     let home_position = Position { x: 8, y: 9, z: 10 };
 
     assert!(
@@ -1341,14 +1343,14 @@ fn generic_entity_bogged_creaking_spider_and_vex_metadata_match_reference() {
 
 #[test]
 fn generic_entity_guardian_raider_wither_warden_and_zombie_metadata_match_reference() {
-    let mut guardian = GenericEntity::new(EntityType::GUARDIAN);
-    let mut raider = GenericEntity::new(EntityType::RAVAGER);
-    let mut pillager = GenericEntity::new(EntityType::PILLAGER);
-    let mut witch = GenericEntity::new(EntityType::WITCH);
-    let mut warden = GenericEntity::new(EntityType::WARDEN);
-    let mut wither = GenericEntity::new(EntityType::WITHER);
-    let mut zoglin = GenericEntity::new(EntityType::ZOGLIN);
-    let mut zombie = GenericEntity::new(EntityType::ZOMBIE);
+    let mut guardian = LivingEntity::new(EntityType::GUARDIAN);
+    let mut raider = LivingEntity::new(EntityType::RAVAGER);
+    let mut pillager = LivingEntity::new(EntityType::PILLAGER);
+    let mut witch = LivingEntity::new(EntityType::WITCH);
+    let mut warden = LivingEntity::new(EntityType::WARDEN);
+    let mut wither = LivingEntity::new(EntityType::WITHER);
+    let mut zoglin = LivingEntity::new(EntityType::ZOGLIN);
+    let mut zombie = LivingEntity::new(EntityType::ZOMBIE);
 
     {
         let guardian_meta = guardian
@@ -1599,10 +1601,10 @@ fn generic_entity_guardian_raider_wither_warden_and_zombie_metadata_match_refere
 
 #[test]
 fn generic_entity_piglin_enderman_ghast_and_phantom_metadata_match_reference() {
-    let mut piglin = GenericEntity::new(EntityType::PIGLIN);
-    let mut enderman = GenericEntity::new(EntityType::ENDERMAN);
-    let mut ghast = GenericEntity::new(EntityType::GHAST);
-    let mut phantom = GenericEntity::new(EntityType::PHANTOM);
+    let mut piglin = LivingEntity::new(EntityType::PIGLIN);
+    let mut enderman = LivingEntity::new(EntityType::ENDERMAN);
+    let mut ghast = LivingEntity::new(EntityType::GHAST);
+    let mut phantom = LivingEntity::new(EntityType::PHANTOM);
     let stone = spinel_registry::vanilla_world_blocks::Block::STONE.default_state();
     let air = spinel_registry::vanilla_world_blocks::Block::AIR.default_state();
 
@@ -1723,8 +1725,8 @@ fn generic_entity_piglin_enderman_ghast_and_phantom_metadata_match_reference() {
 
 #[test]
 fn generic_entity_villager_scalar_metadata_matches_reference() {
-    let mut villager = GenericEntity::new(EntityType::VILLAGER);
-    let mut zombie_villager = GenericEntity::new(EntityType::ZOMBIE_VILLAGER);
+    let mut villager = LivingEntity::new(EntityType::VILLAGER);
+    let mut zombie_villager = LivingEntity::new(EntityType::ZOMBIE_VILLAGER);
     let librarian = VillagerData::DEFAULT
         .with_type(VillagerType::PLAINS)
         .with_profession(VillagerProfession::LIBRARIAN)
@@ -1830,8 +1832,8 @@ fn generic_entity_villager_scalar_metadata_matches_reference() {
 
 #[test]
 fn dolphin_and_goat_metadata_owners_match_reference_meta_surface() {
-    let mut dolphin = GenericEntity::new(EntityType::DOLPHIN);
-    let mut goat = GenericEntity::new(EntityType::GOAT);
+    let mut dolphin = LivingEntity::new(EntityType::DOLPHIN);
+    let mut goat = LivingEntity::new(EntityType::GOAT);
     let treasure_position = spinel_network::types::Position { x: 4, y: 5, z: 6 };
 
     {
@@ -1871,7 +1873,7 @@ fn dolphin_and_goat_metadata_owners_match_reference_meta_surface() {
 
 #[test]
 fn axolotl_metadata_owner_matches_reference_meta_surface() {
-    let mut axolotl = GenericEntity::new(EntityType::AXOLOTL);
+    let mut axolotl = LivingEntity::new(EntityType::AXOLOTL);
     let mut axolotl_meta = axolotl
         .get_entity_meta_mut()
         .as_axolotl()
@@ -1892,8 +1894,8 @@ fn axolotl_metadata_owner_matches_reference_meta_surface() {
 
 #[test]
 fn generic_entity_pig_and_sheep_metadata_api_matches_reference_meta_surface() {
-    let mut pig = GenericEntity::new(EntityType::PIG);
-    let mut sheep = GenericEntity::new(EntityType::SHEEP);
+    let mut pig = LivingEntity::new(EntityType::PIG);
+    let mut sheep = LivingEntity::new(EntityType::SHEEP);
 
     assert_eq!(
         pig.get_entity_meta_mut()
@@ -1932,17 +1934,17 @@ fn generic_entity_pig_and_sheep_metadata_api_matches_reference_meta_surface() {
 
 #[test]
 fn generic_entity_remaining_animal_scalar_metadata_matches_reference() {
-    let mut horse = GenericEntity::new(EntityType::HORSE);
-    let mut camel = GenericEntity::new(EntityType::CAMEL);
-    let mut donkey = GenericEntity::new(EntityType::DONKEY);
-    let mut ocelot = GenericEntity::new(EntityType::OCELOT);
-    let mut turtle = GenericEntity::new(EntityType::TURTLE);
-    let mut polar_bear = GenericEntity::new(EntityType::POLAR_BEAR);
-    let mut hoglin = GenericEntity::new(EntityType::HOGLIN);
-    let mut strider = GenericEntity::new(EntityType::STRIDER);
-    let mut wolf = GenericEntity::new(EntityType::WOLF);
-    let mut nautilus = GenericEntity::new(EntityType::NAUTILUS);
-    let mut happy_ghast = GenericEntity::new(EntityType::HAPPY_GHAST);
+    let mut horse = LivingEntity::new(EntityType::HORSE);
+    let mut camel = LivingEntity::new(EntityType::CAMEL);
+    let mut donkey = LivingEntity::new(EntityType::DONKEY);
+    let mut ocelot = LivingEntity::new(EntityType::OCELOT);
+    let mut turtle = LivingEntity::new(EntityType::TURTLE);
+    let mut polar_bear = LivingEntity::new(EntityType::POLAR_BEAR);
+    let mut hoglin = LivingEntity::new(EntityType::HOGLIN);
+    let mut strider = LivingEntity::new(EntityType::STRIDER);
+    let mut wolf = LivingEntity::new(EntityType::WOLF);
+    let mut nautilus = LivingEntity::new(EntityType::NAUTILUS);
+    let mut happy_ghast = LivingEntity::new(EntityType::HAPPY_GHAST);
     let owner = uuid::Uuid::new_v4();
 
     {
@@ -2108,8 +2110,8 @@ fn generic_entity_remaining_animal_scalar_metadata_matches_reference() {
 
 #[test]
 fn generic_entity_cat_and_wolf_scalar_components_match_reference() {
-    let mut cat = GenericEntity::new(EntityType::CAT);
-    let mut wolf = GenericEntity::new(EntityType::WOLF);
+    let mut cat = LivingEntity::new(EntityType::CAT);
+    let mut wolf = LivingEntity::new(EntityType::WOLF);
 
     {
         let cat_meta = cat
@@ -2181,13 +2183,13 @@ fn generic_entity_cat_and_wolf_scalar_components_match_reference() {
 
 #[test]
 fn generic_entity_static_animal_variants_and_genes_match_reference() {
-    let mut horse = GenericEntity::new(EntityType::HORSE);
-    let mut llama = GenericEntity::new(EntityType::LLAMA);
-    let mut fox = GenericEntity::new(EntityType::FOX);
-    let mut panda = GenericEntity::new(EntityType::PANDA);
-    let mut rabbit = GenericEntity::new(EntityType::RABBIT);
-    let mut mooshroom = GenericEntity::new(EntityType::MOOSHROOM);
-    let mut parrot = GenericEntity::new(EntityType::PARROT);
+    let mut horse = LivingEntity::new(EntityType::HORSE);
+    let mut llama = LivingEntity::new(EntityType::LLAMA);
+    let mut fox = LivingEntity::new(EntityType::FOX);
+    let mut panda = LivingEntity::new(EntityType::PANDA);
+    let mut rabbit = LivingEntity::new(EntityType::RABBIT);
+    let mut mooshroom = LivingEntity::new(EntityType::MOOSHROOM);
+    let mut parrot = LivingEntity::new(EntityType::PARROT);
     let trusted_fox = uuid::Uuid::new_v4();
     let second_trusted_fox = uuid::Uuid::new_v4();
     let horse_variant = HorseVariant::new(HorseMarking::WhiteDots, HorseColor::DarkBrown);
@@ -2337,16 +2339,16 @@ fn generic_entity_static_variant_components_bridge_owned_metadata() {
         TROPICAL_FISH_PATTERN, TROPICAL_FISH_PATTERN_COLOR,
     };
 
-    let mut axolotl = GenericEntity::new(EntityType::AXOLOTL);
-    let mut fox = GenericEntity::new(EntityType::FOX);
-    let mut horse = GenericEntity::new(EntityType::HORSE);
-    let mut llama = GenericEntity::new(EntityType::LLAMA);
-    let mut trader_llama = GenericEntity::new(EntityType::TRADER_LLAMA);
-    let mut mooshroom = GenericEntity::new(EntityType::MOOSHROOM);
-    let mut parrot = GenericEntity::new(EntityType::PARROT);
-    let mut rabbit = GenericEntity::new(EntityType::RABBIT);
-    let mut salmon = GenericEntity::new(EntityType::SALMON);
-    let mut tropical_fish = GenericEntity::new(EntityType::TROPICAL_FISH);
+    let mut axolotl = LivingEntity::new(EntityType::AXOLOTL);
+    let mut fox = LivingEntity::new(EntityType::FOX);
+    let mut horse = LivingEntity::new(EntityType::HORSE);
+    let mut llama = LivingEntity::new(EntityType::LLAMA);
+    let mut trader_llama = LivingEntity::new(EntityType::TRADER_LLAMA);
+    let mut mooshroom = LivingEntity::new(EntityType::MOOSHROOM);
+    let mut parrot = LivingEntity::new(EntityType::PARROT);
+    let mut rabbit = LivingEntity::new(EntityType::RABBIT);
+    let mut salmon = LivingEntity::new(EntityType::SALMON);
+    let mut tropical_fish = LivingEntity::new(EntityType::TROPICAL_FISH);
 
     horse
         .get_entity_meta_mut()
@@ -2425,9 +2427,9 @@ fn generic_entity_static_variant_components_bridge_owned_metadata() {
 
 #[test]
 fn fish_metadata_owners_match_reference_meta_surface() {
-    let mut pufferfish = GenericEntity::new(EntityType::PUFFERFISH);
-    let mut salmon = GenericEntity::new(EntityType::SALMON);
-    let mut tropical_fish = GenericEntity::new(EntityType::TROPICAL_FISH);
+    let mut pufferfish = LivingEntity::new(EntityType::PUFFERFISH);
+    let mut salmon = LivingEntity::new(EntityType::SALMON);
+    let mut tropical_fish = LivingEntity::new(EntityType::TROPICAL_FISH);
     let tropical_variant =
         TropicalFishVariant::new(TropicalFishPattern::Betty, DyeColor::Blue, DyeColor::Red);
 
@@ -2477,7 +2479,7 @@ fn fish_metadata_owners_match_reference_meta_surface() {
 
 #[test]
 fn generic_entity_snapshot_updater_receives_mutable_snapshot_copy() {
-    let mut entity = GenericEntity::new(EntityType::ZOMBIE);
+    let mut entity = LivingEntity::new(EntityType::ZOMBIE);
     let position = EntityPosition::new(3.0, 64.0, 9.0, 45.0, 10.0);
     entity.teleport(position);
 
@@ -2497,7 +2499,7 @@ fn generic_entity_event_node_pose_kill_viewer_packets_and_occlusion_match_refere
     let (mut client, _peer_stream) = test_client();
     client.state = ConnectionState::Play;
     client.enable_outbound_packet_queue();
-    let mut entity = GenericEntity::new(EntityType::ZOMBIE);
+    let mut entity = LivingEntity::new(EntityType::ZOMBIE);
     entity
         .get_attribute(1, 20.0)
         .add_modifier(EntityAttributeModifier::attack_speed(

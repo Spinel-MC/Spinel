@@ -23,6 +23,7 @@ pub mod player;
 mod pose;
 mod projectile;
 mod snapshot;
+mod state;
 mod summon_nbt;
 mod synchronization;
 mod teleport;
@@ -45,7 +46,9 @@ pub use generic_entity::{EntityAerodynamics, EntityPosition, GenericEntity};
 pub use identity::{EntityId, EntityIdentity, EntityPointers};
 pub use item::{ItemEntity, ItemEntityMeta};
 pub(crate) use leash::EntityLeash;
-pub use living::{EntityAttributeState, LivingAttributes, LivingState, TimedPotionEffect};
+pub use living::{
+    EntityAttributeState, LivingAttributes, LivingEntity, LivingState, TimedPotionEffect,
+};
 pub use passenger::PassengerError;
 pub use player::PlayerSpawnPoint;
 pub use player::{Player, PlayerHand};
@@ -59,6 +62,7 @@ pub use projectile::{
     ThrownTridentMeta, WindChargeMeta, WitherSkullMeta,
 };
 pub use snapshot::{EntityObservation, EntitySnapshot, PlayerSnapshot};
+pub(crate) use state::EntityState;
 pub(crate) use synchronization::EntitySynchronization;
 pub use teleport::{EntityTeleport, EntityTeleportRequest};
 pub use view_request::SetEntityViewRequest;

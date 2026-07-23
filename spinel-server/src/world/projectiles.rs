@@ -1,4 +1,4 @@
-﻿impl World {
+impl World {
     pub fn spawn_projectile(
         &mut self,
         shooter_id: Option<EntityId>,
@@ -338,8 +338,8 @@ fn block_position_for_entity(position: EntityPosition) -> BlockPosition {
 
 fn entity_is_living(entity: &Entity) -> bool {
     match entity {
-        Entity::Creature(_) | Entity::Player(_) => true,
-        Entity::Generic(entity) => entity.get_entity_type().is_living(),
+        Entity::Creature(_) | Entity::Living(_) | Entity::Player(_) => true,
+        Entity::Generic(_) => false,
         Entity::ExperienceOrb(_) | Entity::Item(_) | Entity::Projectile(_) => false,
     }
 }
@@ -351,6 +351,7 @@ fn projectile_entity_is_removed(entity: &Entity) -> bool {
         | Entity::ExperienceOrb(_)
         | Entity::Generic(_)
         | Entity::Item(_)
+        | Entity::Living(_)
         | Entity::Player(_) => true,
     }
 }

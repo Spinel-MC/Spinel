@@ -68,7 +68,7 @@ fn entity_tick_test_listener(event: &mut EntityTickEvent, _server: &mut Minecraf
     if !INSTANCE_TICK_EVENT_TEST_ENABLED.load(Ordering::SeqCst) {
         return;
     }
-    let Entity::Generic(entity) = event.get_entity() else {
+    let Entity::Living(entity) = event.get_entity() else {
         return;
     };
     if entity.get_world() != *INSTANCE_TICK_EVENT_TEST_WORLD.lock().unwrap() {
@@ -98,7 +98,7 @@ fn world_tick_events_surround_world_tick_work() {
         .world_manager
         .world_mut(world_uuid)
         .unwrap()
-        .add_entity(Entity::Generic(positioned_entity()));
+        .add_entity(Entity::Living(positioned_entity()));
     let registries = Registries::new_vanilla();
     let server_ptr = &mut server as *mut MinecraftServer as usize;
 
@@ -116,8 +116,8 @@ fn world_tick_events_surround_world_tick_work() {
     );
 }
 
-fn positioned_entity() -> GenericEntity {
-    let mut entity = GenericEntity::new(EntityType::ZOMBIE);
+fn positioned_entity() -> crate::entity::LivingEntity {
+    let mut entity = crate::entity::LivingEntity::new(EntityType::ZOMBIE);
     entity.set_position(EntityPosition::new(1.0, 64.0, 1.0, 0.0, 0.0));
     entity
 }

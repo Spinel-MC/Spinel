@@ -1,5 +1,5 @@
 use crate::entity::dynamic_variant::UnregisteredEntityVariantError;
-use crate::entity::metadata::{EntityMeta, TameableAnimalMeta, definitions};
+use crate::entity::metadata::{LivingEntityMeta, TameableAnimalMeta, definitions};
 use spinel_network::types::entity_metadata::MetadataValue;
 use spinel_registry::Registries;
 use spinel_registry::{EntityType, RegistryKey, cat_variant};
@@ -11,9 +11,11 @@ pub struct CatMeta<'entity> {
 }
 
 impl<'entity> CatMeta<'entity> {
-    pub(crate) fn from_entity_meta(entity_meta: EntityMeta<'entity>) -> Option<Self> {
-        (entity_meta.get_entity().get_entity_type() == EntityType::CAT).then(|| Self {
-            tameable_animal_meta: TameableAnimalMeta::from_entity_meta(entity_meta),
+    pub(crate) fn from_living_entity_meta(
+        living_entity_meta: LivingEntityMeta<'entity>,
+    ) -> Option<Self> {
+        (living_entity_meta.get_entity_type() == EntityType::CAT).then(|| Self {
+            tameable_animal_meta: TameableAnimalMeta::from_living_entity_meta(living_entity_meta),
         })
     }
 
@@ -21,7 +23,8 @@ impl<'entity> CatMeta<'entity> {
         &self,
         registries: &Registries,
     ) -> Option<RegistryKey<cat_variant::CatVariant>> {
-        self.get_entity().get_cat_variant_metadata(registries)
+        self.get_living_entity()
+            .get_cat_variant_metadata(registries)
     }
 
     pub fn set_variant(
@@ -29,13 +32,13 @@ impl<'entity> CatMeta<'entity> {
         registries: &Registries,
         variant: RegistryKey<cat_variant::CatVariant>,
     ) -> Result<(), UnregisteredEntityVariantError> {
-        self.get_entity_mut()
+        self.get_living_entity_mut()
             .set_cat_variant_metadata(registries, variant)
     }
 
     pub fn is_lying(&self) -> bool {
         match self
-            .get_entity()
+            .get_entity_state()
             .get_metadata()
             .get_value(&definitions::cat::is_lying())
         {
@@ -45,7 +48,7 @@ impl<'entity> CatMeta<'entity> {
     }
 
     pub fn set_lying(&mut self, is_lying: bool) {
-        self.get_entity_mut().get_metadata_mut().set(
+        self.get_living_entity_mut().get_metadata_mut().set(
             &definitions::cat::is_lying(),
             MetadataValue::Boolean(is_lying),
         );
@@ -53,7 +56,7 @@ impl<'entity> CatMeta<'entity> {
 
     pub fn is_relaxed(&self) -> bool {
         match self
-            .get_entity()
+            .get_entity_state()
             .get_metadata()
             .get_value(&definitions::cat::is_relaxed())
         {
@@ -63,7 +66,7 @@ impl<'entity> CatMeta<'entity> {
     }
 
     pub fn set_relaxed(&mut self, is_relaxed: bool) {
-        self.get_entity_mut().get_metadata_mut().set(
+        self.get_living_entity_mut().get_metadata_mut().set(
             &definitions::cat::is_relaxed(),
             MetadataValue::Boolean(is_relaxed),
         );
@@ -71,7 +74,7 @@ impl<'entity> CatMeta<'entity> {
 
     pub fn get_collar_color(&self) -> DyeColor {
         match self
-            .get_entity()
+            .get_entity_state()
             .get_metadata()
             .get_value(&definitions::cat::get_collar_color())
         {
@@ -88,7 +91,7 @@ impl<'entity> CatMeta<'entity> {
             .iter()
             .position(|candidate| candidate == &collar_color)
             .unwrap_or(14) as i32;
-        self.get_entity_mut().get_metadata_mut().set(
+        self.get_living_entity_mut().get_metadata_mut().set(
             &definitions::cat::get_collar_color(),
             MetadataValue::VarInt(color_id),
         );
