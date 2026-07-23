@@ -4672,6 +4672,10 @@ impl GenericEntity {
         self.gravity_tick_count
     }
 
+    pub const fn get_last_physics_result(&self) -> Option<EntityPhysicsResult> {
+        self.previous_physics_result
+    }
+
     pub fn increment_gravity_tick_count(&mut self) {
         self.gravity_tick_count += 1;
     }

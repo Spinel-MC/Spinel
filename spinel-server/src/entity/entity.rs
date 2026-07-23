@@ -7,6 +7,7 @@ use crate::entity::entity_creature::EntityCreature;
 use crate::entity::generic_entity::GenericEntity;
 use crate::entity::identity::{EntityId, EntityPointers};
 use crate::entity::item::ItemEntity;
+use crate::entity::physics::EntityPhysicsResult;
 use crate::entity::player::Player;
 use crate::entity::projectile::ProjectileEntity;
 use crate::permission::{PermissionHandler, PermissionSet};
@@ -311,6 +312,18 @@ impl Entity {
             Self::Item(entity) => entity.get_velocity(),
             Self::Player(player) => player.get_velocity(),
             Self::Projectile(entity) => entity.get_velocity(),
+        }
+    }
+
+    pub fn get_last_physics_result(&self) -> Option<EntityPhysicsResult> {
+        match self {
+            Self::Creature(entity) => entity.get_last_physics_result(),
+            Self::ExperienceOrb(entity) => entity.get_last_physics_result(),
+            Self::Generic(entity) => entity.get_last_physics_result(),
+            Self::Item(entity) => entity.get_last_physics_result(),
+            Self::Living(entity) => entity.get_last_physics_result(),
+            Self::Player(player) => player.get_last_physics_result(),
+            Self::Projectile(entity) => entity.get_last_physics_result(),
         }
     }
 
