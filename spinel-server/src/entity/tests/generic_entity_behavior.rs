@@ -584,7 +584,7 @@ fn generic_entity_builds_reference_equipment_packet_from_owned_equipment() {
         equipment_packet.entity_id,
         entity.get_entity_id().get_value()
     );
-    assert_eq!(equipment_packet.equipment.0.len(), 7);
+    assert_eq!(equipment_packet.equipment.0.len(), 8);
     assert_eq!(
         equipment_packet.equipment.0[0]
             .item

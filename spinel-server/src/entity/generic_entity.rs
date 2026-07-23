@@ -116,6 +116,16 @@ pub struct EntityPosition {
     head_yaw: f32,
 }
 
+impl crate::entity::EquipmentHandler for GenericEntity {
+    fn get_entity_id(&self) -> EntityId {
+        GenericEntity::get_entity_id(self)
+    }
+
+    fn get_equipment(&self, equipment_slot: EquipmentSlot) -> ItemStack {
+        self.get_equipment(equipment_slot).clone()
+    }
+}
+
 impl GenericEntity {
     pub fn new(entity_type: EntityType) -> Self {
         Self::with_uuid(entity_type, Uuid::new_v4())

@@ -44,7 +44,7 @@ This is the shared Minestom contract; `LivingEntity` is the concrete receiver. P
 
 ## Implementation Strategy Against Agent.md And DesignDecisionRules.md
 
-Use the narrow `EquipmentHandler` Rust trait as the shared contract and implement/delegate it through the direct living owner. Do not duplicate defaults across player and creature types.
+Use the narrow `EquipmentHandler` Rust trait as the shared contract and implement/delegate it through the direct living owner. The user explicitly approved `set_equipment(&mut self, world: &mut World, equipment_slot, item_stack) -> Result<(), Error>` for source-required event and viewer transport. Do not duplicate defaults across player and creature types.
 
 ## Dependency-Aware Implementation Order
 

@@ -38,6 +38,18 @@ pub struct EntityCreature {
     removal_animation_delay_millis: i32,
 }
 
+impl crate::entity::EquipmentHandler for EntityCreature {
+    fn get_entity_id(&self) -> EntityId {
+        self.entity.get_entity_id()
+    }
+
+    fn get_equipment(
+        &self,
+        equipment_slot: crate::entity::EquipmentSlot,
+    ) -> spinel_registry::ItemStack {
+        self.entity.get_equipment(equipment_slot).clone()
+    }
+}
 impl EntityCreature {
     pub fn new(entity_type: EntityType) -> Self {
         let mut entity = GenericEntity::new(entity_type);

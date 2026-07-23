@@ -52,7 +52,7 @@ Minestom declares the behavior on `LivingEntity`, inherited from `EquipmentHandl
 
 ## Implementation Strategy Against Agent.md And DesignDecisionRules.md
 
-Create a narrow `EquipmentHandler` shared contract and implement/delegate it through the direct living owner, preserving receiver availability without copying methods across player/creature types. Do not retain `GenericEntity`-wide equipment merely because it is convenient.
+Create a narrow `EquipmentHandler` shared contract and implement/delegate it through the direct living owner. The explicitly approved Rust representation passes `&mut World` to equipment mutation so the direct receiver can reach the source-required event and viewer transport without global state. Do not retain `GenericEntity`-wide equipment merely because it is convenient.
 
 ## Dependency-Aware Implementation Order
 

@@ -132,14 +132,96 @@ impl Enchantment {
     }
 
     #[must_use]
+    pub fn from_registry_nbt(data: NbtCompound) -> Option<Self> {
+        let description = text_component_from_nbt(data.get("description")?)?;
+        let exclusive_set = match data.get("exclusive_set") {
+            Some(value) => RegistryTagReference::from_nbt(value)?,
+            None => RegistryTagReference::empty(),
+        };
+        let supported_items = RegistryTagReference::from_nbt(data.get("supported_items")?)?;
+        let primary_items = match data.get("primary_items") {
+            Some(value) => Some(RegistryTagReference::from_nbt(value)?),
+            None => None,
+        };
+        let weight = integer_field(data.get("weight")?)?;
+        let max_level = integer_field(data.get("max_level")?)?;
+        let min_cost = enchantment_cost_from_nbt(data.get("min_cost")?)?;
+        let max_cost = enchantment_cost_from_nbt(data.get("max_cost")?)?;
+        let anvil_cost = integer_field(data.get("anvil_cost")?)?;
+        let slots = slots_from_nbt(data.get("slots")?)?;
+        let effects = match data.get("effects") {
+            Some(Nbt::Compound(value)) => DataComponentMap::from_nbt_patch(value.clone()).ok()?,
+            Some(_) => return None,
+            None => DataComponentMap::new(),
+        };
+        Some(Self {
+            description,
+            exclusive_set,
+            supported_items,
+            primary_items,
+            weight,
+            max_level,
+            min_cost,
+            max_cost,
+            anvil_cost,
+            slots,
+            effects,
+            raw_registry_nbt: Some(data),
+        })
+    }
+    #[must_use]
     pub fn raw(data: NbtCompound) -> Self {
-        Self {
+        Self::from_registry_nbt(data.clone()).unwrap_or(Self {
             raw_registry_nbt: Some(data),
             ..Self::default()
-        }
+        })
     }
 }
 
+fn text_component_from_nbt(value: &Nbt) -> Option<TextComponent> {
+    match value {
+        Nbt::String(value) => serde_json::from_str(value)
+            .ok()
+            .or_else(|| Some(TextComponent::literal(value.clone()))),
+        Nbt::Compound(value) => serde_json::from_value(serde_json::Value::Object(
+            spinel_nbt::nbt_compound_to_json(value.clone()),
+        ))
+        .ok(),
+        _ => None,
+    }
+}
+
+fn integer_field(value: &Nbt) -> Option<i32> {
+    match value {
+        Nbt::Int(value) => Some(*value),
+        Nbt::Short(value) => Some(i32::from(*value)),
+        Nbt::Byte(value) => Some(i32::from(*value)),
+        _ => None,
+    }
+}
+
+fn enchantment_cost_from_nbt(value: &Nbt) -> Option<EnchantmentCost> {
+    let Nbt::Compound(value) = value else {
+        return None;
+    };
+    Some(EnchantmentCost::new(
+        integer_field(value.get("base")?)?,
+        integer_field(value.get("per_level_above_first")?)?,
+    ))
+}
+
+fn slots_from_nbt(value: &Nbt) -> Option<Vec<EquipmentSlotGroup>> {
+    let Nbt::List(values) = value else {
+        return None;
+    };
+    values
+        .iter()
+        .map(|value| match value {
+            Nbt::String(value) => EquipmentSlotGroup::from_nbt_name(value),
+            _ => None,
+        })
+        .collect()
+}
 impl Default for Enchantment {
     fn default() -> Self {
         Self::builder().build()

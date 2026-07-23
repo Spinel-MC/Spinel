@@ -223,6 +223,9 @@ impl Registries {
         self.instruments.get(&RegistryKey::new(key.clone()))
     }
 
+    pub fn get_enchantments(&self) -> &DynamicRegistry<enchantment::Enchantment> {
+        &self.enchantments
+    }
     pub fn dynamic_registry_id(
         &self,
         registry_name: &Identifier,
