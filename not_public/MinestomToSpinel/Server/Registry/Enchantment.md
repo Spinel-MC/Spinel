@@ -103,13 +103,13 @@ Getter naming is a permitted Rust convention; actual vanilla registered value pa
 ```java
 public <T> Builder effect(DataComponent<T> component, T value)
 public Builder effects(DataComponentMap effects)
-``` 
+```
 
 ```rust
 // Spinel: spinel_registry::EnchantmentBuilder
 pub fn set_effect<T: DataComponentValue>(self, component: DataComponentType<T>, value: T) -> Self
 pub fn set_effects(self, effects: DataComponentMap) -> Self
-``` 
+```
 
 The two Java effect inputs remain two builder setters. Rust generic bounds express the component/value relation without a caller-visible capability loss.
 
