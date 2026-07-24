@@ -35,7 +35,7 @@ impl<'entity> AbstractVehicleMeta<'entity> {
 
     pub fn get_shaking_multiplier(&self) -> f32 {
         match self
-            .get_entity()
+            .get_state()
             .get_metadata()
             .get_value(&definitions::abstract_vehicle::get_shaking_multiplier())
         {
@@ -45,7 +45,7 @@ impl<'entity> AbstractVehicleMeta<'entity> {
     }
 
     pub fn set_shaking_multiplier(&mut self, shaking_multiplier: f32) {
-        self.get_entity_mut().get_metadata_mut().set(
+        self.get_state_mut().get_metadata_mut().set(
             &definitions::abstract_vehicle::get_shaking_multiplier(),
             MetadataValue::Float(shaking_multiplier),
         );
@@ -56,7 +56,7 @@ impl<'entity> AbstractVehicleMeta<'entity> {
         definition: &crate::entity::metadata::MetadataDefinition,
         default_value: i32,
     ) -> i32 {
-        match self.get_entity().get_metadata().get_value(definition) {
+        match self.get_entity_state().get_metadata().get_value(definition) {
             MetadataValue::VarInt(value) => value,
             _ => default_value,
         }
@@ -67,7 +67,7 @@ impl<'entity> AbstractVehicleMeta<'entity> {
         definition: &crate::entity::metadata::MetadataDefinition,
         value: i32,
     ) {
-        self.get_entity_mut()
+        self.get_state_mut()
             .get_metadata_mut()
             .set(definition, MetadataValue::VarInt(value));
     }

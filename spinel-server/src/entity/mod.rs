@@ -6,7 +6,9 @@ mod entity;
 mod entity_creature;
 mod entity_event_node;
 mod entity_view;
+mod equipment_handler;
 mod equipment_slot;
+mod error;
 mod experience_orb;
 mod generic_entity;
 mod identity;
@@ -21,6 +23,7 @@ pub mod player;
 mod pose;
 mod projectile;
 mod snapshot;
+mod state;
 mod summon_nbt;
 mod synchronization;
 mod teleport;
@@ -35,14 +38,17 @@ pub use entity::{Entity, EntityAcquirable, EntityScheduleContext, EntitySchedule
 pub use entity_creature::{EntityCreature, EntityCreatureAttackError};
 pub use entity_event_node::EntityEventNode;
 pub use entity_view::EntityView;
+pub use equipment_handler::EquipmentHandler;
 pub use equipment_slot::EquipmentSlot;
+pub use error::Error;
 pub use experience_orb::ExperienceOrb;
 pub use generic_entity::{EntityAerodynamics, EntityPosition, GenericEntity};
 pub use identity::{EntityId, EntityIdentity, EntityPointers};
 pub use item::{ItemEntity, ItemEntityMeta};
 pub(crate) use leash::EntityLeash;
-pub use living::{EntityAttributeState, LivingAttributes, LivingState, TimedPotionEffect};
-pub use passenger::PassengerError;
+pub use living::{
+    EntityAttributeState, LivingAttributes, LivingEntity, LivingState, TimedPotionEffect,
+};
 pub use player::PlayerSpawnPoint;
 pub use player::{Player, PlayerHand};
 pub(crate) use player::{PlayerChunk, PlayerChunkTransition};
@@ -55,6 +61,7 @@ pub use projectile::{
     ThrownTridentMeta, WindChargeMeta, WitherSkullMeta,
 };
 pub use snapshot::{EntityObservation, EntitySnapshot, PlayerSnapshot};
+pub(crate) use state::EntityState;
 pub(crate) use synchronization::EntitySynchronization;
 pub use teleport::{EntityTeleport, EntityTeleportRequest};
 pub use view_request::SetEntityViewRequest;

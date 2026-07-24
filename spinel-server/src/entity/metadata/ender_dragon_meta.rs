@@ -1,4 +1,4 @@
-use crate::entity::metadata::{EntityMeta, LivingEntityMeta, MobMeta, definitions};
+use crate::entity::metadata::{LivingEntityMeta, MobMeta, definitions};
 use spinel_network::types::entity_metadata::MetadataValue;
 use spinel_registry::EntityType;
 use std::ops::{Deref, DerefMut};
@@ -45,15 +45,17 @@ pub struct EnderDragonMeta<'entity> {
 }
 
 impl<'entity> EnderDragonMeta<'entity> {
-    pub(crate) fn from_entity_meta(entity_meta: EntityMeta<'entity>) -> Option<Self> {
-        (entity_meta.get_entity().get_entity_type() == EntityType::ENDER_DRAGON).then(|| Self {
-            mob_meta: MobMeta::new(LivingEntityMeta::new(entity_meta)),
+    pub(crate) fn from_living_entity_meta(
+        living_entity_meta: LivingEntityMeta<'entity>,
+    ) -> Option<Self> {
+        (living_entity_meta.get_entity_type() == EntityType::ENDER_DRAGON).then(|| Self {
+            mob_meta: MobMeta::new(living_entity_meta),
         })
     }
 
     pub fn get_phase(&self) -> EnderDragonPhase {
         match self
-            .get_entity()
+            .get_entity_state()
             .get_metadata()
             .get_value(&definitions::ender_dragon::get_phase())
         {
@@ -63,7 +65,7 @@ impl<'entity> EnderDragonMeta<'entity> {
     }
 
     pub fn set_phase(&mut self, phase: EnderDragonPhase) {
-        self.get_entity_mut().get_metadata_mut().set(
+        self.get_entity_state_mut().get_metadata_mut().set(
             &definitions::ender_dragon::get_phase(),
             MetadataValue::VarInt(phase.protocol_id()),
         );

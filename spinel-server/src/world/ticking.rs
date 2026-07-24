@@ -80,7 +80,7 @@ impl World {
                         }
                         expired_effects.extend(
                             entity
-                                .take_expired_effects()
+                                .tick_living_state()
                                 .into_iter()
                                 .map(|effect| (entity.get_entity_id(), effect)),
                         );
@@ -98,6 +98,16 @@ impl World {
                         None
                     }
                     Entity::Generic(entity) => {
+                        if let Some(movement) = entity.movement_tick(&world_snapshot) {
+                            entity_movements.push(movement);
+                        }
+                        entity.tick_before_event();
+                        dispatch_entity_tick_event(entity_ptr, event_dispatcher);
+                        entity.tick_after_event();
+                        entity_touches.push((entity.get_entity_id(), entity.get_position()));
+                        None
+                    }
+                    Entity::Living(entity) => {
                         if entity.get_fire_ticks() == 1 {
                             expired_fire_entities.push(entity.get_entity_id());
                         }
@@ -109,14 +119,13 @@ impl World {
                         entity.tick_after_event();
                         expired_effects.extend(
                             entity
-                                .take_expired_effects()
+                                .tick_living_state()
                                 .into_iter()
                                 .map(|effect| (entity.get_entity_id(), effect)),
                         );
                         entity_touches.push((entity.get_entity_id(), entity.get_position()));
                         None
-                    }
-                    Entity::Item(entity) => {
+                    }                    Entity::Item(entity) => {
                         if let Some(movement) = entity.movement_tick(&world_snapshot) {
                             entity_movements.push(movement);
                         }
@@ -129,9 +138,6 @@ impl World {
                         None
                     }
                     Entity::Projectile(entity) => {
-                        if entity.get_fire_ticks() == 1 {
-                            expired_fire_entities.push(entity.get_entity_id());
-                        }
                         let position_before_tick = entity.get_position();
                         if let Some(movement) = entity.movement_tick(&world_snapshot) {
                             entity_movements.push(movement);
@@ -144,12 +150,6 @@ impl World {
                         ));
                         dispatch_entity_tick_event(entity_ptr, event_dispatcher);
                         entity.tick_after_event();
-                        expired_effects.extend(
-                            entity
-                                .take_expired_effects()
-                                .into_iter()
-                                .map(|effect| (entity.get_entity_id(), effect)),
-                        );
                         entity_touches.push((entity.get_entity_id(), entity.get_position()));
                         None
                     }

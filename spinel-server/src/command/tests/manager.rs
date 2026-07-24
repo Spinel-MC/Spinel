@@ -320,3 +320,15 @@ fn command_manager_merges_typed_argument_prefix_before_literal_children() {
     assert_ne!(block_node.flags & COMMAND_NODE_IS_EXECUTABLE, 0);
     assert_eq!(literal_names, vec!["destroy", "keep"]);
 }
+
+#[test]
+fn command_manager_declares_bounded_integer_properties() {
+    let mut level = crate::command::ArgumentType::integer("level");
+    level.min(0);
+    let mut command_manager = CommandManager::new();
+    command_manager.register(command_with_single_argument("level", level.into()));
+    assert_eq!(
+        first_argument_node(&command_manager.declare_commands_packet(), "level").properties,
+        vec![1, 0, 0, 0, 0]
+    );
+}

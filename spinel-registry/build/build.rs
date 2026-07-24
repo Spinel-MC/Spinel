@@ -10,6 +10,7 @@ mod dynamic_registry_assets;
 mod entity_entries;
 mod item_entries;
 mod mob_effect_entries;
+mod potion_entries;
 mod sound_entries;
 mod static_protocol_entries;
 mod tag_entries;
@@ -23,6 +24,7 @@ use dynamic_registry_assets::DYNAMIC_REGISTRY_ASSETS;
 use entity_entries::entity_entries;
 use item_entries::item_entries;
 use mob_effect_entries::mob_effect_entries;
+use potion_entries::potion_entries;
 use sound_entries::sound_entries;
 
 const GENERATED_DIRECTORY: &str = "src/generated";
@@ -308,6 +310,9 @@ impl BuildScript {
         if type_name == "MobEffect" {
             return self.mob_effect_module();
         }
+        if type_name == "Potion" {
+            return self.potion_module();
+        }
         Ok(self.dynamic_module(type_name, &self.dynamic_registry_keys(registry_path)?))
     }
 
@@ -374,6 +379,41 @@ impl BuildScript {
         let registrations = entries.iter().map(|entry| format!("    let _ = registry.register_vanilla(MobEffect::{}, MobEffect::new({}, \"{}\".to_owned(), {}, {}));\n", const_name(&entry.name), entry.id, entry.translation_key, entry.color, entry.instantaneous)).collect::<String>();
         Ok(format!(
             "use crate::{{DynamicRegistry, RegistryKey}};\nuse crate::mob_effect::MobEffect;\nimpl MobEffect {{\n{constants}}}\npub fn register_mob_effects(registry: &mut DynamicRegistry<MobEffect>) {{\n{registrations}}}\n"
+        ))
+    }
+    fn potion_module(&self) -> io::Result<String> {
+        let entries = potion_entries()?;
+        let constants = entries
+            .iter()
+            .map(|entry| {
+                format!(
+                    "    pub const {}: RegistryKey<Self> = RegistryKey::vanilla_static(\"{}\");\n",
+                    const_name(&entry.key),
+                    vanilla_path(&entry.key)
+                )
+            })
+            .collect::<String>();
+        let registrations = entries.iter().map(|entry| {
+            let effects = entry.effects.iter().map(|effect| {
+                format!(
+                    "PotionEffect::new(\"{}\".parse().expect(\"SpinelExtractor potion effect key is malformed\"), {}, {}, {}, {}, {})",
+                    effect.effect,
+                    effect.amplifier,
+                    effect.duration,
+                    effect.ambient,
+                    effect.visible,
+                    effect.show_icon,
+                )
+            }).collect::<Vec<_>>().join(", ");
+            format!(
+                "    let _ = registry.register(Potion::{}, Potion::new({}, vec![{}]));\n",
+                const_name(&entry.key),
+                entry.id,
+                effects,
+            )
+        }).collect::<String>();
+        Ok(format!(
+            "use crate::{{Identifier, Potion, PotionEffect, RegistryKey, StaticRegistry}};\nimpl Potion {{\n{constants}}}\npub fn register_potions(registry: &mut StaticRegistry<Potion>) {{\n{registrations}}}\n"
         ))
     }
     fn dynamic_module(&self, type_name: &str, keys: &[String]) -> String {

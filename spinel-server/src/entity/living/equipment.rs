@@ -51,6 +51,7 @@ impl LivingEquipment {
             EquipmentSlot::Chestplate,
             EquipmentSlot::Helmet,
             EquipmentSlot::Body,
+            EquipmentSlot::Saddle,
         ]
         .into_iter()
         .map(|equipment_slot| EntityEquipmentEntry {

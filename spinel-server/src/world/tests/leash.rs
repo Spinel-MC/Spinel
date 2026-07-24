@@ -1,4 +1,4 @@
-use crate::entity::{Entity, EntityPosition, GenericEntity, Player};
+use crate::entity::{Entity, EntityPosition, GenericEntity, LivingEntity, Player};
 use crate::network::client::instance::Client;
 use crate::world::World;
 use spinel_core::network::clientbound::play::attach_entity::AttachEntityPacket;
@@ -19,13 +19,13 @@ fn set_leash_holder_updates_both_sides_and_sends_attach_packet() {
     );
     let mut viewer_client = queued_client();
     let viewer = entered_player(&mut viewer_client);
-    let holder = GenericEntity::new(EntityType::PIG);
+    let holder = LivingEntity::new(EntityType::PIG);
     let holder_id = holder.get_entity_id();
-    let leashed = GenericEntity::new(EntityType::COW);
+    let leashed = LivingEntity::new(EntityType::COW);
     let leashed_id = leashed.get_entity_id();
     world.add_entity(Entity::Player(viewer));
-    world.add_entity(Entity::Generic(holder));
-    world.add_entity(Entity::Generic(leashed));
+    world.add_entity(Entity::Living(holder));
+    world.add_entity(Entity::Living(leashed));
     world.process_pending_entity_visibility_refreshes().unwrap();
     viewer_client.discard_queued_outbound_packets();
 
@@ -73,12 +73,12 @@ fn removing_a_leash_holder_detaches_every_leashed_entity() {
         spinel_registry::dimension_type::DimensionType::OVERWORLD,
         Identifier::minecraft("overworld"),
     );
-    let holder = GenericEntity::new(EntityType::PIG);
+    let holder = LivingEntity::new(EntityType::PIG);
     let holder_id = holder.get_entity_id();
-    let leashed = GenericEntity::new(EntityType::COW);
+    let leashed = LivingEntity::new(EntityType::COW);
     let leashed_id = leashed.get_entity_id();
-    world.add_entity(Entity::Generic(holder));
-    world.add_entity(Entity::Generic(leashed));
+    world.add_entity(Entity::Living(holder));
+    world.add_entity(Entity::Living(leashed));
     world.set_leash_holder(leashed_id, Some(holder_id)).unwrap();
 
     world.remove_entity(holder_id).unwrap();
@@ -98,13 +98,13 @@ fn viewer_spawn_and_removal_emit_leash_attach_and_detach_side_effects() {
     );
     let mut viewer_client = queued_client();
     let viewer = entered_player(&mut viewer_client);
-    let holder = GenericEntity::new(EntityType::PIG);
+    let holder = LivingEntity::new(EntityType::PIG);
     let holder_id = holder.get_entity_id();
-    let leashed = GenericEntity::new(EntityType::COW);
+    let leashed = LivingEntity::new(EntityType::COW);
     let leashed_id = leashed.get_entity_id();
     world.add_entity(Entity::Player(viewer));
-    world.add_entity(Entity::Generic(holder));
-    world.add_entity(Entity::Generic(leashed));
+    world.add_entity(Entity::Living(holder));
+    world.add_entity(Entity::Living(leashed));
     world.set_leash_holder(leashed_id, Some(holder_id)).unwrap();
     viewer_client.discard_queued_outbound_packets();
 
@@ -126,7 +126,7 @@ fn viewer_spawn_and_removal_emit_leash_attach_and_detach_side_effects() {
     assert!(first_attach_index < next_head_look_index);
     viewer_client.discard_queued_outbound_packets();
     world
-        .move_generic_entity(
+        .move_living_entity(
             holder_id,
             EntityPosition::new(16.0 * 20.0, 64.0, 0.0, 0.0, 0.0),
             true,

@@ -1,4 +1,4 @@
-use crate::entity::{Entity, EntityId, EntityPosition, GenericEntity, Player};
+use crate::entity::{Entity, EntityId, EntityPosition, LivingEntity, Player};
 use crate::events::entity_fire_extinguish::EntityFireExtinguishEvent;
 use crate::events::entity_set_fire::EntitySetFireEvent;
 use crate::server::MinecraftServer;
@@ -163,7 +163,7 @@ fn server_with_living_entity() -> MinecraftServer {
         .world_manager
         .world_mut(world_uuid)
         .unwrap()
-        .add_entity(Entity::Generic(positioned_living_entity()));
+        .add_entity(Entity::Living(positioned_living_entity()));
     server
 }
 
@@ -185,8 +185,8 @@ fn server_with_player() -> MinecraftServer {
     server
 }
 
-fn positioned_living_entity() -> GenericEntity {
-    let mut entity = GenericEntity::new(EntityType::ZOMBIE);
+fn positioned_living_entity() -> LivingEntity {
+    let mut entity = LivingEntity::new(EntityType::ZOMBIE);
     entity.set_position(EntityPosition::new(1.0, 64.0, 1.0, 0.0, 0.0));
     entity
 }
@@ -195,7 +195,7 @@ fn tracked_living_entity_id(server: &MinecraftServer) -> EntityId {
     tracked_living_entity(server).get_entity_id()
 }
 
-fn tracked_living_entity(server: &MinecraftServer) -> &GenericEntity {
+fn tracked_living_entity(server: &MinecraftServer) -> &LivingEntity {
     server.world_manager.worlds()[0].creatures()[0]
 }
 

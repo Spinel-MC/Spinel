@@ -109,6 +109,7 @@ fn target_is_viewable_by_player(target: &Entity, player_id: EntityId) -> bool {
         Entity::Creature(entity) => entity.is_viewer(player_id),
         Entity::ExperienceOrb(entity) => entity.is_viewer(player_id),
         Entity::Generic(entity) => entity.is_viewer(player_id),
+        Entity::Living(entity) => entity.is_viewer(player_id),
         Entity::Item(entity) => entity.is_viewer(player_id),
         Entity::Player(_) => true,
         Entity::Projectile(entity) => entity.is_viewer(player_id),
@@ -118,8 +119,9 @@ fn target_is_viewable_by_player(target: &Entity, player_id: EntityId) -> bool {
 fn target_is_dead(target: &Entity) -> bool {
     match target {
         Entity::Creature(entity) => entity.is_dead(),
-        Entity::ExperienceOrb(entity) => entity.is_dead(),
-        Entity::Generic(entity) => entity.is_dead(),
+        Entity::ExperienceOrb(_) => false,
+        Entity::Generic(_) => false,
+        Entity::Living(entity) => entity.is_dead(),
         Entity::Item(_) => false,
         Entity::Player(_) => false,
         Entity::Projectile(_) => false,

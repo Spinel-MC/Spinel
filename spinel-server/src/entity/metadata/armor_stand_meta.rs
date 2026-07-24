@@ -1,4 +1,4 @@
-use crate::entity::metadata::{EntityMeta, LivingEntityMeta, definitions};
+use crate::entity::metadata::{LivingEntityMeta, definitions};
 use spinel_network::types::Vector3f;
 use spinel_network::types::entity_metadata::MetadataValue;
 use spinel_registry::EntityType;
@@ -9,57 +9,59 @@ pub struct ArmorStandMeta<'entity> {
 }
 
 impl<'entity> ArmorStandMeta<'entity> {
-    pub(crate) fn from_entity_meta(entity_meta: EntityMeta<'entity>) -> Option<Self> {
-        (entity_meta.get_entity().get_entity_type() == EntityType::ARMOR_STAND).then(|| Self {
-            living_entity_meta: LivingEntityMeta::new(entity_meta),
+    pub(crate) fn from_living_entity_meta(
+        living_entity_meta: LivingEntityMeta<'entity>,
+    ) -> Option<Self> {
+        (living_entity_meta.get_entity_type() == EntityType::ARMOR_STAND).then(|| Self {
+            living_entity_meta: living_entity_meta,
         })
     }
 
     pub fn is_small(&self) -> bool {
-        self.get_entity()
+        self.get_state()
             .get_metadata()
             .get_flag(&definitions::armor_stand::is_small())
     }
 
     pub fn set_small(&mut self, is_small: bool) {
-        self.get_entity_mut()
+        self.get_entity_state_mut()
             .get_metadata_mut()
             .set_flag(&definitions::armor_stand::is_small(), is_small);
     }
 
     pub fn has_arms(&self) -> bool {
-        self.get_entity()
+        self.get_state()
             .get_metadata()
             .get_flag(&definitions::armor_stand::has_arms())
     }
 
     pub fn set_has_arms(&mut self, has_arms: bool) {
-        self.get_entity_mut()
+        self.get_entity_state_mut()
             .get_metadata_mut()
             .set_flag(&definitions::armor_stand::has_arms(), has_arms);
     }
 
     pub fn has_no_base_plate(&self) -> bool {
-        self.get_entity()
+        self.get_state()
             .get_metadata()
             .get_flag(&definitions::armor_stand::has_no_base_plate())
     }
 
     pub fn set_has_no_base_plate(&mut self, has_no_base_plate: bool) {
-        self.get_entity_mut().get_metadata_mut().set_flag(
+        self.get_entity_state_mut().get_metadata_mut().set_flag(
             &definitions::armor_stand::has_no_base_plate(),
             has_no_base_plate,
         );
     }
 
     pub fn is_marker(&self) -> bool {
-        self.get_entity()
+        self.get_state()
             .get_metadata()
             .get_flag(&definitions::armor_stand::is_marker())
     }
 
     pub fn set_marker(&mut self, is_marker: bool) {
-        self.get_entity_mut()
+        self.get_entity_state_mut()
             .get_metadata_mut()
             .set_flag(&definitions::armor_stand::is_marker(), is_marker);
     }
@@ -122,7 +124,7 @@ impl<'entity> ArmorStandMeta<'entity> {
         &self,
         definition: &crate::entity::metadata::MetadataDefinition,
     ) -> Vector3f {
-        match self.get_entity().get_metadata().get_value(definition) {
+        match self.get_entity_state().get_metadata().get_value(definition) {
             MetadataValue::Rotation(x, y, z) => Vector3f { x, y, z },
             _ => Vector3f {
                 x: 0.0,
@@ -137,7 +139,7 @@ impl<'entity> ArmorStandMeta<'entity> {
         definition: &crate::entity::metadata::MetadataDefinition,
         rotation: Vector3f,
     ) {
-        self.get_entity_mut().get_metadata_mut().set(
+        self.get_entity_state_mut().get_metadata_mut().set(
             definition,
             MetadataValue::Rotation(rotation.x, rotation.y, rotation.z),
         );

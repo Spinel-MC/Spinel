@@ -1,4 +1,4 @@
-use crate::entity::metadata::{AgeableMobMeta, EntityMeta, definitions};
+use crate::entity::metadata::{AgeableMobMeta, LivingEntityMeta, definitions};
 use spinel_network::types::entity_metadata::MetadataValue;
 use std::ops::{Deref, DerefMut};
 
@@ -7,15 +7,15 @@ pub struct AbstractVillagerMeta<'entity> {
 }
 
 impl<'entity> AbstractVillagerMeta<'entity> {
-    pub(crate) fn from_entity_meta(entity_meta: EntityMeta<'entity>) -> Self {
+    pub(crate) fn from_living_entity_meta(living_entity_meta: LivingEntityMeta<'entity>) -> Self {
         Self {
-            ageable_mob_meta: AgeableMobMeta::new(entity_meta),
+            ageable_mob_meta: AgeableMobMeta::new(living_entity_meta),
         }
     }
 
     pub fn get_head_shake_timer(&self) -> i32 {
         match self
-            .get_entity()
+            .get_state()
             .get_metadata()
             .get_value(&definitions::abstract_villager::get_head_shake_timer())
         {
@@ -25,7 +25,7 @@ impl<'entity> AbstractVillagerMeta<'entity> {
     }
 
     pub fn set_head_shake_timer(&mut self, head_shake_timer: i32) {
-        self.get_entity_mut().get_metadata_mut().set(
+        self.get_entity_state_mut().get_metadata_mut().set(
             &definitions::abstract_villager::get_head_shake_timer(),
             MetadataValue::VarInt(head_shake_timer),
         );

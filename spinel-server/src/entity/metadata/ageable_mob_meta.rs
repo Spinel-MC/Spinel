@@ -1,4 +1,4 @@
-use crate::entity::metadata::{EntityMeta, LivingEntityMeta, MobMeta, PathfinderMobMeta};
+use crate::entity::metadata::{LivingEntityMeta, MobMeta, PathfinderMobMeta};
 use std::ops::{Deref, DerefMut};
 
 pub struct AgeableMobMeta<'entity> {
@@ -6,20 +6,18 @@ pub struct AgeableMobMeta<'entity> {
 }
 
 impl<'entity> AgeableMobMeta<'entity> {
-    pub(crate) fn new(entity_meta: EntityMeta<'entity>) -> Self {
+    pub(crate) fn new(living_entity_meta: LivingEntityMeta<'entity>) -> Self {
         Self {
-            pathfinder_mob_meta: PathfinderMobMeta::new(MobMeta::new(LivingEntityMeta::new(
-                entity_meta,
-            ))),
+            pathfinder_mob_meta: PathfinderMobMeta::new(MobMeta::new(living_entity_meta)),
         }
     }
 
     pub fn is_baby(&self) -> bool {
-        self.get_entity().is_baby()
+        self.get_living_entity().is_baby()
     }
 
     pub fn set_baby(&mut self, is_baby: bool) {
-        self.get_entity_mut().set_baby(is_baby);
+        self.get_living_entity_mut().set_baby(is_baby);
     }
 }
 

@@ -9,7 +9,7 @@ use crate::entity::pathfinding::{
     WaterNodeGenerator,
 };
 use crate::entity::physics::simulate_collision;
-use crate::entity::{Entity, EntityCreature, EntityPosition, GenericEntity};
+use crate::entity::{Entity, EntityCreature, EntityPosition, GenericEntity, LivingEntity};
 use crate::world::{Block, BlockPosition, BlockState, Chunk, ChunkPosition, World, WorldBorder};
 use spinel_network::types::{Identifier, Vector3d, Velocity};
 use spinel_registry::dimension_type::DimensionType;
@@ -215,7 +215,7 @@ fn path_node_owner_exposes_generation_mutation_points() {
 #[test]
 fn navigator_rejects_unloaded_and_out_of_border_targets() {
     let mut world = pathfinding_world();
-    let mut entity = GenericEntity::new(EntityType::ZOMBIE);
+    let mut entity = LivingEntity::new(EntityType::ZOMBIE);
     entity.set_position(EntityPosition::new(0.5, 65.0, 0.5, 0.0, 0.0));
     let mut navigator = Navigator::default();
     let unloaded_goal = EntityPosition::new(32.5, 65.0, 0.5, 0.0, 0.0);
@@ -249,7 +249,7 @@ fn navigator_rejects_unloaded_and_out_of_border_targets() {
 fn navigator_completes_same_block_and_minimum_distance_requests_immediately() {
     let world = pathfinding_world();
     let snapshot = world.update_snapshot();
-    let mut entity = GenericEntity::new(EntityType::ZOMBIE);
+    let mut entity = LivingEntity::new(EntityType::ZOMBIE);
     entity.set_position(EntityPosition::new(0.5, 65.0, 0.5, 0.0, 0.0));
     let mut navigator = Navigator::default();
     let same_block_completed = Arc::new(AtomicBool::new(false));
@@ -296,7 +296,7 @@ fn navigator_completes_same_block_and_minimum_distance_requests_immediately() {
 fn navigator_follows_computed_path_and_runs_completion_once() {
     let world = pathfinding_world();
     let snapshot = world.update_snapshot();
-    let mut entity = GenericEntity::new(EntityType::ZOMBIE);
+    let mut entity = LivingEntity::new(EntityType::ZOMBIE);
     entity.set_position(EntityPosition::new(0.5, 65.0, 0.5, 0.0, 0.0));
     let completed = Arc::new(AtomicBool::new(false));
     let completed_for_callback = Arc::clone(&completed);
@@ -339,7 +339,7 @@ fn navigator_follows_computed_path_and_runs_completion_once() {
 fn navigator_reset_and_no_physics_follower_match_public_lifecycle() {
     let world = pathfinding_world();
     let snapshot = world.update_snapshot();
-    let mut entity = GenericEntity::new(EntityType::ZOMBIE);
+    let mut entity = LivingEntity::new(EntityType::ZOMBIE);
     entity.set_position(EntityPosition::new(0.5, 65.0, 0.5, 0.0, 0.0));
     let mut navigator = Navigator::default();
     navigator.set_node_follower(NoPhysicsNodeFollower);
@@ -369,7 +369,7 @@ fn navigator_reset_and_no_physics_follower_match_public_lifecycle() {
 fn navigator_preserves_active_path_until_replacement_promotes_on_tick() {
     let world = pathfinding_world();
     let snapshot = world.update_snapshot();
-    let mut entity = GenericEntity::new(EntityType::ZOMBIE);
+    let mut entity = LivingEntity::new(EntityType::ZOMBIE);
     entity.set_position(EntityPosition::new(0.5, 65.0, 0.5, 0.0, 0.0));
     let mut navigator = Navigator::default();
 
@@ -430,7 +430,7 @@ fn navigator_preserves_active_path_until_replacement_promotes_on_tick() {
 fn navigator_waits_while_computing_path_is_terminating() {
     let world = pathfinding_world();
     let snapshot = world.update_snapshot();
-    let mut entity = GenericEntity::new(EntityType::ZOMBIE);
+    let mut entity = LivingEntity::new(EntityType::ZOMBIE);
     entity.set_position(EntityPosition::new(0.5, 65.0, 0.5, 0.0, 0.0));
     let mut navigator = Navigator::default();
 
@@ -460,7 +460,7 @@ fn navigator_waits_while_computing_path_is_terminating() {
 fn navigator_uses_replaced_node_generator_and_preserves_best_effort_state() {
     let world = pathfinding_world();
     let snapshot = world.update_snapshot();
-    let mut entity = GenericEntity::new(EntityType::ZOMBIE);
+    let mut entity = LivingEntity::new(EntityType::ZOMBIE);
     entity.set_position(EntityPosition::new(0.5, 65.0, 0.5, 0.0, 0.0));
     let mut navigator = Navigator::default();
     navigator.set_node_generator(SingleBestEffortNodeGenerator);
@@ -493,7 +493,7 @@ fn navigator_uses_replaced_node_generator_and_preserves_best_effort_state() {
 fn path_generation_invalidates_repath_rooted_at_start() {
     let world = pathfinding_world();
     let snapshot = world.update_snapshot();
-    let mut entity = GenericEntity::new(EntityType::ZOMBIE);
+    let mut entity = LivingEntity::new(EntityType::ZOMBIE);
     entity.set_position(EntityPosition::new(0.5, 65.0, 0.5, 0.0, 0.0));
     let mut navigator = Navigator::default();
     navigator.set_node_generator(FrontierBudgetNodeGenerator);
@@ -520,7 +520,7 @@ fn path_generation_invalidates_repath_rooted_at_start() {
 fn navigator_recomputes_after_repath_current_node() {
     let world = pathfinding_world();
     let snapshot = world.update_snapshot();
-    let mut entity = GenericEntity::new(EntityType::ZOMBIE);
+    let mut entity = LivingEntity::new(EntityType::ZOMBIE);
     entity.set_position(EntityPosition::new(0.5, 65.0, 0.5, 0.0, 0.0));
     let mut navigator = Navigator::default();
 
@@ -555,7 +555,7 @@ fn navigator_recomputes_after_repath_current_node() {
 fn navigator_marks_path_invalid_without_next_target() {
     let world = pathfinding_world();
     let snapshot = world.update_snapshot();
-    let mut entity = GenericEntity::new(EntityType::ZOMBIE);
+    let mut entity = LivingEntity::new(EntityType::ZOMBIE);
     entity.set_position(EntityPosition::new(0.5, 65.0, 0.5, 0.0, 0.0));
     let mut navigator = Navigator::default();
 
@@ -589,7 +589,7 @@ fn navigator_marks_path_invalid_without_next_target() {
 fn navigator_moves_toward_jump_node_before_executing_jump_like_reference() {
     let world = pathfinding_world();
     let snapshot = world.update_snapshot();
-    let mut entity = GenericEntity::new(EntityType::ZOMBIE);
+    let mut entity = LivingEntity::new(EntityType::ZOMBIE);
     entity.set_position(EntityPosition::new(0.5, 65.0, 0.5, 0.0, 0.0));
     entity.set_on_ground(true);
     let follower_events = Arc::new(Mutex::new(Vec::new()));
@@ -639,7 +639,7 @@ fn navigator_moves_toward_jump_node_before_executing_jump_like_reference() {
 fn dead_entity_does_not_tick_navigation() {
     let world = pathfinding_world();
     let snapshot = world.update_snapshot();
-    let mut entity = GenericEntity::new(EntityType::ZOMBIE);
+    let mut entity = LivingEntity::new(EntityType::ZOMBIE);
     entity.set_position(EntityPosition::new(0.5, 65.0, 0.5, 0.0, 0.0));
     let start = entity.get_position();
     let mut navigator = Navigator::default();
@@ -1129,7 +1129,7 @@ fn ground_follower_applies_reference_speed_rotation_collision_and_jump_behavior(
     let world = pathfinding_world();
     let snapshot = world.update_snapshot();
     let follower = GroundNodeFollower;
-    let mut entity = GenericEntity::new(EntityType::ZOMBIE);
+    let mut entity = LivingEntity::new(EntityType::ZOMBIE);
     entity.set_position(EntityPosition::new(0.5, 65.0, 0.5, 0.0, 0.0));
     entity.set_on_ground(true);
     let movement_speed = follower.movement_speed(&entity);
@@ -1182,13 +1182,11 @@ fn ground_follower_applies_reference_speed_rotation_collision_and_jump_behavior(
 }
 
 #[test]
-fn node_follower_uses_living_entity_default_and_reference_non_living_fallback() {
+fn node_follower_uses_living_entity_default_movement_speed() {
     let follower = GroundNodeFollower;
-    let living_entity = GenericEntity::new(EntityType::ZOMBIE);
-    let non_living_entity = GenericEntity::new(EntityType::ITEM);
+    let living_entity = LivingEntity::new(EntityType::ZOMBIE);
 
     assert!((follower.movement_speed(&living_entity) - 0.23000000417232513).abs() < f64::EPSILON);
-    assert_eq!(follower.movement_speed(&non_living_entity), 0.1);
 }
 
 #[test]
@@ -1196,7 +1194,7 @@ fn ground_follower_uses_extracted_minecraft_zombie_speed_as_reference_displaceme
     let world = pathfinding_world();
     let snapshot = world.update_snapshot();
     let follower = GroundNodeFollower;
-    let mut zombie = GenericEntity::new(EntityType::ZOMBIE);
+    let mut zombie = LivingEntity::new(EntityType::ZOMBIE);
     zombie.set_position(EntityPosition::new(0.5, 65.0, 0.5, 0.0, 0.0));
     zombie.set_on_ground(true);
     let movement_speed = follower.movement_speed(&zombie);
@@ -2345,7 +2343,7 @@ struct RecordingNodeFollower {
 impl NodeFollower for RecordingNodeFollower {
     fn move_towards(
         &self,
-        _entity: &mut GenericEntity,
+        _entity: &mut LivingEntity,
         _world: &crate::world::WorldSnapshot,
         _target: EntityPosition,
         _speed: f64,
@@ -2356,18 +2354,18 @@ impl NodeFollower for RecordingNodeFollower {
 
     fn jump(
         &self,
-        _entity: &mut GenericEntity,
+        _entity: &mut LivingEntity,
         _point: Option<EntityPosition>,
         _target: Option<EntityPosition>,
     ) {
         self.events.lock().unwrap().push("jump");
     }
 
-    fn is_at_point(&self, _entity: &GenericEntity, _point: EntityPosition) -> bool {
+    fn is_at_point(&self, _entity: &LivingEntity, _point: EntityPosition) -> bool {
         false
     }
 
-    fn movement_speed(&self, _entity: &GenericEntity) -> f64 {
+    fn movement_speed(&self, _entity: &LivingEntity) -> f64 {
         1.0
     }
 }

@@ -1,3 +1,4 @@
+use crate::entity::Error;
 use crate::inventory::slot_conversion::{BOOTS_SLOT, CHESTPLATE_SLOT, HELMET_SLOT, LEGGINGS_SLOT};
 use spinel_core::network::clientbound::play::set_equipment::EntityEquipmentSlot;
 use spinel_registry::EquippableSlot;
@@ -15,6 +16,25 @@ pub enum EquipmentSlot {
 }
 
 impl EquipmentSlot {
+    pub const fn get_armors() -> &'static [Self] {
+        &[Self::Boots, Self::Leggings, Self::Chestplate, Self::Helmet]
+    }
+
+    pub fn from_legacy_protocol_id(legacy_protocol_id: i32) -> Result<Self, Error> {
+        match legacy_protocol_id {
+            0 => Ok(Self::MainHand),
+            1 => Ok(Self::OffHand),
+            2 => Ok(Self::Boots),
+            3 => Ok(Self::Leggings),
+            4 => Ok(Self::Chestplate),
+            5 => Ok(Self::Helmet),
+            6 => Ok(Self::Body),
+            7 => Ok(Self::Saddle),
+            _ => Err(Error::UnknownLegacyEquipmentSlotProtocolId(
+                legacy_protocol_id,
+            )),
+        }
+    }
     pub fn get_protocol_id(&self) -> i32 {
         match self {
             Self::MainHand => 0,

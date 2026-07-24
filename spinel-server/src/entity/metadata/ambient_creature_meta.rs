@@ -1,4 +1,4 @@
-use crate::entity::metadata::{EntityMeta, LivingEntityMeta, MobMeta};
+use crate::entity::metadata::{LivingEntityMeta, MobMeta};
 use std::ops::{Deref, DerefMut};
 
 pub struct AmbientCreatureMeta<'entity> {
@@ -6,9 +6,9 @@ pub struct AmbientCreatureMeta<'entity> {
 }
 
 impl<'entity> AmbientCreatureMeta<'entity> {
-    pub(crate) fn new(entity_meta: EntityMeta<'entity>) -> Self {
+    pub(crate) fn new(living_entity_meta: LivingEntityMeta<'entity>) -> Self {
         Self {
-            mob_meta: MobMeta::new(LivingEntityMeta::new(entity_meta)),
+            mob_meta: MobMeta::new(living_entity_meta),
         }
     }
 }

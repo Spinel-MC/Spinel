@@ -259,14 +259,14 @@ impl World {
         true
     }
 
-    pub fn move_generic_entity(
+    pub fn move_living_entity(
         &mut self,
         entity_id: EntityId,
         position: EntityPosition,
         on_ground: bool,
     ) -> Result<bool> {
         let Some((previous_position, current_position, movement_packet, head_look_packet)) =
-            self.move_generic_entity_state(entity_id, position, on_ground)
+            self.move_living_entity_state(entity_id, position, on_ground)
         else {
             return Ok(false);
         };
@@ -282,7 +282,7 @@ impl World {
         Ok(true)
     }
 
-    pub fn look_generic_entity_at_position(
+    pub fn look_living_entity_at_position(
         &mut self,
         entity_id: EntityId,
         target: EntityPosition,
@@ -298,8 +298,8 @@ impl World {
         Ok(true)
     }
 
-    pub fn swing_generic_entity_main_hand(&mut self, entity_id: EntityId) -> Result<bool> {
-        let Some(animation_packet) = self.generic_entity_main_hand_animation(entity_id) else {
+    pub fn swing_living_entity_main_hand(&mut self, entity_id: EntityId) -> Result<bool> {
+        let Some(animation_packet) = self.living_entity_main_hand_animation(entity_id) else {
             return Ok(false);
         };
         self.send_packet_to_entity_viewers(entity_id, animation_packet)?;
@@ -366,7 +366,7 @@ impl World {
         }
     }
 
-    fn move_generic_entity_state(
+    fn move_living_entity_state(
         &mut self,
         entity_id: EntityId,
         position: EntityPosition,
@@ -377,7 +377,7 @@ impl World {
         EntityPositionAndRotationPacket,
         EntityHeadLookPacket,
     )> {
-        let Some(Entity::Generic(entity)) = self.entity_by_id_mut(entity_id) else {
+        let Some(Entity::Living(entity)) = self.entity_by_id_mut(entity_id) else {
             return None;
         };
         let previous_position = entity.get_position();
@@ -396,7 +396,7 @@ impl World {
         target: EntityPosition,
         on_ground: bool,
     ) -> Option<(EntityRotationPacket, EntityHeadLookPacket)> {
-        let Some(Entity::Generic(entity)) = self.entity_by_id_mut(entity_id) else {
+        let Some(Entity::Living(entity)) = self.entity_by_id_mut(entity_id) else {
             return None;
         };
         entity.look_at_position(target);
@@ -406,12 +406,12 @@ impl World {
         ))
     }
 
-    fn generic_entity_main_hand_animation(
+    fn living_entity_main_hand_animation(
         &self,
         entity_id: EntityId,
     ) -> Option<spinel_core::network::clientbound::play::entity_animation::EntityAnimationPacket>
     {
-        let Some(Entity::Generic(entity)) = self.entity_by_id(entity_id) else {
+        let Some(Entity::Living(entity)) = self.entity_by_id(entity_id) else {
             return None;
         };
         Some(entity.swing_main_hand())
@@ -532,6 +532,7 @@ impl World {
             Entity::ExperienceOrb(entity) => !entity.is_removed(),
             Entity::Generic(entity) => !entity.is_removed(),
             Entity::Item(entity) => !entity.is_removed(),
+            Entity::Living(entity) => !entity.is_removed(),
             Entity::Player(_) => true,
             Entity::Projectile(entity) => !entity.is_removed(),
         });

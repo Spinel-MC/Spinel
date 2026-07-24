@@ -1,4 +1,4 @@
-use crate::entity::metadata::{EntityMeta, LivingEntityMeta, MobMeta};
+use crate::entity::metadata::{LivingEntityMeta, MobMeta};
 use std::ops::{Deref, DerefMut};
 
 pub struct FlyingMeta<'entity> {
@@ -6,9 +6,9 @@ pub struct FlyingMeta<'entity> {
 }
 
 impl<'entity> FlyingMeta<'entity> {
-    pub(crate) fn from_entity_meta(entity_meta: EntityMeta<'entity>) -> Self {
+    pub(crate) fn from_living_entity_meta(living_entity_meta: LivingEntityMeta<'entity>) -> Self {
         Self {
-            mob_meta: MobMeta::new(LivingEntityMeta::new(entity_meta)),
+            mob_meta: MobMeta::new(living_entity_meta),
         }
     }
 }

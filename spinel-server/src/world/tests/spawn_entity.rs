@@ -24,8 +24,8 @@ fn world_spawn_entity_delegates_summon_nbt_to_the_entity_owner() {
             Some(&nbt),
         )
         .unwrap();
-    let Entity::Generic(entity) = world.get_entity_mut(entity_id).unwrap() else {
-        panic!("spawned entity must preserve the generic owner");
+    let Entity::Living(entity) = world.get_entity_mut(entity_id).unwrap() else {
+        panic!("spawned entity must preserve the living owner");
     };
 
     assert_eq!(

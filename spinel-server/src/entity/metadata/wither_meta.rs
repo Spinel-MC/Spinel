@@ -1,5 +1,5 @@
 use crate::entity::Entity;
-use crate::entity::metadata::{EntityMeta, MonsterMeta, definitions};
+use crate::entity::metadata::{LivingEntityMeta, MonsterMeta, definitions};
 use spinel_network::types::entity_metadata::MetadataValue;
 use spinel_registry::EntityType;
 use std::ops::{Deref, DerefMut};
@@ -9,9 +9,11 @@ pub struct WitherMeta<'entity> {
 }
 
 impl<'entity> WitherMeta<'entity> {
-    pub(crate) fn from_entity_meta(entity_meta: EntityMeta<'entity>) -> Option<Self> {
-        (entity_meta.get_entity().get_entity_type() == EntityType::WITHER).then(|| Self {
-            monster_meta: MonsterMeta::from_entity_meta(entity_meta),
+    pub(crate) fn from_living_entity_meta(
+        living_entity_meta: LivingEntityMeta<'entity>,
+    ) -> Option<Self> {
+        (living_entity_meta.get_entity_type() == EntityType::WITHER).then(|| Self {
+            monster_meta: MonsterMeta::from_living_entity_meta(living_entity_meta),
         })
     }
 
@@ -47,7 +49,7 @@ impl<'entity> WitherMeta<'entity> {
 
     pub fn get_invulnerable_time(&self) -> i32 {
         match self
-            .get_entity()
+            .get_state()
             .get_metadata()
             .get_value(&definitions::wither::get_invulnerable_time())
         {
@@ -57,7 +59,7 @@ impl<'entity> WitherMeta<'entity> {
     }
 
     pub fn set_invulnerable_time(&mut self, invulnerable_time: i32) {
-        self.get_entity_mut().get_metadata_mut().set(
+        self.get_entity_state_mut().get_metadata_mut().set(
             &definitions::wither::get_invulnerable_time(),
             MetadataValue::VarInt(invulnerable_time),
         );
@@ -76,7 +78,7 @@ impl<'entity> WitherMeta<'entity> {
     }
 
     fn head_entity_id(&self, definition: &crate::entity::metadata::MetadataDefinition) -> i32 {
-        match self.get_entity().get_metadata().get_value(definition) {
+        match self.get_entity_state().get_metadata().get_value(definition) {
             MetadataValue::VarInt(entity_id) => entity_id,
             _ => 0,
         }
@@ -87,7 +89,7 @@ impl<'entity> WitherMeta<'entity> {
         definition: &crate::entity::metadata::MetadataDefinition,
         entity_id: i32,
     ) {
-        self.get_entity_mut()
+        self.get_entity_state_mut()
             .get_metadata_mut()
             .set(definition, MetadataValue::VarInt(entity_id));
     }

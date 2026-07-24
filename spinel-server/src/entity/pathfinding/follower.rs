@@ -1,5 +1,5 @@
 use crate::entity::physics::simulate_collision;
-use crate::entity::{EntityPosition, GenericEntity};
+use crate::entity::{EntityPosition, LivingEntity};
 use crate::world::{BlockPosition, WorldSnapshot};
 use spinel_network::types::math::Vector3d;
 use spinel_network::types::velocity::Velocity;
@@ -21,7 +21,7 @@ static VANILLA_FENCES_TAG: LazyLock<Identifier> = LazyLock::new(|| Identifier::m
 pub trait NodeFollower: Send {
     fn move_towards(
         &self,
-        entity: &mut GenericEntity,
+        entity: &mut LivingEntity,
         world: &WorldSnapshot,
         target: EntityPosition,
         speed: f64,
@@ -30,16 +30,16 @@ pub trait NodeFollower: Send {
 
     fn jump(
         &self,
-        entity: &mut GenericEntity,
+        entity: &mut LivingEntity,
         point: Option<EntityPosition>,
         target: Option<EntityPosition>,
     );
 
-    fn is_at_point(&self, entity: &GenericEntity, point: EntityPosition) -> bool {
+    fn is_at_point(&self, entity: &LivingEntity, point: EntityPosition) -> bool {
         same_block(entity.get_position(), point)
     }
 
-    fn movement_speed(&self, entity: &GenericEntity) -> f64 {
+    fn movement_speed(&self, entity: &LivingEntity) -> f64 {
         if !entity.get_entity_type().is_living() {
             return 0.1;
         }
@@ -53,7 +53,7 @@ pub trait NodeFollower: Send {
         NodeFollowerPhysicsTiming::AfterPhysics
     }
 
-    fn stop_following_path(&self, _entity: &mut GenericEntity) {}
+    fn stop_following_path(&self, _entity: &mut LivingEntity) {}
 
     fn should_advance_reached_node_before_moving(&self) -> bool {
         false
@@ -101,13 +101,13 @@ enum VanillaMoveControlState {
 }
 
 impl GroundNodeFollower {
-    pub fn jump_with_height(&self, entity: &mut GenericEntity, height: f32) {
+    pub fn jump_with_height(&self, entity: &mut LivingEntity, height: f32) {
         set_jump_velocity(entity, height);
     }
 }
 
 impl NoPhysicsNodeFollower {
-    pub fn jump_with_height(&self, entity: &mut GenericEntity, height: f32) {
+    pub fn jump_with_height(&self, entity: &mut LivingEntity, height: f32) {
         set_jump_velocity(entity, height);
     }
 }
@@ -115,7 +115,7 @@ impl NoPhysicsNodeFollower {
 impl NodeFollower for GroundNodeFollower {
     fn move_towards(
         &self,
-        entity: &mut GenericEntity,
+        entity: &mut LivingEntity,
         world: &WorldSnapshot,
         target: EntityPosition,
         speed: f64,
@@ -133,7 +133,7 @@ impl NodeFollower for GroundNodeFollower {
 
     fn jump(
         &self,
-        entity: &mut GenericEntity,
+        entity: &mut LivingEntity,
         _point: Option<EntityPosition>,
         _target: Option<EntityPosition>,
     ) {
@@ -147,7 +147,7 @@ impl NodeFollower for GroundNodeFollower {
 impl NodeFollower for FlyingNodeFollower {
     fn move_towards(
         &self,
-        entity: &mut GenericEntity,
+        entity: &mut LivingEntity,
         world: &WorldSnapshot,
         target: EntityPosition,
         speed: f64,
@@ -165,7 +165,7 @@ impl NodeFollower for FlyingNodeFollower {
 
     fn jump(
         &self,
-        _entity: &mut GenericEntity,
+        _entity: &mut LivingEntity,
         _point: Option<EntityPosition>,
         _target: Option<EntityPosition>,
     ) {
@@ -175,7 +175,7 @@ impl NodeFollower for FlyingNodeFollower {
 impl NodeFollower for WaterNodeFollower {
     fn move_towards(
         &self,
-        entity: &mut GenericEntity,
+        entity: &mut LivingEntity,
         world: &WorldSnapshot,
         target: EntityPosition,
         speed: f64,
@@ -204,7 +204,7 @@ impl NodeFollower for WaterNodeFollower {
 
     fn jump(
         &self,
-        _entity: &mut GenericEntity,
+        _entity: &mut LivingEntity,
         _point: Option<EntityPosition>,
         _target: Option<EntityPosition>,
     ) {
@@ -214,7 +214,7 @@ impl NodeFollower for WaterNodeFollower {
 impl NodeFollower for NoPhysicsNodeFollower {
     fn move_towards(
         &self,
-        entity: &mut GenericEntity,
+        entity: &mut LivingEntity,
         _world: &WorldSnapshot,
         target: EntityPosition,
         speed: f64,
@@ -234,7 +234,7 @@ impl NodeFollower for NoPhysicsNodeFollower {
 
     fn jump(
         &self,
-        entity: &mut GenericEntity,
+        entity: &mut LivingEntity,
         _point: Option<EntityPosition>,
         _target: Option<EntityPosition>,
     ) {
@@ -248,7 +248,7 @@ impl NodeFollower for NoPhysicsNodeFollower {
 impl NodeFollower for VanillaGroundNodeFollower {
     fn move_towards(
         &self,
-        entity: &mut GenericEntity,
+        entity: &mut LivingEntity,
         world: &WorldSnapshot,
         target: EntityPosition,
         speed: f64,
@@ -304,7 +304,7 @@ impl NodeFollower for VanillaGroundNodeFollower {
 
     fn jump(
         &self,
-        entity: &mut GenericEntity,
+        entity: &mut LivingEntity,
         _point: Option<EntityPosition>,
         _target: Option<EntityPosition>,
     ) {
@@ -313,7 +313,7 @@ impl NodeFollower for VanillaGroundNodeFollower {
             .set(VanillaMoveControlState::Jumping);
     }
 
-    fn movement_speed(&self, _entity: &GenericEntity) -> f64 {
+    fn movement_speed(&self, _entity: &LivingEntity) -> f64 {
         1.0
     }
 
@@ -321,7 +321,7 @@ impl NodeFollower for VanillaGroundNodeFollower {
         NodeFollowerPhysicsTiming::BeforePhysics
     }
 
-    fn stop_following_path(&self, _entity: &mut GenericEntity) {
+    fn stop_following_path(&self, _entity: &mut LivingEntity) {
         self.move_control_state.set(VanillaMoveControlState::Wait);
     }
 
@@ -347,7 +347,7 @@ struct FollowerMovement {
 }
 
 fn move_with_physics(
-    entity: &mut GenericEntity,
+    entity: &mut LivingEntity,
     world: &WorldSnapshot,
     target: EntityPosition,
     speed: f64,
@@ -414,7 +414,7 @@ fn movement_towards(
     }
 }
 
-fn set_jump_velocity(entity: &mut GenericEntity, height: f32) {
+fn set_jump_velocity(entity: &mut LivingEntity, height: f32) {
     entity.set_velocity(Velocity(Vector3d {
         x: 0.0,
         y: f64::from(height) * JUMP_HEIGHT_VELOCITY_MULTIPLIER,
@@ -422,7 +422,7 @@ fn set_jump_velocity(entity: &mut GenericEntity, height: f32) {
     }));
 }
 
-fn vanilla_acceleration(entity: &GenericEntity, world: &WorldSnapshot, movement_speed: f64) -> f64 {
+fn vanilla_acceleration(entity: &LivingEntity, world: &WorldSnapshot, movement_speed: f64) -> f64 {
     if !entity.is_on_ground() {
         return VANILLA_AIR_ACCELERATION;
     }
@@ -438,7 +438,7 @@ fn vanilla_acceleration(entity: &GenericEntity, world: &WorldSnapshot, movement_
 }
 
 fn apply_vanilla_acceleration(
-    entity: &mut GenericEntity,
+    entity: &mut LivingEntity,
     world: &WorldSnapshot,
     speed: f64,
     yaw: f32,
@@ -461,7 +461,7 @@ fn apply_vanilla_acceleration(
     }));
 }
 
-fn vanilla_jump(entity: &mut GenericEntity) {
+fn vanilla_jump(entity: &mut LivingEntity) {
     if !entity.is_on_ground() {
         return;
     }
@@ -480,7 +480,7 @@ fn vanilla_jump(entity: &mut GenericEntity) {
     }));
 }
 
-fn vanilla_collision_shape_requires_jump(entity: &GenericEntity, world: &WorldSnapshot) -> bool {
+fn vanilla_collision_shape_requires_jump(entity: &LivingEntity, world: &WorldSnapshot) -> bool {
     let position = entity.get_position();
     let block_position = BlockPosition::new(
         position.get_x().floor() as i32,

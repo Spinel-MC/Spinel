@@ -286,3 +286,18 @@ fn parser_reads_block_state_properties() {
     assert_eq!(block_state.block(), Block::OAK_LOG);
     assert_eq!(block_state.property("axis"), Some("x"));
 }
+
+#[test]
+fn parser_rejects_bounded_integer_before_selecting_syntax() {
+    let mut level = crate::command::ArgumentType::integer("level");
+    level.min(0);
+    let command = Command::new("level")
+        .with_syntax(CommandExecutor::from_function(unused_executor), vec![level]);
+    let commands = [command];
+    assert!(matches!(
+        CommandParser::parse(&commands, "level -1"),
+        CommandParseResult::Invalid(_)
+    ));
+    let parsed = valid_command(CommandParser::parse(&commands, "level 2"));
+    assert_eq!(parsed.context().integer("level"), Some(2));
+}

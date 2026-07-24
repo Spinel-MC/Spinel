@@ -1,4 +1,4 @@
-use crate::entity::metadata::{EntityMeta, ZombieMeta};
+use crate::entity::metadata::{LivingEntityMeta, ZombieMeta};
 use spinel_registry::EntityType;
 use std::ops::{Deref, DerefMut};
 
@@ -7,9 +7,11 @@ pub struct DrownedMeta<'entity> {
 }
 
 impl<'entity> DrownedMeta<'entity> {
-    pub(crate) fn from_entity_meta(entity_meta: EntityMeta<'entity>) -> Option<Self> {
-        (entity_meta.get_entity().get_entity_type() == EntityType::DROWNED).then(|| Self {
-            zombie_meta: ZombieMeta::from_subtype_entity_meta(entity_meta),
+    pub(crate) fn from_living_entity_meta(
+        living_entity_meta: LivingEntityMeta<'entity>,
+    ) -> Option<Self> {
+        (living_entity_meta.get_entity_type() == EntityType::DROWNED).then(|| Self {
+            zombie_meta: ZombieMeta::from_subtype_living_entity_meta(living_entity_meta),
         })
     }
 }

@@ -1,4 +1,4 @@
-use crate::entity::metadata::{EntityMeta, RaiderMeta, definitions};
+use crate::entity::metadata::{LivingEntityMeta, RaiderMeta, definitions};
 use spinel_network::types::entity_metadata::MetadataValue;
 use spinel_registry::EntityType;
 use std::ops::{Deref, DerefMut};
@@ -8,15 +8,17 @@ pub struct WitchMeta<'entity> {
 }
 
 impl<'entity> WitchMeta<'entity> {
-    pub(crate) fn from_entity_meta(entity_meta: EntityMeta<'entity>) -> Option<Self> {
-        (entity_meta.get_entity().get_entity_type() == EntityType::WITCH).then(|| Self {
-            raider_meta: RaiderMeta::from_entity_meta(entity_meta),
+    pub(crate) fn from_living_entity_meta(
+        living_entity_meta: LivingEntityMeta<'entity>,
+    ) -> Option<Self> {
+        (living_entity_meta.get_entity_type() == EntityType::WITCH).then(|| Self {
+            raider_meta: RaiderMeta::from_living_entity_meta(living_entity_meta),
         })
     }
 
     pub fn is_drinking_potion(&self) -> bool {
         match self
-            .get_entity()
+            .get_state()
             .get_metadata()
             .get_value(&definitions::witch::is_drinking_potion())
         {
@@ -26,7 +28,7 @@ impl<'entity> WitchMeta<'entity> {
     }
 
     pub fn set_drinking_potion(&mut self, is_drinking_potion: bool) {
-        self.get_entity_mut().get_metadata_mut().set(
+        self.get_entity_state_mut().get_metadata_mut().set(
             &definitions::witch::is_drinking_potion(),
             MetadataValue::Boolean(is_drinking_potion),
         );

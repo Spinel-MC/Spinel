@@ -1,4 +1,4 @@
-use crate::entity::metadata::{EntityMeta, MobMeta, definitions};
+use crate::entity::metadata::{LivingEntityMeta, MobMeta, definitions};
 use spinel_network::types::entity_metadata::MetadataValue;
 use spinel_registry::EntityType;
 use std::ops::{Deref, DerefMut};
@@ -8,21 +8,25 @@ pub struct SlimeMeta<'entity> {
 }
 
 impl<'entity> SlimeMeta<'entity> {
-    pub(crate) fn from_entity_meta(entity_meta: EntityMeta<'entity>) -> Option<Self> {
-        (entity_meta.get_entity().get_entity_type() == EntityType::SLIME).then(|| Self {
-            mob_meta: MobMeta::new(crate::entity::metadata::LivingEntityMeta::new(entity_meta)),
+    pub(crate) fn from_living_entity_meta(
+        living_entity_meta: LivingEntityMeta<'entity>,
+    ) -> Option<Self> {
+        (living_entity_meta.get_entity_type() == EntityType::SLIME).then(|| Self {
+            mob_meta: MobMeta::new(living_entity_meta),
         })
     }
 
-    pub(crate) fn from_entity_meta_unchecked(entity_meta: EntityMeta<'entity>) -> Self {
+    pub(crate) fn from_living_entity_meta_unchecked(
+        living_entity_meta: LivingEntityMeta<'entity>,
+    ) -> Self {
         Self {
-            mob_meta: MobMeta::new(crate::entity::metadata::LivingEntityMeta::new(entity_meta)),
+            mob_meta: MobMeta::new(living_entity_meta),
         }
     }
 
     pub fn get_size(&self) -> i32 {
         match self
-            .get_entity()
+            .get_entity_state()
             .get_metadata()
             .get_value(&definitions::slime::get_size())
         {
@@ -33,9 +37,9 @@ impl<'entity> SlimeMeta<'entity> {
 
     pub fn set_size(&mut self, size: i32) {
         let box_size = f64::from(0.51000005_f32 * size as f32);
-        self.get_entity_mut()
+        self.get_living_entity_mut()
             .set_bounding_box_dimensions(box_size, box_size, box_size);
-        self.get_entity_mut()
+        self.get_living_entity_mut()
             .get_metadata_mut()
             .set(&definitions::slime::get_size(), MetadataValue::VarInt(size));
     }

@@ -1,5 +1,5 @@
 use crate::entity::dynamic_variant::UnregisteredEntityVariantError;
-use crate::entity::metadata::{AbstractNautilusMeta, EntityMeta};
+use crate::entity::metadata::{AbstractNautilusMeta, LivingEntityMeta};
 use spinel_registry::{EntityType, Registries, RegistryKey, zombie_nautilus_variant};
 use std::ops::{Deref, DerefMut};
 
@@ -8,9 +8,13 @@ pub struct ZombieNautilusMeta<'entity> {
 }
 
 impl<'entity> ZombieNautilusMeta<'entity> {
-    pub(crate) fn from_entity_meta(entity_meta: EntityMeta<'entity>) -> Option<Self> {
-        (entity_meta.get_entity().get_entity_type() == EntityType::ZOMBIE_NAUTILUS).then(|| Self {
-            abstract_nautilus_meta: AbstractNautilusMeta::from_entity_meta(entity_meta),
+    pub(crate) fn from_living_entity_meta(
+        living_entity_meta: LivingEntityMeta<'entity>,
+    ) -> Option<Self> {
+        (living_entity_meta.get_entity_type() == EntityType::ZOMBIE_NAUTILUS).then(|| Self {
+            abstract_nautilus_meta: AbstractNautilusMeta::from_living_entity_meta(
+                living_entity_meta,
+            ),
         })
     }
 
@@ -18,7 +22,7 @@ impl<'entity> ZombieNautilusMeta<'entity> {
         &self,
         registries: &Registries,
     ) -> Option<RegistryKey<zombie_nautilus_variant::ZombieNautilusVariant>> {
-        self.get_entity()
+        self.get_living_entity()
             .get_zombie_nautilus_variant_metadata(registries)
     }
 
@@ -27,7 +31,7 @@ impl<'entity> ZombieNautilusMeta<'entity> {
         registries: &Registries,
         variant: RegistryKey<zombie_nautilus_variant::ZombieNautilusVariant>,
     ) -> Result<(), UnregisteredEntityVariantError> {
-        self.get_entity_mut()
+        self.get_living_entity_mut()
             .set_zombie_nautilus_variant_metadata(registries, variant)
     }
 }

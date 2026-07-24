@@ -1,9 +1,9 @@
 impl World {
-    pub(crate) fn add_passenger(
+    pub fn add_passenger(
         &mut self,
         vehicle_id: EntityId,
         passenger_id: EntityId,
-    ) -> Result<bool> {
+    ) -> std::result::Result<bool, crate::entity::Error> {
         if vehicle_id == passenger_id {
             return Ok(false);
         }
@@ -44,7 +44,7 @@ impl World {
                 distinct_entities_mut(&mut self.entities, vehicle_index, passenger_index);
             let passenger_was_added = vehicle
                 .add_passenger(passenger)
-                .map_err(|passenger_error| Error::other(passenger_error.to_string()))?;
+                ?;
             if !passenger_was_added {
                 return Ok(false);
             }
@@ -65,11 +65,11 @@ impl World {
         Ok(true)
     }
 
-    pub(crate) fn remove_passenger(
+    pub fn remove_passenger(
         &mut self,
         vehicle_id: EntityId,
         passenger_id: EntityId,
-    ) -> Result<bool> {
+    ) -> std::result::Result<bool, crate::entity::Error> {
         if vehicle_id == passenger_id {
             return Ok(false);
         }
@@ -98,7 +98,7 @@ impl World {
                 distinct_entities_mut(&mut self.entities, vehicle_index, passenger_index);
             let passenger_was_removed = vehicle
                 .remove_passenger(passenger)
-                .map_err(|passenger_error| Error::other(passenger_error.to_string()))?;
+                ?;
             if !passenger_was_removed {
                 return Ok(false);
             }

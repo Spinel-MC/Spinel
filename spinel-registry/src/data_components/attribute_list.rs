@@ -42,6 +42,7 @@ pub enum EquipmentSlotGroup {
     Head,
     Armor,
     Body,
+    Saddle,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -231,6 +232,7 @@ impl EquipmentSlotGroup {
             Self::Head => "head",
             Self::Armor => "armor",
             Self::Body => "body",
+            Self::Saddle => "saddle",
         }
     }
 
@@ -247,6 +249,7 @@ impl EquipmentSlotGroup {
             Self::Head => 7,
             Self::Armor => 8,
             Self::Body => 9,
+            Self::Saddle => 10,
         }
     }
 
@@ -263,7 +266,27 @@ impl EquipmentSlotGroup {
             "head" => Some(Self::Head),
             "armor" => Some(Self::Armor),
             "body" => Some(Self::Body),
+            "saddle" => Some(Self::Saddle),
             _ => None,
+        }
+    }
+
+    #[must_use]
+    pub fn get_equipment_slots(self) -> Vec<&'static str> {
+        match self {
+            Self::Any => vec![
+                "mainhand", "offhand", "feet", "legs", "chest", "head", "body", "saddle",
+            ],
+            Self::MainHand => vec!["mainhand"],
+            Self::OffHand => vec!["offhand"],
+            Self::Hand => vec!["mainhand", "offhand"],
+            Self::Feet => vec!["feet"],
+            Self::Legs => vec!["legs"],
+            Self::Chest => vec!["chest"],
+            Self::Head => vec!["head"],
+            Self::Armor => vec!["chest", "legs", "feet", "head"],
+            Self::Body => vec!["body"],
+            Self::Saddle => vec!["saddle"],
         }
     }
 
@@ -280,6 +303,7 @@ impl EquipmentSlotGroup {
             Self::Head => matches!(slot_name.as_bytes(), b"head"),
             Self::Armor => matches!(slot_name.as_bytes(), b"feet" | b"legs" | b"chest" | b"head"),
             Self::Body => matches!(slot_name.as_bytes(), b"body"),
+            Self::Saddle => matches!(slot_name.as_bytes(), b"saddle"),
         }
     }
 }

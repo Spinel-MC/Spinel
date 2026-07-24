@@ -550,7 +550,7 @@ fn tracker_scopes_chunk_and_entity_packets_to_actual_viewers() {
 
     assert!(
         world
-            .move_generic_entity(
+            .move_living_entity(
                 target_id,
                 EntityPosition::new(2.0, 64.0, 1.0, 15.0, 0.0),
                 true,

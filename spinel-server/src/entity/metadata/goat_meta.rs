@@ -1,4 +1,4 @@
-use crate::entity::metadata::{AnimalMeta, EntityMeta, definitions};
+use crate::entity::metadata::{AnimalMeta, LivingEntityMeta, definitions};
 use spinel_network::types::entity_metadata::MetadataValue;
 use spinel_registry::EntityType;
 use std::ops::{Deref, DerefMut};
@@ -8,15 +8,17 @@ pub struct GoatMeta<'entity> {
 }
 
 impl<'entity> GoatMeta<'entity> {
-    pub(crate) fn from_entity_meta(entity_meta: EntityMeta<'entity>) -> Option<Self> {
-        (entity_meta.get_entity().get_entity_type() == EntityType::GOAT).then(|| Self {
-            animal_meta: AnimalMeta::from_entity_meta(entity_meta),
+    pub(crate) fn from_living_entity_meta(
+        living_entity_meta: LivingEntityMeta<'entity>,
+    ) -> Option<Self> {
+        (living_entity_meta.get_entity_type() == EntityType::GOAT).then(|| Self {
+            animal_meta: AnimalMeta::from_living_entity_meta(living_entity_meta),
         })
     }
 
     pub fn is_screaming(&self) -> bool {
         match self
-            .get_entity()
+            .get_state()
             .get_metadata()
             .get_value(&definitions::goat::is_screaming())
         {
@@ -26,7 +28,7 @@ impl<'entity> GoatMeta<'entity> {
     }
 
     pub fn set_screaming(&mut self, is_screaming: bool) {
-        self.get_entity_mut().get_metadata_mut().set(
+        self.get_entity_state_mut().get_metadata_mut().set(
             &definitions::goat::is_screaming(),
             MetadataValue::Boolean(is_screaming),
         );
@@ -34,7 +36,7 @@ impl<'entity> GoatMeta<'entity> {
 
     pub fn has_left_horn(&self) -> bool {
         match self
-            .get_entity()
+            .get_state()
             .get_metadata()
             .get_value(&definitions::goat::has_left_horn())
         {
@@ -44,7 +46,7 @@ impl<'entity> GoatMeta<'entity> {
     }
 
     pub fn set_has_left_horn(&mut self, has_left_horn: bool) {
-        self.get_entity_mut().get_metadata_mut().set(
+        self.get_entity_state_mut().get_metadata_mut().set(
             &definitions::goat::has_left_horn(),
             MetadataValue::Boolean(has_left_horn),
         );
@@ -52,7 +54,7 @@ impl<'entity> GoatMeta<'entity> {
 
     pub fn has_right_horn(&self) -> bool {
         match self
-            .get_entity()
+            .get_state()
             .get_metadata()
             .get_value(&definitions::goat::has_right_horn())
         {
@@ -62,7 +64,7 @@ impl<'entity> GoatMeta<'entity> {
     }
 
     pub fn set_has_right_horn(&mut self, has_right_horn: bool) {
-        self.get_entity_mut().get_metadata_mut().set(
+        self.get_entity_state_mut().get_metadata_mut().set(
             &definitions::goat::has_right_horn(),
             MetadataValue::Boolean(has_right_horn),
         );

@@ -1,4 +1,4 @@
-use crate::entity::metadata::{EntityMeta, MonsterMeta, definitions};
+use crate::entity::metadata::{LivingEntityMeta, MonsterMeta, definitions};
 use spinel_network::types::Position;
 use spinel_network::types::entity_metadata::MetadataValue;
 use spinel_registry::EntityType;
@@ -9,15 +9,17 @@ pub struct CreakingMeta<'entity> {
 }
 
 impl<'entity> CreakingMeta<'entity> {
-    pub(crate) fn from_entity_meta(entity_meta: EntityMeta<'entity>) -> Option<Self> {
-        (entity_meta.get_entity().get_entity_type() == EntityType::CREAKING).then(|| Self {
-            monster_meta: MonsterMeta::from_entity_meta(entity_meta),
+    pub(crate) fn from_living_entity_meta(
+        living_entity_meta: LivingEntityMeta<'entity>,
+    ) -> Option<Self> {
+        (living_entity_meta.get_entity_type() == EntityType::CREAKING).then(|| Self {
+            monster_meta: MonsterMeta::from_living_entity_meta(living_entity_meta),
         })
     }
 
     pub fn can_move(&self) -> bool {
         match self
-            .get_entity()
+            .get_state()
             .get_metadata()
             .get_value(&definitions::creaking::can_move())
         {
@@ -27,7 +29,7 @@ impl<'entity> CreakingMeta<'entity> {
     }
 
     pub fn set_can_move(&mut self, can_move: bool) {
-        self.get_entity_mut().get_metadata_mut().set(
+        self.get_entity_state_mut().get_metadata_mut().set(
             &definitions::creaking::can_move(),
             MetadataValue::Boolean(can_move),
         );
@@ -35,7 +37,7 @@ impl<'entity> CreakingMeta<'entity> {
 
     pub fn is_active(&self) -> bool {
         match self
-            .get_entity()
+            .get_state()
             .get_metadata()
             .get_value(&definitions::creaking::is_active())
         {
@@ -45,7 +47,7 @@ impl<'entity> CreakingMeta<'entity> {
     }
 
     pub fn set_active(&mut self, is_active: bool) {
-        self.get_entity_mut().get_metadata_mut().set(
+        self.get_entity_state_mut().get_metadata_mut().set(
             &definitions::creaking::is_active(),
             MetadataValue::Boolean(is_active),
         );
@@ -53,7 +55,7 @@ impl<'entity> CreakingMeta<'entity> {
 
     pub fn is_tearing_down(&self) -> bool {
         match self
-            .get_entity()
+            .get_state()
             .get_metadata()
             .get_value(&definitions::creaking::is_tearing_down())
         {
@@ -63,7 +65,7 @@ impl<'entity> CreakingMeta<'entity> {
     }
 
     pub fn set_tearing_down(&mut self, is_tearing_down: bool) {
-        self.get_entity_mut().get_metadata_mut().set(
+        self.get_entity_state_mut().get_metadata_mut().set(
             &definitions::creaking::is_tearing_down(),
             MetadataValue::Boolean(is_tearing_down),
         );
@@ -71,7 +73,7 @@ impl<'entity> CreakingMeta<'entity> {
 
     pub fn get_home_position(&self) -> Option<Position> {
         match self
-            .get_entity()
+            .get_state()
             .get_metadata()
             .get_value(&definitions::creaking::home_position())
         {
@@ -81,7 +83,7 @@ impl<'entity> CreakingMeta<'entity> {
     }
 
     pub fn set_home_position(&mut self, home_position: Option<Position>) {
-        self.get_entity_mut().get_metadata_mut().set(
+        self.get_entity_state_mut().get_metadata_mut().set(
             &definitions::creaking::home_position(),
             MetadataValue::OptionalPosition(home_position),
         );

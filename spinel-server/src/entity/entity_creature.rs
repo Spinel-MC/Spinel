@@ -1,9 +1,9 @@
 use crate::entity::ai::{CreatureAiAction, EntityAiGroup};
-use crate::entity::metadata::EntityMetaCast;
+use crate::entity::metadata::{LivingEntityMetaCast, LivingEntityMetaRef};
 use crate::entity::pathfinding::{
     Navigator, NodeFollowerPhysicsTiming, PathRequest, SetPathToError,
 };
-use crate::entity::{Entity, EntityId, EntityPosition, GenericEntity};
+use crate::entity::{Entity, EntityId, EntityPosition, GenericEntity, LivingEntity};
 use crate::events::entity_attack::EntityAttackEvent;
 use crate::server::MinecraftServer;
 use crate::world::{World, WorldSnapshot};
@@ -28,7 +28,7 @@ pub enum EntityCreatureAttackError {
 }
 
 pub struct EntityCreature {
-    entity: GenericEntity,
+    entity: LivingEntity,
     ai_groups: Vec<EntityAiGroup>,
     navigator: Navigator,
     target: Option<EntityId>,
@@ -38,9 +38,25 @@ pub struct EntityCreature {
     removal_animation_delay_millis: i32,
 }
 
+impl crate::entity::EquipmentHandler for EntityCreature {
+    fn get_entity_id(&self) -> EntityId {
+        self.entity.get_entity_id()
+    }
+
+    fn get_equipment(
+        &self,
+        equipment_slot: crate::entity::EquipmentSlot,
+    ) -> spinel_registry::ItemStack {
+        self.entity.get_equipment(equipment_slot).clone()
+    }
+}
 impl EntityCreature {
     pub fn new(entity_type: EntityType) -> Self {
-        let mut entity = GenericEntity::new(entity_type);
+        Self::with_uuid(entity_type, Uuid::new_v4())
+    }
+
+    pub fn with_uuid(entity_type: EntityType, uuid: Uuid) -> Self {
+        let mut entity = LivingEntity::with_uuid(entity_type, uuid);
         entity.heal();
         Self {
             entity,
@@ -54,15 +70,19 @@ impl EntityCreature {
         }
     }
 
-    pub const fn get_entity(&self) -> &GenericEntity {
+    pub const fn get_entity(&self) -> &LivingEntity {
         &self.entity
     }
 
-    pub fn get_entity_mut(&mut self) -> &mut GenericEntity {
+    pub fn get_entity_mut(&mut self) -> &mut LivingEntity {
         &mut self.entity
     }
 
-    pub fn get_entity_meta_mut(&mut self) -> EntityMetaCast<'_> {
+    pub(crate) fn tick_living_state(&mut self) -> Vec<crate::entity::TimedPotionEffect> {
+        self.entity.tick_living_state()
+    }
+
+    pub fn get_entity_meta_mut(&mut self) -> LivingEntityMetaCast<'_> {
         self.entity.get_entity_meta_mut()
     }
 
@@ -288,7 +308,7 @@ impl EntityCreature {
 }
 
 impl Deref for EntityCreature {
-    type Target = GenericEntity;
+    type Target = LivingEntity;
 
     fn deref(&self) -> &Self::Target {
         &self.entity

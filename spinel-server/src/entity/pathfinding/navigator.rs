@@ -3,7 +3,7 @@ use crate::entity::pathfinding::{
     NodeGenerator, Path, PathGenerator, PathNode, PathNodeType, PathRequest, PathState,
     SetPathToError,
 };
-use crate::entity::{EntityPosition, GenericEntity};
+use crate::entity::{EntityPosition, LivingEntity};
 use crate::world::{ChunkPosition, WorldSnapshot};
 use spinel_registry::EntityBoundingBox;
 
@@ -164,12 +164,7 @@ impl Navigator {
         Ok(true)
     }
 
-    pub fn tick(
-        &mut self,
-        entity: &mut GenericEntity,
-        world: &WorldSnapshot,
-        entity_is_dead: bool,
-    ) {
+    pub fn tick(&mut self, entity: &mut LivingEntity, world: &WorldSnapshot, entity_is_dead: bool) {
         if entity_is_dead {
             return;
         }
@@ -258,7 +253,7 @@ impl Navigator {
         }
     }
 
-    fn regenerate_path(&mut self, world: &WorldSnapshot, entity: &GenericEntity) {
+    fn regenerate_path(&mut self, world: &WorldSnapshot, entity: &LivingEntity) {
         let Some(goal) = self.goal else {
             self.path = None;
             return;

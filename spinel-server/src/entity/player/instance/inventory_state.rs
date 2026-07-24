@@ -14,6 +14,16 @@ use std::collections::BTreeSet;
 use super::hand::PlayerHand;
 use super::state::Player;
 
+impl crate::entity::EquipmentHandler for Player {
+    fn get_entity_id(&self) -> crate::entity::EntityId {
+        Player::get_entity_id(self)
+    }
+
+    fn get_equipment(&self, equipment_slot: EquipmentSlot) -> ItemStack {
+        self.get_equipment(equipment_slot)
+    }
+}
+
 impl Player {
     pub fn set_respawn_point(&mut self, respawn_point: PlayerSpawnPoint) {
         self.respawn_point = respawn_point;

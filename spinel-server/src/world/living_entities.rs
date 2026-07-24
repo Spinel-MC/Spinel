@@ -130,11 +130,12 @@ impl World {
             self.entity_by_id(entity_id)
                 .and_then(|entity| match entity {
                     Entity::Creature(entity) => Some(entity.get_fire_ticks()),
-                    Entity::ExperienceOrb(entity) => Some(entity.get_fire_ticks()),
-                    Entity::Generic(entity) => Some(entity.get_fire_ticks()),
+                    Entity::ExperienceOrb(_) => None,
+                    Entity::Generic(_) => None,
+                    Entity::Living(entity) => Some(entity.get_fire_ticks()),
                     Entity::Item(_) => None,
                     Entity::Player(player) => Some(player.get_fire_ticks()),
-                    Entity::Projectile(entity) => Some(entity.get_fire_ticks()),
+                    Entity::Projectile(_) => None,
                 })
         else {
             return false;
@@ -216,6 +217,9 @@ impl World {
     }
 
     pub fn kill_entity(&mut self, entity_id: EntityId) -> Result<bool> {
+        if self.entity_should_be_removed_when_killed(entity_id) {
+            return Ok(self.remove_entity(entity_id).is_some());
+        }
         if self.entity_is_dead(entity_id) {
             return Ok(false);
         }
@@ -250,11 +254,8 @@ impl World {
             .entities
             .iter()
             .filter_map(|entity| match entity {
-                Entity::Generic(entity)
-                    if entity.get_entity_type().is_living() && entity.can_pickup_item() =>
-                {
-                    Some(entity.get_entity_id())
-                }
+                Entity::Living(entity) if entity.can_pickup_item() => Some(entity.get_entity_id()),
+                Entity::Creature(entity) if entity.can_pickup_item() => Some(entity.get_entity_id()),
                 Entity::Player(player) if player.can_pickup_item() => Some(player.get_entity_id()),
                 _ => None,
             })
@@ -478,7 +479,7 @@ impl World {
             return false;
         };
         match entity {
-            Entity::Generic(entity) if entity.get_item_pickup_cooldown() == 0 => {
+            Entity::Living(entity) if entity.get_item_pickup_cooldown() == 0 => {
                 entity.set_item_pickup_cooldown(5);
                 true
             }
@@ -650,8 +651,8 @@ impl World {
     )> {
         let entity = self.entity_by_id_mut(entity_id)?;
         match entity {
-            Entity::Generic(entity) if entity.get_entity_type().is_living() => {
-                entity.set_equipment(equipment_slot, item_stack);
+            Entity::Living(entity) => {
+                entity.set_equipment_state(equipment_slot, item_stack);
                 Some((entity.update_attributes_packet(), false))
             }
             Entity::Player(player) => {
@@ -709,23 +710,18 @@ impl World {
     ) -> Option<&TimedPotionEffect> {
         match self.entity_by_id(entity_id)? {
             Entity::Creature(entity) => entity.get_effect(effect_key),
-            Entity::ExperienceOrb(entity) => entity.get_effect(effect_key),
-            Entity::Generic(entity) => entity.get_effect(effect_key),
-            Entity::Item(entity) => entity.get_effect(effect_key),
+            Entity::Living(entity) => entity.get_effect(effect_key),
             Entity::Player(player) => player.get_effect(effect_key),
-            Entity::Projectile(entity) => entity.get_effect(effect_key),
+            _ => None,
         }
     }
 
     fn entity_effects(&self, entity_id: EntityId) -> Vec<&TimedPotionEffect> {
         match self.entity_by_id(entity_id) {
             Some(Entity::Creature(entity)) => entity.get_active_effects(),
-            Some(Entity::ExperienceOrb(entity)) => entity.get_active_effects(),
-            Some(Entity::Generic(entity)) => entity.get_active_effects(),
-            Some(Entity::Item(entity)) => entity.get_active_effects(),
+            Some(Entity::Living(entity)) => entity.get_active_effects(),
             Some(Entity::Player(player)) => player.get_active_effects(),
-            Some(Entity::Projectile(entity)) => entity.get_active_effects(),
-            None => Vec::new(),
+            _ => Vec::new(),
         }
     }
 
@@ -740,11 +736,9 @@ impl World {
     ) -> Option<EntityEffectPacket> {
         match self.entity_by_id_mut(entity_id)? {
             Entity::Creature(entity) => Some(entity.add_effect(effect)),
-            Entity::ExperienceOrb(entity) => Some(entity.add_effect(effect)),
-            Entity::Generic(entity) => Some(entity.add_effect(effect)),
-            Entity::Item(entity) => Some(entity.add_effect(effect)),
+            Entity::Living(entity) => Some(entity.add_effect(effect)),
             Entity::Player(player) => Some(player.add_effect(effect)),
-            Entity::Projectile(entity) => Some(entity.add_effect(effect)),
+            _ => None,
         }
     }
 
@@ -755,11 +749,9 @@ impl World {
     ) -> Option<RemoveEntityEffectPacket> {
         match self.entity_by_id_mut(entity_id)? {
             Entity::Creature(entity) => entity.remove_effect(effect_key),
-            Entity::ExperienceOrb(entity) => entity.remove_effect(effect_key),
-            Entity::Generic(entity) => entity.remove_effect(effect_key),
-            Entity::Item(entity) => entity.remove_effect(effect_key),
+            Entity::Living(entity) => entity.remove_effect(effect_key),
             Entity::Player(player) => player.remove_effect(effect_key),
-            Entity::Projectile(entity) => entity.remove_effect(effect_key),
+            _ => None,
         }
     }
 
@@ -780,12 +772,22 @@ impl World {
         self.entity_by_id(entity_id)
             .is_none_or(|entity| match entity {
                 Entity::Creature(entity) => entity.is_dead(),
-                Entity::ExperienceOrb(_) => true,
-                Entity::Generic(entity) => entity.is_dead(),
-                Entity::Item(_) => true,
+                Entity::ExperienceOrb(_) => false,
+                Entity::Generic(_) => false,
+                Entity::Living(entity) => entity.is_dead(),
+                Entity::Item(_) => false,
                 Entity::Player(player) => player.is_dead(),
-                Entity::Projectile(_) => true,
+                Entity::Projectile(_) => false,
             })
+    }
+
+    fn entity_should_be_removed_when_killed(&self, entity_id: EntityId) -> bool {
+        self.entity_by_id(entity_id).is_some_and(|entity| {
+            matches!(
+                entity,
+                Entity::ExperienceOrb(_) | Entity::Generic(_) | Entity::Item(_) | Entity::Projectile(_)
+            )
+        })
     }
 
     fn entity_is_player(&self, entity_id: EntityId) -> bool {
@@ -817,8 +819,8 @@ impl World {
                     z: 0.0,
                 }));
             }
-            Entity::ExperienceOrb(_) => {}
-            Entity::Generic(entity) => {
+            Entity::ExperienceOrb(_) | Entity::Generic(_) => {}
+            Entity::Living(entity) => {
                 entity.kill();
                 entity.set_velocity(Velocity(Vector3d {
                     x: 0.0,
@@ -833,7 +835,10 @@ impl World {
             Entity::Projectile(_) => {}
         }
         passenger_ids.into_iter().try_for_each(|passenger_id| {
-            self.remove_passenger(entity_id, passenger_id).map(|_| ())
+            self
+                .remove_passenger(entity_id, passenger_id)
+                .map(|_| ())
+                .map_err(|passenger_error| std::io::Error::other(passenger_error.to_string()))
         })?;
         Ok(())
     }
@@ -870,8 +875,8 @@ impl World {
                     || (damage.damage_type() != &DamageType::OUT_OF_WORLD
                         && entity.is_immune_to_damage(&damage.damage_type().key().to_string()))
             }
-            Entity::ExperienceOrb(_) => true,
-            Entity::Generic(entity) => {
+            Entity::ExperienceOrb(_) | Entity::Generic(_) => true,
+            Entity::Living(entity) => {
                 entity.is_dead()
                     || (damage.damage_type() != &DamageType::OUT_OF_WORLD
                         && entity.is_immune_to_damage(&damage.damage_type().key().to_string()))
@@ -918,11 +923,8 @@ impl World {
                 entity.apply_damage(damage);
                 entity.get_health() <= 0.0
             }
-            Entity::ExperienceOrb(entity) => {
-                entity.apply_damage(damage);
-                entity.get_health() <= 0.0
-            }
-            Entity::Generic(entity) => {
+            Entity::ExperienceOrb(_) | Entity::Generic(_) => return Ok(false),
+            Entity::Living(entity) => {
                 entity.apply_damage(damage);
                 entity.get_health() <= 0.0
             }
@@ -988,11 +990,9 @@ impl World {
         };
         match entity {
             Entity::Creature(entity) => entity.set_fire_ticks(fire_ticks),
-            Entity::ExperienceOrb(entity) => entity.set_fire_ticks(fire_ticks),
-            Entity::Generic(entity) => entity.set_fire_ticks(fire_ticks),
-            Entity::Item(_) => return false,
+            Entity::Living(entity) => entity.set_fire_ticks(fire_ticks),
             Entity::Player(player) => player.set_fire_ticks(fire_ticks),
-            Entity::Projectile(entity) => entity.set_fire_ticks(fire_ticks),
+            _ => return false,
         }
         true
     }
@@ -1010,11 +1010,8 @@ impl World {
                 entity.set_fire_ticks_after_cancelled_extinguish(fire_ticks);
                 entity.set_on_fire(true);
             }
-            Entity::ExperienceOrb(entity) => {
-                entity.set_fire_ticks_after_cancelled_extinguish(fire_ticks);
-                entity.set_on_fire(true);
-            }
-            Entity::Generic(entity) => {
+            Entity::ExperienceOrb(_) | Entity::Generic(_) => return false,
+            Entity::Living(entity) => {
                 entity.set_fire_ticks_after_cancelled_extinguish(fire_ticks);
                 entity.set_on_fire(true);
             }
@@ -1023,10 +1020,7 @@ impl World {
                 player.set_fire_ticks_after_cancelled_extinguish(fire_ticks);
                 player.set_on_fire(true);
             }
-            Entity::Projectile(entity) => {
-                entity.set_fire_ticks_after_cancelled_extinguish(fire_ticks);
-                entity.set_on_fire(true);
-            }
+            Entity::Projectile(_) => return false,
         }
         true
     }
@@ -1037,7 +1031,7 @@ fn living_item_pickup_scan(entity: &Entity) -> Option<(EntityPosition, EntityBou
         Entity::Creature(entity) => {
             Some((entity.get_position(), entity.get_expanded_bounding_box()))
         }
-        Entity::Generic(entity) if entity.get_entity_type().is_living() => {
+        Entity::Living(entity) => {
             Some((entity.get_position(), entity.get_expanded_bounding_box()))
         }
         Entity::Player(player) => Some((player.get_position(), player.get_expanded_bounding_box())),

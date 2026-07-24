@@ -1,5 +1,5 @@
 use crate::entity::dynamic_variant::UnregisteredEntityVariantError;
-use crate::entity::metadata::{AnimalMeta, EntityMeta, definitions};
+use crate::entity::metadata::{AnimalMeta, LivingEntityMeta, definitions};
 use spinel_network::types::entity_metadata::MetadataValue;
 use spinel_registry::{EntityType, Registries, RegistryKey, pig_variant};
 use std::ops::{Deref, DerefMut};
@@ -9,15 +9,17 @@ pub struct PigMeta<'entity> {
 }
 
 impl<'entity> PigMeta<'entity> {
-    pub(crate) fn from_entity_meta(entity_meta: EntityMeta<'entity>) -> Option<Self> {
-        (entity_meta.get_entity().get_entity_type() == EntityType::PIG).then(|| Self {
-            animal_meta: AnimalMeta::from_entity_meta(entity_meta),
+    pub(crate) fn from_living_entity_meta(
+        living_entity_meta: LivingEntityMeta<'entity>,
+    ) -> Option<Self> {
+        (living_entity_meta.get_entity_type() == EntityType::PIG).then(|| Self {
+            animal_meta: AnimalMeta::from_living_entity_meta(living_entity_meta),
         })
     }
 
     pub fn get_time_to_boost(&self) -> i32 {
         match self
-            .get_entity()
+            .get_entity_state()
             .get_metadata()
             .get_value(&definitions::pig::boost_time())
         {
@@ -27,7 +29,7 @@ impl<'entity> PigMeta<'entity> {
     }
 
     pub fn set_time_to_boost(&mut self, time_to_boost: i32) {
-        self.get_entity_mut().get_metadata_mut().set(
+        self.get_living_entity_mut().get_metadata_mut().set(
             &definitions::pig::boost_time(),
             MetadataValue::VarInt(time_to_boost),
         );
@@ -37,7 +39,8 @@ impl<'entity> PigMeta<'entity> {
         &self,
         registries: &Registries,
     ) -> Option<RegistryKey<pig_variant::PigVariant>> {
-        self.get_entity().get_pig_variant_metadata(registries)
+        self.get_living_entity()
+            .get_pig_variant_metadata(registries)
     }
 
     pub fn set_variant(
@@ -45,7 +48,7 @@ impl<'entity> PigMeta<'entity> {
         registries: &Registries,
         variant: RegistryKey<pig_variant::PigVariant>,
     ) -> Result<(), UnregisteredEntityVariantError> {
-        self.get_entity_mut()
+        self.get_living_entity_mut()
             .set_pig_variant_metadata(registries, variant)
     }
 }

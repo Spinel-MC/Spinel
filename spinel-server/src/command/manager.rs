@@ -476,7 +476,10 @@ fn append_declaration_argument_node(
             declaration_node.argument.suggestions_type(),
         ),
     };
-    node.properties = declaration_node.argument.protocol_properties();
+    node.properties = declaration_node
+        .argument
+        .typed_properties()
+        .unwrap_or_else(|| declaration_node.argument.protocol_properties());
     nodes.push(node);
     let child_indices = declaration_node
         .children

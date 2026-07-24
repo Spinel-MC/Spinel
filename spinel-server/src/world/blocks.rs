@@ -1,4 +1,4 @@
-﻿impl World {
+impl World {
     pub const fn last_block_change_time(&self) -> u128 {
         self.last_block_change_time
     }
@@ -50,6 +50,15 @@
                         )
                 }
                 Entity::Generic(entity) => {
+                    entity.can_prevent_block_placement()
+                        && entity_strictly_intersects_block(
+                            entity.get_relative_start(),
+                            entity.get_relative_end(),
+                            block_center,
+                            block_box,
+                        )
+                }
+                Entity::Living(entity) => {
                     entity.can_prevent_block_placement()
                         && entity_strictly_intersects_block(
                             entity.get_relative_start(),
@@ -420,6 +429,7 @@
                 Entity::ExperienceOrb(_) => None,
                 Entity::Generic(_) => None,
                 Entity::Item(_) => None,
+                Entity::Living(_) => None,
                 Entity::Projectile(_) => None,
             });
         let result_block = rule.block_place(BlockPlacementState::new(

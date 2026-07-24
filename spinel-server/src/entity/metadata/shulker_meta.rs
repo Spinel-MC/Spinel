@@ -1,4 +1,4 @@
-use crate::entity::metadata::{AbstractGolemMeta, EntityMeta, definitions};
+use crate::entity::metadata::{AbstractGolemMeta, LivingEntityMeta, definitions};
 use spinel_network::types::entity_metadata::MetadataValue;
 use spinel_registry::{BlockFaceDirection, EntityType};
 use spinel_utils::color::DyeColor;
@@ -9,15 +9,17 @@ pub struct ShulkerMeta<'entity> {
 }
 
 impl<'entity> ShulkerMeta<'entity> {
-    pub(crate) fn from_entity_meta(entity_meta: EntityMeta<'entity>) -> Option<Self> {
-        (entity_meta.get_entity().get_entity_type() == EntityType::SHULKER).then(|| Self {
-            abstract_golem_meta: AbstractGolemMeta::from_entity_meta(entity_meta),
+    pub(crate) fn from_living_entity_meta(
+        living_entity_meta: LivingEntityMeta<'entity>,
+    ) -> Option<Self> {
+        (living_entity_meta.get_entity_type() == EntityType::SHULKER).then(|| Self {
+            abstract_golem_meta: AbstractGolemMeta::from_living_entity_meta(living_entity_meta),
         })
     }
 
     pub fn get_attach_face(&self) -> BlockFaceDirection {
         match self
-            .get_entity()
+            .get_state()
             .get_metadata()
             .get_value(&definitions::shulker::get_attach_face())
         {
@@ -30,7 +32,7 @@ impl<'entity> ShulkerMeta<'entity> {
     }
 
     pub fn set_attach_face(&mut self, attach_face: BlockFaceDirection) {
-        self.get_entity_mut().get_metadata_mut().set(
+        self.get_entity_state_mut().get_metadata_mut().set(
             &definitions::shulker::get_attach_face(),
             MetadataValue::Direction(attach_face.protocol_id()),
         );
@@ -38,7 +40,7 @@ impl<'entity> ShulkerMeta<'entity> {
 
     pub fn get_shield_height(&self) -> i8 {
         match self
-            .get_entity()
+            .get_state()
             .get_metadata()
             .get_value(&definitions::shulker::get_shield_height())
         {
@@ -48,7 +50,7 @@ impl<'entity> ShulkerMeta<'entity> {
     }
 
     pub fn set_shield_height(&mut self, shield_height: i8) {
-        self.get_entity_mut().get_metadata_mut().set(
+        self.get_entity_state_mut().get_metadata_mut().set(
             &definitions::shulker::get_shield_height(),
             MetadataValue::Byte(shield_height),
         );
@@ -56,7 +58,7 @@ impl<'entity> ShulkerMeta<'entity> {
 
     pub fn get_color(&self) -> DyeColor {
         match self
-            .get_entity()
+            .get_state()
             .get_metadata()
             .get_value(&definitions::shulker::get_color())
         {
@@ -74,7 +76,7 @@ impl<'entity> ShulkerMeta<'entity> {
             .iter()
             .position(|candidate| candidate == &color)
             .unwrap_or(10) as i8;
-        self.get_entity_mut().get_metadata_mut().set(
+        self.get_entity_state_mut().get_metadata_mut().set(
             &definitions::shulker::get_color(),
             MetadataValue::Byte(color_id),
         );

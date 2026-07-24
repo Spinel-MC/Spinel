@@ -22,6 +22,14 @@ impl ItemStack {
         Self::from_parts(material, 1, DataComponentMap::new())
     }
 
+    pub fn from_component_patch(
+        material: Material,
+        amount: i32,
+        component_patch: DataComponentMap,
+    ) -> Self {
+        Self::from_parts(material, amount, component_patch)
+    }
+
     pub fn builder(material: Material) -> ItemStackBuilder {
         ItemStackBuilder::new(material)
     }

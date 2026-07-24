@@ -32,6 +32,34 @@ fn command_manager_suggests_roots_and_argument_callbacks_like_reference_tab_comp
 }
 
 #[test]
+fn command_manager_deduplicates_matching_argument_suggestions_across_syntax_branches() {
+    let mut command_manager = CommandManager::new();
+    command_manager.register(
+        Command::new("enchant")
+            .with_syntax(
+                CommandExecutor::from_function(unused_executor),
+                vec![
+                    custom_argument_with_suggestions("targets"),
+                    CommandArgument::integer("level"),
+                ],
+            )
+            .with_syntax(
+                CommandExecutor::from_function(unused_executor),
+                vec![custom_argument_with_suggestions("targets")],
+            ),
+    );
+
+    let suggestions = command_manager.suggest(CommandSenderKind::Player, "/enchant A");
+    let alex_suggestions = suggestions
+        .entries()
+        .iter()
+        .filter(|entry| entry.entry() == "Alex")
+        .count();
+
+    assert_eq!(alex_suggestions, 1);
+}
+
+#[test]
 fn command_manager_filters_root_suggestions_by_source_condition() {
     let mut command_manager = CommandManager::new();
     command_manager.register(Command::new("op").with_condition(requires_admin));

@@ -9,13 +9,13 @@ pub struct PrimedTntMeta<'entity> {
 
 impl<'entity> PrimedTntMeta<'entity> {
     pub(crate) fn from_entity_meta(entity_meta: EntityMeta<'entity>) -> Option<Self> {
-        (entity_meta.get_entity().get_entity_type() == EntityType::TNT)
+        (entity_meta.get_state().get_entity_type() == EntityType::TNT)
             .then_some(Self { entity_meta })
     }
 
     pub fn get_fuse_time(&self) -> i32 {
         match self
-            .get_entity()
+            .get_state()
             .get_metadata()
             .get_value(&definitions::primed_tnt::get_fuse_time())
         {
@@ -25,7 +25,7 @@ impl<'entity> PrimedTntMeta<'entity> {
     }
 
     pub fn set_fuse_time(&mut self, fuse_time: i32) {
-        self.get_entity_mut().get_metadata_mut().set(
+        self.get_state_mut().get_metadata_mut().set(
             &definitions::primed_tnt::get_fuse_time(),
             MetadataValue::VarInt(fuse_time),
         );
@@ -33,7 +33,7 @@ impl<'entity> PrimedTntMeta<'entity> {
 
     pub fn get_block_state(&self) -> BlockState {
         let block_state_id = match self
-            .get_entity()
+            .get_state()
             .get_metadata()
             .get_value(&definitions::primed_tnt::get_block_state())
         {
@@ -44,7 +44,7 @@ impl<'entity> PrimedTntMeta<'entity> {
     }
 
     pub fn set_block_state(&mut self, block_state: BlockState) {
-        self.get_entity_mut().get_metadata_mut().set(
+        self.get_state_mut().get_metadata_mut().set(
             &definitions::primed_tnt::get_block_state(),
             MetadataValue::BlockState(block_state.state_id()),
         );

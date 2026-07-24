@@ -1,4 +1,4 @@
-use crate::entity::metadata::{AnimalMeta, EntityMeta, definitions};
+use crate::entity::metadata::{AnimalMeta, LivingEntityMeta, definitions};
 use spinel_network::types::entity_metadata::MetadataValue;
 use spinel_registry::EntityType;
 use std::ops::{Deref, DerefMut};
@@ -8,15 +8,17 @@ pub struct TurtleMeta<'entity> {
 }
 
 impl<'entity> TurtleMeta<'entity> {
-    pub(crate) fn from_entity_meta(entity_meta: EntityMeta<'entity>) -> Option<Self> {
-        (entity_meta.get_entity().get_entity_type() == EntityType::TURTLE).then(|| Self {
-            animal_meta: AnimalMeta::from_entity_meta(entity_meta),
+    pub(crate) fn from_living_entity_meta(
+        living_entity_meta: LivingEntityMeta<'entity>,
+    ) -> Option<Self> {
+        (living_entity_meta.get_entity_type() == EntityType::TURTLE).then(|| Self {
+            animal_meta: AnimalMeta::from_living_entity_meta(living_entity_meta),
         })
     }
 
     pub fn has_egg(&self) -> bool {
         match self
-            .get_entity()
+            .get_state()
             .get_metadata()
             .get_value(&definitions::turtle::has_egg())
         {
@@ -26,7 +28,7 @@ impl<'entity> TurtleMeta<'entity> {
     }
 
     pub fn set_has_egg(&mut self, has_egg: bool) {
-        self.get_entity_mut().get_metadata_mut().set(
+        self.get_entity_state_mut().get_metadata_mut().set(
             &definitions::turtle::has_egg(),
             MetadataValue::Boolean(has_egg),
         );
@@ -34,7 +36,7 @@ impl<'entity> TurtleMeta<'entity> {
 
     pub fn is_laying_egg(&self) -> bool {
         match self
-            .get_entity()
+            .get_state()
             .get_metadata()
             .get_value(&definitions::turtle::is_laying_egg())
         {
@@ -44,7 +46,7 @@ impl<'entity> TurtleMeta<'entity> {
     }
 
     pub fn set_laying_egg(&mut self, is_laying_egg: bool) {
-        self.get_entity_mut().get_metadata_mut().set(
+        self.get_entity_state_mut().get_metadata_mut().set(
             &definitions::turtle::is_laying_egg(),
             MetadataValue::Boolean(is_laying_egg),
         );

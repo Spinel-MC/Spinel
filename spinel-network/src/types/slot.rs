@@ -34,25 +34,13 @@ impl Slot {
         let Some(material) = Material::from_id(self.item_id) else {
             return ItemStack::air();
         };
-        let item_stack = ItemStack::of(material).with_amount(self.count);
-        let item_stack = self
-            .components
-            .custom_data()
-            .ok()
-            .flatten()
-            .map(|custom_data| {
-                item_stack.with(
-                    spinel_registry::data_components::vanilla_components::CUSTOM_DATA,
-                    custom_data,
-                )
-            })
-            .unwrap_or(item_stack);
         self.components
-            .custom_name()
+            .to_supported_data_component_map()
             .ok()
-            .flatten()
-            .map(|custom_name| item_stack.with_custom_name(custom_name))
-            .unwrap_or(item_stack)
+            .map(|components| {
+                ItemStack::from_component_patch(material.clone(), self.count, components)
+            })
+            .unwrap_or_else(|| ItemStack::of(material).with_amount(self.count))
     }
 }
 

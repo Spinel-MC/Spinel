@@ -1,4 +1,4 @@
-﻿impl World {
+impl World {
     pub fn spawn_projectile(
         &mut self,
         shooter_id: Option<EntityId>,
@@ -104,9 +104,15 @@
         };
         Some(ProjectileCollisionState {
             shooter_id: projectile.get_shooter(),
-            alive_ticks: projectile.ticks(),
             bounding_box: projectile.get_bounding_box(),
             is_on_ground: projectile.is_on_ground(),
+            alive_ticks: projectile.get_alive_ticks(),
+            velocity_per_tick: Vector3d {
+                x: projectile.get_velocity().0.x / 20.0,
+                y: projectile.get_velocity().0.y / 20.0,
+                z: projectile.get_velocity().0.z / 20.0,
+            },
+            has_left_shooter_collision_range: projectile.has_left_shooter_collision_range(),
         })
     }
 
@@ -125,80 +131,216 @@
                     ProjectileCollision::Stuck(position_before_tick)
                 });
         }
-        projectile_sample_positions(
+        let projectile_state = self
+            .update_projectile_left_shooter_collision_range(
+                projectile_id,
+                position_after_tick,
+                projectile_state,
+            );
+        self.projectile_collision_candidates(
+            projectile_id,
             position_before_tick,
             position_after_tick,
-            projectile_state.bounding_box.get_width(),
+            projectile_state,
         )
         .into_iter()
-        .find_map(|collision_position| {
-            self.projectile_collision_at(projectile_id, collision_position, projectile_state)
+        .find_map(|collision_candidate| {
+            self.apply_projectile_collision_candidate(
+                projectile_id,
+                collision_candidate,
+                projectile_state,
+            )
         })
         .unwrap_or(ProjectileCollision::Free)
     }
 
-    fn projectile_collision_at(
+    fn projectile_collision_candidates(
+        &self,
+        projectile_id: EntityId,
+        position_before_tick: EntityPosition,
+        position_after_tick: EntityPosition,
+        projectile_state: ProjectileCollisionState,
+    ) -> Vec<ProjectileCollisionCandidate> {
+        let movement = movement_between_positions(position_before_tick, position_after_tick);
+        let start = position_before_tick.as_vector();
+        let mut candidates = self.projectile_block_collision_candidates(start, movement);
+        candidates.extend(self.projectile_entity_collision_candidates(
+            projectile_id,
+            start,
+            movement,
+            projectile_state,
+        ));
+        candidates.sort_by(|first_candidate, second_candidate| {
+            first_candidate
+                .get_ratio()
+                .total_cmp(&second_candidate.get_ratio())
+        });
+        candidates
+    }
+
+    fn projectile_block_collision_candidates(
+        &self,
+        start: Vector3d,
+        movement: Vector3d,
+    ) -> Vec<ProjectileCollisionCandidate> {
+        scanned_block_positions(start, movement)
+            .into_iter()
+            .filter_map(|block_position| {
+                let block_state = self.loaded_block_state_at(block_position)?;
+                let block = block_state.block();
+                if block == Block::AIR {
+                    return None;
+                }
+                block_state
+                    .collision_shape()
+                    .iter()
+                    .filter_map(|shape_box| {
+                        block_shape_raycast_box(block_position, *shape_box)
+                            .ray_intersection(start, movement)
+                    })
+                    .min_by(|first_hit, second_hit| first_hit.ratio.total_cmp(&second_hit.ratio))
+                    .map(|hit| ProjectileCollisionCandidate::Block {
+                        ratio: hit.ratio,
+                        position: entity_position_at(hit.position),
+                        block,
+                    })
+            })
+            .collect()
+    }
+
+    fn projectile_entity_collision_candidates(
+        &self,
+        projectile_id: EntityId,
+        start: Vector3d,
+        movement: Vector3d,
+        projectile_state: ProjectileCollisionState,
+    ) -> Vec<ProjectileCollisionCandidate> {
+        let hit_margin = projectile_hit_margin(projectile_state.alive_ticks);
+        self.entities
+            .iter()
+            .filter(|target| target.get_entity_id() != projectile_id)
+            .filter(|target| projectile_can_hit_entity(projectile_state, target.get_entity_id()))
+            .filter(|target| entity_is_living(target))
+            .filter_map(|target| {
+                inflated_entity_raycast_box(target, hit_margin)
+                    .ray_intersection(start, movement)
+                    .map(|hit| ProjectileCollisionCandidate::Entity {
+                        ratio: hit.ratio,
+                        position: entity_position_at(hit.position),
+                        target_id: target.get_entity_id(),
+                    })
+            })
+            .collect()
+    }
+
+    fn apply_projectile_collision_candidate(
+        &mut self,
+        projectile_id: EntityId,
+        collision_candidate: ProjectileCollisionCandidate,
+        projectile_state: ProjectileCollisionState,
+    ) -> Option<ProjectileCollision> {
+        match collision_candidate {
+            ProjectileCollisionCandidate::Block {
+                position, block, ..
+            } => self.apply_projectile_block_collision_candidate(projectile_id, position, block),
+            ProjectileCollisionCandidate::Entity {
+                position,
+                target_id,
+                ..
+            } => self.apply_projectile_entity_collision_candidate(
+                projectile_id,
+                position,
+                target_id,
+                projectile_state,
+            ),
+        }
+    }
+
+    fn apply_projectile_block_collision_candidate(
         &mut self,
         projectile_id: EntityId,
         collision_position: EntityPosition,
+        block: Block,
+    ) -> Option<ProjectileCollision> {
+        let mut event = ProjectileCollideWithBlockEvent::new(projectile_id, collision_position, block);
+        self.dispatch_projectile_block_collision_event(&mut event);
+        if self
+            .entity_by_id(projectile_id)
+            .is_none_or(projectile_entity_is_removed)
+        {
+            return Some(ProjectileCollision::Stuck(collision_position));
+        }
+        (!event.is_cancelled()).then_some(ProjectileCollision::Stuck(collision_position))
+    }
+
+    fn apply_projectile_entity_collision_candidate(
+        &mut self,
+        projectile_id: EntityId,
+        collision_position: EntityPosition,
+        target_id: EntityId,
         projectile_state: ProjectileCollisionState,
     ) -> Option<ProjectileCollision> {
-        let block = self
-            .loaded_block_at(block_position_for_entity(collision_position))
-            .unwrap_or(Block::AIR);
-        if block.is_solid() {
-            let mut event =
-                ProjectileCollideWithBlockEvent::new(projectile_id, collision_position, block);
-            self.dispatch_projectile_block_collision_event(&mut event);
-            if self
-                .entity_by_id(projectile_id)
-                .is_none_or(projectile_entity_is_removed)
-            {
-                return Some(ProjectileCollision::Stuck(collision_position));
-            }
-            if !event.is_cancelled() {
-                return Some(ProjectileCollision::Stuck(collision_position));
-            }
-        }
-        let target_id =
-            self.projectile_collision_target(projectile_id, collision_position, projectile_state)?;
         let mut event =
             ProjectileCollideWithEntityEvent::new(projectile_id, collision_position, target_id);
         self.dispatch_projectile_entity_collision_event(&mut event);
-        (!event.is_cancelled() && projectile_state.is_on_ground)
-            .then_some(ProjectileCollision::Stuck(collision_position))
+        if self
+            .entity_by_id(projectile_id)
+            .is_none_or(projectile_entity_is_removed)
+        {
+            return Some(ProjectileCollision::Stuck(collision_position));
+        }
+        if event.is_cancelled() {
+            return None;
+        }
+        Some(if projectile_state.is_on_ground {
+            ProjectileCollision::Stuck(collision_position)
+        } else {
+            ProjectileCollision::Free
+        })
     }
 
-    fn projectile_collision_target(
-        &self,
+    fn update_projectile_left_shooter_collision_range(
+        &mut self,
         projectile_id: EntityId,
-        collision_position: EntityPosition,
+        projectile_position: EntityPosition,
+        mut projectile_state: ProjectileCollisionState,
+    ) -> ProjectileCollisionState {
+        if projectile_state.has_left_shooter_collision_range {
+            return projectile_state;
+        }
+        if projectile_state.shooter_id.is_none() {
+            projectile_state.has_left_shooter_collision_range = true;
+            return projectile_state;
+        }
+        if self.projectile_intersects_shooter_collision_range(projectile_position, projectile_state)
+        {
+            return projectile_state;
+        }
+        let Some(Entity::Projectile(projectile)) = self.entity_by_id_mut(projectile_id) else {
+            return projectile_state;
+        };
+        projectile.set_has_left_shooter_collision_range(true);
+        projectile_state.has_left_shooter_collision_range = true;
+        projectile_state
+    }
+
+    fn projectile_intersects_shooter_collision_range(
+        &self,
+        projectile_position: EntityPosition,
         projectile_state: ProjectileCollisionState,
-    ) -> Option<EntityId> {
-        self.entity_tracker
-            .chunk_entities(
-                ChunkPosition::from(collision_position),
-                EntityTrackerTarget::Entities,
-            )
-            .into_iter()
-            .filter(|target_id| *target_id != projectile_id)
-            .filter(|target_id| {
-                projectile_state.alive_ticks >= 3 || projectile_state.shooter_id != Some(*target_id)
-            })
-            .filter_map(|target_id| {
-                self.entity_by_id(target_id)
-                    .filter(|target| entity_is_living(target))
-                    .filter(|target| {
-                        entity_boxes_intersect_at(
-                            collision_position,
-                            projectile_state.bounding_box,
-                            target.get_position(),
-                            target.get_bounding_box(),
-                        )
-                    })
-                    .map(|_| target_id)
-            })
-            .next()
+    ) -> bool {
+        let Some(shooter_id) = projectile_state.shooter_id else {
+            return false;
+        };
+        let Some(shooter) = self.entity_by_id(shooter_id) else {
+            return false;
+        };
+        expanded_projectile_box_intersects_entity(
+            projectile_position,
+            projectile_state.bounding_box,
+            projectile_state.velocity_per_tick,
+            shooter,
+        )
     }
 
     fn stick_projectile(&mut self, projectile_id: EntityId, collision_position: EntityPosition) {
@@ -284,9 +426,11 @@
 #[derive(Clone, Copy)]
 struct ProjectileCollisionState {
     shooter_id: Option<EntityId>,
-    alive_ticks: u64,
     bounding_box: spinel_registry::EntityBoundingBox,
     is_on_ground: bool,
+    alive_ticks: u64,
+    velocity_per_tick: Vector3d,
+    has_left_shooter_collision_range: bool,
 }
 
 enum ProjectileCollision {
@@ -294,38 +438,121 @@ enum ProjectileCollision {
     Stuck(EntityPosition),
 }
 
-fn projectile_sample_positions(
+enum ProjectileCollisionCandidate {
+    Block {
+        ratio: f64,
+        position: EntityPosition,
+        block: Block,
+    },
+    Entity {
+        ratio: f64,
+        position: EntityPosition,
+        target_id: EntityId,
+    },
+}
+
+impl ProjectileCollisionCandidate {
+    const fn get_ratio(&self) -> f64 {
+        match self {
+            Self::Block { ratio, .. } | Self::Entity { ratio, .. } => *ratio,
+        }
+    }
+}
+
+fn movement_between_positions(
     position_before_tick: EntityPosition,
     position_after_tick: EntityPosition,
-    projectile_width: f64,
-) -> Vec<EntityPosition> {
-    let delta_x = position_after_tick.get_x() - position_before_tick.get_x();
-    let delta_y = position_after_tick.get_y() - position_before_tick.get_y();
-    let delta_z = position_after_tick.get_z() - position_before_tick.get_z();
-    let distance = delta_x
-        .mul_add(delta_x, delta_y.mul_add(delta_y, delta_z * delta_z))
-        .sqrt();
-    let sample_distance = projectile_width / 2.0;
-    let sample_count = (distance / sample_distance).ceil() as usize;
-    if sample_count == 0 {
-        return Vec::new();
+) -> Vector3d {
+    Vector3d {
+        x: position_after_tick.get_x() - position_before_tick.get_x(),
+        y: position_after_tick.get_y() - position_before_tick.get_y(),
+        z: position_after_tick.get_z() - position_before_tick.get_z(),
     }
-    let direction_x = delta_x / distance * sample_distance;
-    let direction_y = delta_y / distance * sample_distance;
-    let direction_z = delta_z / distance * sample_distance;
-    (0..sample_count)
-        .map(|sample_index| {
-            if sample_index == sample_count - 1 {
-                return position_after_tick;
-            }
-            let sample_multiplier = (sample_index + 1) as f64;
-            position_before_tick.get_offset(
-                direction_x * sample_multiplier,
-                direction_y * sample_multiplier,
-                direction_z * sample_multiplier,
-            )
+}
+
+fn scanned_block_positions(start: Vector3d, movement: Vector3d) -> Vec<BlockPosition> {
+    let end = Vector3d {
+        x: start.x + movement.x,
+        y: start.y + movement.y,
+        z: start.z + movement.z,
+    };
+    let minimum_x = start.x.min(end.x).floor() as i32 - 1;
+    let minimum_y = start.y.min(end.y).floor() as i32 - 1;
+    let minimum_z = start.z.min(end.z).floor() as i32 - 1;
+    let maximum_x = start.x.max(end.x).floor() as i32 + 1;
+    let maximum_y = start.y.max(end.y).floor() as i32 + 1;
+    let maximum_z = start.z.max(end.z).floor() as i32 + 1;
+    (minimum_x..=maximum_x)
+        .flat_map(|block_x| {
+            (minimum_y..=maximum_y).flat_map(move |block_y| {
+                (minimum_z..=maximum_z)
+                    .map(move |block_z| BlockPosition::new(block_x, block_y, block_z))
+            })
         })
         .collect()
+}
+
+fn block_shape_raycast_box(
+    block_position: BlockPosition,
+    shape_box: spinel_registry::BlockShapeBox,
+) -> RaycastBoundingBox {
+    RaycastBoundingBox::new(
+        Vector3d {
+            x: f64::from(block_position.x) + shape_box.min_x,
+            y: f64::from(block_position.y) + shape_box.min_y,
+            z: f64::from(block_position.z) + shape_box.min_z,
+        },
+        Vector3d {
+            x: f64::from(block_position.x) + shape_box.max_x,
+            y: f64::from(block_position.y) + shape_box.max_y,
+            z: f64::from(block_position.z) + shape_box.max_z,
+        },
+    )
+}
+
+fn inflated_entity_raycast_box(entity: &Entity, inflation: f64) -> RaycastBoundingBox {
+    RaycastBoundingBox::new(
+        inflated_box_start(
+            entity_box_start(entity.get_position(), entity.get_bounding_box()),
+            inflation,
+        ),
+        inflated_box_end(
+            entity_box_end(entity.get_position(), entity.get_bounding_box()),
+            inflation,
+        ),
+    )
+}
+
+fn inflated_box_start(box_start: Vector3d, inflation: f64) -> Vector3d {
+    Vector3d {
+        x: box_start.x - inflation,
+        y: box_start.y - inflation,
+        z: box_start.z - inflation,
+    }
+}
+
+fn inflated_box_end(box_end: Vector3d, inflation: f64) -> Vector3d {
+    Vector3d {
+        x: box_end.x + inflation,
+        y: box_end.y + inflation,
+        z: box_end.z + inflation,
+    }
+}
+
+fn projectile_hit_margin(alive_ticks: u64) -> f64 {
+    ((alive_ticks as f64 - 2.0) / 20.0).clamp(0.0, 0.3)
+}
+
+fn projectile_can_hit_entity(
+    projectile_state: ProjectileCollisionState,
+    target_id: EntityId,
+) -> bool {
+    projectile_state.shooter_id != Some(target_id)
+        || projectile_state.has_left_shooter_collision_range
+}
+
+fn entity_position_at(position: Vector3d) -> EntityPosition {
+    EntityPosition::new(position.x, position.y, position.z, 0.0, 0.0)
 }
 
 fn block_position_for_entity(position: EntityPosition) -> BlockPosition {
@@ -338,8 +565,8 @@ fn block_position_for_entity(position: EntityPosition) -> BlockPosition {
 
 fn entity_is_living(entity: &Entity) -> bool {
     match entity {
-        Entity::Creature(_) | Entity::Player(_) => true,
-        Entity::Generic(entity) => entity.get_entity_type().is_living(),
+        Entity::Creature(_) | Entity::Living(_) | Entity::Player(_) => true,
+        Entity::Generic(_) => false,
         Entity::ExperienceOrb(_) | Entity::Item(_) | Entity::Projectile(_) => false,
     }
 }
@@ -351,6 +578,7 @@ fn projectile_entity_is_removed(entity: &Entity) -> bool {
         | Entity::ExperienceOrb(_)
         | Entity::Generic(_)
         | Entity::Item(_)
+        | Entity::Living(_)
         | Entity::Player(_) => true,
     }
 }
@@ -364,18 +592,36 @@ fn entity_positions_share_point(
         && first_position.get_z() == second_position.get_z()
 }
 
-fn entity_boxes_intersect_at(
-    first_position: EntityPosition,
-    first_bounding_box: spinel_registry::EntityBoundingBox,
-    second_position: EntityPosition,
-    second_bounding_box: spinel_registry::EntityBoundingBox,
+fn expanded_projectile_box_intersects_entity(
+    projectile_position: EntityPosition,
+    projectile_bounding_box: spinel_registry::EntityBoundingBox,
+    projectile_velocity_per_tick: Vector3d,
+    entity: &Entity,
 ) -> bool {
+    let projectile_box_start = entity_box_start(projectile_position, projectile_bounding_box);
+    let projectile_box_end = entity_box_end(projectile_position, projectile_bounding_box);
     boxes_intersect(
-        entity_box_start(first_position, first_bounding_box),
-        entity_box_end(first_position, first_bounding_box),
-        entity_box_start(second_position, second_bounding_box),
-        entity_box_end(second_position, second_bounding_box),
+        expanded_box_start(projectile_box_start, projectile_velocity_per_tick, 1.0),
+        expanded_box_end(projectile_box_end, projectile_velocity_per_tick, 1.0),
+        entity_box_start(entity.get_position(), entity.get_bounding_box()),
+        entity_box_end(entity.get_position(), entity.get_bounding_box()),
     )
+}
+
+fn expanded_box_start(box_start: Vector3d, expansion: Vector3d, inflation: f64) -> Vector3d {
+    Vector3d {
+        x: box_start.x + expansion.x.min(0.0) - inflation,
+        y: box_start.y + expansion.y.min(0.0) - inflation,
+        z: box_start.z + expansion.z.min(0.0) - inflation,
+    }
+}
+
+fn expanded_box_end(box_end: Vector3d, expansion: Vector3d, inflation: f64) -> Vector3d {
+    Vector3d {
+        x: box_end.x + expansion.x.max(0.0) + inflation,
+        y: box_end.y + expansion.y.max(0.0) + inflation,
+        z: box_end.z + expansion.z.max(0.0) + inflation,
+    }
 }
 
 fn entity_box_start(

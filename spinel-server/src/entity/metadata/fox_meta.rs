@@ -1,4 +1,4 @@
-use crate::entity::metadata::{AnimalMeta, EntityMeta, FoxVariant, definitions};
+use crate::entity::metadata::{AnimalMeta, FoxVariant, LivingEntityMeta, definitions};
 use spinel_network::types::entity_metadata::MetadataValue;
 use spinel_registry::EntityType;
 use std::ops::{Deref, DerefMut};
@@ -9,15 +9,17 @@ pub struct FoxMeta<'entity> {
 }
 
 impl<'entity> FoxMeta<'entity> {
-    pub(crate) fn from_entity_meta(entity_meta: EntityMeta<'entity>) -> Option<Self> {
-        (entity_meta.get_entity().get_entity_type() == EntityType::FOX).then(|| Self {
-            animal_meta: AnimalMeta::from_entity_meta(entity_meta),
+    pub(crate) fn from_living_entity_meta(
+        living_entity_meta: LivingEntityMeta<'entity>,
+    ) -> Option<Self> {
+        (living_entity_meta.get_entity_type() == EntityType::FOX).then(|| Self {
+            animal_meta: AnimalMeta::from_living_entity_meta(living_entity_meta),
         })
     }
 
     pub fn get_variant(&self) -> FoxVariant {
         match self
-            .get_entity()
+            .get_state()
             .get_metadata()
             .get_value(&definitions::fox::get_variant())
         {
@@ -29,99 +31,99 @@ impl<'entity> FoxMeta<'entity> {
     }
 
     pub fn set_variant(&mut self, variant: FoxVariant) {
-        self.get_entity_mut().get_metadata_mut().set(
+        self.get_entity_state_mut().get_metadata_mut().set(
             &definitions::fox::get_variant(),
             MetadataValue::VarInt(variant.protocol_id()),
         );
     }
 
     pub fn is_sitting(&self) -> bool {
-        self.get_entity()
+        self.get_state()
             .get_metadata()
             .get_flag(&definitions::fox::is_sitting())
     }
 
     pub fn set_sitting(&mut self, is_sitting: bool) {
-        self.get_entity_mut()
+        self.get_entity_state_mut()
             .get_metadata_mut()
             .set_flag(&definitions::fox::is_sitting(), is_sitting);
     }
 
     pub fn is_fox_sneaking(&self) -> bool {
-        self.get_entity()
+        self.get_state()
             .get_metadata()
             .get_flag(&definitions::fox::is_crouching())
     }
 
     pub fn set_fox_sneaking(&mut self, is_fox_sneaking: bool) {
-        self.get_entity_mut()
+        self.get_entity_state_mut()
             .get_metadata_mut()
             .set_flag(&definitions::fox::is_crouching(), is_fox_sneaking);
     }
 
     pub fn is_interested(&self) -> bool {
-        self.get_entity()
+        self.get_state()
             .get_metadata()
             .get_flag(&definitions::fox::is_interested())
     }
 
     pub fn set_interested(&mut self, is_interested: bool) {
-        self.get_entity_mut()
+        self.get_entity_state_mut()
             .get_metadata_mut()
             .set_flag(&definitions::fox::is_interested(), is_interested);
     }
 
     pub fn is_pouncing(&self) -> bool {
-        self.get_entity()
+        self.get_state()
             .get_metadata()
             .get_flag(&definitions::fox::is_pouncing())
     }
 
     pub fn set_pouncing(&mut self, is_pouncing: bool) {
-        self.get_entity_mut()
+        self.get_entity_state_mut()
             .get_metadata_mut()
             .set_flag(&definitions::fox::is_pouncing(), is_pouncing);
     }
 
     pub fn is_sleeping(&self) -> bool {
-        self.get_entity()
+        self.get_state()
             .get_metadata()
             .get_flag(&definitions::fox::is_sleeping())
     }
 
     pub fn set_sleeping(&mut self, is_sleeping: bool) {
-        self.get_entity_mut()
+        self.get_entity_state_mut()
             .get_metadata_mut()
             .set_flag(&definitions::fox::is_sleeping(), is_sleeping);
     }
 
     pub fn is_faceplanted(&self) -> bool {
-        self.get_entity()
+        self.get_state()
             .get_metadata()
             .get_flag(&definitions::fox::is_faceplanted())
     }
 
     pub fn set_faceplanted(&mut self, is_faceplanted: bool) {
-        self.get_entity_mut()
+        self.get_entity_state_mut()
             .get_metadata_mut()
             .set_flag(&definitions::fox::is_faceplanted(), is_faceplanted);
     }
 
     pub fn is_defending(&self) -> bool {
-        self.get_entity()
+        self.get_state()
             .get_metadata()
             .get_flag(&definitions::fox::is_defending())
     }
 
     pub fn set_defending(&mut self, is_defending: bool) {
-        self.get_entity_mut()
+        self.get_entity_state_mut()
             .get_metadata_mut()
             .set_flag(&definitions::fox::is_defending(), is_defending);
     }
 
     pub fn get_first_uuid(&self) -> Option<Uuid> {
         match self
-            .get_entity()
+            .get_state()
             .get_metadata()
             .get_value(&definitions::fox::get_first_uuid())
         {
@@ -131,7 +133,7 @@ impl<'entity> FoxMeta<'entity> {
     }
 
     pub fn set_first_uuid(&mut self, first_uuid: Option<Uuid>) {
-        self.get_entity_mut().get_metadata_mut().set(
+        self.get_entity_state_mut().get_metadata_mut().set(
             &definitions::fox::get_first_uuid(),
             MetadataValue::OptionalLivingEntityReference(first_uuid),
         );
@@ -139,7 +141,7 @@ impl<'entity> FoxMeta<'entity> {
 
     pub fn get_second_uuid(&self) -> Option<Uuid> {
         match self
-            .get_entity()
+            .get_state()
             .get_metadata()
             .get_value(&definitions::fox::get_second_uuid())
         {
@@ -149,7 +151,7 @@ impl<'entity> FoxMeta<'entity> {
     }
 
     pub fn set_second_uuid(&mut self, second_uuid: Option<Uuid>) {
-        self.get_entity_mut().get_metadata_mut().set(
+        self.get_entity_state_mut().get_metadata_mut().set(
             &definitions::fox::get_second_uuid(),
             MetadataValue::OptionalLivingEntityReference(second_uuid),
         );

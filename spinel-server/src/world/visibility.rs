@@ -777,7 +777,7 @@ struct GenericEntityViewerSnapshot {
     spawn_packet: SpawnEntityPacket,
     velocity_packet: Option<EntityVelocityPacket>,
     metadata_packet: SetEntityDataPacket,
-    equipment_packet: SetEquipmentPacket,
+    equipment_packet: Option<SetEquipmentPacket>,
     head_look_packet: EntityHeadLookPacket,
     attributes_packet: Option<UpdateAttributesPacket>,
     effect_packets: Vec<EntityEffectPacket>,
@@ -795,13 +795,19 @@ impl GenericEntityViewerSnapshot {
             spawn_packet: entity.spawn_packet(),
             velocity_packet: entity.has_velocity().then(|| entity.get_velocity_packet()),
             metadata_packet: entity.get_metadata_packet(),
-            equipment_packet: entity.get_equipment_packet(),
+            equipment_packet: None,
             head_look_packet: entity.get_head_look_packet(),
-            attributes_packet: entity
-                .has_attributes()
-                .then(|| entity.update_attributes_packet()),
-            effect_packets: entity.get_effect_packets(),
+            attributes_packet: None,
+            effect_packets: Vec::new(),
         }
+    }
+
+    fn from_living_entity(entity: &crate::entity::LivingEntity) -> Self {
+        let mut snapshot = Self::from_entity(entity.get_entity());
+        snapshot.equipment_packet = Some(entity.get_equipment_packet());
+        snapshot.attributes_packet = entity.has_attributes().then(|| entity.update_attributes_packet());
+        snapshot.effect_packets = entity.get_effect_packets();
+        snapshot
     }
 
     fn from_experience_orb(experience_orb: &ExperienceOrb) -> Self {
@@ -841,7 +847,9 @@ impl GenericEntityViewerSnapshot {
             .into_iter()
             .try_for_each(|packet| packet.dispatch(client))?;
         self.head_look_packet.dispatch(client)?;
-        self.equipment_packet.dispatch(client)?;
+        if let Some(equipment_packet) = self.equipment_packet {
+            equipment_packet.dispatch(client)?;
+        }
         if let Some(attributes_packet) = self.attributes_packet {
             attributes_packet.dispatch(client)?;
         }
@@ -860,13 +868,16 @@ impl EntityViewerSnapshot {
     fn from_entity(entity: &Entity) -> Self {
         match entity {
             Entity::Creature(entity) => {
-                Self::Generic(GenericEntityViewerSnapshot::from_entity(entity))
+                Self::Generic(GenericEntityViewerSnapshot::from_living_entity(entity.get_entity()))
             }
             Entity::ExperienceOrb(entity) => {
                 Self::Generic(GenericEntityViewerSnapshot::from_experience_orb(entity))
             }
             Entity::Generic(entity) => {
                 Self::Generic(GenericEntityViewerSnapshot::from_entity(entity))
+            }
+            Entity::Living(entity) => {
+                Self::Generic(GenericEntityViewerSnapshot::from_living_entity(entity))
             }
             Entity::Item(entity) => {
                 Self::Generic(GenericEntityViewerSnapshot::from_item_entity(entity))

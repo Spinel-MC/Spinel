@@ -1,5 +1,5 @@
 use crate::entity::metadata::{
-    AbstractIllagerMeta, EntityMeta, SpellcasterIllagerSpell, definitions,
+    AbstractIllagerMeta, LivingEntityMeta, SpellcasterIllagerSpell, definitions,
 };
 use spinel_network::types::entity_metadata::MetadataValue;
 use std::ops::{Deref, DerefMut};
@@ -9,15 +9,15 @@ pub struct SpellcasterIllagerMeta<'entity> {
 }
 
 impl<'entity> SpellcasterIllagerMeta<'entity> {
-    pub(crate) fn from_entity_meta(entity_meta: EntityMeta<'entity>) -> Self {
+    pub(crate) fn from_living_entity_meta(living_entity_meta: LivingEntityMeta<'entity>) -> Self {
         Self {
-            abstract_illager_meta: AbstractIllagerMeta::from_entity_meta(entity_meta),
+            abstract_illager_meta: AbstractIllagerMeta::from_living_entity_meta(living_entity_meta),
         }
     }
 
     pub fn get_spell(&self) -> SpellcasterIllagerSpell {
         match self
-            .get_entity()
+            .get_state()
             .get_metadata()
             .get_value(&definitions::spellcaster_illager::get_spell())
         {
@@ -29,7 +29,7 @@ impl<'entity> SpellcasterIllagerMeta<'entity> {
     }
 
     pub fn set_spell(&mut self, spell: SpellcasterIllagerSpell) {
-        self.get_entity_mut().get_metadata_mut().set(
+        self.get_entity_state_mut().get_metadata_mut().set(
             &definitions::spellcaster_illager::get_spell(),
             MetadataValue::Byte(spell.get_protocol_id()),
         );

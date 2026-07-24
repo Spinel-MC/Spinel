@@ -1,5 +1,7 @@
 use crate::entity::metadata::definitions;
+use crate::entity::physics::EntityMovement;
 use crate::entity::{EntityId, EntityPosition, GenericEntity, ProjectileEntityMeta};
+use crate::world::{ChunkPosition, WorldSnapshot};
 use rand::Rng;
 use spinel_core::network::clientbound::play::spawn_entity::SpawnEntityPacket;
 use spinel_network::types::{Slot, entity_metadata::MetadataValue};
@@ -8,25 +10,35 @@ use spinel_registry::EntityType;
 use spinel_registry::ItemStack;
 use std::f64::consts::TAU;
 use std::ops::{Deref, DerefMut};
+use uuid::Uuid;
 
 const PROJECTILE_GRAVITY_AIM_COMPENSATION: f64 = 0.20000000298023224;
 const PROJECTILE_SPREAD_SCALE: f64 = 0.007499999832361937;
 const SERVER_TICKS_PER_SECOND: f64 = 20.0;
+const THROWABLE_PROJECTILE_INERTIA: f64 = 0.99;
+const THROWABLE_PROJECTILE_GRAVITY: f64 = 0.03;
+const THROWN_POTION_GRAVITY: f64 = 0.05;
 
 pub struct ProjectileEntity {
     entity: GenericEntity,
     shooter: Option<EntityId>,
     was_stuck: bool,
+    has_left_shooter_collision_range: bool,
 }
 
 impl ProjectileEntity {
     pub fn new(shooter: Option<EntityId>, entity_type: EntityType) -> Self {
-        let mut entity = GenericEntity::new(entity_type);
+        Self::with_uuid(shooter, entity_type, Uuid::new_v4())
+    }
+
+    pub fn with_uuid(shooter: Option<EntityId>, entity_type: EntityType, uuid: Uuid) -> Self {
+        let mut entity = GenericEntity::with_uuid(entity_type, uuid);
         entity.set_has_physics(false);
         let mut projectile = Self {
             entity,
             shooter: None,
             was_stuck: false,
+            has_left_shooter_collision_range: shooter.is_none(),
         };
         projectile.set_shooter(shooter);
         projectile
@@ -41,6 +53,7 @@ impl ProjectileEntity {
 
     pub fn set_shooter(&mut self, shooter: Option<EntityId>) {
         self.shooter = shooter;
+        self.has_left_shooter_collision_range = shooter.is_none();
         if self.get_entity_type() == EntityType::FIREWORK_ROCKET {
             self.set_firework_shooter_entity_id(shooter.map(EntityId::get_value));
         }
@@ -50,13 +63,24 @@ impl ProjectileEntity {
         self.was_stuck
     }
 
+    pub(crate) const fn has_left_shooter_collision_range(&self) -> bool {
+        self.has_left_shooter_collision_range
+    }
+
+    pub(crate) fn set_has_left_shooter_collision_range(
+        &mut self,
+        has_left_shooter_collision_range: bool,
+    ) {
+        self.has_left_shooter_collision_range = has_left_shooter_collision_range;
+    }
+
     pub(crate) fn set_was_stuck(&mut self, was_stuck: bool) {
         self.was_stuck = was_stuck;
     }
 
     pub fn spawn_packet(&self) -> SpawnEntityPacket {
         let mut packet = self.entity.spawn_packet();
-        if matches!(
+        let entity_type_uses_shooter_spawn_data = matches!(
             self.get_entity_type(),
             EntityType::ARROW
                 | EntityType::BREEZE_WIND_CHARGE
@@ -66,8 +90,13 @@ impl ProjectileEntity {
                 | EntityType::SPECTRAL_ARROW
                 | EntityType::WIND_CHARGE
                 | EntityType::WITHER_SKULL
-        ) {
+        );
+        let entity_type_uses_spawn_velocity =
+            entity_type_uses_shooter_spawn_data || self.uses_throwable_projectile_movement();
+        if entity_type_uses_shooter_spawn_data {
             packet.data = self.shooter.map_or(0, EntityId::get_value);
+        }
+        if entity_type_uses_spawn_velocity {
             packet.velocity = self.entity.get_protocol_velocity();
         }
         packet
@@ -261,6 +290,63 @@ impl ProjectileEntity {
                 .to_degrees() as f32,
             head_yaw,
         );
+    }
+
+    pub(crate) fn movement_tick(&mut self, world: &WorldSnapshot) -> Option<EntityMovement> {
+        if !self.uses_throwable_projectile_movement() {
+            return self.entity.movement_tick(world);
+        }
+        if self.get_vehicle().is_some() {
+            return None;
+        }
+        let velocity_per_tick = self.next_throwable_projectile_velocity_per_tick();
+        let position = self.get_position().get_offset(
+            velocity_per_tick.x,
+            velocity_per_tick.y,
+            velocity_per_tick.z,
+        );
+        if !world.is_chunk_loaded(ChunkPosition::from(position)) {
+            return None;
+        }
+        self.set_velocity(Velocity(Vector3d {
+            x: velocity_per_tick.x * SERVER_TICKS_PER_SECOND,
+            y: velocity_per_tick.y * SERVER_TICKS_PER_SECOND,
+            z: velocity_per_tick.z * SERVER_TICKS_PER_SECOND,
+        }));
+        self.set_position(position);
+        self.position_movement_before_tick()
+    }
+
+    fn uses_throwable_projectile_movement(&self) -> bool {
+        matches!(
+            self.get_entity_type(),
+            EntityType::EGG
+                | EntityType::ENDER_PEARL
+                | EntityType::LINGERING_POTION
+                | EntityType::SNOWBALL
+                | EntityType::SPLASH_POTION
+        )
+    }
+
+    fn next_throwable_projectile_velocity_per_tick(&self) -> Vector3d {
+        let current_velocity = self.get_velocity().0;
+        let gravity = match self.has_no_gravity() {
+            true => 0.0,
+            false => self.get_throwable_projectile_gravity(),
+        };
+        Vector3d {
+            x: current_velocity.x / SERVER_TICKS_PER_SECOND * THROWABLE_PROJECTILE_INERTIA,
+            y: (current_velocity.y / SERVER_TICKS_PER_SECOND - gravity)
+                * THROWABLE_PROJECTILE_INERTIA,
+            z: current_velocity.z / SERVER_TICKS_PER_SECOND * THROWABLE_PROJECTILE_INERTIA,
+        }
+    }
+
+    fn get_throwable_projectile_gravity(&self) -> f64 {
+        match self.get_entity_type() {
+            EntityType::LINGERING_POTION | EntityType::SPLASH_POTION => THROWN_POTION_GRAVITY,
+            _ => THROWABLE_PROJECTILE_GRAVITY,
+        }
     }
 }
 

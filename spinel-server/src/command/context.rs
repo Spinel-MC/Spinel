@@ -74,6 +74,13 @@ impl CommandContext {
         }
     }
 
+    pub fn integer(&self, argument_id: &str) -> Option<i32> {
+        match self.arguments.get(argument_id) {
+            Some(CommandArgumentValue::Integer(value)) => Some(*value),
+            _ => None,
+        }
+    }
+
     pub fn relative_vec3(&self, argument_id: &str) -> Option<RelativeVec3> {
         match self.arguments.get(argument_id) {
             Some(CommandArgumentValue::RelativeVec3(position)) => Some(*position),

@@ -1,6 +1,6 @@
 use crate::entity::generic_entity::EntityAerodynamics;
 use crate::entity::physics::simulate_movement;
-use crate::entity::{EntityPosition, GenericEntity, Player};
+use crate::entity::{Entity, EntityPosition, GenericEntity, Player};
 use crate::world::{Block, BlockPosition, ChunkPosition, World};
 use spinel_network::types::{Identifier, Vector3d, Velocity};
 use spinel_registry::EntityType;
@@ -49,6 +49,15 @@ fn generic_entity_movement_tick_collides_with_extracted_block_collision_shape() 
 
     assert_eq!(entity.get_position().get_y(), 64.0);
     assert!(entity.is_on_ground());
+
+    let physics_result = entity.get_last_physics_result().unwrap();
+    assert!(physics_result.is_on_ground());
+    assert!(physics_result.has_collision_y());
+    assert!(physics_result.has_collision());
+    assert_eq!(
+        physics_result.get_collision_shape_positions()[1],
+        Some(BlockPosition::new(1, 63, 1))
+    );
 }
 
 #[test]
@@ -262,6 +271,10 @@ fn player_movement_tick_updates_velocity_without_overriding_client_position() {
     );
     assert!((player.get_velocity().0.y - -1.568).abs() < 0.000001);
     assert_eq!(player.get_gravity_tick_count(), 1);
+
+    let physics_result = player.get_last_physics_result().unwrap();
+    assert_eq!(physics_result.get_original_delta().0.y, 0.0);
+    assert_eq!(physics_result.get_new_position(), player.get_position());
 }
 
 fn simulate_zombie_movement(
@@ -294,4 +307,21 @@ fn assert_position_close(actual: EntityPosition, expected: EntityPosition) {
     assert!((actual.get_x() - expected.get_x()).abs() < 0.01);
     assert!((actual.get_y() - expected.get_y()).abs() < 0.01);
     assert!((actual.get_z() - expected.get_z()).abs() < 0.01);
+}
+
+#[test]
+fn entity_dispatches_the_last_physics_result_for_a_generic_entity() {
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
+    world.load_chunk(ChunkPosition::new(0, 0)).unwrap();
+    let snapshot = world.update_snapshot();
+    let mut generic_entity = GenericEntity::new(EntityType::ZOMBIE);
+    generic_entity.set_position(EntityPosition::new(1.0, 64.0, 1.0, 0.0, 0.0));
+    generic_entity.movement_tick(&snapshot);
+
+    let entity = Entity::Generic(generic_entity);
+    assert!(entity.get_last_physics_result().is_some());
 }

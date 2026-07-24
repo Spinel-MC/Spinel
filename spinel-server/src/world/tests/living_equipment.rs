@@ -1,5 +1,5 @@
 use crate::entity::player::Player;
-use crate::entity::{Entity, EntityId, EntityPosition, EquipmentSlot, GenericEntity};
+use crate::entity::{Entity, EntityId, EntityPosition, EquipmentSlot, LivingEntity};
 use crate::events::entity_equip::EntityEquipEvent;
 use crate::network::client::instance::Client;
 use crate::server::MinecraftServer;
@@ -42,12 +42,12 @@ fn world_set_entity_equipment_applies_event_mutation_and_sends_equipment_then_at
     );
     viewer.set_client(&mut viewer_client);
     viewer.mark_entered_world();
-    let mut entity = GenericEntity::new(EntityType::ZOMBIE);
+    let mut entity = LivingEntity::new(EntityType::ZOMBIE);
     entity.set_position(EntityPosition::new(1.0, 64.0, 1.0, 0.0, 0.0));
     let entity_id = entity.get_entity_id();
     entity.get_view_mut().manual_add(viewer.get_entity_id());
     let world = server.world_manager.world_mut(world_uuid).unwrap();
-    world.add_entity(Entity::Generic(entity));
+    world.add_entity(Entity::Living(entity));
     world.add_entity(Entity::Player(viewer));
     let server_ptr = &mut server as *mut MinecraftServer as usize;
     let world = server.world_manager.world_mut(world_uuid).unwrap();
@@ -68,7 +68,7 @@ fn world_set_entity_equipment_applies_event_mutation_and_sends_equipment_then_at
         world
             .get_entity(entity_id)
             .and_then(|entity| match entity {
-                Entity::Generic(entity) => Some(entity),
+                Entity::Living(entity) => Some(entity),
                 _ => None,
             })
             .unwrap()

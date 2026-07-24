@@ -9,13 +9,13 @@ pub struct InteractionMeta<'entity> {
 
 impl<'entity> InteractionMeta<'entity> {
     pub(crate) fn from_entity_meta(entity_meta: EntityMeta<'entity>) -> Option<Self> {
-        (entity_meta.get_entity().get_entity_type() == EntityType::INTERACTION)
+        (entity_meta.get_state().get_entity_type() == EntityType::INTERACTION)
             .then_some(Self { entity_meta })
     }
 
     pub fn get_width(&self) -> f32 {
         match self
-            .get_entity()
+            .get_state()
             .get_metadata()
             .get_value(&definitions::interaction::get_width())
         {
@@ -25,7 +25,7 @@ impl<'entity> InteractionMeta<'entity> {
     }
 
     pub fn set_width(&mut self, width: f32) {
-        self.get_entity_mut().get_metadata_mut().set(
+        self.get_state_mut().get_metadata_mut().set(
             &definitions::interaction::get_width(),
             MetadataValue::Float(width),
         );
@@ -33,7 +33,7 @@ impl<'entity> InteractionMeta<'entity> {
 
     pub fn get_height(&self) -> f32 {
         match self
-            .get_entity()
+            .get_state()
             .get_metadata()
             .get_value(&definitions::interaction::get_height())
         {
@@ -43,7 +43,7 @@ impl<'entity> InteractionMeta<'entity> {
     }
 
     pub fn set_height(&mut self, height: f32) {
-        self.get_entity_mut().get_metadata_mut().set(
+        self.get_state_mut().get_metadata_mut().set(
             &definitions::interaction::get_height(),
             MetadataValue::Float(height),
         );
@@ -51,7 +51,7 @@ impl<'entity> InteractionMeta<'entity> {
 
     pub fn get_response(&self) -> bool {
         match self
-            .get_entity()
+            .get_state()
             .get_metadata()
             .get_value(&definitions::interaction::responsive())
         {
@@ -61,7 +61,7 @@ impl<'entity> InteractionMeta<'entity> {
     }
 
     pub fn set_response(&mut self, response: bool) {
-        self.get_entity_mut().get_metadata_mut().set(
+        self.get_state_mut().get_metadata_mut().set(
             &definitions::interaction::responsive(),
             MetadataValue::Boolean(response),
         );

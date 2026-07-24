@@ -1,4 +1,4 @@
-use crate::entity::metadata::{AbstractHorseMeta, EntityMeta};
+use crate::entity::metadata::{AbstractHorseMeta, LivingEntityMeta};
 use spinel_registry::EntityType;
 use std::ops::{Deref, DerefMut};
 
@@ -7,9 +7,11 @@ pub struct SkeletonHorseMeta<'entity> {
 }
 
 impl<'entity> SkeletonHorseMeta<'entity> {
-    pub(crate) fn from_entity_meta(entity_meta: EntityMeta<'entity>) -> Option<Self> {
-        (entity_meta.get_entity().get_entity_type() == EntityType::SKELETON_HORSE).then(|| Self {
-            abstract_horse_meta: AbstractHorseMeta::from_entity_meta(entity_meta),
+    pub(crate) fn from_living_entity_meta(
+        living_entity_meta: LivingEntityMeta<'entity>,
+    ) -> Option<Self> {
+        (living_entity_meta.get_entity_type() == EntityType::SKELETON_HORSE).then(|| Self {
+            abstract_horse_meta: AbstractHorseMeta::from_living_entity_meta(living_entity_meta),
         })
     }
 }

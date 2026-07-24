@@ -126,6 +126,12 @@ impl Player {
         self.gravity_tick_count
     }
 
+    pub const fn get_last_physics_result(
+        &self,
+    ) -> Option<crate::entity::physics::EntityPhysicsResult> {
+        self.previous_physics_result
+    }
+
     pub(crate) fn tick_gravity_counter(&mut self) {
         self.gravity_tick_count = if self.on_ground {
             0

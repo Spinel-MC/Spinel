@@ -1,4 +1,4 @@
-use crate::entity::metadata::{AmbientCreatureMeta, EntityMeta, definitions};
+use crate::entity::metadata::{AmbientCreatureMeta, LivingEntityMeta, definitions};
 use spinel_registry::EntityType;
 use std::ops::{Deref, DerefMut};
 
@@ -7,20 +7,22 @@ pub struct BatMeta<'entity> {
 }
 
 impl<'entity> BatMeta<'entity> {
-    pub(crate) fn from_entity_meta(entity_meta: EntityMeta<'entity>) -> Option<Self> {
-        (entity_meta.get_entity().get_entity_type() == EntityType::BAT).then(|| Self {
-            ambient_creature_meta: AmbientCreatureMeta::new(entity_meta),
+    pub(crate) fn from_living_entity_meta(
+        living_entity_meta: LivingEntityMeta<'entity>,
+    ) -> Option<Self> {
+        (living_entity_meta.get_entity_type() == EntityType::BAT).then(|| Self {
+            ambient_creature_meta: AmbientCreatureMeta::new(living_entity_meta),
         })
     }
 
     pub fn is_hanging(&self) -> bool {
-        self.get_entity()
+        self.get_state()
             .get_metadata()
             .get_flag(&definitions::bat::is_hanging())
     }
 
     pub fn set_hanging(&mut self, is_hanging: bool) {
-        self.get_entity_mut()
+        self.get_entity_state_mut()
             .get_metadata_mut()
             .set_flag(&definitions::bat::is_hanging(), is_hanging);
     }

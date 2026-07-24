@@ -14,6 +14,9 @@ pub enum ArgumentType {
 }
 
 impl ArgumentType {
+    pub fn integer(id: impl Into<String>) -> crate::command::ArgumentInteger {
+        crate::command::ArgumentInteger::new(id)
+    }
     pub fn only_players(self, only_players: bool) -> Self {
         match (self, only_players) {
             (Self::Entity(id) | Self::Entities(id), true) => Self::Players(id),

@@ -1,7 +1,8 @@
 use super::super::enchantment::{Enchantment, EnchantmentCost};
 use crate::data_components::vanilla_components::CUSTOM_NAME;
 use crate::{
-    DataComponentMap, EquipmentSlotGroup, Identifier, RegistryCodec, RegistryTagReference,
+    DataComponentMap, EquipmentSlotGroup, Identifier, Registries, RegistryCodec,
+    RegistryTagReference,
 };
 use spinel_nbt::{Nbt, NbtCompound};
 use spinel_utils::component::text::TextComponent;
@@ -29,7 +30,7 @@ fn enchantment_builder_preserves_reference_registry_payload_fields() {
             EquipmentSlotGroup::MainHand,
             EquipmentSlotGroup::OffHand,
         ])
-        .effects(effects.clone())
+        .set_effects(effects.clone())
         .build();
 
     assert_eq!(
@@ -133,7 +134,7 @@ fn enchantment_registry_nbt_matches_reference_field_names_and_defaults() {
 fn enchantment_registry_nbt_includes_effect_component_map_when_present() {
     let enchantment = Enchantment::builder()
         .supported_items(RegistryTagReference::empty())
-        .effects(DataComponentMap::new().with(CUSTOM_NAME, TextComponent::literal("effect")))
+        .set_effects(DataComponentMap::new().with(CUSTOM_NAME, TextComponent::literal("effect")))
         .build();
     let registry_nbt = enchantment.registry_nbt();
 
@@ -152,4 +153,19 @@ fn enchantment_raw_registry_nbt_preserves_generated_payload_escape_hatch() {
         Enchantment::raw(raw_payload.clone()).registry_nbt(),
         raw_payload
     );
+}
+
+#[test]
+fn vanilla_sharpness_registry_entry_decodes_typed_fields() {
+    let registries = Registries::new_vanilla();
+    let sharpness = registries
+        .get_enchantments()
+        .get(&Enchantment::SHARPNESS)
+        .unwrap();
+    assert_eq!(sharpness.get_weight(), 10);
+    assert_eq!(sharpness.get_max_level(), 5);
+    assert_eq!(sharpness.get_min_cost(), EnchantmentCost::new(1, 11));
+    assert_eq!(sharpness.get_max_cost(), EnchantmentCost::new(21, 11));
+    assert_eq!(sharpness.get_anvil_cost(), 1);
+    assert!(!sharpness.get_slots().is_empty());
 }

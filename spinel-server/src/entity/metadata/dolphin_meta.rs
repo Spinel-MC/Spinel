@@ -1,4 +1,4 @@
-use crate::entity::metadata::{AgeableWaterAnimalMeta, EntityMeta, definitions};
+use crate::entity::metadata::{AgeableWaterAnimalMeta, LivingEntityMeta, definitions};
 use spinel_network::types::Position;
 use spinel_network::types::entity_metadata::MetadataValue;
 use spinel_registry::EntityType;
@@ -9,15 +9,17 @@ pub struct DolphinMeta<'entity> {
 }
 
 impl<'entity> DolphinMeta<'entity> {
-    pub(crate) fn from_entity_meta(entity_meta: EntityMeta<'entity>) -> Option<Self> {
-        (entity_meta.get_entity().get_entity_type() == EntityType::DOLPHIN).then(|| Self {
-            ageable_water_animal_meta: AgeableWaterAnimalMeta::new(entity_meta),
+    pub(crate) fn from_living_entity_meta(
+        living_entity_meta: LivingEntityMeta<'entity>,
+    ) -> Option<Self> {
+        (living_entity_meta.get_entity_type() == EntityType::DOLPHIN).then(|| Self {
+            ageable_water_animal_meta: AgeableWaterAnimalMeta::new(living_entity_meta),
         })
     }
 
     pub fn get_treasure_position(&self) -> Position {
         match self
-            .get_entity()
+            .get_state()
             .get_metadata()
             .get_value(&definitions::dolphin::get_treasure_position())
         {
@@ -27,7 +29,7 @@ impl<'entity> DolphinMeta<'entity> {
     }
 
     pub fn set_treasure_position(&mut self, treasure_position: Position) {
-        self.get_entity_mut().get_metadata_mut().set(
+        self.get_entity_state_mut().get_metadata_mut().set(
             &definitions::dolphin::get_treasure_position(),
             MetadataValue::Position(treasure_position),
         );
@@ -35,7 +37,7 @@ impl<'entity> DolphinMeta<'entity> {
 
     pub fn has_fish(&self) -> bool {
         match self
-            .get_entity()
+            .get_state()
             .get_metadata()
             .get_value(&definitions::dolphin::has_fish())
         {
@@ -45,7 +47,7 @@ impl<'entity> DolphinMeta<'entity> {
     }
 
     pub fn set_has_fish(&mut self, has_fish: bool) {
-        self.get_entity_mut().get_metadata_mut().set(
+        self.get_entity_state_mut().get_metadata_mut().set(
             &definitions::dolphin::has_fish(),
             MetadataValue::Boolean(has_fish),
         );
@@ -53,7 +55,7 @@ impl<'entity> DolphinMeta<'entity> {
 
     pub fn get_moisture_level(&self) -> i32 {
         match self
-            .get_entity()
+            .get_state()
             .get_metadata()
             .get_value(&definitions::dolphin::get_moisture_level())
         {
@@ -63,7 +65,7 @@ impl<'entity> DolphinMeta<'entity> {
     }
 
     pub fn set_moisture_level(&mut self, moisture_level: i32) {
-        self.get_entity_mut().get_metadata_mut().set(
+        self.get_entity_state_mut().get_metadata_mut().set(
             &definitions::dolphin::get_moisture_level(),
             MetadataValue::VarInt(moisture_level),
         );

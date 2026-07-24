@@ -10,6 +10,7 @@ use spinel_registry::{EntityType, ItemStack};
 use std::ops::{Deref, DerefMut};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, Instant};
+use uuid::Uuid;
 
 const NO_MERGE_DELAY: u64 = u64::MAX;
 const SERVER_TICK_MILLIS: u64 = 50;
@@ -29,8 +30,12 @@ pub struct ItemEntity {
 
 impl ItemEntity {
     pub fn new(item_stack: ItemStack) -> Self {
+        Self::with_uuid(item_stack, Uuid::new_v4())
+    }
+
+    pub fn with_uuid(item_stack: ItemStack, uuid: Uuid) -> Self {
         let mut item_entity = Self {
-            entity: GenericEntity::new(EntityType::ITEM),
+            entity: GenericEntity::with_uuid(EntityType::ITEM, uuid),
             item_stack: ItemStack::air(),
             is_pickable: true,
             is_mergeable: true,

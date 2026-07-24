@@ -13,7 +13,7 @@ impl<'entity> HangingMeta<'entity> {
 
     pub fn get_direction(&self) -> i32 {
         match self
-            .get_entity()
+            .get_entity_state()
             .get_metadata()
             .get_value(&definitions::hanging::get_direction())
         {
@@ -23,7 +23,7 @@ impl<'entity> HangingMeta<'entity> {
     }
 
     pub fn set_direction(&mut self, direction: i32) {
-        self.get_entity_mut().get_metadata_mut().set(
+        self.get_entity_state_mut().get_metadata_mut().set(
             &definitions::hanging::get_direction(),
             MetadataValue::Direction(direction),
         );

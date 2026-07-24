@@ -1,4 +1,4 @@
-use crate::entity::metadata::{EntityMeta, RaiderMeta};
+use crate::entity::metadata::{LivingEntityMeta, RaiderMeta};
 use std::ops::{Deref, DerefMut};
 
 pub struct AbstractIllagerMeta<'entity> {
@@ -6,9 +6,9 @@ pub struct AbstractIllagerMeta<'entity> {
 }
 
 impl<'entity> AbstractIllagerMeta<'entity> {
-    pub(crate) fn from_entity_meta(entity_meta: EntityMeta<'entity>) -> Self {
+    pub(crate) fn from_living_entity_meta(living_entity_meta: LivingEntityMeta<'entity>) -> Self {
         Self {
-            raider_meta: RaiderMeta::from_entity_meta(entity_meta),
+            raider_meta: RaiderMeta::from_living_entity_meta(living_entity_meta),
         }
     }
 }

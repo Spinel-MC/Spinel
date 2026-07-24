@@ -1,5 +1,5 @@
 use crate::entity::dynamic_variant::UnregisteredEntityVariantError;
-use crate::entity::metadata::{EntityMeta, TameableAnimalMeta, definitions};
+use crate::entity::metadata::{LivingEntityMeta, TameableAnimalMeta, definitions};
 use spinel_network::types::entity_metadata::MetadataValue;
 use spinel_registry::Registries;
 use spinel_registry::{EntityType, RegistryKey, wolf_sound_variant, wolf_variant};
@@ -11,9 +11,11 @@ pub struct WolfMeta<'entity> {
 }
 
 impl<'entity> WolfMeta<'entity> {
-    pub(crate) fn from_entity_meta(entity_meta: EntityMeta<'entity>) -> Option<Self> {
-        (entity_meta.get_entity().get_entity_type() == EntityType::WOLF).then(|| Self {
-            tameable_animal_meta: TameableAnimalMeta::from_entity_meta(entity_meta),
+    pub(crate) fn from_living_entity_meta(
+        living_entity_meta: LivingEntityMeta<'entity>,
+    ) -> Option<Self> {
+        (living_entity_meta.get_entity_type() == EntityType::WOLF).then(|| Self {
+            tameable_animal_meta: TameableAnimalMeta::from_living_entity_meta(living_entity_meta),
         })
     }
 
@@ -21,7 +23,8 @@ impl<'entity> WolfMeta<'entity> {
         &self,
         registries: &Registries,
     ) -> Option<RegistryKey<wolf_variant::WolfVariant>> {
-        self.get_entity().get_wolf_variant_metadata(registries)
+        self.get_living_entity()
+            .get_wolf_variant_metadata(registries)
     }
 
     pub fn set_variant(
@@ -29,7 +32,7 @@ impl<'entity> WolfMeta<'entity> {
         registries: &Registries,
         variant: RegistryKey<wolf_variant::WolfVariant>,
     ) -> Result<(), UnregisteredEntityVariantError> {
-        self.get_entity_mut()
+        self.get_living_entity_mut()
             .set_wolf_variant_metadata(registries, variant)
     }
 
@@ -37,7 +40,7 @@ impl<'entity> WolfMeta<'entity> {
         &self,
         registries: &Registries,
     ) -> Option<RegistryKey<wolf_sound_variant::WolfSoundVariant>> {
-        self.get_entity()
+        self.get_living_entity()
             .get_wolf_sound_variant_metadata(registries)
     }
 
@@ -46,13 +49,13 @@ impl<'entity> WolfMeta<'entity> {
         registries: &Registries,
         sound_variant: RegistryKey<wolf_sound_variant::WolfSoundVariant>,
     ) -> Result<(), UnregisteredEntityVariantError> {
-        self.get_entity_mut()
+        self.get_living_entity_mut()
             .set_wolf_sound_variant_metadata(registries, sound_variant)
     }
 
     pub fn is_begging(&self) -> bool {
         match self
-            .get_entity()
+            .get_entity_state()
             .get_metadata()
             .get_value(&definitions::wolf::is_begging())
         {
@@ -62,7 +65,7 @@ impl<'entity> WolfMeta<'entity> {
     }
 
     pub fn set_begging(&mut self, is_begging: bool) {
-        self.get_entity_mut().get_metadata_mut().set(
+        self.get_living_entity_mut().get_metadata_mut().set(
             &definitions::wolf::is_begging(),
             MetadataValue::Boolean(is_begging),
         );
@@ -70,7 +73,7 @@ impl<'entity> WolfMeta<'entity> {
 
     pub fn get_collar_color(&self) -> DyeColor {
         match self
-            .get_entity()
+            .get_entity_state()
             .get_metadata()
             .get_value(&definitions::wolf::get_collar_color())
         {
@@ -87,7 +90,7 @@ impl<'entity> WolfMeta<'entity> {
             .iter()
             .position(|candidate| candidate == &collar_color)
             .unwrap_or(14) as i32;
-        self.get_entity_mut().get_metadata_mut().set(
+        self.get_living_entity_mut().get_metadata_mut().set(
             &definitions::wolf::get_collar_color(),
             MetadataValue::VarInt(color_id),
         );
@@ -95,7 +98,7 @@ impl<'entity> WolfMeta<'entity> {
 
     pub fn get_anger_time(&self) -> i64 {
         match self
-            .get_entity()
+            .get_entity_state()
             .get_metadata()
             .get_value(&definitions::wolf::get_anger_time())
         {
@@ -105,7 +108,7 @@ impl<'entity> WolfMeta<'entity> {
     }
 
     pub fn set_anger_time(&mut self, anger_time: i64) {
-        self.get_entity_mut().get_metadata_mut().set(
+        self.get_living_entity_mut().get_metadata_mut().set(
             &definitions::wolf::get_anger_time(),
             MetadataValue::Long(anger_time),
         );

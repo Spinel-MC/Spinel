@@ -1,11 +1,13 @@
 use crate::entity::EntityPosition;
 use crate::entity::EntityView;
 use crate::entity::ExperienceOrb;
+use crate::entity::LivingEntity;
 use crate::entity::TimedPotionEffect;
 use crate::entity::entity_creature::EntityCreature;
 use crate::entity::generic_entity::GenericEntity;
 use crate::entity::identity::{EntityId, EntityPointers};
 use crate::entity::item::ItemEntity;
+use crate::entity::physics::EntityPhysicsResult;
 use crate::entity::player::Player;
 use crate::entity::projectile::ProjectileEntity;
 use crate::permission::{PermissionHandler, PermissionSet};
@@ -28,6 +30,7 @@ pub enum Entity {
     ExperienceOrb(ExperienceOrb),
     Generic(GenericEntity),
     Item(ItemEntity),
+    Living(LivingEntity),
     Player(Player),
     Projectile(ProjectileEntity),
 }
@@ -39,6 +42,7 @@ pub struct EntityAcquirable {
 
 pub enum EntityScheduleContext<'entity> {
     Generic(&'entity mut GenericEntity),
+    Living(&'entity mut LivingEntity),
     Player(&'entity mut Player),
 }
 
@@ -77,6 +81,7 @@ impl EntityScheduleContext<'_> {
     pub fn get_entity_id(&self) -> EntityId {
         match self {
             Self::Generic(entity) => entity.get_entity_id(),
+            Self::Living(entity) => entity.get_entity_id(),
             Self::Player(player) => player.get_entity_id(),
         }
     }
@@ -127,6 +132,7 @@ impl Entity {
             Self::Creature(entity) => entity.get_pointers(),
             Self::ExperienceOrb(entity) => entity.get_pointers(),
             Self::Generic(entity) => entity.get_pointers(),
+            Self::Living(entity) => entity.get_pointers(),
             Self::Item(entity) => entity.get_pointers(),
             Self::Player(player) => player.get_pointers(),
             Self::Projectile(entity) => entity.get_pointers(),
@@ -140,9 +146,7 @@ impl Entity {
     pub fn get_living_acquirable(&self) -> Option<EntityAcquirable> {
         match self {
             Self::Creature(_) => Some(self.get_acquirable()),
-            Self::Generic(entity) if entity.get_entity_type().is_living() => {
-                Some(self.get_acquirable())
-            }
+            Self::Living(_) => Some(self.get_acquirable()),
             Self::Player(_) => Some(self.get_acquirable()),
             _ => None,
         }
@@ -155,12 +159,16 @@ impl Entity {
             Self::Creature(entity) => {
                 EntityScheduler::Generic(entity.get_entity_mut().get_scheduler())
             }
+            Self::Living(entity) => EntityScheduler::Generic(entity.get_scheduler()),
             Self::ExperienceOrb(entity) => EntityScheduler::Generic(entity.get_scheduler()),
             Self::Item(entity) => EntityScheduler::Generic(entity.get_scheduler()),
             Self::Projectile(entity) => EntityScheduler::Generic(entity.get_scheduler()),
         }
     }
     pub fn new(entity_type: EntityType) -> Self {
+        if entity_type.is_living() {
+            return Self::Living(LivingEntity::new(entity_type));
+        }
         Self::Generic(GenericEntity::new(entity_type))
     }
 
@@ -169,6 +177,7 @@ impl Entity {
             Self::Creature(entity) => entity.get_entity_id(),
             Self::ExperienceOrb(entity) => entity.get_entity_id(),
             Self::Generic(entity) => entity.get_entity_id(),
+            Self::Living(entity) => entity.get_entity_id(),
             Self::Item(entity) => entity.get_entity_id(),
             Self::Player(player) => player.get_entity_id(),
             Self::Projectile(entity) => entity.get_entity_id(),
@@ -180,6 +189,7 @@ impl Entity {
             Self::Creature(entity) => entity.get_uuid(),
             Self::ExperienceOrb(entity) => entity.get_uuid(),
             Self::Generic(entity) => entity.get_uuid(),
+            Self::Living(entity) => entity.get_uuid(),
             Self::Item(entity) => entity.get_uuid(),
             Self::Player(player) => player.uuid,
             Self::Projectile(entity) => entity.get_uuid(),
@@ -191,6 +201,7 @@ impl Entity {
             Self::Creature(entity) => entity.get_entity_type(),
             Self::ExperienceOrb(entity) => entity.get_entity_type(),
             Self::Generic(entity) => entity.get_entity_type(),
+            Self::Living(entity) => entity.get_entity_type(),
             Self::Item(entity) => entity.get_entity_type(),
             Self::Player(player) => player.get_entity_type(),
             Self::Projectile(entity) => entity.get_entity_type(),
@@ -202,6 +213,7 @@ impl Entity {
             Self::Creature(entity) => entity.switch_entity_type(entity_type),
             Self::ExperienceOrb(entity) => entity.switch_entity_type(entity_type),
             Self::Generic(entity) => entity.switch_entity_type(entity_type),
+            Self::Living(entity) => entity.switch_entity_type(entity_type),
             Self::Item(entity) => entity.switch_entity_type(entity_type),
             Self::Player(player) => player.switch_entity_type(entity_type),
             Self::Projectile(entity) => entity.switch_entity_type(entity_type),
@@ -218,6 +230,7 @@ impl Entity {
             Self::Creature(entity) => entity.get_bounding_box(),
             Self::ExperienceOrb(entity) => entity.get_bounding_box(),
             Self::Generic(entity) => entity.get_bounding_box(),
+            Self::Living(entity) => entity.get_bounding_box(),
             Self::Item(entity) => entity.get_bounding_box(),
             Self::Player(player) => player.get_bounding_box(),
             Self::Projectile(entity) => entity.get_bounding_box(),
@@ -229,6 +242,7 @@ impl Entity {
             Self::Creature(entity) => entity.get_world(),
             Self::ExperienceOrb(entity) => entity.get_world(),
             Self::Generic(entity) => entity.get_world(),
+            Self::Living(entity) => entity.get_world(),
             Self::Item(entity) => entity.get_world(),
             Self::Player(player) => player.get_current_world(),
             Self::Projectile(entity) => entity.get_world(),
@@ -240,6 +254,7 @@ impl Entity {
             Self::Creature(entity) => entity.get_position(),
             Self::ExperienceOrb(entity) => entity.get_position(),
             Self::Generic(entity) => entity.get_position(),
+            Self::Living(entity) => entity.get_position(),
             Self::Item(entity) => entity.get_position(),
             Self::Player(player) => player.get_position(),
             Self::Projectile(entity) => entity.get_position(),
@@ -251,17 +266,19 @@ impl Entity {
             Self::Creature(entity) => entity.is_removed(),
             Self::ExperienceOrb(entity) => entity.is_removed(),
             Self::Generic(entity) => entity.is_removed(),
+            Self::Living(entity) => entity.is_removed(),
             Self::Item(entity) => entity.is_removed(),
             Self::Player(_) => false,
             Self::Projectile(entity) => entity.is_removed(),
         }
     }
 
-    pub(crate) fn set_position(&mut self, position: EntityPosition) {
+    pub fn set_position(&mut self, position: EntityPosition) {
         match self {
             Self::Creature(entity) => entity.set_position(position),
             Self::ExperienceOrb(entity) => entity.set_position(position),
             Self::Generic(entity) => entity.set_position(position),
+            Self::Living(entity) => entity.set_position(position),
             Self::Item(entity) => entity.set_position(position),
             Self::Player(player) => player.set_position(position),
             Self::Projectile(entity) => entity.set_position(position),
@@ -280,11 +297,9 @@ impl Entity {
     pub fn get_last_damage_source(&self) -> Option<&crate::entity::Damage> {
         match self {
             Self::Creature(entity) => entity.get_last_damage(),
-            Self::ExperienceOrb(entity) => entity.get_last_damage(),
-            Self::Generic(entity) => entity.get_last_damage(),
-            Self::Item(entity) => entity.get_last_damage(),
+            Self::Living(entity) => entity.get_last_damage(),
             Self::Player(player) => player.get_last_damage(),
-            Self::Projectile(entity) => entity.get_last_damage(),
+            _ => None,
         }
     }
 
@@ -293,17 +308,31 @@ impl Entity {
             Self::Creature(entity) => entity.get_velocity(),
             Self::ExperienceOrb(entity) => entity.get_velocity(),
             Self::Generic(entity) => entity.get_velocity(),
+            Self::Living(entity) => entity.get_velocity(),
             Self::Item(entity) => entity.get_velocity(),
             Self::Player(player) => player.get_velocity(),
             Self::Projectile(entity) => entity.get_velocity(),
         }
     }
 
-    pub(crate) fn set_velocity(&mut self, velocity: Velocity) {
+    pub fn get_last_physics_result(&self) -> Option<EntityPhysicsResult> {
+        match self {
+            Self::Creature(entity) => entity.get_last_physics_result(),
+            Self::ExperienceOrb(entity) => entity.get_last_physics_result(),
+            Self::Generic(entity) => entity.get_last_physics_result(),
+            Self::Item(entity) => entity.get_last_physics_result(),
+            Self::Living(entity) => entity.get_last_physics_result(),
+            Self::Player(player) => player.get_last_physics_result(),
+            Self::Projectile(entity) => entity.get_last_physics_result(),
+        }
+    }
+
+    pub fn set_velocity(&mut self, velocity: Velocity) {
         match self {
             Self::Creature(entity) => entity.set_velocity(velocity),
             Self::ExperienceOrb(entity) => entity.set_velocity(velocity),
             Self::Generic(entity) => entity.set_velocity(velocity),
+            Self::Living(entity) => entity.set_velocity(velocity),
             Self::Item(entity) => entity.set_velocity(velocity),
             Self::Player(player) => player.set_velocity(velocity),
             Self::Projectile(entity) => entity.set_velocity(velocity),
@@ -315,6 +344,7 @@ impl Entity {
             Self::Creature(entity) => entity.assign_world(world),
             Self::ExperienceOrb(entity) => entity.assign_world(world),
             Self::Generic(entity) => entity.assign_world(world),
+            Self::Living(entity) => entity.assign_world(world),
             Self::Item(entity) => entity.assign_world(world),
             Self::Player(player) => player.assign_world(world),
             Self::Projectile(entity) => entity.assign_world(world),
@@ -324,11 +354,9 @@ impl Entity {
     pub fn add_effect(&mut self, effect: TimedPotionEffect) -> EntityEffectPacket {
         match self {
             Self::Creature(entity) => entity.add_effect(effect),
-            Self::ExperienceOrb(entity) => entity.add_effect(effect),
-            Self::Generic(entity) => entity.add_effect(effect),
-            Self::Item(entity) => entity.add_effect(effect),
+            Self::Living(entity) => entity.add_effect(effect),
             Self::Player(player) => player.add_effect(effect),
-            Self::Projectile(entity) => entity.add_effect(effect),
+            _ => effect.get_packet(self.get_entity_id()),
         }
     }
 
@@ -338,11 +366,9 @@ impl Entity {
     ) -> Option<RemoveEntityEffectPacket> {
         match self {
             Self::Creature(entity) => entity.remove_effect(effect_key),
-            Self::ExperienceOrb(entity) => entity.remove_effect(effect_key),
-            Self::Generic(entity) => entity.remove_effect(effect_key),
-            Self::Item(entity) => entity.remove_effect(effect_key),
+            Self::Living(entity) => entity.remove_effect(effect_key),
             Self::Player(player) => player.remove_effect(effect_key),
-            Self::Projectile(entity) => entity.remove_effect(effect_key),
+            _ => None,
         }
     }
 
@@ -358,32 +384,26 @@ impl Entity {
     pub fn clear_effects(&mut self) -> Vec<RemoveEntityEffectPacket> {
         match self {
             Self::Creature(entity) => entity.clear_effects(),
-            Self::ExperienceOrb(entity) => entity.clear_effects(),
-            Self::Generic(entity) => entity.clear_effects(),
-            Self::Item(entity) => entity.clear_effects(),
+            Self::Living(entity) => entity.clear_effects(),
             Self::Player(player) => player.clear_effects(),
-            Self::Projectile(entity) => entity.clear_effects(),
+            _ => Vec::new(),
         }
     }
     pub fn get_effect(&self, effect_key: &RegistryKey<MobEffect>) -> Option<&TimedPotionEffect> {
         match self {
             Self::Creature(entity) => entity.get_effect(effect_key),
-            Self::ExperienceOrb(entity) => entity.get_effect(effect_key),
-            Self::Generic(entity) => entity.get_effect(effect_key),
-            Self::Item(entity) => entity.get_effect(effect_key),
+            Self::Living(entity) => entity.get_effect(effect_key),
             Self::Player(player) => player.get_effect(effect_key),
-            Self::Projectile(entity) => entity.get_effect(effect_key),
+            _ => None,
         }
     }
 
     pub fn get_active_effects(&self) -> Vec<&TimedPotionEffect> {
         match self {
             Self::Creature(entity) => entity.get_active_effects(),
-            Self::ExperienceOrb(entity) => entity.get_active_effects(),
-            Self::Generic(entity) => entity.get_active_effects(),
-            Self::Item(entity) => entity.get_active_effects(),
+            Self::Living(entity) => entity.get_active_effects(),
             Self::Player(player) => player.get_active_effects(),
-            Self::Projectile(entity) => entity.get_active_effects(),
+            _ => Vec::new(),
         }
     }
 
@@ -392,6 +412,7 @@ impl Entity {
             Self::Creature(entity) => entity.get_view(),
             Self::ExperienceOrb(entity) => entity.get_view(),
             Self::Generic(entity) => entity.get_view(),
+            Self::Living(entity) => entity.get_view(),
             Self::Item(entity) => entity.get_view(),
             Self::Player(player) => player.get_view(),
             Self::Projectile(entity) => entity.get_view(),
@@ -403,6 +424,7 @@ impl Entity {
             Self::Creature(entity) => entity.get_view_mut(),
             Self::ExperienceOrb(entity) => entity.get_view_mut(),
             Self::Generic(entity) => entity.get_view_mut(),
+            Self::Living(entity) => entity.get_view_mut(),
             Self::Item(entity) => entity.get_view_mut(),
             Self::Player(player) => player.get_view_mut(),
             Self::Projectile(entity) => entity.get_view_mut(),
@@ -418,6 +440,7 @@ impl Entity {
             Self::Creature(entity) => entity.get_vehicle(),
             Self::ExperienceOrb(entity) => entity.get_vehicle(),
             Self::Generic(entity) => entity.get_vehicle(),
+            Self::Living(entity) => entity.get_vehicle(),
             Self::Item(entity) => entity.get_vehicle(),
             Self::Player(player) => player.get_vehicle(),
             Self::Projectile(entity) => entity.get_vehicle(),
@@ -429,6 +452,7 @@ impl Entity {
             Self::Creature(entity) => entity.has_passenger(),
             Self::ExperienceOrb(entity) => entity.has_passenger(),
             Self::Generic(entity) => entity.has_passenger(),
+            Self::Living(entity) => entity.has_passenger(),
             Self::Item(entity) => entity.has_passenger(),
             Self::Player(player) => player.has_passenger(),
             Self::Projectile(entity) => entity.has_passenger(),
@@ -440,6 +464,7 @@ impl Entity {
             Self::Creature(entity) => entity.get_passengers(),
             Self::ExperienceOrb(entity) => entity.get_passengers(),
             Self::Generic(entity) => entity.get_passengers(),
+            Self::Living(entity) => entity.get_passengers(),
             Self::Item(entity) => entity.get_passengers(),
             Self::Player(player) => player.get_passengers(),
             Self::Projectile(entity) => entity.get_passengers(),
@@ -451,6 +476,7 @@ impl Entity {
             Self::Creature(entity) => entity.set_vehicle(vehicle_id),
             Self::ExperienceOrb(entity) => entity.set_vehicle(vehicle_id),
             Self::Generic(entity) => entity.set_vehicle(vehicle_id),
+            Self::Living(entity) => entity.set_vehicle(vehicle_id),
             Self::Item(entity) => entity.set_vehicle(vehicle_id),
             Self::Player(player) => player.set_vehicle(vehicle_id),
             Self::Projectile(entity) => entity.set_vehicle(vehicle_id),
@@ -462,6 +488,7 @@ impl Entity {
             Self::Creature(entity) => entity.clear_vehicle(),
             Self::ExperienceOrb(entity) => entity.clear_vehicle(),
             Self::Generic(entity) => entity.clear_vehicle(),
+            Self::Living(entity) => entity.clear_vehicle(),
             Self::Item(entity) => entity.clear_vehicle(),
             Self::Player(player) => player.clear_vehicle(),
             Self::Projectile(entity) => entity.clear_vehicle(),
@@ -473,6 +500,7 @@ impl Entity {
             Self::Creature(entity) => entity.add_passenger(passenger_id),
             Self::ExperienceOrb(entity) => entity.add_passenger(passenger_id),
             Self::Generic(entity) => entity.add_passenger(passenger_id),
+            Self::Living(entity) => entity.add_passenger(passenger_id),
             Self::Item(entity) => entity.add_passenger(passenger_id),
             Self::Player(player) => player.add_passenger(passenger_id),
             Self::Projectile(entity) => entity.add_passenger(passenger_id),
@@ -484,6 +512,7 @@ impl Entity {
             Self::Creature(entity) => entity.remove_passenger(passenger_id),
             Self::ExperienceOrb(entity) => entity.remove_passenger(passenger_id),
             Self::Generic(entity) => entity.remove_passenger(passenger_id),
+            Self::Living(entity) => entity.remove_passenger(passenger_id),
             Self::Item(entity) => entity.remove_passenger(passenger_id),
             Self::Player(player) => player.remove_passenger(passenger_id),
             Self::Projectile(entity) => entity.remove_passenger(passenger_id),
@@ -495,6 +524,7 @@ impl Entity {
             Self::Creature(entity) => entity.get_passenger_packet(),
             Self::ExperienceOrb(entity) => entity.get_passenger_packet(),
             Self::Generic(entity) => entity.get_passenger_packet(),
+            Self::Living(entity) => entity.get_passenger_packet(),
             Self::Item(entity) => entity.get_passenger_packet(),
             Self::Player(player) => player.get_passenger_packet(),
             Self::Projectile(entity) => entity.get_passenger_packet(),
@@ -539,6 +569,7 @@ impl Entity {
             Self::Creature(entity) => entity.synchronize_position_packet(),
             Self::ExperienceOrb(entity) => entity.synchronize_position_packet(),
             Self::Generic(entity) => entity.synchronize_position_packet(),
+            Self::Living(entity) => entity.synchronize_position_packet(),
             Self::Item(entity) => entity.synchronize_position_packet(),
             Self::Player(player) => player.synchronize_entity_position_packet(),
             Self::Projectile(entity) => entity.synchronize_position_packet(),
@@ -552,6 +583,7 @@ impl Entity {
             Self::Creature(entity) => entity.get_scheduled_position_sync_packet(),
             Self::ExperienceOrb(entity) => entity.get_scheduled_position_sync_packet(),
             Self::Generic(entity) => entity.get_scheduled_position_sync_packet(),
+            Self::Living(entity) => entity.get_scheduled_position_sync_packet(),
             Self::Item(entity) => entity.get_scheduled_position_sync_packet(),
             Self::Player(player) => player.get_scheduled_entity_position_sync_packet(),
             Self::Projectile(entity) => entity.get_scheduled_position_sync_packet(),
@@ -563,6 +595,7 @@ impl Entity {
             Self::Creature(entity) => entity.get_velocity_packet(),
             Self::ExperienceOrb(entity) => entity.get_velocity_packet(),
             Self::Generic(entity) => entity.get_velocity_packet(),
+            Self::Living(entity) => entity.get_velocity_packet(),
             Self::Item(entity) => entity.get_velocity_packet(),
             Self::Player(player) => player.get_velocity_packet(),
             Self::Projectile(entity) => entity.get_velocity_packet(),
@@ -574,6 +607,7 @@ impl Entity {
             Self::Creature(entity) => entity.get_dirty_metadata_packet(),
             Self::ExperienceOrb(entity) => entity.get_dirty_metadata_packet(),
             Self::Generic(entity) => entity.get_dirty_metadata_packet(),
+            Self::Living(entity) => entity.get_dirty_metadata_packet(),
             Self::Item(entity) => entity.get_dirty_metadata_packet(),
             Self::Player(player) => player.get_dirty_metadata_packet(),
             Self::Projectile(entity) => entity.get_dirty_metadata_packet(),
@@ -585,6 +619,7 @@ impl Entity {
             Self::Creature(entity) => entity.get_leashed_entities(),
             Self::ExperienceOrb(entity) => entity.get_leashed_entities(),
             Self::Generic(entity) => entity.get_leashed_entities(),
+            Self::Living(entity) => entity.get_leashed_entities(),
             Self::Item(entity) => entity.get_leashed_entities(),
             Self::Player(player) => player.get_leashed_entities(),
             Self::Projectile(entity) => entity.get_leashed_entities(),
@@ -596,6 +631,7 @@ impl Entity {
             Self::Creature(entity) => entity.get_leash_holder(),
             Self::ExperienceOrb(entity) => entity.get_leash_holder(),
             Self::Generic(entity) => entity.get_leash_holder(),
+            Self::Living(entity) => entity.get_leash_holder(),
             Self::Item(entity) => entity.get_leash_holder(),
             Self::Player(player) => player.get_leash_holder(),
             Self::Projectile(entity) => entity.get_leash_holder(),
@@ -607,6 +643,7 @@ impl Entity {
             Self::Creature(entity) => entity.set_leash_holder(leash_holder),
             Self::ExperienceOrb(entity) => entity.set_leash_holder(leash_holder),
             Self::Generic(entity) => entity.set_leash_holder(leash_holder),
+            Self::Living(entity) => entity.set_leash_holder(leash_holder),
             Self::Item(entity) => entity.set_leash_holder(leash_holder),
             Self::Player(player) => player.set_leash_holder(leash_holder),
             Self::Projectile(entity) => entity.set_leash_holder(leash_holder),
@@ -618,6 +655,7 @@ impl Entity {
             Self::Creature(entity) => entity.add_leashed_entity(entity_id),
             Self::ExperienceOrb(entity) => entity.add_leashed_entity(entity_id),
             Self::Generic(entity) => entity.add_leashed_entity(entity_id),
+            Self::Living(entity) => entity.add_leashed_entity(entity_id),
             Self::Item(entity) => entity.add_leashed_entity(entity_id),
             Self::Player(player) => player.add_leashed_entity(entity_id),
             Self::Projectile(entity) => entity.add_leashed_entity(entity_id),
@@ -629,6 +667,7 @@ impl Entity {
             Self::Creature(entity) => entity.remove_leashed_entity(entity_id),
             Self::ExperienceOrb(entity) => entity.remove_leashed_entity(entity_id),
             Self::Generic(entity) => entity.remove_leashed_entity(entity_id),
+            Self::Living(entity) => entity.remove_leashed_entity(entity_id),
             Self::Item(entity) => entity.remove_leashed_entity(entity_id),
             Self::Player(player) => player.remove_leashed_entity(entity_id),
             Self::Projectile(entity) => entity.remove_leashed_entity(entity_id),
@@ -640,6 +679,7 @@ impl Entity {
             Self::Creature(entity) => entity.get_attach_entity_packet(),
             Self::ExperienceOrb(entity) => entity.get_attach_entity_packet(),
             Self::Generic(entity) => entity.get_attach_entity_packet(),
+            Self::Living(entity) => entity.get_attach_entity_packet(),
             Self::Item(entity) => entity.get_attach_entity_packet(),
             Self::Player(player) => player.get_attach_entity_packet(),
             Self::Projectile(entity) => entity.get_attach_entity_packet(),
@@ -653,6 +693,7 @@ impl PermissionHandler for Entity {
             Self::Creature(entity) => entity.get_permission_set(),
             Self::ExperienceOrb(entity) => entity.get_permission_set(),
             Self::Generic(entity) => entity.get_permission_set(),
+            Self::Living(entity) => entity.get_permission_set(),
             Self::Item(entity) => entity.get_permission_set(),
             Self::Player(player) => player.get_permission_set(),
             Self::Projectile(entity) => entity.get_permission_set(),
@@ -664,6 +705,7 @@ impl PermissionHandler for Entity {
             Self::Creature(entity) => entity.get_permission_set_mut(),
             Self::ExperienceOrb(entity) => entity.get_permission_set_mut(),
             Self::Generic(entity) => entity.get_permission_set_mut(),
+            Self::Living(entity) => entity.get_permission_set_mut(),
             Self::Item(entity) => entity.get_permission_set_mut(),
             Self::Player(player) => player.get_permission_set_mut(),
             Self::Projectile(entity) => entity.get_permission_set_mut(),

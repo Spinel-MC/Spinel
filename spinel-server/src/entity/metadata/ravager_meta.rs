@@ -1,4 +1,4 @@
-use crate::entity::metadata::{EntityMeta, RaiderMeta};
+use crate::entity::metadata::{LivingEntityMeta, RaiderMeta};
 use spinel_registry::EntityType;
 use std::ops::{Deref, DerefMut};
 
@@ -7,9 +7,11 @@ pub struct RavagerMeta<'entity> {
 }
 
 impl<'entity> RavagerMeta<'entity> {
-    pub(crate) fn from_entity_meta(entity_meta: EntityMeta<'entity>) -> Option<Self> {
-        (entity_meta.get_entity().get_entity_type() == EntityType::RAVAGER).then(|| Self {
-            raider_meta: RaiderMeta::from_entity_meta(entity_meta),
+    pub(crate) fn from_living_entity_meta(
+        living_entity_meta: LivingEntityMeta<'entity>,
+    ) -> Option<Self> {
+        (living_entity_meta.get_entity_type() == EntityType::RAVAGER).then(|| Self {
+            raider_meta: RaiderMeta::from_living_entity_meta(living_entity_meta),
         })
     }
 }

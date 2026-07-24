@@ -1,4 +1,4 @@
-use crate::entity::metadata::{ChestedHorseMeta, EntityMeta, LlamaVariant, definitions};
+use crate::entity::metadata::{ChestedHorseMeta, LivingEntityMeta, LlamaVariant, definitions};
 use spinel_network::types::entity_metadata::MetadataValue;
 use spinel_registry::EntityType;
 use std::ops::{Deref, DerefMut};
@@ -8,19 +8,21 @@ pub struct LlamaMeta<'entity> {
 }
 
 impl<'entity> LlamaMeta<'entity> {
-    pub(crate) fn from_entity_meta(entity_meta: EntityMeta<'entity>) -> Option<Self> {
+    pub(crate) fn from_living_entity_meta(
+        living_entity_meta: LivingEntityMeta<'entity>,
+    ) -> Option<Self> {
         matches!(
-            entity_meta.get_entity().get_entity_type(),
+            living_entity_meta.get_entity_type(),
             EntityType::LLAMA | EntityType::TRADER_LLAMA
         )
         .then(|| Self {
-            chested_horse_meta: ChestedHorseMeta::from_entity_meta(entity_meta),
+            chested_horse_meta: ChestedHorseMeta::from_living_entity_meta(living_entity_meta),
         })
     }
 
     pub fn get_strength(&self) -> i32 {
         match self
-            .get_entity()
+            .get_state()
             .get_metadata()
             .get_value(&definitions::llama::get_strength())
         {
@@ -30,7 +32,7 @@ impl<'entity> LlamaMeta<'entity> {
     }
 
     pub fn set_strength(&mut self, strength: i32) {
-        self.get_entity_mut().get_metadata_mut().set(
+        self.get_entity_state_mut().get_metadata_mut().set(
             &definitions::llama::get_strength(),
             MetadataValue::VarInt(strength),
         );
@@ -38,7 +40,7 @@ impl<'entity> LlamaMeta<'entity> {
 
     pub fn get_carpet_color(&self) -> i32 {
         match self
-            .get_entity()
+            .get_state()
             .get_metadata()
             .get_value(&definitions::llama::get_carpet_color())
         {
@@ -48,7 +50,7 @@ impl<'entity> LlamaMeta<'entity> {
     }
 
     pub fn set_carpet_color(&mut self, carpet_color: i32) {
-        self.get_entity_mut().get_metadata_mut().set(
+        self.get_entity_state_mut().get_metadata_mut().set(
             &definitions::llama::get_carpet_color(),
             MetadataValue::VarInt(carpet_color),
         );
@@ -56,7 +58,7 @@ impl<'entity> LlamaMeta<'entity> {
 
     pub fn get_variant(&self) -> LlamaVariant {
         match self
-            .get_entity()
+            .get_state()
             .get_metadata()
             .get_value(&definitions::llama::get_variant())
         {
@@ -68,7 +70,7 @@ impl<'entity> LlamaMeta<'entity> {
     }
 
     pub fn set_variant(&mut self, variant: LlamaVariant) {
-        self.get_entity_mut().get_metadata_mut().set(
+        self.get_entity_state_mut().get_metadata_mut().set(
             &definitions::llama::get_variant(),
             MetadataValue::VarInt(variant.protocol_id()),
         );
