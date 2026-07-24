@@ -101,3 +101,28 @@ fn suspicious_stew_effects_preserve_default_duration_and_immutable_with() {
         Some(with_speed)
     );
 }
+
+#[test]
+fn potion_contents_resolves_generated_default_effects_before_custom_effects() {
+    let registries = crate::Registries::new_vanilla();
+    let custom_effect = CustomPotionEffect::new(
+        Identifier::minecraft("glowing"),
+        PotionEffectSettings::new(0, 20, false, true, true, None),
+    );
+    let contents = PotionContents::new(
+        Some(Identifier::minecraft("strong_turtle_master")),
+        None,
+        vec![custom_effect],
+        None,
+    );
+
+    let effects = contents.get_all_effects(&registries);
+
+    assert_eq!(effects.len(), 3);
+    assert_eq!(effects[0].effect_id(), &Identifier::minecraft("slowness"));
+    assert_eq!(effects[0].get_settings().amplifier(), 5);
+    assert_eq!(effects[0].get_settings().duration(), 400);
+    assert_eq!(effects[1].effect_id(), &Identifier::minecraft("resistance"));
+    assert_eq!(effects[1].get_settings().amplifier(), 3);
+    assert_eq!(effects[2].effect_id(), &Identifier::minecraft("glowing"));
+}

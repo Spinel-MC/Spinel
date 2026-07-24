@@ -1,4 +1,4 @@
-use crate::Identifier;
+use crate::{Identifier, Registries};
 use crate::data_components::nbt_reader::{compound_from_nbt, i32_field_or, string_field};
 use crate::data_components::{CustomPotionEffect, DataComponentValue};
 use spinel_nbt::{Nbt, NbtCompound};
@@ -28,6 +28,35 @@ impl PotionContents {
         }
     }
 
+    #[must_use]
+    pub fn get_all_effects(&self, registries: &Registries) -> Vec<CustomPotionEffect> {
+        let mut effects: Vec<CustomPotionEffect> = self
+            .potion
+            .as_ref()
+            .and_then(|potion_key| registries.potion(&crate::RegistryKey::new(potion_key.clone())))
+            .map(|potion| {
+                potion
+                    .get_effects()
+                    .iter()
+                    .map(|effect| {
+                        CustomPotionEffect::new(
+                            effect.get_effect().clone(),
+                            crate::PotionEffectSettings::new(
+                                effect.get_amplifier(),
+                                effect.get_duration(),
+                                effect.is_ambient(),
+                                effect.is_visible(),
+                                effect.should_show_icon(),
+                                None,
+                            ),
+                        )
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
+        effects.extend(self.custom_effects.iter().cloned());
+        effects
+    }
     #[must_use]
     pub const fn potion(&self) -> Option<&Identifier> {
         self.potion.as_ref()

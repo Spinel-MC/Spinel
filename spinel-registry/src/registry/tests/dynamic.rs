@@ -1,5 +1,6 @@
 use crate::biome::{Biome, Color};
 use crate::mob_effect::MobEffect;
+use crate::potion::Potion;
 use crate::{
     BIOME_REGISTRY, DynamicRegistry, ENCHANTMENT_REGISTRY, Identifier, RegisterError, Registries,
     ZOMBIE_NAUTILUS_VARIANT_REGISTRY,
@@ -160,4 +161,22 @@ fn registry_build_assets_do_not_depend_on_vanilla_datapack_folder() {
             .join(["data", "packs"].concat())
             .exists()
     );
+}
+
+#[test]
+fn vanilla_potion_registry_preserves_extracted_effects_and_protocol_ids() {
+    let registries = Registries::new_vanilla();
+    let swiftness = registries
+        .potion(&Potion::SWIFTNESS)
+        .expect("generated swiftness potion should be registered");
+    let water = registries
+        .potion_from_id(0)
+        .expect("generated water potion protocol id should resolve");
+
+    assert_eq!(swiftness.get_protocol_id(), 13);
+    assert_eq!(swiftness.get_effects().len(), 1);
+    assert_eq!(swiftness.get_effects()[0].get_effect(), &Identifier::minecraft("speed"));
+    assert_eq!(swiftness.get_effects()[0].get_duration(), 3600);
+    assert_eq!(water.get_protocol_id(), 0);
+    assert!(water.get_effects().is_empty());
 }

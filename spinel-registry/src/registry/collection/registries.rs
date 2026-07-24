@@ -1,8 +1,9 @@
 use super::super::{dynamic::DynamicRegistry, static_registry::StaticRegistry};
+use super::vanilla::vanilla_potions;
 use crate::{
     Identifier, Material, RegistryKey, banner_pattern, biome, cat_variant, chat_type,
     chicken_variant, cow_variant, damage_type, dialog, dimension_type, enchantment, frog_variant,
-    instrument, jukebox_song, mob_effect, painting_variant, pig_variant, timeline, trim_material,
+    instrument, jukebox_song, mob_effect, painting_variant, pig_variant, potion, timeline, trim_material,
     trim_pattern, vanilla_biomes, vanilla_blocks, vanilla_dimension_types, vanilla_items,
     vanilla_world_blocks, wolf_sound_variant, wolf_variant, zombie_nautilus_variant,
 };
@@ -24,6 +25,7 @@ pub const FROG_VARIANT_REGISTRY: Identifier = Identifier::vanilla_static("frog_v
 pub const INSTRUMENT_REGISTRY: Identifier = Identifier::vanilla_static("instrument");
 pub const JUKEBOX_SONG_REGISTRY: Identifier = Identifier::vanilla_static("jukebox_song");
 pub const MOB_EFFECT_REGISTRY: Identifier = Identifier::vanilla_static("mob_effect");
+pub const POTION_REGISTRY: Identifier = Identifier::vanilla_static("potion");
 pub const PAINTING_VARIANT_REGISTRY: Identifier = Identifier::vanilla_static("painting_variant");
 pub const PIG_VARIANT_REGISTRY: Identifier = Identifier::vanilla_static("pig_variant");
 pub const TIMELINE_REGISTRY: Identifier = Identifier::vanilla_static("timeline");
@@ -58,6 +60,7 @@ pub struct Registries {
     pub(super) dialogs: DynamicRegistry<dialog::Dialog>,
     pub(super) enchantments: DynamicRegistry<enchantment::Enchantment>,
     pub(super) mob_effects: DynamicRegistry<mob_effect::MobEffect>,
+    pub(super) potions: StaticRegistry<potion::Potion>,
     pub(super) timelines: DynamicRegistry<timeline::Timeline>,
     pub(super) zombie_nautilus_variants:
         DynamicRegistry<zombie_nautilus_variant::ZombieNautilusVariant>,
@@ -96,6 +99,7 @@ impl Registries {
             dialogs: DynamicRegistry::new(DIALOG_REGISTRY),
             enchantments: DynamicRegistry::new(ENCHANTMENT_REGISTRY),
             mob_effects: DynamicRegistry::new(MOB_EFFECT_REGISTRY),
+            potions: StaticRegistry::new(),
             timelines: DynamicRegistry::new(TIMELINE_REGISTRY),
             zombie_nautilus_variants: DynamicRegistry::new(ZOMBIE_NAUTILUS_VARIANT_REGISTRY),
         }
@@ -211,6 +215,17 @@ impl Registries {
             .map(|(_, entry)| entry.key().key())
     }
 
+    pub fn potion(&self, key: &RegistryKey<potion::Potion>) -> Option<&potion::Potion> {
+        self.potions.get(key)
+    }
+
+    pub fn potion_from_id(&self, protocol_id: i32) -> Option<&potion::Potion> {
+        self.potions
+            .iter()
+            .find(|(_, _, potion)| potion.get_protocol_id() == protocol_id)
+            .map(|(_, _, potion)| potion)
+    }
+
     pub fn block_id(&self, block: &vanilla_world_blocks::Block) -> Option<i32> {
         self.blocks.get_id(self.blocks.key_for(block)?)
     }
@@ -311,6 +326,7 @@ impl Registries {
         self.dialogs.freeze();
         self.enchantments.freeze();
         self.mob_effects.freeze();
+        self.potions.freeze();
         self.timelines.freeze();
         self.zombie_nautilus_variants.freeze();
     }
@@ -318,6 +334,7 @@ impl Registries {
     fn register_vanilla(&mut self) {
         vanilla_blocks::register_blocks(&mut self.blocks);
         vanilla_items::register_items(&mut self.items);
+        vanilla_potions::register_potions(&mut self.potions);
         vanilla_biomes::register_biomes(&mut self.biomes);
         vanilla_dimension_types::register_dimension_types(&mut self.dimension_types);
         self.register_dynamic_vanilla();

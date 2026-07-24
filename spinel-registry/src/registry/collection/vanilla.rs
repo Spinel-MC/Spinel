@@ -79,6 +79,8 @@ pub mod vanilla_dialogs;
 pub mod vanilla_enchantments;
 #[allow(warnings)]
 #[rustfmt::skip]
+#[path = "../../generated/vanilla_potions.rs"]
+pub mod vanilla_potions;
 #[path = "../../generated/vanilla_mob_effects.rs"]
 pub mod vanilla_mob_effects;
 #[allow(warnings)]
