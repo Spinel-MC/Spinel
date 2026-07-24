@@ -331,6 +331,7 @@ impl WorldManager {
         self.world_mut(vehicle_world)
             .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "Vehicle world not found."))?
             .add_passenger(vehicle_id, passenger_id)
+            .map_err(|passenger_error| io::Error::other(passenger_error.to_string()))
     }
 
     pub fn set_player_world(&mut self, player_uuid: Uuid, target_world: Uuid) -> io::Result<()> {

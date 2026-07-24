@@ -823,7 +823,10 @@ impl World {
             Entity::Projectile(_) => {}
         }
         passenger_ids.into_iter().try_for_each(|passenger_id| {
-            self.remove_passenger(entity_id, passenger_id).map(|_| ())
+            self
+                .remove_passenger(entity_id, passenger_id)
+                .map(|_| ())
+                .map_err(|passenger_error| std::io::Error::other(passenger_error.to_string()))
         })?;
         Ok(())
     }

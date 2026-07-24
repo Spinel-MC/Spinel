@@ -473,6 +473,25 @@ fn visibility_hides_vehicle_and_passenger_chain_recursively() {
     );
 }
 
+#[test]
+fn world_passenger_composition_uses_the_shared_entity_error_contract() {
+    let mut world = World::new_with_dimension_name(
+        Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
+    let vehicle = positioned_entity(EntityType::PIG, 0.0, 64.0, 0.0);
+    let vehicle_id = vehicle.get_entity_id();
+    let passenger = positioned_entity(EntityType::ZOMBIE, 0.0, 64.0, 0.0);
+    let passenger_id = passenger.get_entity_id();
+    world.add_entity(vehicle);
+    world.add_entity(passenger);
+
+    let passenger_composition: std::result::Result<bool, crate::entity::Error> =
+        world.add_passenger(vehicle_id, passenger_id);
+
+    assert!(passenger_composition.unwrap());
+}
 fn positioned_entity(entity_type: EntityType, x: f64, y: f64, z: f64) -> Entity {
     let mut entity = LivingEntity::new(entity_type);
     entity.set_position(EntityPosition::new(x, y, z, 0.0, 0.0));

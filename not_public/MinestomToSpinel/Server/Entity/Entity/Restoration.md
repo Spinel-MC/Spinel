@@ -22,9 +22,15 @@ public void removePassenger(Entity entity)
 pub fn with_uuid(entity_type: EntityType, uuid: Uuid) -> Self
 pub fn add_passenger(&mut self, passenger: &mut Entity) -> Result<bool, Error>
 pub fn remove_passenger(&mut self, passenger: &mut Entity) -> Result<bool, Error>
+```rust
+pub fn add_passenger(&mut self, vehicle_id: EntityId, passenger_id: EntityId) -> Result<bool, Error>
+pub fn remove_passenger(&mut self, vehicle_id: EntityId, passenger_id: EntityId) -> Result<bool, Error>
+```
 ```
 
 Rust has no inheritance constructor dispatch. `GenericEntity`, `LivingEntity`, `EntityCreature`, `ItemEntity`, `ExperienceOrb`, and `ProjectileEntity` each expose `with_uuid` on their direct owner. Each retains its existing required non-UUID constructor inputs. `Player::new` already accepts UUID with its required protocol-session inputs.
+
+The `Entity` methods remain the direct Minestom-shaped passenger owner. `World` additionally exposes the same operations by entity ID because an external restoration codec cannot safely borrow two stored `Entity` values mutably at once. The world boundary obtains both values with the safe distinct-entity split, invokes the direct owner operation, updates tracker and visibility state, and sends the passenger and position packets. This is an unavoidable Rust representation boundary; it does not move passenger ownership from `Entity`.
 
 ```java
 public CompletableFuture<Void> setInstance(Instance instance, Pos spawnPosition)
@@ -69,7 +75,7 @@ pub fn set_velocity(&mut self, velocity: Velocity)
 
 - [x] direct UUID constructors preserve supplied UUID for generic, living, creature, experience orb, item, projectile, and player construction;
 - [x] `Entity` restores position and velocity for all runtime enum variants;
-- [ ] mounted lifecycle packet and visibility integration remains covered by world passenger tests.
+- [x] mounted lifecycle packet and visibility integration remains covered by world passenger tests.
 
 ## Completion gate
 
