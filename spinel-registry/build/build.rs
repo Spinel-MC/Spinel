@@ -383,13 +383,16 @@ impl BuildScript {
     }
     fn potion_module(&self) -> io::Result<String> {
         let entries = potion_entries()?;
-        let constants = entries.iter().map(|entry| {
-            format!(
-                "    pub const {}: RegistryKey<Self> = RegistryKey::vanilla_static(\"{}\");\n",
-                const_name(&entry.key),
-                vanilla_path(&entry.key)
-            )
-        }).collect::<String>();
+        let constants = entries
+            .iter()
+            .map(|entry| {
+                format!(
+                    "    pub const {}: RegistryKey<Self> = RegistryKey::vanilla_static(\"{}\");\n",
+                    const_name(&entry.key),
+                    vanilla_path(&entry.key)
+                )
+            })
+            .collect::<String>();
         let registrations = entries.iter().map(|entry| {
             let effects = entry.effects.iter().map(|effect| {
                 format!(

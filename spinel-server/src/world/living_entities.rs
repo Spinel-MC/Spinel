@@ -217,6 +217,9 @@ impl World {
     }
 
     pub fn kill_entity(&mut self, entity_id: EntityId) -> Result<bool> {
+        if self.entity_should_be_removed_when_killed(entity_id) {
+            return Ok(self.remove_entity(entity_id).is_some());
+        }
         if self.entity_is_dead(entity_id) {
             return Ok(false);
         }
@@ -769,13 +772,22 @@ impl World {
         self.entity_by_id(entity_id)
             .is_none_or(|entity| match entity {
                 Entity::Creature(entity) => entity.is_dead(),
-                Entity::ExperienceOrb(_) => true,
-                Entity::Generic(_) => true,
+                Entity::ExperienceOrb(_) => false,
+                Entity::Generic(_) => false,
                 Entity::Living(entity) => entity.is_dead(),
-                Entity::Item(_) => true,
+                Entity::Item(_) => false,
                 Entity::Player(player) => player.is_dead(),
-                Entity::Projectile(_) => true,
+                Entity::Projectile(_) => false,
             })
+    }
+
+    fn entity_should_be_removed_when_killed(&self, entity_id: EntityId) -> bool {
+        self.entity_by_id(entity_id).is_some_and(|entity| {
+            matches!(
+                entity,
+                Entity::ExperienceOrb(_) | Entity::Generic(_) | Entity::Item(_) | Entity::Projectile(_)
+            )
+        })
     }
 
     fn entity_is_player(&self, entity_id: EntityId) -> bool {

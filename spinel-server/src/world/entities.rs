@@ -76,7 +76,7 @@ impl World {
         self.dispatch_entity_spawn_event(entity_id);
     }
 
-    pub(crate) fn remove_entity(&mut self, entity_id: EntityId) -> Option<Entity> {
+    pub fn remove_entity(&mut self, entity_id: EntityId) -> Option<Entity> {
         self.dispatch_entity_despawn_event(entity_id);
         self.remove_entity_from_instance(entity_id)
     }

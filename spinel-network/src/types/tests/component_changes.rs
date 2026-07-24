@@ -1,4 +1,5 @@
 use super::super::component_changes::ComponentChanges;
+use super::super::slot::Slot;
 use crate::data_type::DataType;
 use crate::types::var_int::VarIntWrapper;
 use spinel_nbt::NbtCompound;
@@ -15,7 +16,8 @@ use spinel_registry::{
     AttributeList, AttributeModifier, AttributeModifierDisplay, AttributeModifierEntry,
     AttributeOperation, BuiltinSoundEvent, DataComponentMap, DataComponentValue, EnchantmentList,
     EquipmentSlotGroup, Food, GameProfileProperty, Identifier, InstrumentComponent, ItemStack,
-    Material, PotionContents, ResolvableProfile, TypedCustomData, UseCooldown, UseEffects,
+    Material, PotionContents, PotionEffectSettings, ResolvableProfile, TypedCustomData,
+    UseCooldown, UseEffects,
 };
 use spinel_utils::component::Component;
 
@@ -127,6 +129,66 @@ fn potion_contents_component_writes_optional_fields_and_static_potion_id() {
 
     assert_eq!(component_changes.added.len(), 1);
     assert_eq!(component_changes.added[0].data, vec![1, 0, 0, 0, 0]);
+}
+
+#[test]
+fn slot_decoding_preserves_potion_contents_component_patch() {
+    let item_stack = ItemStack::of(Material::SPLASH_POTION).with(
+        POTION_CONTENTS,
+        PotionContents::new(
+            Some(Identifier::minecraft("strong_harming")),
+            None,
+            vec![],
+            None,
+        ),
+    );
+    let restored_item_stack = Slot::from_item_stack(&item_stack).to_item_stack();
+
+    assert_eq!(
+        restored_item_stack.get(POTION_CONTENTS).unwrap().potion(),
+        Some(&Identifier::minecraft("strong_harming"))
+    );
+}
+
+#[test]
+fn slot_decoding_preserves_potion_contents_custom_effect_patch() {
+    let item_stack = ItemStack::of(Material::SPLASH_POTION).with(
+        POTION_CONTENTS,
+        PotionContents::new(
+            None,
+            None,
+            vec![spinel_registry::CustomPotionEffect::new(
+                Identifier::minecraft("speed"),
+                PotionEffectSettings::new(1, 200, false, true, true, None),
+            )],
+            None,
+        ),
+    );
+    let restored_item_stack = Slot::from_item_stack(&item_stack).to_item_stack();
+    let restored_potion_contents = restored_item_stack.get(POTION_CONTENTS).unwrap();
+    let restored_effect = restored_potion_contents.custom_effects().first().unwrap();
+
+    assert_eq!(restored_effect.effect_id(), &Identifier::minecraft("speed"));
+    assert_eq!(restored_effect.get_settings().amplifier(), 1);
+    assert_eq!(restored_effect.get_settings().duration(), 200);
+}
+
+#[test]
+fn slot_decoding_preserves_enchantments_component_patch() {
+    let sharpness = Enchantment::SHARPNESS;
+    let item_stack = ItemStack::of(Material::DIAMOND_SWORD).with(
+        ENCHANTMENTS,
+        EnchantmentList::from_enchantment(sharpness.clone(), 3),
+    );
+    let restored_item_stack = Slot::from_item_stack(&item_stack).to_item_stack();
+
+    assert_eq!(
+        restored_item_stack
+            .get(ENCHANTMENTS)
+            .unwrap()
+            .level(&sharpness),
+        3
+    );
 }
 
 #[test]

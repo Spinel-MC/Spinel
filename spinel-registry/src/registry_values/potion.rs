@@ -19,7 +19,10 @@ pub struct PotionEffect {
 impl Potion {
     #[must_use]
     pub fn new(protocol_id: i32, effects: Vec<PotionEffect>) -> Self {
-        Self { protocol_id, effects }
+        Self {
+            protocol_id,
+            effects,
+        }
     }
 
     #[must_use]
@@ -43,7 +46,14 @@ impl PotionEffect {
         is_visible: bool,
         should_show_icon: bool,
     ) -> Self {
-        Self { effect, amplifier, duration, is_ambient, is_visible, should_show_icon }
+        Self {
+            effect,
+            amplifier,
+            duration,
+            is_ambient,
+            is_visible,
+            should_show_icon,
+        }
     }
 
     #[must_use]

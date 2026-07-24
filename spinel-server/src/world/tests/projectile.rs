@@ -1,11 +1,11 @@
-use crate::entity::{Entity, EntityId, EntityPosition, GenericEntity, LivingEntity};
+use crate::entity::{Entity, EntityId, EntityPosition, LivingEntity};
 use crate::events::entity_shoot::EntityShootEvent;
 use crate::events::projectile_collide::ProjectileCollideEvent;
 use crate::events::projectile_collide_with_block::ProjectileCollideWithBlockEvent;
 use crate::events::projectile_collide_with_entity::ProjectileCollideWithEntityEvent;
 use crate::events::projectile_uncollide::ProjectileUncollideEvent;
 use crate::server::MinecraftServer;
-use crate::world::{Block, BlockPosition, World};
+use crate::world::{Block, BlockPosition, ChunkPosition, World};
 use spinel_macros::fn_event_listener;
 use spinel_network::types::{Vector3d, Velocity};
 use spinel_registry::{EntityType, Identifier};
@@ -15,6 +15,8 @@ use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 static PROJECTILE_TEST_LOCK: Mutex<()> = Mutex::new(());
 static PROJECTILE_TEST_ID: Mutex<Option<EntityId>> = Mutex::new(None);
 static PROJECTILE_TARGET_ID: Mutex<Option<EntityId>> = Mutex::new(None);
+static PROJECTILE_BLOCK_COLLISION_POSITION: Mutex<Option<EntityPosition>> = Mutex::new(None);
+static PROJECTILE_ENTITY_COLLISION_POSITION: Mutex<Option<EntityPosition>> = Mutex::new(None);
 static PROJECTILE_SHOOT_CANCELLED: AtomicBool = AtomicBool::new(false);
 static PROJECTILE_BLOCK_COLLISION_CANCELLED: AtomicBool = AtomicBool::new(false);
 static PROJECTILE_BLOCK_COLLISION_COUNT: AtomicU32 = AtomicU32::new(0);
@@ -49,6 +51,7 @@ fn projectile_block_collision_listener(
     if *PROJECTILE_TEST_ID.lock().unwrap() != Some(event.get_projectile_id()) {
         return;
     }
+    *PROJECTILE_BLOCK_COLLISION_POSITION.lock().unwrap() = Some(event.get_collision_position());
     PROJECTILE_BLOCK_COLLISION_COUNT.fetch_add(1, Ordering::SeqCst);
     event.set_cancelled(PROJECTILE_BLOCK_COLLISION_CANCELLED.load(Ordering::SeqCst));
 }
@@ -62,6 +65,7 @@ fn projectile_entity_collision_listener(
         return;
     }
     *PROJECTILE_TARGET_ID.lock().unwrap() = Some(event.get_target_id());
+    *PROJECTILE_ENTITY_COLLISION_POSITION.lock().unwrap() = Some(event.get_collision_position());
     PROJECTILE_ENTITY_COLLISION_COUNT.fetch_add(1, Ordering::SeqCst);
 }
 
@@ -142,7 +146,7 @@ fn projectile_shoot_event_can_mutate_power_and_cancel_the_shot() {
 }
 
 #[test]
-fn projectile_tick_samples_its_path_and_sticks_in_a_solid_block() {
+fn projectile_tick_raycast_hits_block_surface_and_sticks() {
     let _lock = PROJECTILE_TEST_LOCK.lock().unwrap();
     reset_projectile_event_state();
     let mut server = MinecraftServer::new();
@@ -190,10 +194,59 @@ fn projectile_tick_samples_its_path_and_sticks_in_a_solid_block() {
             z: 0.0,
         }
     );
-    assert!(projectile.get_position().get_x() >= 1.0);
-    assert!(projectile.get_position().get_x() < 2.0);
+    assert!((projectile.get_position().get_x() - 1.0).abs() < 0.000001);
+    let collision_position = PROJECTILE_BLOCK_COLLISION_POSITION.lock().unwrap().unwrap();
+    assert!((collision_position.get_x() - 1.0).abs() < 0.000001);
     assert_eq!(PROJECTILE_BLOCK_COLLISION_COUNT.load(Ordering::SeqCst), 1);
     assert_eq!(PROJECTILE_SHARED_COLLISION_COUNT.load(Ordering::SeqCst), 1);
+    reset_projectile_event_state();
+}
+
+#[test]
+fn projectile_tick_hits_ground_surface_before_block_collision_event() {
+    let _lock = PROJECTILE_TEST_LOCK.lock().unwrap();
+    reset_projectile_event_state();
+    let mut server = MinecraftServer::new();
+    let server_ptr = &mut server as *mut MinecraftServer as usize;
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("projectile_ground_surface_collision"),
+    );
+    world.use_server_event_dispatcher(server_ptr);
+    world
+        .set_block(BlockPosition::new(0, 63, 0), Block::STONE)
+        .unwrap();
+    let projectile_id = world
+        .spawn_projectile(
+            None,
+            EntityType::SPLASH_POTION,
+            EntityPosition::new(0.5, 64.5, 0.5, 0.0, 0.0),
+        )
+        .unwrap();
+    *PROJECTILE_TEST_ID.lock().unwrap() = Some(projectile_id);
+    let Some(Entity::Projectile(projectile)) = world.get_entity_mut(projectile_id) else {
+        panic!("spawned projectile must remain a projectile");
+    };
+    projectile.set_no_gravity(true);
+    projectile.set_velocity(Velocity(Vector3d {
+        x: 0.0,
+        y: -20.0,
+        z: 0.0,
+    }));
+
+    world.tick();
+
+    let collision_position = PROJECTILE_BLOCK_COLLISION_POSITION.lock().unwrap().unwrap();
+    assert!((collision_position.get_y() - 64.0).abs() < 0.000001);
+    assert!(
+        (projectile_entity(&world, projectile_id)
+            .get_position()
+            .get_y()
+            - 64.0)
+            .abs()
+            < 0.000001
+    );
     reset_projectile_event_state();
 }
 
@@ -299,8 +352,9 @@ fn projectile_tick_emits_entity_collision_for_living_targets() {
     world
         .load_chunk(crate::world::ChunkPosition::new(0, 0))
         .unwrap();
+    let target_x = 1.25;
     let mut target = LivingEntity::new(EntityType::ZOMBIE);
-    target.set_position(EntityPosition::new(1.25, 64.0, 0.5, 0.0, 0.0));
+    target.set_position(EntityPosition::new(target_x, 64.0, 0.5, 0.0, 0.0));
     target.set_no_gravity(true);
     let target_id = target.get_entity_id();
     world.add_entity(Entity::Living(target));
@@ -345,25 +399,246 @@ fn projectile_tick_emits_entity_collision_for_living_targets() {
 
     world.tick();
 
-    let projectile_position = projectile_entity(&world, projectile_id).get_position();
-    let target_position = world.get_entity(target_id).unwrap().get_position();
-    assert!(
-        world
-            .get_entity(target_id)
-            .is_some_and(|target| match target {
-                Entity::Living(target) => target.get_intersects_box_at(
-                    projectile_position.as_vector(),
-                    EntityType::ARROW.get_bounding_box(),
-                ),
-                _ => false,
-            }),
-        "projectile={projectile_position:?} target={target_position:?}"
-    );
     assert!(PROJECTILE_ENTITY_COLLISION_COUNT.load(Ordering::SeqCst) >= 1);
     assert!(PROJECTILE_SHARED_COLLISION_COUNT.load(Ordering::SeqCst) >= 1);
     assert_eq!(*PROJECTILE_TARGET_ID.lock().unwrap(), Some(target_id));
+    let collision_position = PROJECTILE_ENTITY_COLLISION_POSITION
+        .lock()
+        .unwrap()
+        .unwrap();
+    assert!(collision_position.get_x() < target_x);
     reset_projectile_event_state();
 }
+
+#[test]
+fn projectile_collision_chooses_nearest_entity_before_later_block() {
+    let _lock = PROJECTILE_TEST_LOCK.lock().unwrap();
+    reset_projectile_event_state();
+    let mut server = MinecraftServer::new();
+    let server_ptr = &mut server as *mut MinecraftServer as usize;
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("projectile_entity_before_block"),
+    );
+    world.use_server_event_dispatcher(server_ptr);
+    world
+        .load_chunk(crate::world::ChunkPosition::new(0, 0))
+        .unwrap();
+    world
+        .set_block(BlockPosition::new(3, 64, 0), Block::STONE)
+        .unwrap();
+    let mut target = LivingEntity::new(EntityType::ZOMBIE);
+    target.set_position(EntityPosition::new(1.25, 64.0, 0.5, 0.0, 0.0));
+    target.set_no_gravity(true);
+    let target_id = target.get_entity_id();
+    world.add_entity(Entity::Living(target));
+    let projectile_id = world
+        .spawn_projectile(
+            None,
+            EntityType::ARROW,
+            EntityPosition::new(0.25, 64.0, 0.5, 0.0, 0.0),
+        )
+        .unwrap();
+    *PROJECTILE_TEST_ID.lock().unwrap() = Some(projectile_id);
+    let Some(Entity::Projectile(projectile)) = world.get_entity_mut(projectile_id) else {
+        panic!("spawned projectile must remain a projectile");
+    };
+    projectile.set_no_gravity(true);
+    projectile.set_velocity(Velocity(Vector3d {
+        x: 80.0,
+        y: 0.0,
+        z: 0.0,
+    }));
+
+    world.tick();
+
+    assert_eq!(PROJECTILE_ENTITY_COLLISION_COUNT.load(Ordering::SeqCst), 1);
+    assert_eq!(PROJECTILE_BLOCK_COLLISION_COUNT.load(Ordering::SeqCst), 0);
+    assert_eq!(*PROJECTILE_TARGET_ID.lock().unwrap(), Some(target_id));
+    reset_projectile_event_state();
+}
+
+#[test]
+fn projectile_does_not_collide_with_shooter_until_it_leaves_shooter_collision_range() {
+    let _lock = PROJECTILE_TEST_LOCK.lock().unwrap();
+    reset_projectile_event_state();
+    let mut server = MinecraftServer::new();
+    let server_ptr = &mut server as *mut MinecraftServer as usize;
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("projectile_shooter_collision_range"),
+    );
+    world.use_server_event_dispatcher(server_ptr);
+    world
+        .load_chunk(crate::world::ChunkPosition::new(0, 0))
+        .unwrap();
+    let mut shooter = LivingEntity::new(EntityType::ZOMBIE);
+    shooter.set_position(EntityPosition::new(0.0, 64.0, 0.0, 0.0, 0.0));
+    shooter.set_no_gravity(true);
+    let shooter_id = shooter.get_entity_id();
+    world.add_entity(Entity::Living(shooter));
+    let projectile_id = world
+        .spawn_projectile(
+            Some(shooter_id),
+            EntityType::SPLASH_POTION,
+            EntityPosition::new(0.0, 65.52, 0.0, 0.0, 0.0),
+        )
+        .unwrap();
+    *PROJECTILE_TEST_ID.lock().unwrap() = Some(projectile_id);
+    let Some(Entity::Projectile(projectile)) = world.get_entity_mut(projectile_id) else {
+        panic!("spawned projectile must remain a projectile");
+    };
+    projectile.set_no_gravity(true);
+    projectile.set_velocity(Velocity(Vector3d {
+        x: 1.0,
+        y: 0.0,
+        z: 0.0,
+    }));
+
+    (0..5).for_each(|_| world.tick());
+
+    assert_eq!(PROJECTILE_ENTITY_COLLISION_COUNT.load(Ordering::SeqCst), 0);
+    assert_eq!(*PROJECTILE_TARGET_ID.lock().unwrap(), None);
+    reset_projectile_event_state();
+}
+
+#[test]
+fn splash_potion_motion_matches_vanilla_throwable_motion_for_multiple_heights_and_velocities() {
+    let _lock = PROJECTILE_TEST_LOCK.lock().unwrap();
+    reset_projectile_event_state();
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("splash_potion_vanilla_motion"),
+    );
+    world.load_chunk(ChunkPosition::new(0, 0)).unwrap();
+    world.load_chunk(ChunkPosition::new(-1, 0)).unwrap();
+    let motion_cases = [
+        VanillaThrowableMotionCase::new(
+            80.0,
+            Vector3d {
+                x: 0.0,
+                y: -0.1,
+                z: 0.2,
+            },
+        ),
+        VanillaThrowableMotionCase::new(
+            86.40769762399721,
+            Vector3d {
+                x: 0.0,
+                y: 0.379906000122078,
+                z: 1.0717206860770312,
+            },
+        ),
+        VanillaThrowableMotionCase::new(
+            92.0,
+            Vector3d {
+                x: 0.15,
+                y: 0.0,
+                z: 0.5,
+            },
+        ),
+        VanillaThrowableMotionCase::new(
+            104.0,
+            Vector3d {
+                x: -0.2,
+                y: -0.25,
+                z: 0.8,
+            },
+        ),
+    ];
+
+    motion_cases.into_iter().for_each(|motion_case| {
+        let projectile_id = world
+            .spawn_projectile(
+                None,
+                EntityType::SPLASH_POTION,
+                EntityPosition::new(0.5, motion_case.starting_y, 0.5, 0.0, 0.0),
+            )
+            .unwrap();
+        let Some(Entity::Projectile(projectile)) = world.get_entity_mut(projectile_id) else {
+            panic!("spawned projectile must remain a projectile");
+        };
+        projectile.set_velocity(motion_case.starting_velocity_per_tick.as_velocity());
+        let spawn_packet_velocity = projectile.spawn_packet().velocity.0;
+        assert_vector_approximately_eq(
+            spawn_packet_velocity,
+            motion_case.starting_velocity_per_tick,
+        );
+
+        let mut expected_position = projectile.get_position();
+        let mut expected_velocity_per_tick = motion_case.starting_velocity_per_tick;
+        (0..6).for_each(|_| {
+            world.tick();
+            expected_velocity_per_tick =
+                expected_velocity_per_tick.next_splash_potion_velocity_per_tick();
+            expected_position = expected_position.get_offset(
+                expected_velocity_per_tick.x,
+                expected_velocity_per_tick.y,
+                expected_velocity_per_tick.z,
+            );
+            let projectile = projectile_entity(&world, projectile_id);
+            assert_position_approximately_eq(projectile.get_position(), expected_position);
+            assert_vector_approximately_eq(
+                projectile.get_velocity().0,
+                expected_velocity_per_tick.as_server_velocity_vector(),
+            );
+        });
+        world.remove_entity(projectile_id);
+    });
+    reset_projectile_event_state();
+}
+
+#[test]
+fn splash_potion_ground_collision_tick_matches_vanilla_surface_crossing() {
+    let _lock = PROJECTILE_TEST_LOCK.lock().unwrap();
+    reset_projectile_event_state();
+    let mut server = MinecraftServer::new();
+    let server_ptr = &mut server as *mut MinecraftServer as usize;
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("splash_potion_vanilla_ground_crossing"),
+    );
+    world.use_server_event_dispatcher(server_ptr);
+    world.load_chunk(ChunkPosition::new(0, 0)).unwrap();
+    world
+        .set_block(BlockPosition::new(0, 63, 0), Block::STONE)
+        .unwrap();
+    let projectile_id = world
+        .spawn_projectile(
+            None,
+            EntityType::SPLASH_POTION,
+            EntityPosition::new(0.5, 66.0, 0.5, 0.0, 0.0),
+        )
+        .unwrap();
+    *PROJECTILE_TEST_ID.lock().unwrap() = Some(projectile_id);
+    let Some(Entity::Projectile(projectile)) = world.get_entity_mut(projectile_id) else {
+        panic!("spawned projectile must remain a projectile");
+    };
+    let starting_velocity_per_tick = Vector3d {
+        x: 0.0,
+        y: -0.1,
+        z: 0.0,
+    };
+    projectile.set_velocity(starting_velocity_per_tick.as_velocity());
+    let expected_collision_tick =
+        vanilla_splash_potion_ground_collision_tick(66.0, starting_velocity_per_tick.y, 64.0);
+
+    (1..expected_collision_tick).for_each(|_| {
+        world.tick();
+        assert_eq!(PROJECTILE_BLOCK_COLLISION_COUNT.load(Ordering::SeqCst), 0);
+    });
+    world.tick();
+
+    assert_eq!(PROJECTILE_BLOCK_COLLISION_COUNT.load(Ordering::SeqCst), 1);
+    let collision_position = PROJECTILE_BLOCK_COLLISION_POSITION.lock().unwrap().unwrap();
+    assert!((collision_position.get_y() - 64.0).abs() < 0.000001);
+    reset_projectile_event_state();
+}
+
 fn projectile_entity(world: &World, projectile_id: EntityId) -> &crate::entity::ProjectileEntity {
     let Some(Entity::Projectile(projectile)) = world.get_entity(projectile_id) else {
         panic!("projectile must remain in the world");
@@ -374,6 +649,8 @@ fn projectile_entity(world: &World, projectile_id: EntityId) -> &crate::entity::
 fn reset_projectile_event_state() {
     *PROJECTILE_TEST_ID.lock().unwrap() = None;
     *PROJECTILE_TARGET_ID.lock().unwrap() = None;
+    *PROJECTILE_BLOCK_COLLISION_POSITION.lock().unwrap() = None;
+    *PROJECTILE_ENTITY_COLLISION_POSITION.lock().unwrap() = None;
     PROJECTILE_SHOOT_CANCELLED.store(false, Ordering::SeqCst);
     PROJECTILE_BLOCK_COLLISION_CANCELLED.store(false, Ordering::SeqCst);
     PROJECTILE_BLOCK_COLLISION_COUNT.store(0, Ordering::SeqCst);
@@ -382,4 +659,109 @@ fn reset_projectile_event_state() {
     PROJECTILE_SHARED_COLLISION_CANCELLED.store(false, Ordering::SeqCst);
     PROJECTILE_UNCOLLIDE_COUNT.store(0, Ordering::SeqCst);
     PROJECTILE_SHOOT_EVENT_ENTITY_ACCESSOR_MATCHED.store(false, Ordering::SeqCst);
+}
+
+struct VanillaThrowableMotionCase {
+    starting_y: f64,
+    starting_velocity_per_tick: Vector3d,
+}
+
+impl VanillaThrowableMotionCase {
+    const fn new(starting_y: f64, starting_velocity_per_tick: Vector3d) -> Self {
+        Self {
+            starting_y,
+            starting_velocity_per_tick,
+        }
+    }
+}
+
+trait VanillaThrowableVector {
+    fn next_splash_potion_velocity_per_tick(self) -> Self;
+    fn as_velocity(self) -> Velocity;
+    fn as_server_velocity_vector(self) -> Vector3d;
+}
+
+impl VanillaThrowableVector for Vector3d {
+    fn next_splash_potion_velocity_per_tick(self) -> Self {
+        Self {
+            x: self.x * 0.99,
+            y: (self.y - 0.05) * 0.99,
+            z: self.z * 0.99,
+        }
+    }
+
+    fn as_velocity(self) -> Velocity {
+        Velocity(self.as_server_velocity_vector())
+    }
+
+    fn as_server_velocity_vector(self) -> Vector3d {
+        Vector3d {
+            x: self.x * 20.0,
+            y: self.y * 20.0,
+            z: self.z * 20.0,
+        }
+    }
+}
+
+fn vanilla_splash_potion_ground_collision_tick(
+    starting_y: f64,
+    starting_velocity_y_per_tick: f64,
+    ground_surface_y: f64,
+) -> u64 {
+    let mut position_y = starting_y;
+    let mut velocity_y_per_tick = starting_velocity_y_per_tick;
+    for tick in 1..100 {
+        velocity_y_per_tick = (velocity_y_per_tick - 0.05) * 0.99;
+        let next_position_y = position_y + velocity_y_per_tick;
+        if next_position_y <= ground_surface_y {
+            return tick;
+        }
+        position_y = next_position_y;
+    }
+    panic!("expected splash potion to reach the ground surface");
+}
+
+fn assert_position_approximately_eq(
+    actual_position: EntityPosition,
+    expected_position: EntityPosition,
+) {
+    assert!(
+        (actual_position.get_x() - expected_position.get_x()).abs() < 0.000001,
+        "actual x {} expected x {}",
+        actual_position.get_x(),
+        expected_position.get_x()
+    );
+    assert!(
+        (actual_position.get_y() - expected_position.get_y()).abs() < 0.000001,
+        "actual y {} expected y {}",
+        actual_position.get_y(),
+        expected_position.get_y()
+    );
+    assert!(
+        (actual_position.get_z() - expected_position.get_z()).abs() < 0.000001,
+        "actual z {} expected z {}",
+        actual_position.get_z(),
+        expected_position.get_z()
+    );
+}
+
+fn assert_vector_approximately_eq(actual_vector: Vector3d, expected_vector: Vector3d) {
+    assert!(
+        (actual_vector.x - expected_vector.x).abs() < 0.000001,
+        "actual x {} expected x {}",
+        actual_vector.x,
+        expected_vector.x
+    );
+    assert!(
+        (actual_vector.y - expected_vector.y).abs() < 0.000001,
+        "actual y {} expected y {}",
+        actual_vector.y,
+        expected_vector.y
+    );
+    assert!(
+        (actual_vector.z - expected_vector.z).abs() < 0.000001,
+        "actual z {} expected z {}",
+        actual_vector.z,
+        expected_vector.z
+    );
 }

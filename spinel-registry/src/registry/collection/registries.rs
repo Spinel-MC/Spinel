@@ -3,9 +3,9 @@ use super::vanilla::vanilla_potions;
 use crate::{
     Identifier, Material, RegistryKey, banner_pattern, biome, cat_variant, chat_type,
     chicken_variant, cow_variant, damage_type, dialog, dimension_type, enchantment, frog_variant,
-    instrument, jukebox_song, mob_effect, painting_variant, pig_variant, potion, timeline, trim_material,
-    trim_pattern, vanilla_biomes, vanilla_blocks, vanilla_dimension_types, vanilla_items,
-    vanilla_world_blocks, wolf_sound_variant, wolf_variant, zombie_nautilus_variant,
+    instrument, jukebox_song, mob_effect, painting_variant, pig_variant, potion, timeline,
+    trim_material, trim_pattern, vanilla_biomes, vanilla_blocks, vanilla_dimension_types,
+    vanilla_items, vanilla_world_blocks, wolf_sound_variant, wolf_variant, zombie_nautilus_variant,
 };
 
 pub const BLOCKS_REGISTRY: Identifier = Identifier::vanilla_static("block");

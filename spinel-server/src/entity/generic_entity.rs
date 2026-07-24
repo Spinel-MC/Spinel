@@ -4729,6 +4729,10 @@ impl GenericEntity {
             return None;
         }
         self.set_position(position);
+        self.position_movement_before_tick()
+    }
+
+    pub(crate) fn position_movement_before_tick(&mut self) -> Option<EntityMovement> {
         self.position_movement_since_synchronization(
             MovementSynchronizationTiming::BeforeEntityTick,
         )

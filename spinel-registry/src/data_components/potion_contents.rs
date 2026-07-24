@@ -1,6 +1,6 @@
-use crate::{Identifier, Registries};
 use crate::data_components::nbt_reader::{compound_from_nbt, i32_field_or, string_field};
 use crate::data_components::{CustomPotionEffect, DataComponentValue};
+use crate::{Identifier, Registries};
 use spinel_nbt::{Nbt, NbtCompound};
 use spinel_utils::color::Color;
 

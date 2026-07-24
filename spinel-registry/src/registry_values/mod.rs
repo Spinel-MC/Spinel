@@ -13,8 +13,8 @@ pub mod instrument;
 pub mod jukebox_song;
 pub mod mob_effect;
 pub mod painting_variant;
-pub mod potion;
 pub mod pig_variant;
+pub mod potion;
 #[cfg(test)]
 mod tests;
 pub mod timeline;

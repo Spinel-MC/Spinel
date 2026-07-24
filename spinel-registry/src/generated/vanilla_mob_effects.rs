@@ -1,5 +1,5 @@
-use crate::{DynamicRegistry, RegistryKey};
 use crate::mob_effect::MobEffect;
+use crate::{DynamicRegistry, RegistryKey};
 impl MobEffect {
     pub const SPEED: RegistryKey<Self> = RegistryKey::vanilla_static("speed");
     pub const SLOWNESS: RegistryKey<Self> = RegistryKey::vanilla_static("slowness");
@@ -32,7 +32,8 @@ impl MobEffect {
     pub const CONDUIT_POWER: RegistryKey<Self> = RegistryKey::vanilla_static("conduit_power");
     pub const DOLPHINS_GRACE: RegistryKey<Self> = RegistryKey::vanilla_static("dolphins_grace");
     pub const BAD_OMEN: RegistryKey<Self> = RegistryKey::vanilla_static("bad_omen");
-    pub const HERO_OF_THE_VILLAGE: RegistryKey<Self> = RegistryKey::vanilla_static("hero_of_the_village");
+    pub const HERO_OF_THE_VILLAGE: RegistryKey<Self> =
+        RegistryKey::vanilla_static("hero_of_the_village");
     pub const DARKNESS: RegistryKey<Self> = RegistryKey::vanilla_static("darkness");
     pub const TRIAL_OMEN: RegistryKey<Self> = RegistryKey::vanilla_static("trial_omen");
     pub const RAID_OMEN: RegistryKey<Self> = RegistryKey::vanilla_static("raid_omen");
@@ -40,47 +41,248 @@ impl MobEffect {
     pub const WEAVING: RegistryKey<Self> = RegistryKey::vanilla_static("weaving");
     pub const OOZING: RegistryKey<Self> = RegistryKey::vanilla_static("oozing");
     pub const INFESTED: RegistryKey<Self> = RegistryKey::vanilla_static("infested");
-    pub const BREATH_OF_THE_NAUTILUS: RegistryKey<Self> = RegistryKey::vanilla_static("breath_of_the_nautilus");
+    pub const BREATH_OF_THE_NAUTILUS: RegistryKey<Self> =
+        RegistryKey::vanilla_static("breath_of_the_nautilus");
 }
 pub fn register_mob_effects(registry: &mut DynamicRegistry<MobEffect>) {
-    let _ = registry.register_vanilla(MobEffect::SPEED, MobEffect::new(0, "effect.minecraft.speed".to_owned(), 3402751, false));
-    let _ = registry.register_vanilla(MobEffect::SLOWNESS, MobEffect::new(1, "effect.minecraft.slowness".to_owned(), 9154528, false));
-    let _ = registry.register_vanilla(MobEffect::HASTE, MobEffect::new(2, "effect.minecraft.haste".to_owned(), 14270531, false));
-    let _ = registry.register_vanilla(MobEffect::MINING_FATIGUE, MobEffect::new(3, "effect.minecraft.mining_fatigue".to_owned(), 4866583, false));
-    let _ = registry.register_vanilla(MobEffect::STRENGTH, MobEffect::new(4, "effect.minecraft.strength".to_owned(), 16762624, false));
-    let _ = registry.register_vanilla(MobEffect::INSTANT_HEALTH, MobEffect::new(5, "effect.minecraft.instant_health".to_owned(), 16262179, true));
-    let _ = registry.register_vanilla(MobEffect::INSTANT_DAMAGE, MobEffect::new(6, "effect.minecraft.instant_damage".to_owned(), 11101546, true));
-    let _ = registry.register_vanilla(MobEffect::JUMP_BOOST, MobEffect::new(7, "effect.minecraft.jump_boost".to_owned(), 16646020, false));
-    let _ = registry.register_vanilla(MobEffect::NAUSEA, MobEffect::new(8, "effect.minecraft.nausea".to_owned(), 5578058, false));
-    let _ = registry.register_vanilla(MobEffect::REGENERATION, MobEffect::new(9, "effect.minecraft.regeneration".to_owned(), 13458603, false));
-    let _ = registry.register_vanilla(MobEffect::RESISTANCE, MobEffect::new(10, "effect.minecraft.resistance".to_owned(), 9520880, false));
-    let _ = registry.register_vanilla(MobEffect::FIRE_RESISTANCE, MobEffect::new(11, "effect.minecraft.fire_resistance".to_owned(), 16750848, false));
-    let _ = registry.register_vanilla(MobEffect::WATER_BREATHING, MobEffect::new(12, "effect.minecraft.water_breathing".to_owned(), 10017472, false));
-    let _ = registry.register_vanilla(MobEffect::INVISIBILITY, MobEffect::new(13, "effect.minecraft.invisibility".to_owned(), 16185078, false));
-    let _ = registry.register_vanilla(MobEffect::BLINDNESS, MobEffect::new(14, "effect.minecraft.blindness".to_owned(), 2039587, false));
-    let _ = registry.register_vanilla(MobEffect::NIGHT_VISION, MobEffect::new(15, "effect.minecraft.night_vision".to_owned(), 12779366, false));
-    let _ = registry.register_vanilla(MobEffect::HUNGER, MobEffect::new(16, "effect.minecraft.hunger".to_owned(), 5797459, false));
-    let _ = registry.register_vanilla(MobEffect::WEAKNESS, MobEffect::new(17, "effect.minecraft.weakness".to_owned(), 4738376, false));
-    let _ = registry.register_vanilla(MobEffect::POISON, MobEffect::new(18, "effect.minecraft.poison".to_owned(), 8889187, false));
-    let _ = registry.register_vanilla(MobEffect::WITHER, MobEffect::new(19, "effect.minecraft.wither".to_owned(), 7561558, false));
-    let _ = registry.register_vanilla(MobEffect::HEALTH_BOOST, MobEffect::new(20, "effect.minecraft.health_boost".to_owned(), 16284963, false));
-    let _ = registry.register_vanilla(MobEffect::ABSORPTION, MobEffect::new(21, "effect.minecraft.absorption".to_owned(), 2445989, false));
-    let _ = registry.register_vanilla(MobEffect::SATURATION, MobEffect::new(22, "effect.minecraft.saturation".to_owned(), 16262179, true));
-    let _ = registry.register_vanilla(MobEffect::GLOWING, MobEffect::new(23, "effect.minecraft.glowing".to_owned(), 9740385, false));
-    let _ = registry.register_vanilla(MobEffect::LEVITATION, MobEffect::new(24, "effect.minecraft.levitation".to_owned(), 13565951, false));
-    let _ = registry.register_vanilla(MobEffect::LUCK, MobEffect::new(25, "effect.minecraft.luck".to_owned(), 5882118, false));
-    let _ = registry.register_vanilla(MobEffect::UNLUCK, MobEffect::new(26, "effect.minecraft.unluck".to_owned(), 12624973, false));
-    let _ = registry.register_vanilla(MobEffect::SLOW_FALLING, MobEffect::new(27, "effect.minecraft.slow_falling".to_owned(), 15978425, false));
-    let _ = registry.register_vanilla(MobEffect::CONDUIT_POWER, MobEffect::new(28, "effect.minecraft.conduit_power".to_owned(), 1950417, false));
-    let _ = registry.register_vanilla(MobEffect::DOLPHINS_GRACE, MobEffect::new(29, "effect.minecraft.dolphins_grace".to_owned(), 8954814, false));
-    let _ = registry.register_vanilla(MobEffect::BAD_OMEN, MobEffect::new(30, "effect.minecraft.bad_omen".to_owned(), 745784, false));
-    let _ = registry.register_vanilla(MobEffect::HERO_OF_THE_VILLAGE, MobEffect::new(31, "effect.minecraft.hero_of_the_village".to_owned(), 4521796, false));
-    let _ = registry.register_vanilla(MobEffect::DARKNESS, MobEffect::new(32, "effect.minecraft.darkness".to_owned(), 2696993, false));
-    let _ = registry.register_vanilla(MobEffect::TRIAL_OMEN, MobEffect::new(33, "effect.minecraft.trial_omen".to_owned(), 1484454, false));
-    let _ = registry.register_vanilla(MobEffect::RAID_OMEN, MobEffect::new(34, "effect.minecraft.raid_omen".to_owned(), 14565464, false));
-    let _ = registry.register_vanilla(MobEffect::WIND_CHARGED, MobEffect::new(35, "effect.minecraft.wind_charged".to_owned(), 12438015, false));
-    let _ = registry.register_vanilla(MobEffect::WEAVING, MobEffect::new(36, "effect.minecraft.weaving".to_owned(), 7891290, false));
-    let _ = registry.register_vanilla(MobEffect::OOZING, MobEffect::new(37, "effect.minecraft.oozing".to_owned(), 10092451, false));
-    let _ = registry.register_vanilla(MobEffect::INFESTED, MobEffect::new(38, "effect.minecraft.infested".to_owned(), 9214860, false));
-    let _ = registry.register_vanilla(MobEffect::BREATH_OF_THE_NAUTILUS, MobEffect::new(39, "effect.minecraft.breath_of_the_nautilus".to_owned(), 65518, false));
+    let _ = registry.register_vanilla(
+        MobEffect::SPEED,
+        MobEffect::new(0, "effect.minecraft.speed".to_owned(), 3402751, false),
+    );
+    let _ = registry.register_vanilla(
+        MobEffect::SLOWNESS,
+        MobEffect::new(1, "effect.minecraft.slowness".to_owned(), 9154528, false),
+    );
+    let _ = registry.register_vanilla(
+        MobEffect::HASTE,
+        MobEffect::new(2, "effect.minecraft.haste".to_owned(), 14270531, false),
+    );
+    let _ = registry.register_vanilla(
+        MobEffect::MINING_FATIGUE,
+        MobEffect::new(
+            3,
+            "effect.minecraft.mining_fatigue".to_owned(),
+            4866583,
+            false,
+        ),
+    );
+    let _ = registry.register_vanilla(
+        MobEffect::STRENGTH,
+        MobEffect::new(4, "effect.minecraft.strength".to_owned(), 16762624, false),
+    );
+    let _ = registry.register_vanilla(
+        MobEffect::INSTANT_HEALTH,
+        MobEffect::new(
+            5,
+            "effect.minecraft.instant_health".to_owned(),
+            16262179,
+            true,
+        ),
+    );
+    let _ = registry.register_vanilla(
+        MobEffect::INSTANT_DAMAGE,
+        MobEffect::new(
+            6,
+            "effect.minecraft.instant_damage".to_owned(),
+            11101546,
+            true,
+        ),
+    );
+    let _ = registry.register_vanilla(
+        MobEffect::JUMP_BOOST,
+        MobEffect::new(7, "effect.minecraft.jump_boost".to_owned(), 16646020, false),
+    );
+    let _ = registry.register_vanilla(
+        MobEffect::NAUSEA,
+        MobEffect::new(8, "effect.minecraft.nausea".to_owned(), 5578058, false),
+    );
+    let _ = registry.register_vanilla(
+        MobEffect::REGENERATION,
+        MobEffect::new(
+            9,
+            "effect.minecraft.regeneration".to_owned(),
+            13458603,
+            false,
+        ),
+    );
+    let _ = registry.register_vanilla(
+        MobEffect::RESISTANCE,
+        MobEffect::new(10, "effect.minecraft.resistance".to_owned(), 9520880, false),
+    );
+    let _ = registry.register_vanilla(
+        MobEffect::FIRE_RESISTANCE,
+        MobEffect::new(
+            11,
+            "effect.minecraft.fire_resistance".to_owned(),
+            16750848,
+            false,
+        ),
+    );
+    let _ = registry.register_vanilla(
+        MobEffect::WATER_BREATHING,
+        MobEffect::new(
+            12,
+            "effect.minecraft.water_breathing".to_owned(),
+            10017472,
+            false,
+        ),
+    );
+    let _ = registry.register_vanilla(
+        MobEffect::INVISIBILITY,
+        MobEffect::new(
+            13,
+            "effect.minecraft.invisibility".to_owned(),
+            16185078,
+            false,
+        ),
+    );
+    let _ = registry.register_vanilla(
+        MobEffect::BLINDNESS,
+        MobEffect::new(14, "effect.minecraft.blindness".to_owned(), 2039587, false),
+    );
+    let _ = registry.register_vanilla(
+        MobEffect::NIGHT_VISION,
+        MobEffect::new(
+            15,
+            "effect.minecraft.night_vision".to_owned(),
+            12779366,
+            false,
+        ),
+    );
+    let _ = registry.register_vanilla(
+        MobEffect::HUNGER,
+        MobEffect::new(16, "effect.minecraft.hunger".to_owned(), 5797459, false),
+    );
+    let _ = registry.register_vanilla(
+        MobEffect::WEAKNESS,
+        MobEffect::new(17, "effect.minecraft.weakness".to_owned(), 4738376, false),
+    );
+    let _ = registry.register_vanilla(
+        MobEffect::POISON,
+        MobEffect::new(18, "effect.minecraft.poison".to_owned(), 8889187, false),
+    );
+    let _ = registry.register_vanilla(
+        MobEffect::WITHER,
+        MobEffect::new(19, "effect.minecraft.wither".to_owned(), 7561558, false),
+    );
+    let _ = registry.register_vanilla(
+        MobEffect::HEALTH_BOOST,
+        MobEffect::new(
+            20,
+            "effect.minecraft.health_boost".to_owned(),
+            16284963,
+            false,
+        ),
+    );
+    let _ = registry.register_vanilla(
+        MobEffect::ABSORPTION,
+        MobEffect::new(21, "effect.minecraft.absorption".to_owned(), 2445989, false),
+    );
+    let _ = registry.register_vanilla(
+        MobEffect::SATURATION,
+        MobEffect::new(22, "effect.minecraft.saturation".to_owned(), 16262179, true),
+    );
+    let _ = registry.register_vanilla(
+        MobEffect::GLOWING,
+        MobEffect::new(23, "effect.minecraft.glowing".to_owned(), 9740385, false),
+    );
+    let _ = registry.register_vanilla(
+        MobEffect::LEVITATION,
+        MobEffect::new(
+            24,
+            "effect.minecraft.levitation".to_owned(),
+            13565951,
+            false,
+        ),
+    );
+    let _ = registry.register_vanilla(
+        MobEffect::LUCK,
+        MobEffect::new(25, "effect.minecraft.luck".to_owned(), 5882118, false),
+    );
+    let _ = registry.register_vanilla(
+        MobEffect::UNLUCK,
+        MobEffect::new(26, "effect.minecraft.unluck".to_owned(), 12624973, false),
+    );
+    let _ = registry.register_vanilla(
+        MobEffect::SLOW_FALLING,
+        MobEffect::new(
+            27,
+            "effect.minecraft.slow_falling".to_owned(),
+            15978425,
+            false,
+        ),
+    );
+    let _ = registry.register_vanilla(
+        MobEffect::CONDUIT_POWER,
+        MobEffect::new(
+            28,
+            "effect.minecraft.conduit_power".to_owned(),
+            1950417,
+            false,
+        ),
+    );
+    let _ = registry.register_vanilla(
+        MobEffect::DOLPHINS_GRACE,
+        MobEffect::new(
+            29,
+            "effect.minecraft.dolphins_grace".to_owned(),
+            8954814,
+            false,
+        ),
+    );
+    let _ = registry.register_vanilla(
+        MobEffect::BAD_OMEN,
+        MobEffect::new(30, "effect.minecraft.bad_omen".to_owned(), 745784, false),
+    );
+    let _ = registry.register_vanilla(
+        MobEffect::HERO_OF_THE_VILLAGE,
+        MobEffect::new(
+            31,
+            "effect.minecraft.hero_of_the_village".to_owned(),
+            4521796,
+            false,
+        ),
+    );
+    let _ = registry.register_vanilla(
+        MobEffect::DARKNESS,
+        MobEffect::new(32, "effect.minecraft.darkness".to_owned(), 2696993, false),
+    );
+    let _ = registry.register_vanilla(
+        MobEffect::TRIAL_OMEN,
+        MobEffect::new(33, "effect.minecraft.trial_omen".to_owned(), 1484454, false),
+    );
+    let _ = registry.register_vanilla(
+        MobEffect::RAID_OMEN,
+        MobEffect::new(34, "effect.minecraft.raid_omen".to_owned(), 14565464, false),
+    );
+    let _ = registry.register_vanilla(
+        MobEffect::WIND_CHARGED,
+        MobEffect::new(
+            35,
+            "effect.minecraft.wind_charged".to_owned(),
+            12438015,
+            false,
+        ),
+    );
+    let _ = registry.register_vanilla(
+        MobEffect::WEAVING,
+        MobEffect::new(36, "effect.minecraft.weaving".to_owned(), 7891290, false),
+    );
+    let _ = registry.register_vanilla(
+        MobEffect::OOZING,
+        MobEffect::new(37, "effect.minecraft.oozing".to_owned(), 10092451, false),
+    );
+    let _ = registry.register_vanilla(
+        MobEffect::INFESTED,
+        MobEffect::new(38, "effect.minecraft.infested".to_owned(), 9214860, false),
+    );
+    let _ = registry.register_vanilla(
+        MobEffect::BREATH_OF_THE_NAUTILUS,
+        MobEffect::new(
+            39,
+            "effect.minecraft.breath_of_the_nautilus".to_owned(),
+            65518,
+            false,
+        ),
+    );
 }

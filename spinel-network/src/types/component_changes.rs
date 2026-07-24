@@ -11,7 +11,7 @@ use crate::types::slot::Slot;
 use crate::types::sound::SoundEvent;
 use crate::types::var_int::VarIntWrapper;
 use crate::wrappers::{JsonTextComponent, NbtTextComponent};
-use spinel_nbt::Nbt;
+use spinel_nbt::{Nbt, NbtCompound};
 use spinel_registry::block_entity_type::BlockEntityType;
 use spinel_registry::data_components::vanilla_components::{
     ATTACK_RANGE, ATTRIBUTE_MODIFIERS, AXOLOTL_VARIANT, BANNER_PATTERNS, BASE_COLOR, BEES,
@@ -58,6 +58,54 @@ use std::sync::LazyLock;
 use uuid::Uuid;
 
 static VANILLA_REGISTRIES: LazyLock<Registries> = LazyLock::new(Registries::new_vanilla);
+static POTION_TYPES: &[&str] = &[
+    "water",
+    "mundane",
+    "thick",
+    "awkward",
+    "night_vision",
+    "long_night_vision",
+    "invisibility",
+    "long_invisibility",
+    "leaping",
+    "long_leaping",
+    "strong_leaping",
+    "fire_resistance",
+    "long_fire_resistance",
+    "swiftness",
+    "long_swiftness",
+    "strong_swiftness",
+    "slowness",
+    "long_slowness",
+    "strong_slowness",
+    "turtle_master",
+    "long_turtle_master",
+    "strong_turtle_master",
+    "water_breathing",
+    "long_water_breathing",
+    "healing",
+    "strong_healing",
+    "harming",
+    "strong_harming",
+    "poison",
+    "long_poison",
+    "strong_poison",
+    "regeneration",
+    "long_regeneration",
+    "strong_regeneration",
+    "strength",
+    "long_strength",
+    "strong_strength",
+    "weakness",
+    "long_weakness",
+    "luck",
+    "slow_falling",
+    "long_slow_falling",
+    "wind_charged",
+    "weaving",
+    "oozing",
+    "infested",
+];
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ComponentChanges {
@@ -170,6 +218,33 @@ impl ComponentChanges {
             .map(|component| component.map(TextComponent::from))
     }
 
+    pub(crate) fn to_supported_data_component_map(&self) -> io::Result<DataComponentMap> {
+        let mut component_patch = NbtCompound::new();
+        for component in &self.added {
+            let Some(component_descriptor) = DataComponentDescriptor::from_id(component.type_id)
+            else {
+                continue;
+            };
+            let Some(component_nbt) =
+                decode_supported_component_nbt(component.type_id, component.data.as_slice())?
+            else {
+                continue;
+            };
+            component_patch.insert(component_descriptor.key().to_string(), component_nbt);
+        }
+        for component_id in &self.removed {
+            let Some(component_descriptor) = DataComponentDescriptor::from_id(*component_id) else {
+                continue;
+            };
+            component_patch.insert(
+                format!("!{}", component_descriptor.key()),
+                Nbt::Compound(NbtCompound::new()),
+            );
+        }
+        DataComponentMap::from_nbt_patch(component_patch)
+            .map_err(|error| io::Error::new(io::ErrorKind::InvalidData, error.to_string()))
+    }
+
     fn decode_component<T: DataType>(&self, component_id: i32) -> io::Result<Option<T>> {
         self.added
             .iter()
@@ -187,6 +262,195 @@ impl ComponentChanges {
             })
             .transpose()
     }
+}
+
+fn decode_supported_component_nbt(
+    component_id: i32,
+    component_data: &[u8],
+) -> io::Result<Option<Nbt>> {
+    let mut component_reader = component_data;
+    let component_nbt = match component_id {
+        id if id == MAX_STACK_SIZE.id()
+            || id == MAX_DAMAGE.id()
+            || id == DAMAGE.id()
+            || id == REPAIR_COST.id()
+            || id == ENCHANTABLE.id()
+            || id == MAP_ID.id()
+            || id == OMINOUS_BOTTLE_AMPLIFIER.id() =>
+        {
+            Some(Nbt::Int(VarIntWrapper::decode(&mut component_reader)?.0))
+        }
+        id if id == MINIMUM_ATTACK_CHARGE.id() || id == POTION_DURATION_SCALE.id() => {
+            Some(Nbt::Float(f32::decode(&mut component_reader)?))
+        }
+        id if id == ENCHANTMENT_GLINT_OVERRIDE.id() => {
+            Some(Nbt::Byte(bool::decode(&mut component_reader)? as i8))
+        }
+        id if id == CUSTOM_DATA.id() || id == BUCKET_ENTITY_DATA.id() => {
+            Some(Nbt::Compound(NbtCompound::decode(&mut component_reader)?))
+        }
+        id if id == CUSTOM_NAME.id() || id == ITEM_NAME.id() => Some(
+            TextComponent::from(NbtTextComponent::decode(&mut component_reader)?)
+                .to_component_nbt(),
+        ),
+        id if id == ITEM_MODEL.id() || id == TOOLTIP_STYLE.id() || id == NOTE_BLOCK_SOUND.id() => {
+            Some(Nbt::String(String::decode(&mut component_reader)?))
+        }
+        id if id == POTION_CONTENTS.id() => {
+            decode_potion_contents_component_nbt(&mut component_reader)?
+        }
+        id if id == ENCHANTMENTS.id() || id == STORED_ENCHANTMENTS.id() => {
+            decode_enchantment_list_component_nbt(&mut component_reader)?
+        }
+        id if id == UNBREAKABLE.id() || id == CREATIVE_SLOT_LOCK.id() || id == GLIDER.id() => {
+            Some(Nbt::Compound(NbtCompound::new()))
+        }
+        _ => None,
+    };
+    if component_reader.is_empty() {
+        return Ok(component_nbt);
+    }
+    Err(io::Error::new(
+        io::ErrorKind::InvalidData,
+        format!("Component payload was not fully consumed: {component_id}"),
+    ))
+}
+
+fn decode_potion_contents_component_nbt<R: Read>(reader: &mut R) -> io::Result<Option<Nbt>> {
+    let potion = Option::<VarIntWrapper>::decode(reader)?
+        .map(|potion_id| {
+            potion_identifier_from_protocol_id(potion_id.0).map(|potion| potion.to_string())
+        })
+        .transpose()?;
+    let custom_color = Option::<i32>::decode(reader)?;
+    let custom_effects = decode_custom_potion_effects_component_nbt(reader)?;
+    let custom_name = Option::<String>::decode(reader)?;
+    let mut potion_contents = NbtCompound::new();
+    if let Some(potion) = potion {
+        potion_contents.insert("potion".to_string(), Nbt::String(potion));
+    }
+    if let Some(custom_color) = custom_color {
+        potion_contents.insert("custom_color".to_string(), Nbt::Int(custom_color));
+    }
+    if !custom_effects.is_empty() {
+        potion_contents.insert(
+            "custom_effects".to_string(),
+            Nbt::List(custom_effects.into_boxed_slice()),
+        );
+    }
+    if let Some(custom_name) = custom_name {
+        potion_contents.insert("custom_name".to_string(), Nbt::String(custom_name));
+    }
+    Ok(Some(Nbt::Compound(potion_contents)))
+}
+
+fn decode_custom_potion_effects_component_nbt<R: Read>(reader: &mut R) -> io::Result<Vec<Nbt>> {
+    let custom_effect_count = VarIntWrapper::decode(reader)?.0;
+    if custom_effect_count < 0 {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            format!("Negative custom potion effect count: {custom_effect_count}"),
+        ));
+    }
+    (0..custom_effect_count)
+        .map(|_| decode_custom_potion_effect_component_nbt(reader))
+        .collect()
+}
+
+fn decode_custom_potion_effect_component_nbt<R: Read>(reader: &mut R) -> io::Result<Nbt> {
+    let effect_id = VarIntWrapper::decode(reader)?.0;
+    let Some(effect_key) = VANILLA_REGISTRIES.mob_effect_key(effect_id) else {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            format!("Unknown mob effect protocol id: {effect_id}"),
+        ));
+    };
+    let mut effect = decode_potion_effect_settings_component_nbt(reader, 0)?;
+    effect.insert("id".to_string(), Nbt::String(effect_key.to_string()));
+    Ok(Nbt::Compound(effect))
+}
+
+fn decode_potion_effect_settings_component_nbt<R: Read>(
+    reader: &mut R,
+    hidden_effect_depth: usize,
+) -> io::Result<NbtCompound> {
+    if hidden_effect_depth > 64 {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            "Potion effect hidden effect nesting is too deep",
+        ));
+    }
+    let amplifier = VarIntWrapper::decode(reader)?.0;
+    let duration = VarIntWrapper::decode(reader)?.0;
+    let is_ambient = bool::decode(reader)?;
+    let show_particles = bool::decode(reader)?;
+    let show_icon = bool::decode(reader)?;
+    let mut settings = NbtCompound::new();
+    if amplifier != 0 {
+        settings.insert("amplifier".to_string(), Nbt::Byte(amplifier as i8));
+    }
+    if duration != 0 {
+        settings.insert("duration".to_string(), Nbt::Int(duration));
+    }
+    if is_ambient {
+        settings.insert("ambient".to_string(), Nbt::Byte(1));
+    }
+    if !show_particles {
+        settings.insert("show_particles".to_string(), Nbt::Byte(0));
+    }
+    if show_icon != show_particles {
+        settings.insert("show_icon".to_string(), Nbt::Byte(i8::from(show_icon)));
+    }
+    if bool::decode(reader)? {
+        settings.insert(
+            "hidden_effect".to_string(),
+            Nbt::Compound(decode_potion_effect_settings_component_nbt(
+                reader,
+                hidden_effect_depth + 1,
+            )?),
+        );
+    }
+    Ok(settings)
+}
+
+fn decode_enchantment_list_component_nbt<R: Read>(reader: &mut R) -> io::Result<Option<Nbt>> {
+    let enchantment_count = VarIntWrapper::decode(reader)?.0;
+    if enchantment_count < 0 {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            format!("Negative enchantment count: {enchantment_count}"),
+        ));
+    }
+
+    let mut enchantments = NbtCompound::new();
+    for _ in 0..enchantment_count {
+        let enchantment_id = VarIntWrapper::decode(reader)?.0;
+        let enchantment_level = VarIntWrapper::decode(reader)?.0;
+        let Some(enchantment_key) = VANILLA_REGISTRIES
+            .get_enchantments()
+            .key_by_id(enchantment_id)
+        else {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                format!("Unknown enchantment protocol id: {enchantment_id}"),
+            ));
+        };
+        enchantments.insert(
+            enchantment_key.key().to_string(),
+            Nbt::Int(enchantment_level),
+        );
+    }
+    Ok(Some(Nbt::Compound(enchantments)))
+}
+
+fn potion_identifier_from_protocol_id(protocol_id: i32) -> io::Result<spinel_registry::Identifier> {
+    let Some(potion_name) = POTION_TYPES.get(protocol_id as usize) else {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            format!("Unknown potion protocol id: {protocol_id}"),
+        ));
+    };
+    Ok(spinel_registry::Identifier::minecraft(*potion_name))
 }
 
 fn decode_component_counts<R: Read>(reader: &mut R) -> io::Result<(usize, usize)> {
@@ -2401,54 +2665,6 @@ fn encode_potion_effect_settings(
 }
 
 fn potion_type_protocol_id(potion: &spinel_registry::Identifier) -> Option<i32> {
-    static POTION_TYPES: &[&str] = &[
-        "water",
-        "mundane",
-        "thick",
-        "awkward",
-        "night_vision",
-        "long_night_vision",
-        "invisibility",
-        "long_invisibility",
-        "leaping",
-        "long_leaping",
-        "strong_leaping",
-        "fire_resistance",
-        "long_fire_resistance",
-        "swiftness",
-        "long_swiftness",
-        "strong_swiftness",
-        "slowness",
-        "long_slowness",
-        "strong_slowness",
-        "turtle_master",
-        "long_turtle_master",
-        "strong_turtle_master",
-        "water_breathing",
-        "long_water_breathing",
-        "healing",
-        "strong_healing",
-        "harming",
-        "strong_harming",
-        "poison",
-        "long_poison",
-        "strong_poison",
-        "regeneration",
-        "long_regeneration",
-        "strong_regeneration",
-        "strength",
-        "long_strength",
-        "strong_strength",
-        "weakness",
-        "long_weakness",
-        "luck",
-        "slow_falling",
-        "long_slow_falling",
-        "wind_charged",
-        "weaving",
-        "oozing",
-        "infested",
-    ];
     protocol_id_from_identifier_path(potion, POTION_TYPES)
 }
 

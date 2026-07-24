@@ -117,6 +117,9 @@ impl Suggestion {
     }
 
     pub fn add_entry(&mut self, entry: SuggestionEntry) {
+        if self.entries.iter().any(|existing| existing == &entry) {
+            return;
+        }
         self.entries.push(entry);
     }
 }

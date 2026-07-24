@@ -175,7 +175,10 @@ fn vanilla_potion_registry_preserves_extracted_effects_and_protocol_ids() {
 
     assert_eq!(swiftness.get_protocol_id(), 13);
     assert_eq!(swiftness.get_effects().len(), 1);
-    assert_eq!(swiftness.get_effects()[0].get_effect(), &Identifier::minecraft("speed"));
+    assert_eq!(
+        swiftness.get_effects()[0].get_effect(),
+        &Identifier::minecraft("speed")
+    );
     assert_eq!(swiftness.get_effects()[0].get_duration(), 3600);
     assert_eq!(water.get_protocol_id(), 0);
     assert!(water.get_effects().is_empty());

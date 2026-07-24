@@ -124,6 +124,26 @@ fn world_kill_entity_applies_player_dying_pose_and_dead_state_once() {
     assert_eq!(player.get_pose(), EntityPose::Dying);
 }
 
+#[test]
+fn world_kill_entity_removes_projectiles_through_base_entity_kill_path() {
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
+    let projectile_id = world
+        .spawn_projectile(
+            None,
+            EntityType::SPLASH_POTION,
+            EntityPosition::new(1.0, 64.0, 1.0, 0.0, 0.0),
+        )
+        .unwrap();
+
+    assert!(world.kill_entity(projectile_id).unwrap());
+    assert!(world.get_entity(projectile_id).is_none());
+    assert!(!world.kill_entity(projectile_id).unwrap());
+}
+
 fn server_with_living_entity() -> MinecraftServer {
     let mut server = MinecraftServer::new();
     let world_uuid = server
