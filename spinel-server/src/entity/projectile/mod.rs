@@ -1,7 +1,7 @@
 mod instance;
 mod metadata;
 
-pub use instance::ProjectileEntity;
+pub use instance::{ProjectileEntity, ProjectilePhysics};
 
 pub use metadata::{
     AbstractArrowMeta, AbstractWindChargeMeta, ArrowMeta, BreezeWindChargeMeta, DragonFireballMeta,

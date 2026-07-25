@@ -56,9 +56,9 @@ pub use pose::EntityPose;
 pub use projectile::{
     AbstractArrowMeta, AbstractWindChargeMeta, ArrowMeta, BreezeWindChargeMeta, DragonFireballMeta,
     EyeOfEnderMeta, FireballMeta, FireworkRocketMeta, LingeringPotionMeta, ProjectileEntity,
-    ProjectileEntityMeta, SmallFireballMeta, SnowballMeta, SpectralArrowMeta, SplashPotionMeta,
-    ThrownEggMeta, ThrownEnderPearlMeta, ThrownExperienceBottleMeta, ThrownItemProjectileMeta,
-    ThrownTridentMeta, WindChargeMeta, WitherSkullMeta,
+    ProjectileEntityMeta, ProjectilePhysics, SmallFireballMeta, SnowballMeta, SpectralArrowMeta,
+    SplashPotionMeta, ThrownEggMeta, ThrownEnderPearlMeta, ThrownExperienceBottleMeta,
+    ThrownItemProjectileMeta, ThrownTridentMeta, WindChargeMeta, WitherSkullMeta,
 };
 pub use snapshot::{EntityObservation, EntitySnapshot, PlayerSnapshot};
 pub(crate) use state::EntityState;

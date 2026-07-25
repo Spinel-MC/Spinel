@@ -16,14 +16,22 @@ const PROJECTILE_GRAVITY_AIM_COMPENSATION: f64 = 0.20000000298023224;
 const PROJECTILE_SPREAD_SCALE: f64 = 0.007499999832361937;
 const SERVER_TICKS_PER_SECOND: f64 = 20.0;
 const THROWABLE_PROJECTILE_INERTIA: f64 = 0.99;
+const VANILLA_THROWABLE_PROJECTILE_INERTIA: f64 = 0.99_f32 as f64;
 const THROWABLE_PROJECTILE_GRAVITY: f64 = 0.03;
 const THROWN_POTION_GRAVITY: f64 = 0.05;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ProjectilePhysics {
+    GenericPhysics,
+    VanillaPhysics,
+}
 
 pub struct ProjectileEntity {
     entity: GenericEntity,
     shooter: Option<EntityId>,
     was_stuck: bool,
     has_left_shooter_collision_range: bool,
+    physics: ProjectilePhysics,
 }
 
 impl ProjectileEntity {
@@ -39,6 +47,7 @@ impl ProjectileEntity {
             shooter: None,
             was_stuck: false,
             has_left_shooter_collision_range: shooter.is_none(),
+            physics: ProjectilePhysics::GenericPhysics,
         };
         projectile.set_shooter(shooter);
         projectile
@@ -61,6 +70,14 @@ impl ProjectileEntity {
 
     pub const fn get_was_stuck(&self) -> bool {
         self.was_stuck
+    }
+
+    pub const fn get_physics(&self) -> ProjectilePhysics {
+        self.physics
+    }
+
+    pub fn set_physics(&mut self, physics: ProjectilePhysics) {
+        self.physics = physics;
     }
 
     pub(crate) const fn has_left_shooter_collision_range(&self) -> bool {
@@ -334,11 +351,18 @@ impl ProjectileEntity {
             true => 0.0,
             false => self.get_throwable_projectile_gravity(),
         };
+        let inertia = self.get_throwable_projectile_inertia();
         Vector3d {
-            x: current_velocity.x / SERVER_TICKS_PER_SECOND * THROWABLE_PROJECTILE_INERTIA,
-            y: (current_velocity.y / SERVER_TICKS_PER_SECOND - gravity)
-                * THROWABLE_PROJECTILE_INERTIA,
-            z: current_velocity.z / SERVER_TICKS_PER_SECOND * THROWABLE_PROJECTILE_INERTIA,
+            x: current_velocity.x / SERVER_TICKS_PER_SECOND * inertia,
+            y: (current_velocity.y / SERVER_TICKS_PER_SECOND - gravity) * inertia,
+            z: current_velocity.z / SERVER_TICKS_PER_SECOND * inertia,
+        }
+    }
+
+    fn get_throwable_projectile_inertia(&self) -> f64 {
+        match self.physics {
+            ProjectilePhysics::GenericPhysics => THROWABLE_PROJECTILE_INERTIA,
+            ProjectilePhysics::VanillaPhysics => VANILLA_THROWABLE_PROJECTILE_INERTIA,
         }
     }
 

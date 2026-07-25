@@ -1,4 +1,4 @@
-use crate::entity::{Entity, EntityId, EntityPosition, LivingEntity};
+use crate::entity::{Entity, EntityId, EntityPosition, LivingEntity, ProjectilePhysics};
 use crate::events::entity_shoot::EntityShootEvent;
 use crate::events::projectile_collide::ProjectileCollideEvent;
 use crate::events::projectile_collide_with_block::ProjectileCollideWithBlockEvent;
@@ -561,6 +561,7 @@ fn splash_potion_motion_matches_vanilla_throwable_motion_for_multiple_heights_an
         let Some(Entity::Projectile(projectile)) = world.get_entity_mut(projectile_id) else {
             panic!("spawned projectile must remain a projectile");
         };
+        projectile.set_physics(ProjectilePhysics::VanillaPhysics);
         projectile.set_velocity(motion_case.starting_velocity_per_tick.as_velocity());
         let spawn_packet_velocity = projectile.spawn_packet().velocity.0;
         assert_vector_approximately_eq(
@@ -618,6 +619,7 @@ fn splash_potion_ground_collision_tick_matches_vanilla_surface_crossing() {
     let Some(Entity::Projectile(projectile)) = world.get_entity_mut(projectile_id) else {
         panic!("spawned projectile must remain a projectile");
     };
+    projectile.set_physics(ProjectilePhysics::VanillaPhysics);
     let starting_velocity_per_tick = Vector3d {
         x: 0.0,
         y: -0.1,
@@ -684,9 +686,9 @@ trait VanillaThrowableVector {
 impl VanillaThrowableVector for Vector3d {
     fn next_splash_potion_velocity_per_tick(self) -> Self {
         Self {
-            x: self.x * 0.99,
-            y: (self.y - 0.05) * 0.99,
-            z: self.z * 0.99,
+            x: self.x * (0.99_f32 as f64),
+            y: (self.y - 0.05) * (0.99_f32 as f64),
+            z: self.z * (0.99_f32 as f64),
         }
     }
 
@@ -711,7 +713,7 @@ fn vanilla_splash_potion_ground_collision_tick(
     let mut position_y = starting_y;
     let mut velocity_y_per_tick = starting_velocity_y_per_tick;
     for tick in 1..100 {
-        velocity_y_per_tick = (velocity_y_per_tick - 0.05) * 0.99;
+        velocity_y_per_tick = (velocity_y_per_tick - 0.05) * (0.99_f32 as f64);
         let next_position_y = position_y + velocity_y_per_tick;
         if next_position_y <= ground_surface_y {
             return tick;
