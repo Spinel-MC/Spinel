@@ -2,7 +2,6 @@ use crate::events::network::packet_error::{PacketErrorEvent, PacketErrorStage};
 use crate::network::client::instance::Client;
 use crate::server::MinecraftServer;
 use spinel_core::network::serverbound::play::keep_alive::KeepAlivePacket;
-use spinel_core::network::serverbound::play::use_item::UseItemPacket;
 use spinel_network::DataType;
 use spinel_network::VarIntWrapper;
 use spinel_network::packet_names::PacketNameRegistry;
@@ -253,7 +252,7 @@ impl ServerSocketRuntime {
         };
 
         let packet_has_codec = server.has_codec_for(packet_id, client.state);
-        if packet_has_codec && packet_should_be_queued(&client, packet_id) {
+        if packet_has_codec && Self::packet_should_be_queued(&client, packet_id) {
             server.queue_player_packet(packet_id, &mut client, payload);
         } else {
             server.dispatch_packet(packet_id, &mut client, payload);
@@ -276,6 +275,10 @@ impl ServerSocketRuntime {
         client.handle_keep_alive_payload(payload).unwrap_or(false)
     }
 
+    fn packet_should_be_queued(client: &Client, packet_id: i32) -> bool {
+        client.state == ConnectionState::Play && packet_id != KeepAlivePacket::get_id()
+    }
+
     fn sync_decoder_state(
         decoder: &mut spinel_network::decoder::PacketDecoder,
         client: &mut Client,
@@ -295,10 +298,4 @@ impl ServerSocketRuntime {
             .map(|client| !client.is_online())
             .unwrap_or(true)
     }
-}
-
-pub(crate) fn packet_should_be_queued(client: &Client, packet_id: i32) -> bool {
-    client.state == ConnectionState::Play
-        && packet_id != KeepAlivePacket::get_id()
-        && packet_id != UseItemPacket::get_id()
 }

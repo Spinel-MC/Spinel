@@ -32,10 +32,8 @@ fn on_use_item(client: &mut Client, packet: UseItemPacket, server: &mut Minecraf
     let equipment_is_refreshed = server
         .refresh_player_visible_equipment_in_world(client)
         .is_ok();
-    let outbound_packets_are_flushed = client.flush_outbound_packets().is_ok();
     block_change_is_acknowledged
         && item_use_is_allowed
         && metadata_is_refreshed
         && equipment_is_refreshed
-        && outbound_packets_are_flushed
 }
