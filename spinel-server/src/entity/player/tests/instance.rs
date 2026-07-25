@@ -1370,7 +1370,7 @@ fn queued_player_packets_drain_at_reference_packet_per_tick_limit() {
         assert!(player.add_packet_to_queue(QueuedPlayerPacket::new(
             ConnectionState::Play,
             -1,
-            Vec::new(),
+            Vec::new()
         )));
     });
 
@@ -1418,14 +1418,14 @@ fn queued_player_packet_overflow_kicks_with_reference_reason() {
         assert!(player.add_packet_to_queue(QueuedPlayerPacket::new(
             ConnectionState::Play,
             -1,
-            Vec::new(),
+            Vec::new()
         )));
     });
 
     assert!(!player.add_packet_to_queue(QueuedPlayerPacket::new(
         ConnectionState::Play,
         -1,
-        Vec::new(),
+        Vec::new()
     )));
 
     let (packet_id, payload) = read_packet_frame(&mut peer_stream);
@@ -2478,31 +2478,6 @@ fn public_sneaking_and_sprinting_setters_broadcast_dirty_metadata_to_play_client
             .unwrap()
             .queued_outbound_packet_ids()
             .is_empty()
-    );
-}
-
-#[test]
-fn player_item_cooldown_uses_extracted_material_default() {
-    let mut player = Player::new(
-        Uuid::nil(),
-        "Player".to_string(),
-        0,
-        SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 25565),
-    );
-    player.set_item_in_hand(PlayerHand::Main, ItemStack::of(Material::ENDER_PEARL));
-    let mut client = test_client();
-
-    assert!(
-        player
-            .use_item_with_cooldown(PlayerHand::Main, 10, &mut client)
-            .unwrap()
-    );
-    assert!(player.item_cooldown_is_active("minecraft:ender_pearl", 29));
-    assert!(!player.item_cooldown_is_active("minecraft:ender_pearl", 30));
-    assert!(
-        !player
-            .use_item_with_cooldown(PlayerHand::Main, 11, &mut client)
-            .unwrap()
     );
 }
 

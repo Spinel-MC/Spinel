@@ -105,13 +105,10 @@ impl Player {
     pub(crate) fn use_item(
         &mut self,
         hand: PlayerHand,
-        current_tick: u64,
+        _current_tick: u64,
         server: &mut MinecraftServer,
         client: &mut Client,
     ) -> io::Result<bool> {
-        if !self.use_item_with_cooldown(hand, current_tick, client)? {
-            return Ok(false);
-        }
         let item_stack = self.get_item_in_hand(hand);
         let item_use_state = item_use_state(&item_stack, &server.registries);
         let is_using_main_hand_while_off_hand_was_requested =

@@ -1,7 +1,7 @@
 use spinel_network::data_type::DataType;
-use spinel_network::types::Vector3d;
 use spinel_network::types::sound::SoundEvent;
-use spinel_network::{ConnectionState, PacketSender, PacketStruct, VarIntWrapper};
+use spinel_network::types::{Particle, Vector3d};
+use spinel_network::{ConnectionState, PacketSender, PacketStruct};
 use std::io::{self, Read, Write};
 
 pub struct ExplosionPacket {
@@ -9,19 +9,14 @@ pub struct ExplosionPacket {
     pub radius: f32,
     pub block_count: i32,
     pub player_knockback: Option<Vector3d>,
-    pub particle: ExplosionParticle,
+    pub particle: Particle,
     pub sound: SoundEvent,
     pub block_particles: Vec<ExplosionBlockParticleInfo>,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum ExplosionParticle {
-    Explosion,
-}
-
 #[derive(Clone, Debug, PartialEq)]
 pub struct ExplosionBlockParticleInfo {
-    pub particle: ExplosionParticle,
+    pub particle: Particle,
     pub scaling: f32,
     pub speed: f32,
 }
@@ -63,7 +58,7 @@ impl DataType for ExplosionPacket {
             radius: f32::decode(reader)?,
             block_count: i32::decode(reader)?,
             player_knockback: Option::<Vector3d>::decode(reader)?,
-            particle: ExplosionParticle::decode(reader)?,
+            particle: Particle::decode(reader)?,
             sound: SoundEvent::decode(reader)?,
             block_particles: Vec::<ExplosionBlockParticleInfo>::decode(reader)?,
         })
@@ -80,30 +75,6 @@ impl PacketStruct for ExplosionPacket {
     }
 }
 
-impl DataType for ExplosionParticle {
-    fn encode<W: Write>(&self, writer: &mut W) -> io::Result<()> {
-        VarIntWrapper(self.protocol_id()).encode(writer)
-    }
-
-    fn decode<R: Read>(reader: &mut R) -> io::Result<Self> {
-        match VarIntWrapper::decode(reader)?.0 {
-            23 => Ok(Self::Explosion),
-            particle_id => Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                format!("Unknown explosion particle type: {particle_id}"),
-            )),
-        }
-    }
-}
-
-impl ExplosionParticle {
-    pub const fn protocol_id(self) -> i32 {
-        match self {
-            Self::Explosion => 23,
-        }
-    }
-}
-
 impl DataType for ExplosionBlockParticleInfo {
     fn encode<W: Write>(&self, writer: &mut W) -> io::Result<()> {
         self.particle.encode(writer)?;
@@ -113,7 +84,7 @@ impl DataType for ExplosionBlockParticleInfo {
 
     fn decode<R: Read>(reader: &mut R) -> io::Result<Self> {
         Ok(Self {
-            particle: ExplosionParticle::decode(reader)?,
+            particle: Particle::decode(reader)?,
             scaling: f32::decode(reader)?,
             speed: f32::decode(reader)?,
         })

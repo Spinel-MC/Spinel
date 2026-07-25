@@ -4812,6 +4812,7 @@ impl GenericEntity {
             self.state.get_entity_id(),
             self.state.get_ticks(),
             self.state.get_position(),
+            self.get_protocol_velocity(),
             self.on_ground,
         )
     }

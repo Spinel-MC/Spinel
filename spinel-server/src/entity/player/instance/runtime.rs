@@ -29,9 +29,6 @@ impl Player {
     pub(crate) fn tick(&mut self) -> Option<crate::entity::player::PlayerItemUseCompletion> {
         self.process_scheduler_tick_start();
         let _ = self.sync_dirty_player_inventory_slots();
-        let current_tick = self.last_completed_client_tick;
-        self.item_cooldowns
-            .retain(|_, cooldown_expires_at| *cooldown_expires_at > current_tick);
         let item_use_completion = self.tick_item_use();
         if self
             .delayed_remove_ticks

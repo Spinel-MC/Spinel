@@ -1,9 +1,9 @@
 use crate::entity::EntityPosition;
 use crate::world::{Block, BlockPosition, World};
-use spinel_core::network::clientbound::play::explosion::{ExplosionPacket, ExplosionParticle};
+use spinel_core::network::clientbound::play::explosion::ExplosionPacket;
 use spinel_nbt::NbtCompound;
-use spinel_network::types::Vector3d;
 use spinel_network::types::sound::SoundEvent;
+use spinel_network::types::{Particle, ParticlePayload, Vector3d};
 use std::fmt;
 use std::sync::Arc;
 
@@ -132,7 +132,7 @@ impl Explosion {
                 y: 0.0,
                 z: 0.0,
             }),
-            particle: ExplosionParticle::Explosion,
+            particle: Particle::new(23, ParticlePayload::Unit),
             sound: SoundEvent::Id(668),
             block_particles: Vec::new(),
         }

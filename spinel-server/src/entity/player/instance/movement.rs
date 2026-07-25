@@ -83,7 +83,13 @@ impl Player {
     {
         let position = self.get_position();
         self.synchronization
-            .synchronize(self.entity_id, self.alive_ticks, position, self.on_ground)
+            .synchronize(
+                self.entity_id,
+                self.alive_ticks,
+                position,
+                self.protocol_velocity(),
+                self.on_ground,
+            )
     }
 
     pub(crate) fn get_scheduled_entity_position_sync_packet(

@@ -1,6 +1,6 @@
 use crate::entity::{EntityId, EntityPosition};
 use spinel_core::network::clientbound::play::entity_position_sync::EntityPositionSyncPacket;
-use spinel_network::types::Vector3d;
+use spinel_network::types::{Vector3d, Velocity};
 
 const DEFAULT_ENTITY_SYNCHRONIZATION_TICKS: u64 = 20;
 
@@ -52,9 +52,9 @@ impl EntitySynchronization {
         entity_id: EntityId,
         current_tick: u64,
         position: EntityPosition,
+        velocity: Velocity,
         on_ground: bool,
     ) -> EntityPositionSyncPacket {
-        let previous_position = self.last_position;
         self.last_position = position;
         self.next_tick = current_tick.saturating_add(self.interval_ticks);
         EntityPositionSyncPacket {
@@ -65,9 +65,9 @@ impl EntitySynchronization {
                 z: position.get_z(),
             },
             delta: Vector3d {
-                x: position.get_x() - previous_position.get_x(),
-                y: position.get_y() - previous_position.get_y(),
-                z: position.get_z() - previous_position.get_z(),
+                x: velocity.0.x,
+                y: velocity.0.y,
+                z: velocity.0.z,
             },
             yaw: position.get_yaw(),
             pitch: position.get_pitch(),

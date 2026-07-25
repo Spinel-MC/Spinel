@@ -61,7 +61,7 @@ fn world_tick_sends_scheduled_position_then_velocity_and_preserves_interval() {
 }
 
 #[test]
-fn scheduled_position_synchronization_delta_uses_displacement_from_last_synchronized_position() {
+fn scheduled_position_synchronization_delta_uses_protocol_velocity() {
     let mut world = World::new_with_dimension_name(
         uuid::Uuid::new_v4(),
         spinel_registry::dimension_type::DimensionType::OVERWORLD,
@@ -85,9 +85,9 @@ fn scheduled_position_synchronization_delta_uses_displacement_from_last_synchron
     };
     target.set_position(EntityPosition::new(8.0, 70.0, 4.0, 0.0, 0.0));
     target.set_velocity(Velocity(Vector3d {
-        x: 0.0,
-        y: 0.0,
-        z: 0.0,
+        x: 20.0,
+        y: 10.0,
+        z: -40.0,
     }));
     target.synchronize_next_tick();
 
@@ -104,7 +104,9 @@ fn scheduled_position_synchronization_delta_uses_displacement_from_last_synchron
         EntityPositionSyncPacket::decode(&mut Cursor::new(synchronization_packet_payload)).unwrap();
 
     assert_eq!(synchronization_packet.position.y, 70.0);
-    assert_eq!(synchronization_packet.delta.y, 6.0);
+    assert!((synchronization_packet.delta.x - 1.0).abs() < f64::EPSILON);
+    assert!((synchronization_packet.delta.y - 0.5).abs() < f64::EPSILON);
+    assert!((synchronization_packet.delta.z + 2.0).abs() < f64::EPSILON);
 }
 
 #[test]

@@ -5,7 +5,6 @@ mod click;
 mod click_access;
 mod click_actions;
 mod connection;
-mod cooldown;
 mod equipment_attributes;
 mod input;
 mod instance;
