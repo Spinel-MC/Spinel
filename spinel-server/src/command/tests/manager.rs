@@ -3,11 +3,16 @@ use crate::command::{
     Command, CommandArgument, CommandArgumentValue, CommandConditionContext,
     CommandExecutionResult, CommandExecutor, CommandSender, RelativeVec3,
 };
+use crate::network::ConnectionState;
 use crate::server::MinecraftServer;
 use spinel_core::network::clientbound::play::commands::{
     ArgumentParserType, COMMAND_NODE_IS_EXECUTABLE, CommandNode, CommandsPacket,
 };
-use spinel_network::DataType;
+use spinel_network::{DataType, VarIntWrapper};
+use std::io::{Cursor, Read};
+use std::net::{IpAddr, Ipv4Addr, SocketAddr, TcpListener, TcpStream};
+use std::time::Duration;
+use uuid::Uuid;
 
 #[test]
 fn command_manager_rejects_duplicate_roots_and_aliases() {
@@ -190,6 +195,47 @@ fn command_manager_filters_declared_commands_by_source_condition() {
 }
 
 #[test]
+fn chat_command_execution_keeps_registered_commands_available_during_refresh() {
+    let (mut client, mut peer_stream) = test_client_pair();
+    let mut server = MinecraftServer::new();
+    let world_uuid = server.world_manager.create_world(spinel_registry::dimension_type::DimensionType::OVERWORLD);
+    server.command_manager.register(
+        Command::new("kill")
+            .with_condition(requires_admin)
+            .with_default_executor(CommandExecutor::from_function(unused_executor)),
+    );
+    server.command_manager.register(
+        Command::new("refresh")
+            .with_default_executor(CommandExecutor::from_function(refresh_sender_commands)),
+    );
+    client.state = ConnectionState::Play;
+    client.server_ptr = Some(&mut server as *mut MinecraftServer as usize);
+    let mut player = crate::entity::Player::new(Uuid::nil(), "Player".to_owned(), 0, client.addr);
+    player.set_client(&mut client);
+    player.mark_entered_world();
+    server
+        .world_manager
+        .world_mut(world_uuid)
+        .unwrap()
+        .add_entity(crate::entity::Entity::Player(player));
+
+    assert!(crate::network::play::chat_command::execute_chat_command(
+        &mut client,
+        "refresh",
+        &mut server,
+    ));
+
+    let command_packets = read_available_packet_frames(&mut peer_stream)
+        .into_iter()
+        .filter(|(packet_id, _)| *packet_id == CommandsPacket::get_id())
+        .map(|(_, payload)| CommandsPacket::decode(&mut payload.as_slice()).unwrap())
+        .collect::<Vec<_>>();
+
+    assert_eq!(command_packets.len(), 1);
+    assert!(root_command_exists(&command_packets[0], "kill"));
+}
+
+#[test]
 fn command_manager_unregisters_registered_command_names() {
     let mut command_manager = CommandManager::new();
     command_manager.register(Command::new("spawn").with_alias("summon"));
@@ -270,6 +316,19 @@ fn requires_admin(condition_context: CommandConditionContext, _input: Option<&st
     condition_context.permission_level() >= 3
 }
 
+fn refresh_sender_commands(
+    server: &mut MinecraftServer,
+    mut sender: CommandSender<'_>,
+    _context: &mut crate::command::CommandContext,
+) -> CommandExecutionResult {
+    let Some(player) = sender.player(server) else {
+        return CommandExecutionResult::precondition_failed();
+    };
+    player.set_permission_level(4).unwrap();
+    player.refresh_commands().unwrap();
+    CommandExecutionResult::success()
+}
+
 #[test]
 fn command_manager_merges_typed_argument_prefix_before_literal_children() {
     let mut command_manager = CommandManager::new();
@@ -331,4 +390,39 @@ fn command_manager_declares_bounded_integer_properties() {
         first_argument_node(&command_manager.declare_commands_packet(), "level").properties,
         vec![1, 0, 0, 0, 0]
     );
+}
+
+fn test_client_pair() -> (crate::network::client::instance::Client, TcpStream) {
+    let listener = TcpListener::bind(SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 0)).unwrap();
+    let addr = listener.local_addr().unwrap();
+    let client_stream = TcpStream::connect(addr).unwrap();
+    let (peer_stream, _) = listener.accept().unwrap();
+    (crate::network::client::instance::Client::new(client_stream, addr), peer_stream)
+}
+
+fn read_available_packet_frames(peer_stream: &mut TcpStream) -> Vec<(i32, Vec<u8>)> {
+    peer_stream
+        .set_read_timeout(Some(Duration::from_millis(25)))
+        .unwrap();
+    let mut packet_frames = Vec::new();
+    loop {
+        let frame_length = match VarIntWrapper::decode(peer_stream) {
+            Ok(frame_length) => frame_length.0 as usize,
+            Err(error)
+                if error.kind() == std::io::ErrorKind::WouldBlock
+                    || error.kind() == std::io::ErrorKind::TimedOut =>
+            {
+                break;
+            }
+            Err(error) => panic!("packet frame length decode failed: {error}"),
+        };
+        let mut frame = vec![0; frame_length];
+        peer_stream.read_exact(&mut frame).unwrap();
+        let mut frame_cursor = Cursor::new(frame);
+        let packet_id = VarIntWrapper::decode(&mut frame_cursor).unwrap().0;
+        let payload_start = frame_cursor.position() as usize;
+        let payload = frame_cursor.into_inner()[payload_start..].to_vec();
+        packet_frames.push((packet_id, payload));
+    }
+    packet_frames
 }

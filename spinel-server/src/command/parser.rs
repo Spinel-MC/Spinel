@@ -1,6 +1,6 @@
 use crate::command::{
-    Command, CommandArgument, CommandArgumentKind, CommandArgumentValue, CommandContext,
-    CommandSyntax, CoordinateType, RelativeCoordinate, RelativeVec3,
+    Command, CommandArgument, CommandArgumentKind, CommandArgumentValue, CommandConditionContext,
+    CommandContext, CommandSyntax, CoordinateType, RelativeCoordinate, RelativeVec3,
 };
 use spinel_nbt::parse_snbt_compound;
 use spinel_registry::{BlockState, EntityType, vanilla_world_blocks::Block};
@@ -23,19 +23,30 @@ pub enum CommandParseResult<'a> {
 }
 
 impl CommandParser {
-    pub fn parse<'a>(commands: &'a [Command], command_line: &str) -> CommandParseResult<'a> {
+    pub fn parse<'a>(
+        commands: &'a [Command],
+        condition_context: CommandConditionContext,
+        command_line: &str,
+    ) -> CommandParseResult<'a> {
         let trimmed_command_line = command_line.trim().trim_start_matches('/');
         let (command_name, command_arguments) = trimmed_command_line
             .split_once(char::is_whitespace)
             .unwrap_or((trimmed_command_line, ""));
         let Some(root_command) = commands
             .iter()
-            .find(|command| command.name_matches(command_name))
+            .find(|command| {
+                command.name_matches(command_name)
+                    && command_is_visible_to_source(command, condition_context, trimmed_command_line)
+            })
         else {
             return CommandParseResult::Unknown;
         };
-        let (command, command_arguments, command_cursor) =
-            Self::parse_subcommand(root_command, command_arguments.trim());
+        let (command, command_arguments, command_cursor) = Self::parse_subcommand(
+            root_command,
+            condition_context,
+            trimmed_command_line,
+            command_arguments.trim(),
+        );
         let parse_context = Self::parse_context(command, trimmed_command_line, command_arguments);
         let Some((context, syntax)) = parse_context else {
             let parsed_command = ParsedCommand {
@@ -59,10 +70,18 @@ impl CommandParser {
 
     fn parse_subcommand<'a, 'b>(
         command: &'a Command,
+        condition_context: CommandConditionContext,
+        command_input: &str,
         command_arguments: &'b str,
     ) -> (&'a Command, &'b str, usize) {
         let command_cursor = command.name().len() + usize::from(!command_arguments.is_empty());
-        parse_subcommand_from_cursor(command, command_arguments, command_cursor)
+        parse_subcommand_from_cursor(
+            command,
+            condition_context,
+            command_input,
+            command_arguments,
+            command_cursor,
+        )
     }
 
     fn parse_context<'a>(
@@ -303,8 +322,21 @@ fn next_word(input: &str) -> (&str, &str) {
     input.split_once(char::is_whitespace).unwrap_or((input, ""))
 }
 
+fn command_is_visible_to_source(
+    command: &Command,
+    condition_context: CommandConditionContext,
+    command_input: &str,
+) -> bool {
+    command
+        .condition()
+        .map(|condition| condition(condition_context, Some(command_input)))
+        .unwrap_or(true)
+}
+
 fn parse_subcommand_from_cursor<'a, 'b>(
     command: &'a Command,
+    condition_context: CommandConditionContext,
+    command_input: &str,
     command_arguments: &'b str,
     command_cursor: usize,
 ) -> (&'a Command, &'b str, usize) {
@@ -315,7 +347,10 @@ fn parse_subcommand_from_cursor<'a, 'b>(
     let Some(subcommand) = command
         .subcommands()
         .iter()
-        .find(|subcommand| subcommand.name_matches(next_word))
+        .find(|subcommand| {
+            subcommand.name_matches(next_word)
+                && command_is_visible_to_source(subcommand, condition_context, command_input)
+        })
     else {
         return (command, command_arguments, command_cursor);
     };
@@ -323,6 +358,8 @@ fn parse_subcommand_from_cursor<'a, 'b>(
     let consumed_separator_length = usize::from(!remaining_command_arguments.is_empty());
     parse_subcommand_from_cursor(
         subcommand,
+        condition_context,
+        command_input,
         remaining_command_arguments,
         command_cursor + next_word.len() + consumed_separator_length,
     )

@@ -26,9 +26,8 @@ pub(crate) fn execute_chat_command(
             .send_chat_rejection_message()
             .is_ok();
     }
-    let command_manager = std::mem::take(&mut server.command_manager);
-    let command_result = command_manager.execute(server, client, command);
-    server.command_manager = command_manager;
+    let command_manager = &server.command_manager as *const crate::command::CommandManager;
+    let command_result = unsafe { &*command_manager }.execute(server, client, command);
     send_command_feedback(player, &command_result);
     command_result.packet_listener_result()
 }

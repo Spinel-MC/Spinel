@@ -248,8 +248,9 @@ impl CommandManager {
                 return CommandResult::new(CommandResultType::Cancelled, command_line, None);
             }
         };
+        let condition_context = Self::condition_context_for_client(server, client);
 
-        match CommandParser::parse(self.get_commands(), &command_line) {
+        match CommandParser::parse(self.get_commands(), condition_context, &command_line) {
             CommandParseResult::Valid(mut parsed_command) => {
                 self.execute_parsed_command(server, client, &mut parsed_command)
             }

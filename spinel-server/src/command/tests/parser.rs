@@ -1,7 +1,7 @@
 use super::super::parser::{CommandParseResult, CommandParser};
 use crate::command::{
-    Command, CommandArgument, CommandArgumentValue, CommandExecutionResult, CommandExecutor,
-    CommandSender, ParsedCommand, RelativeVec3,
+    Command, CommandArgument, CommandArgumentValue, CommandConditionContext,
+    CommandExecutionResult, CommandExecutor, CommandSender, ParsedCommand, RelativeVec3,
 };
 use crate::server::MinecraftServer;
 use spinel_registry::{EntityType, vanilla_world_blocks::Block};
@@ -11,7 +11,7 @@ fn parser_uses_default_relative_vec3_for_optional_position() {
     let command = spawn_command();
     let commands = [command];
 
-    let parsed_command = valid_command(CommandParser::parse(&commands, "spawn zombie"));
+    let parsed_command = valid_command(parse_as_server(&commands, "spawn zombie"));
 
     assert_eq!(
         parsed_command.context().entity_type("entity"),
@@ -28,7 +28,7 @@ fn parser_reads_reference_relative_vec3_shape() {
     let command = spawn_command();
     let commands = [command];
 
-    let parsed_command = valid_command(CommandParser::parse(&commands, "spawn zombie ~ 2 ~-3"));
+    let parsed_command = valid_command(parse_as_server(&commands, "spawn zombie ~ 2 ~-3"));
 
     assert_eq!(
         parsed_command
@@ -45,7 +45,7 @@ fn parser_rejects_mixed_local_and_world_relative_vec3_shape() {
     let command = spawn_command();
     let commands = [command];
 
-    match CommandParser::parse(&commands, "spawn zombie ^ ~ ^") {
+    match parse_as_server(&commands, "spawn zombie ^ ~ ^") {
         CommandParseResult::Invalid(_) => {}
         CommandParseResult::Valid(_)
         | CommandParseResult::Incomplete(_)
@@ -67,7 +67,7 @@ fn parser_reads_nested_nbt_compound_argument_shape() {
     );
     let commands = [command];
 
-    let parsed_command = valid_command(CommandParser::parse(
+    let parsed_command = valid_command(parse_as_server(
         &commands,
         r#"spawn armor_stand ~ ~ ~ {HasVisualFire:1b,Rotation:[90.0f,15.0f],CustomName:'{"text":"Guide"}'}"#,
     ));
@@ -91,7 +91,7 @@ fn parser_reads_word_argument_raw_context() {
     );
     let commands = [command];
 
-    let parsed_command = valid_command(CommandParser::parse(&commands, "gamemode survival"));
+    let parsed_command = valid_command(parse_as_server(&commands, "gamemode survival"));
 
     assert_eq!(parsed_command.context().raw("mode"), Some("survival"));
     assert_eq!(parsed_command.context().string("mode"), Some("survival"));
@@ -105,7 +105,7 @@ fn parser_marks_known_command_with_missing_required_argument_as_incomplete() {
     );
     let commands = [command];
 
-    match CommandParser::parse(&commands, "flyspeed") {
+    match parse_as_server(&commands, "flyspeed") {
         CommandParseResult::Incomplete(parsed_command) => {
             assert_eq!(parsed_command.context().input(), "flyspeed");
         }
@@ -123,7 +123,7 @@ fn parser_marks_known_command_with_unknown_trailing_argument_as_invalid() {
         .with_default_executor(CommandExecutor::from_function(unused_executor));
     let commands = [command];
 
-    match CommandParser::parse(&commands, "flyspeed extra") {
+    match parse_as_server(&commands, "flyspeed extra") {
         CommandParseResult::Invalid(parsed_command) => {
             assert_eq!(parsed_command.context().input(), "flyspeed extra");
         }
@@ -143,7 +143,7 @@ fn parser_executes_nested_subcommand_with_shared_root_prefix() {
     );
     let commands = [command];
 
-    let parsed_command = valid_command(CommandParser::parse(&commands, "showcase player"));
+    let parsed_command = valid_command(parse_as_server(&commands, "showcase player"));
 
     assert_eq!(parsed_command.command().name(), "player");
     assert_eq!(parsed_command.context().input(), "showcase player");
@@ -186,7 +186,7 @@ fn parser_records_invalid_trailing_argument_start_after_known_command() {
         .with_default_executor(CommandExecutor::from_function(unused_executor));
     let commands = [command];
 
-    match CommandParser::parse(&commands, "flyspeed extra") {
+    match parse_as_server(&commands, "flyspeed extra") {
         CommandParseResult::Invalid(parsed_command) => {
             assert_eq!(parsed_command.error_cursor(), Some("flyspeed ".len()));
         }
@@ -206,7 +206,7 @@ fn parser_records_invalid_subcommand_start_after_known_literal_chain() {
     ));
     let commands = [command];
 
-    match CommandParser::parse(&commands, "whitelist onn") {
+    match parse_as_server(&commands, "whitelist onn") {
         CommandParseResult::Invalid(parsed_command) => {
             assert_eq!(parsed_command.error_cursor(), Some("whitelist ".len()));
         }
@@ -229,7 +229,7 @@ fn parser_reads_vanilla_setblock_block_position_and_block_state_shape() {
     );
     let commands = [command];
 
-    let parsed_command = valid_command(CommandParser::parse(&commands, "setblock -3 3 4 air"));
+    let parsed_command = valid_command(parse_as_server(&commands, "setblock -3 3 4 air"));
 
     assert_eq!(
         parsed_command
@@ -256,7 +256,7 @@ fn parser_rejects_decimal_absolute_relative_block_position() {
     );
     let commands = [command];
 
-    match CommandParser::parse(&commands, "setblock -3.5 3 4 air") {
+    match parse_as_server(&commands, "setblock -3.5 3 4 air") {
         CommandParseResult::Invalid(_) => {}
         CommandParseResult::Valid(_)
         | CommandParseResult::Incomplete(_)
@@ -277,10 +277,7 @@ fn parser_reads_block_state_properties() {
     );
     let commands = [command];
 
-    let parsed_command = valid_command(CommandParser::parse(
-        &commands,
-        "setblock 0 0 0 oak_log[axis=x]",
-    ));
+    let parsed_command = valid_command(parse_as_server(&commands, "setblock 0 0 0 oak_log[axis=x]"));
     let block_state = parsed_command.context().block_state("block").unwrap();
 
     assert_eq!(block_state.block(), Block::OAK_LOG);
@@ -295,9 +292,13 @@ fn parser_rejects_bounded_integer_before_selecting_syntax() {
         .with_syntax(CommandExecutor::from_function(unused_executor), vec![level]);
     let commands = [command];
     assert!(matches!(
-        CommandParser::parse(&commands, "level -1"),
+        parse_as_server(&commands, "level -1"),
         CommandParseResult::Invalid(_)
     ));
-    let parsed = valid_command(CommandParser::parse(&commands, "level 2"));
+    let parsed = valid_command(parse_as_server(&commands, "level 2"));
     assert_eq!(parsed.context().integer("level"), Some(2));
+}
+
+fn parse_as_server<'a>(commands: &'a [Command], input: &str) -> CommandParseResult<'a> {
+    CommandParser::parse(commands, CommandConditionContext::server(), input)
 }
