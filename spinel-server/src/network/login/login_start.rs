@@ -140,7 +140,16 @@ impl<'a> LoginStartHandler<'a> {
         if pre_login_event.cancelled {
             return None;
         }
-        Some(pre_login_event.into_game_profile())
+        let game_profile = pre_login_event.into_game_profile();
+        self.store_pre_login_game_profile(&game_profile);
+        Some(game_profile)
+    }
+
+    fn store_pre_login_game_profile(&mut self, game_profile: &GameProfile) {
+        let Some(login_metadata) = self.client.login_metadata.as_mut() else {
+            return;
+        };
+        login_metadata.game_profile = Some(game_profile.clone());
     }
 
     fn store_pending_plugin_completion(&mut self) {

@@ -8,12 +8,14 @@ use spinel_core::network::clientbound::login::encryption_request::EncryptionRequ
 use spinel_core::network::clientbound::login::set_compression::SetCompressionPacket;
 use spinel_core::network::serverbound::login::login_start::LoginStartPacket;
 use spinel_macros::event_listener;
+use spinel_network::types::game_profile::GameProfile;
 use spinel_network::{ConnectionState, DataType, PacketDecoder, VarIntWrapper};
 use std::io::Cursor;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr, TcpListener, TcpStream};
 use uuid::Uuid;
 
 struct RejectedAuthenticatedPreLoginTestListener;
+struct GameProfileChangingPreLoginTestListener;
 
 #[event_listener]
 impl RejectedAuthenticatedPreLoginTestListener {
@@ -28,6 +30,21 @@ impl RejectedAuthenticatedPreLoginTestListener {
                 "Rejected after authentication",
             ));
         event.cancelled = true;
+    }
+}
+
+#[event_listener]
+impl GameProfileChangingPreLoginTestListener {
+    #[event_handler]
+    fn on_pre_login(event: &mut PreLoginEvent, _server: &mut MinecraftServer) {
+        if event.username() != "Player" {
+            return;
+        }
+        event.set_game_profile(GameProfile {
+            uuid: Uuid::from_u128(0x99999999_8888_7777_6666_555555555555),
+            username: "ChangedPlayer".to_owned(),
+            properties: Vec::new(),
+        });
     }
 }
 #[test]
@@ -79,6 +96,27 @@ fn login_start_enters_configuration_without_encryption_when_server_auth_is_offli
         first_clientbound_packet_id(&mut peer_stream),
         SetCompressionPacket::get_id()
     );
+}
+
+#[test]
+fn offline_login_start_stores_pre_login_changed_game_profile() {
+    let (mut client, _peer_stream) = connected_login_client();
+    let mut server = MinecraftServer::init(Auth::Offline);
+    server.register_event_handler(GameProfileChangingPreLoginTestListener);
+    let login_start_packet = login_start_packet();
+
+    assert!(on_login_start(&mut client, login_start_packet, &mut server));
+
+    let game_profile = client
+        .login_metadata
+        .as_ref()
+        .and_then(|login_metadata| login_metadata.game_profile.as_ref())
+        .expect("offline login should store a game profile");
+    assert_eq!(
+        game_profile.uuid,
+        Uuid::from_u128(0x99999999_8888_7777_6666_555555555555)
+    );
+    assert_eq!(game_profile.username, "ChangedPlayer");
 }
 
 fn connected_login_client() -> (Client, TcpStream) {
