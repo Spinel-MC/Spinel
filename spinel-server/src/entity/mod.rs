@@ -63,5 +63,6 @@ pub use projectile::{
 pub use snapshot::{EntityObservation, EntitySnapshot, PlayerSnapshot};
 pub(crate) use state::EntityState;
 pub(crate) use synchronization::EntitySynchronization;
+pub use synchronization::EntitySynchronizationMode;
 pub use teleport::{EntityTeleport, EntityTeleportRequest};
 pub use view_request::SetEntityViewRequest;

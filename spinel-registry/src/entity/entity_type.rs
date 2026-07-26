@@ -202,6 +202,23 @@ impl EntityType {
     }
 
     #[must_use]
+    pub fn tracks_deltas(self) -> bool {
+        !matches!(
+            self.path,
+            "player"
+                | "llama_spit"
+                | "wither"
+                | "bat"
+                | "item_frame"
+                | "glow_item_frame"
+                | "leash_knot"
+                | "painting"
+                | "end_crystal"
+                | "evoker_fangs"
+        )
+    }
+
+    #[must_use]
     pub fn entity_attachment(self, attachment_name: &str) -> Option<[f64; 3]> {
         self.attachments()
             .iter()

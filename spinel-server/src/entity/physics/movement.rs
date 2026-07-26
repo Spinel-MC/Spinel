@@ -1,7 +1,8 @@
-use crate::entity::{EntityId, EntityPosition};
+use crate::entity::{EntityId, EntityPosition, EntitySynchronizationMode};
 use spinel_core::network::clientbound::play::entity_head_look::EntityHeadLookPacket;
 use spinel_core::network::clientbound::play::entity_position_and_rotation::EntityPositionAndRotationPacket;
 use spinel_core::network::clientbound::play::entity_teleport::EntityTeleportPacket;
+use spinel_core::network::clientbound::play::entity_velocity::EntityVelocityPacket;
 use spinel_core::network::clientbound::play::spawn_entity::EntityAngle;
 use spinel_network::types::{TeleportFlags, Vector3d};
 
@@ -14,6 +15,7 @@ pub(crate) struct EntityMovement {
     entity_id: EntityId,
     position: EntityPosition,
     packet: Option<EntityMovementPacket>,
+    velocity_packet: Option<EntityVelocityPacket>,
     head_look_packet: Option<EntityHeadLookPacket>,
 }
 
@@ -22,12 +24,14 @@ impl EntityMovement {
         entity_id: EntityId,
         position: EntityPosition,
         packet: Option<EntityMovementPacket>,
+        velocity_packet: Option<EntityVelocityPacket>,
         head_look_packet: Option<EntityHeadLookPacket>,
     ) -> Self {
         Self {
             entity_id,
             position,
             packet,
+            velocity_packet,
             head_look_packet,
         }
     }
@@ -42,8 +46,12 @@ impl EntityMovement {
 
     pub(crate) fn into_packets(
         self,
-    ) -> (Option<EntityMovementPacket>, Option<EntityHeadLookPacket>) {
-        (self.packet, self.head_look_packet)
+    ) -> (
+        Option<EntityMovementPacket>,
+        Option<EntityVelocityPacket>,
+        Option<EntityHeadLookPacket>,
+    ) {
+        (self.packet, self.velocity_packet, self.head_look_packet)
     }
 }
 
@@ -53,6 +61,7 @@ impl EntityMovementPacket {
         previous_position: EntityPosition,
         position: EntityPosition,
         is_on_ground: bool,
+        synchronization_mode: EntitySynchronizationMode,
     ) -> Self {
         let distance_x = (position.get_x() - previous_position.get_x()).abs();
         let distance_y = (position.get_y() - previous_position.get_y()).abs();
@@ -73,20 +82,19 @@ impl EntityMovementPacket {
                 on_ground: is_on_ground,
             });
         }
+        let delta = match synchronization_mode {
+            EntitySynchronizationMode::GenericSynchronization => {
+                spinel_core::network::clientbound::play::entity_position::EntityPositionPacket::delta
+            }
+            EntitySynchronizationMode::VanillaSynchronization => {
+                spinel_core::network::clientbound::play::entity_position::EntityPositionPacket::vanilla_delta
+            }
+        };
         Self::Position(EntityPositionAndRotationPacket {
             entity_id: entity_id.get_value(),
-            delta_x: spinel_core::network::clientbound::play::entity_position::EntityPositionPacket::delta(
-                position.get_x(),
-                previous_position.get_x(),
-            ),
-            delta_y: spinel_core::network::clientbound::play::entity_position::EntityPositionPacket::delta(
-                position.get_y(),
-                previous_position.get_y(),
-            ),
-            delta_z: spinel_core::network::clientbound::play::entity_position::EntityPositionPacket::delta(
-                position.get_z(),
-                previous_position.get_z(),
-            ),
+            delta_x: delta(position.get_x(), previous_position.get_x()),
+            delta_y: delta(position.get_y(), previous_position.get_y()),
+            delta_z: delta(position.get_z(), previous_position.get_z()),
             yaw: EntityAngle(position.get_yaw()),
             pitch: EntityAngle(position.get_pitch()),
             on_ground: is_on_ground,

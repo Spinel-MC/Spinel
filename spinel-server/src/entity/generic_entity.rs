@@ -11,8 +11,8 @@ use crate::entity::physics::{
 use crate::entity::{
     Damage, EntityAttributeState, EntityCollisionRules, EntityEventNode, EntityId, EntityIdentity,
     EntityLeash, EntityPointers, EntityPose, EntitySnapshot, EntityState, EntitySynchronization,
-    EntityTeleport, EntityTeleportRequest, EntityView, EquipmentSlot, PlayerHand,
-    TimedPotionEffect,
+    EntitySynchronizationMode, EntityTeleport, EntityTeleportRequest, EntityView, EquipmentSlot,
+    PlayerHand, TimedPotionEffect,
 };
 use crate::network::client::instance::Client;
 use crate::permission::{PermissionHandler, PermissionSet};
@@ -4749,6 +4749,9 @@ impl GenericEntity {
         if self.state.get_position() == self.synchronization.get_last_position() {
             return None;
         }
+        if self.synchronization.uses_vanilla_movement_sync() {
+            return self.vanilla_position_movement_since_synchronization();
+        }
         let scheduled_synchronization_is_imminent = match timing {
             MovementSynchronizationTiming::BeforeEntityTick => self
                 .synchronization
@@ -4766,6 +4769,7 @@ impl GenericEntity {
                 self.state.get_position(),
                 None,
                 None,
+                None,
             ));
         }
         let last_synced_position = self.synchronization.get_last_position();
@@ -4774,10 +4778,11 @@ impl GenericEntity {
             last_synced_position,
             self.state.get_position(),
             self.on_ground,
+            self.synchronization.get_mode(),
         );
-        let view_changed = self.state.get_position().get_yaw() != last_synced_position.get_yaw()
-            || self.state.get_position().get_pitch() != last_synced_position.get_pitch();
-        let head_look_packet = match (&packet, view_changed) {
+        let head_yaw_changed =
+            self.state.get_position().get_head_yaw() != last_synced_position.get_head_yaw();
+        let head_look_packet = match (&packet, head_yaw_changed) {
             (EntityMovementPacket::Position(_), true) => Some(self.get_head_look_packet()),
             _ => None,
         };
@@ -4787,6 +4792,51 @@ impl GenericEntity {
             self.state.get_entity_id(),
             self.state.get_position(),
             Some(packet),
+            None,
+            head_look_packet,
+        ))
+    }
+
+    fn vanilla_position_movement_since_synchronization(&mut self) -> Option<EntityMovement> {
+        if !self
+            .synchronization
+            .is_due(self.state.get_ticks(), self.state.get_vehicle().is_some())
+        {
+            return Some(EntityMovement::new(
+                self.state.get_entity_id(),
+                self.state.get_position(),
+                None,
+                None,
+                None,
+            ));
+        }
+        let last_synced_position = self.synchronization.get_last_position();
+        let packet = EntityMovementPacket::between(
+            self.state.get_entity_id(),
+            last_synced_position,
+            self.state.get_position(),
+            self.on_ground,
+            self.synchronization.get_mode(),
+        );
+        let head_yaw_changed =
+            self.state.get_position().get_head_yaw() != last_synced_position.get_head_yaw();
+        let head_look_packet = match (&packet, head_yaw_changed) {
+            (EntityMovementPacket::Position(_), true) => Some(self.get_head_look_packet()),
+            _ => None,
+        };
+        self.synchronization
+            .record_vanilla_movement_position(self.state.get_ticks(), self.state.get_position());
+        let velocity = self.get_protocol_velocity();
+        let velocity_packet = (self.state.get_entity_type().tracks_deltas()
+            && self
+                .synchronization
+                .record_vanilla_velocity_if_changed(velocity))
+        .then(|| self.get_velocity_packet());
+        Some(EntityMovement::new(
+            self.state.get_entity_id(),
+            self.state.get_position(),
+            Some(packet),
+            velocity_packet,
             head_look_packet,
         ))
     }
@@ -4798,6 +4848,14 @@ impl GenericEntity {
     pub fn set_synchronization_ticks(&mut self, synchronization_ticks: u64) {
         self.synchronization
             .set_interval_ticks(synchronization_ticks);
+    }
+
+    pub const fn get_synchronization_mode(&self) -> EntitySynchronizationMode {
+        self.synchronization.get_mode()
+    }
+
+    pub fn set_synchronization_mode(&mut self, synchronization_mode: EntitySynchronizationMode) {
+        self.synchronization.set_mode(synchronization_mode);
     }
 
     pub fn synchronize_next_tick(&mut self) {
@@ -4822,6 +4880,9 @@ impl GenericEntity {
     ) -> Option<
         spinel_core::network::clientbound::play::entity_position_sync::EntityPositionSyncPacket,
     > {
+        self.synchronization
+            .uses_scheduled_position_sync()
+            .then_some(())?;
         self.synchronization
             .is_due(self.state.get_ticks(), self.state.get_vehicle().is_some())
             .then(|| self.synchronize_position_packet())

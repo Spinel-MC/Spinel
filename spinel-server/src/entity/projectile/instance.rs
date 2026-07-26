@@ -19,6 +19,7 @@ const THROWABLE_PROJECTILE_INERTIA: f64 = 0.99;
 const VANILLA_THROWABLE_PROJECTILE_INERTIA: f64 = 0.99_f32 as f64;
 const THROWABLE_PROJECTILE_GRAVITY: f64 = 0.03;
 const THROWN_POTION_GRAVITY: f64 = 0.05;
+const VANILLA_THROWABLE_PROJECTILE_ROTATION_LERP: f32 = 0.2;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ProjectilePhysics {
@@ -325,6 +326,7 @@ impl ProjectileEntity {
         if !world.is_chunk_loaded(ChunkPosition::from(position)) {
             return None;
         }
+        let position = self.position_with_throwable_projectile_view(position, velocity_per_tick);
         self.set_velocity(Velocity(Vector3d {
             x: velocity_per_tick.x * SERVER_TICKS_PER_SECOND,
             y: velocity_per_tick.y * SERVER_TICKS_PER_SECOND,
@@ -372,6 +374,28 @@ impl ProjectileEntity {
             _ => THROWABLE_PROJECTILE_GRAVITY,
         }
     }
+
+    fn position_with_throwable_projectile_view(
+        &self,
+        position: EntityPosition,
+        velocity_per_tick: Vector3d,
+    ) -> EntityPosition {
+        if self.physics != ProjectilePhysics::VanillaPhysics {
+            return position;
+        }
+        let current_position = self.get_position();
+        let target_yaw = velocity_per_tick.x.atan2(velocity_per_tick.z).to_degrees() as f32;
+        let target_pitch = velocity_per_tick
+            .y
+            .atan2(velocity_per_tick.x.hypot(velocity_per_tick.z))
+            .to_degrees() as f32;
+        position
+            .with_view(
+                lerped_throwable_projectile_rotation(current_position.get_yaw(), target_yaw),
+                lerped_throwable_projectile_rotation(current_position.get_pitch(), target_pitch),
+            )
+            .with_head_yaw(current_position.get_head_yaw())
+    }
 }
 
 impl Deref for ProjectileEntity {
@@ -392,6 +416,18 @@ fn gaussian(random: &mut impl Rng) -> f64 {
     let radius = (-2.0 * random.random_range(f64::MIN_POSITIVE..1.0).ln()).sqrt();
     let angle = random.random_range(0.0..TAU);
     radius * angle.cos()
+}
+
+fn lerped_throwable_projectile_rotation(previous_rotation: f32, target_rotation: f32) -> f32 {
+    let mut wrapped_previous_rotation = previous_rotation;
+    while target_rotation - wrapped_previous_rotation < -180.0 {
+        wrapped_previous_rotation -= 360.0;
+    }
+    while target_rotation - wrapped_previous_rotation >= 180.0 {
+        wrapped_previous_rotation += 360.0;
+    }
+    wrapped_previous_rotation
+        + VANILLA_THROWABLE_PROJECTILE_ROTATION_LERP * (target_rotation - wrapped_previous_rotation)
 }
 
 fn metadata_boolean(

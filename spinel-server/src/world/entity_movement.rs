@@ -544,7 +544,10 @@ impl World {
         self.entity_tracker
             .move_entity(entity_id, movement.get_position());
         self.refresh_passenger_positions(entity_id);
-        let (movement_packet, head_look_packet) = movement.into_packets();
+        let (movement_packet, velocity_packet, head_look_packet) = movement.into_packets();
+        if let Some(packet) = velocity_packet {
+            let _ = self.send_packet_to_entity_viewers(entity_id, packet);
+        }
         let Some(packet) = movement_packet else {
             return;
         };

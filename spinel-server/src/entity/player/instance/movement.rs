@@ -97,6 +97,9 @@ impl Player {
         spinel_core::network::clientbound::play::entity_position_sync::EntityPositionSyncPacket,
     > {
         self.synchronization
+            .uses_scheduled_position_sync()
+            .then_some(())?;
+        self.synchronization
             .is_due(self.alive_ticks, self.vehicle.is_some())
             .then(|| self.synchronize_entity_position_packet())
     }

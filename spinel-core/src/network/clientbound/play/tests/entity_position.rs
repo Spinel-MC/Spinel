@@ -22,3 +22,12 @@ fn entity_position_packet_matches_reference_relative_delta_shape() {
     assert_eq!(decoded_packet.delta_z, -2048);
     assert!(decoded_packet.on_ground);
 }
+
+#[test]
+fn vanilla_delta_matches_vec_delta_codec_rounding() {
+    let generic_delta = EntityPositionPacket::delta(1.000_15, 1.0);
+    let vanilla_delta = EntityPositionPacket::vanilla_delta(1.000_15, 1.0);
+
+    assert_eq!(generic_delta, 0);
+    assert_eq!(vanilla_delta, 1);
+}

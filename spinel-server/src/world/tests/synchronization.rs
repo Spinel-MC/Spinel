@@ -1,8 +1,11 @@
 use crate::entity::pathfinding::{PathNode, PathNodeType, PathRequest, PathState};
-use crate::entity::{Entity, EntityCreature, EntityPosition, GenericEntity, Player};
+use crate::entity::{
+    Entity, EntityCreature, EntityPosition, EntitySynchronizationMode, GenericEntity, Player,
+};
 use crate::network::client::instance::Client;
 use crate::world::{Block, BlockPosition, ChunkPosition, World};
 use spinel_core::network::clientbound::play::entity_head_look::EntityHeadLookPacket;
+use spinel_core::network::clientbound::play::entity_position::EntityPositionPacket;
 use spinel_core::network::clientbound::play::entity_position_and_rotation::EntityPositionAndRotationPacket;
 use spinel_core::network::clientbound::play::entity_position_sync::EntityPositionSyncPacket;
 use spinel_core::network::clientbound::play::entity_velocity::EntityVelocityPacket;
@@ -107,6 +110,71 @@ fn scheduled_position_synchronization_delta_uses_protocol_velocity() {
     assert!((synchronization_packet.delta.x - 1.0).abs() < f64::EPSILON);
     assert!((synchronization_packet.delta.y - 0.5).abs() < f64::EPSILON);
     assert!((synchronization_packet.delta.z + 2.0).abs() < f64::EPSILON);
+}
+
+#[test]
+fn vanilla_synchronization_sends_relative_movement_without_scheduled_position_sync() {
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("vanilla_projectile_sync"),
+    );
+    world.load_chunk(ChunkPosition::new(0, 0)).unwrap();
+    let mut viewer_client = queued_client();
+    let viewer = entered_player(&mut viewer_client);
+    world.add_entity(Entity::Player(viewer));
+    let projectile_id = world
+        .spawn_projectile(
+            None,
+            EntityType::SPLASH_POTION,
+            EntityPosition::new(0.0, 64.0, 0.0, 0.0, 0.0),
+        )
+        .unwrap();
+    let expected_x = 0.01;
+    {
+        let Entity::Projectile(projectile) = world.get_entity_mut(projectile_id).unwrap() else {
+            panic!("projectile entity must preserve its subtype")
+        };
+        projectile.set_no_gravity(true);
+        projectile.set_synchronization_mode(EntitySynchronizationMode::VanillaSynchronization);
+        projectile.set_synchronization_ticks(1);
+        projectile.synchronize_next_tick();
+        projectile.set_velocity(Velocity(Vector3d {
+            x: expected_x * 20.0 / 0.99,
+            y: 0.0,
+            z: 0.0,
+        }));
+    }
+    world.process_pending_entity_visibility_refreshes().unwrap();
+    viewer_client.discard_queued_outbound_packets();
+
+    world.tick_with_registries(&Registries::new_vanilla());
+
+    let packet_ids = viewer_client.queued_outbound_packet_ids();
+    assert!(packet_ids.contains(&EntityPositionAndRotationPacket::get_id()));
+    assert!(packet_ids.contains(&EntityVelocityPacket::get_id()));
+    assert!(!packet_ids.contains(&EntityPositionSyncPacket::get_id()));
+    assert_eq!(
+        &packet_ids[..2],
+        &[
+            EntityVelocityPacket::get_id(),
+            EntityPositionAndRotationPacket::get_id()
+        ]
+    );
+    let movement_packet_payload = viewer_client
+        .queued_outbound_packet_payloads()
+        .into_iter()
+        .find_map(|(packet_id, payload)| {
+            (packet_id == EntityPositionAndRotationPacket::get_id()).then_some(payload)
+        })
+        .expect("vanilla synchronization must queue relative movement");
+    let movement_packet =
+        EntityPositionAndRotationPacket::decode(&mut Cursor::new(movement_packet_payload)).unwrap();
+
+    assert_eq!(
+        movement_packet.delta_x,
+        EntityPositionPacket::vanilla_delta(expected_x, 0.0)
+    );
 }
 
 #[test]

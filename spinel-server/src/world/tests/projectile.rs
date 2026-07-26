@@ -571,17 +571,27 @@ fn splash_potion_motion_matches_vanilla_throwable_motion_for_multiple_heights_an
 
         let mut expected_position = projectile.get_position();
         let mut expected_velocity_per_tick = motion_case.starting_velocity_per_tick;
+        let mut expected_yaw = expected_position.get_yaw();
+        let mut expected_pitch = expected_position.get_pitch();
         (0..6).for_each(|_| {
             world.tick();
             expected_velocity_per_tick =
                 expected_velocity_per_tick.next_splash_potion_velocity_per_tick();
-            expected_position = expected_position.get_offset(
-                expected_velocity_per_tick.x,
-                expected_velocity_per_tick.y,
-                expected_velocity_per_tick.z,
+            (expected_yaw, expected_pitch) = vanilla_throwable_projectile_view(
+                expected_yaw,
+                expected_pitch,
+                expected_velocity_per_tick,
             );
+            expected_position = expected_position
+                .get_offset(
+                    expected_velocity_per_tick.x,
+                    expected_velocity_per_tick.y,
+                    expected_velocity_per_tick.z,
+                )
+                .with_view(expected_yaw, expected_pitch);
             let projectile = projectile_entity(&world, projectile_id);
             assert_position_approximately_eq(projectile.get_position(), expected_position);
+            assert_view_approximately_eq(projectile.get_position(), expected_position);
             assert_vector_approximately_eq(
                 projectile.get_velocity().0,
                 expected_velocity_per_tick.as_server_velocity_vector(),
@@ -723,6 +733,33 @@ fn vanilla_splash_potion_ground_collision_tick(
     panic!("expected splash potion to reach the ground surface");
 }
 
+fn vanilla_throwable_projectile_view(
+    previous_yaw: f32,
+    previous_pitch: f32,
+    velocity_per_tick: Vector3d,
+) -> (f32, f32) {
+    let target_yaw = velocity_per_tick.x.atan2(velocity_per_tick.z).to_degrees() as f32;
+    let target_pitch = velocity_per_tick
+        .y
+        .atan2(velocity_per_tick.x.hypot(velocity_per_tick.z))
+        .to_degrees() as f32;
+    (
+        vanilla_throwable_projectile_rotation(previous_yaw, target_yaw),
+        vanilla_throwable_projectile_rotation(previous_pitch, target_pitch),
+    )
+}
+
+fn vanilla_throwable_projectile_rotation(previous_rotation: f32, target_rotation: f32) -> f32 {
+    let mut wrapped_previous_rotation = previous_rotation;
+    while target_rotation - wrapped_previous_rotation < -180.0 {
+        wrapped_previous_rotation -= 360.0;
+    }
+    while target_rotation - wrapped_previous_rotation >= 180.0 {
+        wrapped_previous_rotation += 360.0;
+    }
+    wrapped_previous_rotation + 0.2 * (target_rotation - wrapped_previous_rotation)
+}
+
 fn assert_position_approximately_eq(
     actual_position: EntityPosition,
     expected_position: EntityPosition,
@@ -744,6 +781,24 @@ fn assert_position_approximately_eq(
         "actual z {} expected z {}",
         actual_position.get_z(),
         expected_position.get_z()
+    );
+}
+
+fn assert_view_approximately_eq(
+    actual_position: EntityPosition,
+    expected_position: EntityPosition,
+) {
+    assert!(
+        (actual_position.get_yaw() - expected_position.get_yaw()).abs() < 0.000001,
+        "actual yaw {} expected yaw {}",
+        actual_position.get_yaw(),
+        expected_position.get_yaw()
+    );
+    assert!(
+        (actual_position.get_pitch() - expected_position.get_pitch()).abs() < 0.000001,
+        "actual pitch {} expected pitch {}",
+        actual_position.get_pitch(),
+        expected_position.get_pitch()
     );
 }
 
