@@ -111,6 +111,7 @@ impl World {
         &self.entity_tracker
     }
 
+    #[cfg(test)]
     pub(crate) fn entity_tracker_mut(&mut self) -> &mut EntityTracker {
         &mut self.entity_tracker
     }

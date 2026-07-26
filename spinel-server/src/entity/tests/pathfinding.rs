@@ -9,7 +9,7 @@ use crate::entity::pathfinding::{
     WaterNodeGenerator,
 };
 use crate::entity::physics::simulate_collision;
-use crate::entity::{Entity, EntityCreature, EntityPosition, GenericEntity, LivingEntity};
+use crate::entity::{Entity, EntityCreature, EntityPosition, LivingEntity};
 use crate::world::{Block, BlockPosition, BlockState, Chunk, ChunkPosition, World, WorldBorder};
 use spinel_network::types::{Identifier, Vector3d, Velocity};
 use spinel_registry::dimension_type::DimensionType;

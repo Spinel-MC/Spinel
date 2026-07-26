@@ -5,24 +5,17 @@ use crate::entity::metadata::{
     SpellcasterIllagerSpell, TropicalFishPattern, TropicalFishVariant, VillagerData, definitions,
 };
 use crate::entity::physics::{
-    EntityMovement, EntityMovementPacket, EntityPhysicsResult, knockback_velocity,
-    simulate_movement,
+    EntityMovement, EntityMovementPacket, EntityPhysicsResult, simulate_movement,
 };
 use crate::entity::{
-    Damage, EntityAttributeState, EntityCollisionRules, EntityEventNode, EntityId, EntityIdentity,
-    EntityLeash, EntityPointers, EntityPose, EntitySnapshot, EntityState, EntitySynchronization,
-    EntitySynchronizationMode, EntityTeleport, EntityTeleportRequest, EntityView, EquipmentSlot,
-    PlayerHand, TimedPotionEffect,
+    EntityCollisionRules, EntityEventNode, EntityId, EntityIdentity, EntityPointers, EntityPose,
+    EntitySnapshot, EntityState, EntitySynchronization, EntitySynchronizationMode, EntityTeleport,
+    EntityTeleportRequest, EntityView, PlayerHand,
 };
 use crate::network::client::instance::Client;
 use crate::permission::{PermissionHandler, PermissionSet};
 use crate::scheduler::{ContextScheduler, Task, TaskSchedule};
-use crate::scoreboard::Team;
 use crate::world::{ChunkPosition, WorldSnapshot};
-use spinel_core::network::clientbound::play::entity_animation::{
-    EntityAnimation, EntityAnimationPacket,
-};
-use spinel_core::network::clientbound::play::entity_effect::EntityEffectPacket;
 use spinel_core::network::clientbound::play::entity_head_look::EntityHeadLookPacket;
 use spinel_core::network::clientbound::play::entity_position::EntityPositionPacket;
 use spinel_core::network::clientbound::play::entity_position_and_rotation::EntityPositionAndRotationPacket;
@@ -32,12 +25,9 @@ use spinel_core::network::clientbound::play::entity_teleport::EntityTeleportPack
 use spinel_core::network::clientbound::play::entity_velocity::EntityVelocityPacket;
 use spinel_core::network::clientbound::play::player_info_update::PlayerInfoUpdatePacket;
 use spinel_core::network::clientbound::play::remove_entities::RemoveEntitiesPacket;
-use spinel_core::network::clientbound::play::remove_entity_effect::RemoveEntityEffectPacket;
 use spinel_core::network::clientbound::play::set_entity_data::SetEntityDataPacket;
-use spinel_core::network::clientbound::play::set_equipment::SetEquipmentPacket;
 use spinel_core::network::clientbound::play::set_passengers::SetPassengersPacket;
 use spinel_core::network::clientbound::play::spawn_entity::{EntityAngle, SpawnEntityPacket};
-use spinel_core::network::clientbound::play::update_attributes::UpdateAttributesPacket;
 use spinel_nbt::{TagHandler, Taggable};
 use spinel_network::types::entity_metadata::MetadataValue;
 use spinel_network::types::{
@@ -46,8 +36,7 @@ use spinel_network::types::{
 };
 use spinel_registry::{
     Attribute, BlockFaceDirection, BlockState, DataComponentMap, DataComponentType,
-    DataComponentValue, EntityBoundingBox, EntityType, ItemStack, MobEffect, RegistryKey,
-    VillagerType,
+    DataComponentValue, EntityBoundingBox, EntityType, ItemStack, VillagerType,
 };
 use spinel_utils::color::DyeColor;
 use spinel_utils::component::events::{HoverEntity, HoverEvent};
@@ -4779,11 +4768,12 @@ impl GenericEntity {
             self.state.get_position(),
             self.on_ground,
             self.synchronization.get_mode(),
+            self.state.get_entity_type(),
         );
         let head_yaw_changed =
             self.state.get_position().get_head_yaw() != last_synced_position.get_head_yaw();
         let head_look_packet = match (&packet, head_yaw_changed) {
-            (EntityMovementPacket::Position(_), true) => Some(self.get_head_look_packet()),
+            (_, true) => Some(self.get_head_look_packet()),
             _ => None,
         };
         self.synchronization
@@ -4817,11 +4807,12 @@ impl GenericEntity {
             self.state.get_position(),
             self.on_ground,
             self.synchronization.get_mode(),
+            self.state.get_entity_type(),
         );
         let head_yaw_changed =
             self.state.get_position().get_head_yaw() != last_synced_position.get_head_yaw();
         let head_look_packet = match (&packet, head_yaw_changed) {
-            (EntityMovementPacket::Position(_), true) => Some(self.get_head_look_packet()),
+            (_, true) => Some(self.get_head_look_packet()),
             _ => None,
         };
         self.synchronization

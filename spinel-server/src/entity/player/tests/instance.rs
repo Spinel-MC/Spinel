@@ -1507,6 +1507,7 @@ fn player_respawn_is_noop_when_alive_and_refreshes_client_state_when_dead() {
     let (difficulty_packet_id, _difficulty_payload) = read_packet_frame(&mut peer_stream);
     let (health_packet_id, _health_payload) = read_packet_frame(&mut peer_stream);
     let (experience_packet_id, _experience_payload) = read_packet_frame(&mut peer_stream);
+    let (permission_packet_id, _permission_payload) = read_packet_frame(&mut peer_stream);
     let (abilities_packet_id, _abilities_payload) = read_packet_frame(&mut peer_stream);
 
     assert_eq!(respawn_packet_id, RespawnPacket::get_id());
@@ -1518,8 +1519,45 @@ fn player_respawn_is_noop_when_alive_and_refreshes_client_state_when_dead() {
     );
     assert_eq!(health_packet_id, SetHealthPacket::get_id());
     assert_eq!(experience_packet_id, SetExperiencePacket::get_id());
+    assert_eq!(permission_packet_id, EntityStatusPacket::get_id());
     assert_eq!(abilities_packet_id, PlayerAbilitiesPacket::get_id());
     assert!(!player.is_dead());
+}
+
+#[test]
+fn player_respawn_replays_permission_status_for_the_respawning_player() {
+    let mut player = Player::new(
+        Uuid::nil(),
+        "Player".to_string(),
+        0,
+        SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 25565),
+    );
+    let (mut client, mut peer_stream) = test_client_pair();
+    client.state = ConnectionState::Play;
+    player.set_client(&mut client);
+    player.mark_entered_world();
+    player.set_permission_level(4).unwrap();
+    let _ = read_packet_frame(&mut peer_stream);
+    player.kill().unwrap();
+    let _ = read_packet_frame(&mut peer_stream);
+
+    assert!(player.respawn().unwrap().is_some());
+
+    let permission_status_packet = read_available_packet_frames(&mut peer_stream)
+        .into_iter()
+        .find_map(|(packet_id, payload)| {
+            if packet_id != EntityStatusPacket::get_id() {
+                return None;
+            }
+            Some(EntityStatusPacket::decode(&mut payload.as_slice()).unwrap())
+        })
+        .unwrap();
+
+    assert_eq!(
+        permission_status_packet.entity_id,
+        player.get_entity_id().get_value()
+    );
+    assert_eq!(permission_status_packet.status, 28);
 }
 
 #[test]

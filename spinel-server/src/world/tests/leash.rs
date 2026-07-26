@@ -1,4 +1,4 @@
-use crate::entity::{Entity, EntityPosition, GenericEntity, LivingEntity, Player};
+use crate::entity::{Entity, EntityPosition, LivingEntity, Player};
 use crate::network::client::instance::Client;
 use crate::world::World;
 use spinel_core::network::clientbound::play::attach_entity::AttachEntityPacket;

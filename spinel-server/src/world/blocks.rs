@@ -7,6 +7,7 @@ impl World {
         self.last_block_change_time = current_time_nanos();
     }
 
+    #[cfg(test)]
     pub(crate) fn block_change_guard_contains(
         &self,
         position: BlockPosition,

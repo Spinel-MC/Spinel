@@ -77,16 +77,6 @@ impl LivingEntity {
         LivingEntityMetaCast::new(self)
     }
 
-    pub(crate) const fn get_living_state(&self) -> &LivingState {
-        &self.living_state
-    }
-
-    pub(crate) fn get_metadata_state_parts(
-        &mut self,
-    ) -> (&mut crate::entity::EntityState, &mut LivingState) {
-        (self.entity.get_state_mut(), &mut self.living_state)
-    }
-
     pub fn get_entity_mut(&mut self) -> &mut GenericEntity {
         &mut self.entity
     }

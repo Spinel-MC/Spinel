@@ -1,7 +1,7 @@
 use crate::command::{
     Command, CommandArgument, CommandArgumentKind, CommandConditionContext, CommandExecutionResult,
-    CommandParseResult, CommandParser, CommandResult, CommandResultType, CommandSender,
-    CommandSenderKind, Suggestion, SuggestionEntry,
+    CommandParseResult, CommandParser, CommandResult, CommandResultType, CommandSender, Suggestion,
+    SuggestionEntry,
 };
 use crate::entity::Player;
 use crate::events::player_command::PlayerCommandEvent;
@@ -73,10 +73,16 @@ impl CommandManager {
         self.get_command(command_name).is_some()
     }
 
-    pub(crate) fn suggest(&self, sender_kind: CommandSenderKind, input: &str) -> Suggestion {
+    #[cfg(test)]
+    pub(crate) fn suggest(
+        &self,
+        sender_kind: crate::command::CommandSenderKind,
+        input: &str,
+    ) -> Suggestion {
         self.suggest_for_source(CommandConditionContext::from(sender_kind), input)
     }
 
+    #[cfg(test)]
     pub(crate) fn suggest_for_source(
         &self,
         condition_context: CommandConditionContext,
@@ -334,6 +340,7 @@ impl CommandManager {
         CommandResult::from_execution_result(parsed_command, execution_result)
     }
 
+    #[cfg(test)]
     pub(crate) fn declare_commands_packet(&self) -> CommandsPacket {
         self.declare_commands_packet_for_source(CommandConditionContext::server())
     }

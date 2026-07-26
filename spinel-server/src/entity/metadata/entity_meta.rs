@@ -219,10 +219,6 @@ impl<'entity> EntityMeta<'entity> {
         );
     }
 
-    pub(crate) const fn get_entity_type(&self) -> spinel_registry::EntityType {
-        self.state.get_entity_type()
-    }
-
     pub(crate) const fn get_entity_state(&self) -> &EntityState {
         self.state
     }

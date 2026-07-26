@@ -151,30 +151,72 @@ fn vanilla_synchronization_sends_relative_movement_without_scheduled_position_sy
     world.tick_with_registries(&Registries::new_vanilla());
 
     let packet_ids = viewer_client.queued_outbound_packet_ids();
-    assert!(packet_ids.contains(&EntityPositionAndRotationPacket::get_id()));
+    assert!(packet_ids.contains(&EntityPositionPacket::get_id()));
     assert!(packet_ids.contains(&EntityVelocityPacket::get_id()));
     assert!(!packet_ids.contains(&EntityPositionSyncPacket::get_id()));
     assert_eq!(
         &packet_ids[..2],
         &[
             EntityVelocityPacket::get_id(),
-            EntityPositionAndRotationPacket::get_id()
+            EntityPositionPacket::get_id()
         ]
     );
     let movement_packet_payload = viewer_client
         .queued_outbound_packet_payloads()
         .into_iter()
         .find_map(|(packet_id, payload)| {
-            (packet_id == EntityPositionAndRotationPacket::get_id()).then_some(payload)
+            (packet_id == EntityPositionPacket::get_id()).then_some(payload)
         })
         .expect("vanilla synchronization must queue relative movement");
     let movement_packet =
-        EntityPositionAndRotationPacket::decode(&mut Cursor::new(movement_packet_payload)).unwrap();
+        EntityPositionPacket::decode(&mut Cursor::new(movement_packet_payload)).unwrap();
 
     assert_eq!(
         movement_packet.delta_x,
         EntityPositionPacket::vanilla_delta(expected_x, 0.0)
     );
+}
+
+#[test]
+fn vanilla_synchronization_sends_position_only_when_rotation_packet_angles_do_not_change() {
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("vanilla_wind_charge_position_sync"),
+    );
+    world.load_chunk(ChunkPosition::new(0, 0)).unwrap();
+    let mut viewer_client = queued_client();
+    let viewer = entered_player(&mut viewer_client);
+    world.add_entity(Entity::Player(viewer));
+    let projectile_id = world
+        .spawn_projectile(
+            None,
+            EntityType::WIND_CHARGE,
+            EntityPosition::new(0.0, 64.0, 0.0, 0.0, 0.0),
+        )
+        .unwrap();
+    {
+        let Entity::Projectile(projectile) = world.get_entity_mut(projectile_id).unwrap() else {
+            panic!("projectile entity must preserve its subtype")
+        };
+        projectile.set_no_gravity(true);
+        projectile.set_synchronization_mode(EntitySynchronizationMode::VanillaSynchronization);
+        projectile.set_synchronization_ticks(1);
+        projectile.synchronize_next_tick();
+        projectile.set_velocity(Velocity(Vector3d {
+            x: 0.0,
+            y: 0.0,
+            z: 20.0,
+        }));
+    }
+    world.process_pending_entity_visibility_refreshes().unwrap();
+    viewer_client.discard_queued_outbound_packets();
+
+    world.tick_with_registries(&Registries::new_vanilla());
+
+    let packet_ids = viewer_client.queued_outbound_packet_ids();
+    assert!(packet_ids.contains(&EntityPositionPacket::get_id()));
+    assert!(!packet_ids.contains(&EntityPositionAndRotationPacket::get_id()));
 }
 
 #[test]

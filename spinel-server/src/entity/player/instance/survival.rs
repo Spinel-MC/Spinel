@@ -7,6 +7,7 @@ use crate::network::client::instance::Client;
 use spinel_core::network::clientbound::play::game_event::{
     GameEvent, GameEventPacket, RespawnScreenState,
 };
+use spinel_core::network::clientbound::play::entity_status::EntityStatusPacket;
 use spinel_core::network::clientbound::play::player_combat_kill::PlayerCombatKillPacket;
 use spinel_core::network::clientbound::play::respawn::RespawnPacket;
 use spinel_core::network::clientbound::play::server_difficulty::ServerDifficultyPacket;
@@ -249,6 +250,10 @@ impl Player {
             .clone()
             .unwrap_or_else(|| Identifier::minecraft("overworld"));
         let game_mode = self.game_mode;
+        let permission_status = EntityStatusPacket {
+            entity_id: self.get_entity_id().get_value(),
+            status: (24 + self.get_permission_level()) as i8,
+        };
         if let Some(client) = self.get_client_mut()
             && client.state == ConnectionState::Play
         {
@@ -257,6 +262,7 @@ impl Player {
             ServerDifficultyPacket::normal(false).dispatch(client)?;
             SetHealthPacket::new(20.0, 20, 5.0).dispatch(client)?;
             SetExperiencePacket::new(0.0, 0, 0).dispatch(client)?;
+            permission_status.dispatch(client)?;
             self.refresh_abilities()?;
         }
         let respawn_point = self.dispatch_player_respawn_event();

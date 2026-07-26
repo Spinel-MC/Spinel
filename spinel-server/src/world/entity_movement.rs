@@ -555,6 +555,12 @@ impl World {
             EntityMovementPacket::Position(packet) => {
                 let _ = self.send_packet_to_entity_viewers(entity_id, packet);
             }
+            EntityMovementPacket::PositionAndRotation(packet) => {
+                let _ = self.send_packet_to_entity_viewers(entity_id, packet);
+            }
+            EntityMovementPacket::Rotation(packet) => {
+                let _ = self.send_packet_to_entity_viewers(entity_id, packet);
+            }
             EntityMovementPacket::Teleport(packet) => {
                 let _ = self.send_packet_to_entity_viewers(entity_id, packet);
             }

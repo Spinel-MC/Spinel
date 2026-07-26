@@ -1,13 +1,18 @@
 use crate::entity::{EntityId, EntityPosition, EntitySynchronizationMode};
 use spinel_core::network::clientbound::play::entity_head_look::EntityHeadLookPacket;
+use spinel_core::network::clientbound::play::entity_position::EntityPositionPacket;
 use spinel_core::network::clientbound::play::entity_position_and_rotation::EntityPositionAndRotationPacket;
+use spinel_core::network::clientbound::play::entity_rotation::EntityRotationPacket;
 use spinel_core::network::clientbound::play::entity_teleport::EntityTeleportPacket;
 use spinel_core::network::clientbound::play::entity_velocity::EntityVelocityPacket;
 use spinel_core::network::clientbound::play::spawn_entity::EntityAngle;
 use spinel_network::types::{TeleportFlags, Vector3d};
+use spinel_registry::EntityType;
 
 pub(crate) enum EntityMovementPacket {
-    Position(EntityPositionAndRotationPacket),
+    Position(EntityPositionPacket),
+    PositionAndRotation(EntityPositionAndRotationPacket),
+    Rotation(EntityRotationPacket),
     Teleport(EntityTeleportPacket),
 }
 
@@ -62,6 +67,7 @@ impl EntityMovementPacket {
         position: EntityPosition,
         is_on_ground: bool,
         synchronization_mode: EntitySynchronizationMode,
+        entity_type: EntityType,
     ) -> Self {
         let distance_x = (position.get_x() - previous_position.get_x()).abs();
         let distance_y = (position.get_y() - previous_position.get_y()).abs();
@@ -83,21 +89,62 @@ impl EntityMovementPacket {
             });
         }
         let delta = match synchronization_mode {
-            EntitySynchronizationMode::GenericSynchronization => {
-                spinel_core::network::clientbound::play::entity_position::EntityPositionPacket::delta
-            }
+            EntitySynchronizationMode::GenericSynchronization => EntityPositionPacket::delta,
             EntitySynchronizationMode::VanillaSynchronization => {
-                spinel_core::network::clientbound::play::entity_position::EntityPositionPacket::vanilla_delta
+                EntityPositionPacket::vanilla_delta
             }
         };
-        Self::Position(EntityPositionAndRotationPacket {
+        let delta_x = delta(position.get_x(), previous_position.get_x());
+        let delta_y = delta(position.get_y(), previous_position.get_y());
+        let delta_z = delta(position.get_z(), previous_position.get_z());
+        let position_changed = delta_x != 0 || delta_y != 0 || delta_z != 0;
+        let rotation_changed =
+            entity_packet_angle_changed(previous_position.get_yaw(), position.get_yaw())
+                || entity_packet_angle_changed(previous_position.get_pitch(), position.get_pitch());
+        let should_send_vanilla_position_and_rotation = position_changed
+            && (rotation_changed || entity_type_requires_position_and_rotation(entity_type));
+        if synchronization_mode == EntitySynchronizationMode::GenericSynchronization
+            || should_send_vanilla_position_and_rotation
+        {
+            return Self::PositionAndRotation(EntityPositionAndRotationPacket {
+                entity_id: entity_id.get_value(),
+                delta_x,
+                delta_y,
+                delta_z,
+                yaw: EntityAngle(position.get_yaw()),
+                pitch: EntityAngle(position.get_pitch()),
+                on_ground: is_on_ground,
+            });
+        }
+        if position_changed {
+            return Self::Position(EntityPositionPacket {
+                entity_id: entity_id.get_value(),
+                delta_x,
+                delta_y,
+                delta_z,
+                on_ground: is_on_ground,
+            });
+        }
+        Self::Rotation(EntityRotationPacket {
             entity_id: entity_id.get_value(),
-            delta_x: delta(position.get_x(), previous_position.get_x()),
-            delta_y: delta(position.get_y(), previous_position.get_y()),
-            delta_z: delta(position.get_z(), previous_position.get_z()),
             yaw: EntityAngle(position.get_yaw()),
             pitch: EntityAngle(position.get_pitch()),
             on_ground: is_on_ground,
         })
     }
+}
+
+fn entity_packet_angle_changed(previous_angle: f32, current_angle: f32) -> bool {
+    entity_packet_angle(previous_angle) != entity_packet_angle(current_angle)
+}
+
+fn entity_packet_angle(angle: f32) -> u8 {
+    (angle * 256.0 / 360.0) as i32 as u8
+}
+
+fn entity_type_requires_position_and_rotation(entity_type: EntityType) -> bool {
+    matches!(
+        entity_type,
+        EntityType::ARROW | EntityType::SPECTRAL_ARROW | EntityType::TRIDENT
+    )
 }

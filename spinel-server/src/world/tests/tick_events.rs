@@ -1,4 +1,4 @@
-use crate::entity::{Entity, EntityPosition, GenericEntity};
+use crate::entity::{Entity, EntityPosition};
 use crate::events::entity_tick::EntityTickEvent;
 use crate::events::world_tick::WorldTickEvent;
 use crate::events::world_tick_end::WorldTickEndEvent;

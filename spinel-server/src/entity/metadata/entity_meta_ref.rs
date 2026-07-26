@@ -91,8 +91,4 @@ impl<'entity> EntityMetaRef<'entity> {
             _ => 0,
         }
     }
-
-    pub(crate) const fn get_state(&self) -> &EntityState {
-        self.state
-    }
 }

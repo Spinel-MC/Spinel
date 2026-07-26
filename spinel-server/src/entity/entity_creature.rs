@@ -1,5 +1,5 @@
 use crate::entity::ai::{CreatureAiAction, EntityAiGroup};
-use crate::entity::metadata::{LivingEntityMetaCast, LivingEntityMetaRef};
+use crate::entity::metadata::LivingEntityMetaCast;
 use crate::entity::pathfinding::{
     Navigator, NodeFollowerPhysicsTiming, PathRequest, SetPathToError,
 };
