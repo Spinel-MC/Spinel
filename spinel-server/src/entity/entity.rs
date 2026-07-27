@@ -1,8 +1,3 @@
-use crate::entity::EntityPosition;
-use crate::entity::EntityView;
-use crate::entity::ExperienceOrb;
-use crate::entity::LivingEntity;
-use crate::entity::TimedPotionEffect;
 use crate::entity::entity_creature::EntityCreature;
 use crate::entity::generic_entity::GenericEntity;
 use crate::entity::identity::{EntityId, EntityPointers};
@@ -10,6 +5,11 @@ use crate::entity::item::ItemEntity;
 use crate::entity::physics::EntityPhysicsResult;
 use crate::entity::player::Player;
 use crate::entity::projectile::ProjectileEntity;
+use crate::entity::EntityPosition;
+use crate::entity::EntityView;
+use crate::entity::ExperienceOrb;
+use crate::entity::LivingEntity;
+use crate::entity::TimedPotionEffect;
 use crate::permission::{PermissionHandler, PermissionSet};
 use crate::scheduler::{ContextScheduler, Task, TaskSchedule};
 use crate::world::World;
@@ -23,6 +23,7 @@ use spinel_core::network::clientbound::play::set_passengers::SetPassengersPacket
 use spinel_network::types::Velocity;
 use spinel_registry::{EntityType, MobEffect, RegistryKey};
 use std::collections::BTreeSet;
+use std::io;
 use uuid::Uuid;
 
 pub enum Entity {
@@ -270,6 +271,21 @@ impl Entity {
             Self::Item(entity) => entity.is_removed(),
             Self::Player(_) => false,
             Self::Projectile(entity) => entity.is_removed(),
+        }
+    }
+
+    pub fn kill(&mut self) -> io::Result<bool> {
+        match self {
+            Self::Creature(entity) => Ok(entity.kill()),
+            Self::ExperienceOrb(entity) => Ok(remove_generic_entity(entity)),
+            Self::Generic(entity) => Ok(remove_generic_entity(entity)),
+            Self::Item(entity) => Ok(remove_generic_entity(entity)),
+            Self::Living(entity) => Ok(kill_living_entity(entity)),
+            Self::Player(player) => {
+                let was_alive = !player.is_dead();
+                player.kill().map(|_| was_alive)
+            }
+            Self::Projectile(entity) => Ok(remove_generic_entity(entity)),
         }
     }
 
@@ -685,6 +701,32 @@ impl Entity {
             Self::Projectile(entity) => entity.get_attach_entity_packet(),
         }
     }
+}
+
+fn remove_generic_entity(entity: &mut GenericEntity) -> bool {
+    if entity.is_removed() {
+        return false;
+    }
+    entity.remove();
+    true
+}
+
+fn kill_living_entity(entity: &mut LivingEntity) -> bool {
+    if !entity.kill() {
+        return false;
+    }
+    if entity_type_has_creature_kill_removal(entity.get_entity_type()) {
+        entity.schedule_remove_after_duration(std::time::Duration::from_millis(1000));
+    }
+    true
+}
+
+fn entity_type_has_creature_kill_removal(entity_type: EntityType) -> bool {
+    entity_type.is_living()
+        && !matches!(
+            entity_type,
+            EntityType::ARMOR_STAND | EntityType::MANNEQUIN | EntityType::PLAYER
+        )
 }
 
 impl PermissionHandler for Entity {

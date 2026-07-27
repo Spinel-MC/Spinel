@@ -277,7 +277,8 @@ fn parser_reads_block_state_properties() {
     );
     let commands = [command];
 
-    let parsed_command = valid_command(parse_as_server(&commands, "setblock 0 0 0 oak_log[axis=x]"));
+    let parsed_command =
+        valid_command(parse_as_server(&commands, "setblock 0 0 0 oak_log[axis=x]"));
     let block_state = parsed_command.context().block_state("block").unwrap();
 
     assert_eq!(block_state.block(), Block::OAK_LOG);

@@ -3,8 +3,8 @@ use crate::entity::physics::{EntityMovement, EntityMovementPacket};
 use crate::entity::player::{PlayerSkin, PlayerViewerSnapshot};
 use crate::entity::{
     Damage, Entity, EntityId, EntityPose, EntityPosition, EntityTeleport, EquipmentSlot,
-    ExperienceOrb, GenericEntity, ItemEntity, Player, PlayerChunk, PlayerChunkTransition,
-    TimedPotionEffect,
+    ExperienceOrb, GenericEntity, ItemEntity, ItemEntityPhysics, Player, PlayerChunk,
+    PlayerChunkTransition, TimedPotionEffect,
 };
 use crate::events::chunk_loader_error::ChunkLoaderErrorEvent;
 use crate::events::entity_attack::EntityAttackEvent;

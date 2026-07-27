@@ -258,6 +258,7 @@ impl World {
         let _ = self.process_completed_chunk_loads();
 
         let _ = self.process_pending_entity_visibility_refreshes();
+        self.process_removed_entities();
         self.tick_chunks(self.world_age as u64);
         player_addresses.into_iter().for_each(|address| {
             let _ = self.send_pending_chunks_for_player_address(address, registries);

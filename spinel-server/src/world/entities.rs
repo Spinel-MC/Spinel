@@ -81,6 +81,21 @@ impl World {
         self.remove_entity_from_instance(entity_id)
     }
 
+    fn process_removed_entities(&mut self) -> usize {
+        let removed_entity_ids = self
+            .entities
+            .iter()
+            .filter(|entity| entity.is_removed())
+            .filter(|entity| entity_has_world_removal_after_removed_state(entity))
+            .map(Entity::get_entity_id)
+            .collect::<Vec<_>>();
+        let removed_entity_count = removed_entity_ids.len();
+        removed_entity_ids.into_iter().for_each(|entity_id| {
+            self.remove_entity(entity_id);
+        });
+        removed_entity_count
+    }
+
     pub(crate) fn remove_entity_from_instance(&mut self, entity_id: EntityId) -> Option<Entity> {
         self.dispatch_remove_entity_from_instance_event(entity_id);
         self.detach_entity_passenger_relations(entity_id);
@@ -239,10 +254,11 @@ impl World {
         position: EntityPosition,
         nbt: Option<&NbtCompound>,
     ) -> Result<EntityId> {
-        let mut entity = Entity::new(entity_type);
+        let mut entity = command_spawn_entity(entity_type);
         entity.set_position(position);
         if let Some(nbt) = nbt {
             match &mut entity {
+                Entity::Creature(creature) => creature.get_entity_mut().apply_summon_nbt(nbt),
                 Entity::Generic(generic_entity) => generic_entity.apply_summon_nbt(nbt),
                 Entity::Living(living_entity) => living_entity.apply_summon_nbt(nbt),
                 _ => {}
@@ -290,4 +306,26 @@ impl World {
                 EntityStatusPacket { entity_id, status }.dispatch(viewer_client)
             })
     }
+}
+
+fn entity_has_world_removal_after_removed_state(entity: &Entity) -> bool {
+    match entity {
+        Entity::Player(_) => false,
+        _ => true,
+    }
+}
+
+fn command_spawn_entity(entity_type: EntityType) -> Entity {
+    if entity_type_has_mob_owner(entity_type) {
+        return Entity::Creature(crate::entity::EntityCreature::new(entity_type));
+    }
+    Entity::new(entity_type)
+}
+
+fn entity_type_has_mob_owner(entity_type: EntityType) -> bool {
+    entity_type.is_living()
+        && !matches!(
+            entity_type,
+            EntityType::ARMOR_STAND | EntityType::MANNEQUIN | EntityType::PLAYER
+        )
 }

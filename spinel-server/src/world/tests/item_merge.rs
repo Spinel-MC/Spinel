@@ -1,4 +1,4 @@
-use crate::entity::{Entity, EntityId, EntityPosition, ItemEntity};
+use crate::entity::{Entity, EntityId, EntityPosition, ItemEntity, ItemEntityPhysics};
 use crate::events::entity_item_merge::EntityItemMergeEvent;
 use crate::server::MinecraftServer;
 use crate::world::World;
@@ -7,6 +7,7 @@ use spinel_network::types::Identifier;
 use spinel_registry::{ItemStack, Material, Registries};
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::time::Duration;
 
 static ITEM_MERGE_TEST_LOCK: Mutex<()> = Mutex::new(());
 static ITEM_MERGE_TEST_SOURCE: Mutex<Option<EntityId>> = Mutex::new(None);
@@ -93,6 +94,38 @@ fn item_merge_event_can_cancel_and_mutate_the_result() {
     reset_item_merge_test_state();
 }
 
+#[test]
+fn vanilla_item_merge_uses_inflated_item_bounding_box_not_generic_scalar_range() {
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
+    let source_id = add_vanilla_item(&mut world, Material::DIAMOND, 5, 0.0);
+    let merged_id = add_vanilla_item(&mut world, Material::DIAMOND, 6, 0.76);
+
+    tick_world(&mut world, 40);
+
+    assert_eq!(item_amount(&world, source_id), Some(5));
+    assert_eq!(item_amount(&world, merged_id), Some(6));
+}
+
+#[test]
+fn vanilla_item_merge_does_not_wait_for_pickup_delay() {
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
+    let source_id = add_vanilla_delayed_item(&mut world, Material::DIAMOND, 5, 0.0);
+    let merged_id = add_vanilla_delayed_item(&mut world, Material::DIAMOND, 6, 0.5);
+
+    tick_world(&mut world, 40);
+
+    assert_eq!(item_amount(&world, source_id), Some(11));
+    assert!(world.get_entity(merged_id).is_none());
+}
+
 fn add_item(world: &mut World, material: Material, amount: i32, x: f64) -> EntityId {
     let mut item_entity = ItemEntity::new(ItemStack::of(material).with_amount(amount));
     item_entity.spawn();
@@ -100,6 +133,38 @@ fn add_item(world: &mut World, material: Material, amount: i32, x: f64) -> Entit
     let entity_id = item_entity.get_entity_id();
     world.add_entity(Entity::Item(item_entity));
     entity_id
+}
+
+fn add_vanilla_item(world: &mut World, material: Material, amount: i32, x: f64) -> EntityId {
+    let mut item_entity = ItemEntity::new(ItemStack::of(material).with_amount(amount));
+    item_entity.spawn();
+    item_entity.set_no_gravity(true);
+    item_entity.set_physics(ItemEntityPhysics::VanillaPhysics);
+    item_entity.set_position(EntityPosition::new(x, 64.0, 0.0, 0.0, 0.0));
+    let entity_id = item_entity.get_entity_id();
+    world.add_entity(Entity::Item(item_entity));
+    entity_id
+}
+
+fn add_vanilla_delayed_item(
+    world: &mut World,
+    material: Material,
+    amount: i32,
+    x: f64,
+) -> EntityId {
+    let mut item_entity = ItemEntity::new(ItemStack::of(material).with_amount(amount));
+    item_entity.spawn();
+    item_entity.set_no_gravity(true);
+    item_entity.set_pickup_delay(Duration::from_secs(2));
+    item_entity.set_physics(ItemEntityPhysics::VanillaPhysics);
+    item_entity.set_position(EntityPosition::new(x, 64.0, 0.0, 0.0, 0.0));
+    let entity_id = item_entity.get_entity_id();
+    world.add_entity(Entity::Item(item_entity));
+    entity_id
+}
+
+fn tick_world(world: &mut World, ticks: usize) {
+    (0..ticks).for_each(|_| world.tick_with_registries(&Registries::new_vanilla()));
 }
 
 fn item_amount(world: &World, entity_id: EntityId) -> Option<i32> {

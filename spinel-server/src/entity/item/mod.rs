@@ -1,5 +1,5 @@
 mod instance;
 mod metadata;
 
-pub use instance::ItemEntity;
+pub use instance::{ItemEntity, ItemEntityPhysics};
 pub use metadata::ItemEntityMeta;

@@ -31,6 +31,17 @@ impl EntityBoundingBox {
         }
     }
 
+    pub const fn inflate(self, x: f64, y: f64, z: f64) -> Self {
+        Self {
+            minimum_x: self.minimum_x - x,
+            minimum_y: self.minimum_y - y,
+            minimum_z: self.minimum_z - z,
+            maximum_x: self.maximum_x + x,
+            maximum_y: self.maximum_y + y,
+            maximum_z: self.maximum_z + z,
+        }
+    }
+
     pub const fn get_width(self) -> f64 {
         self.maximum_x - self.minimum_x
     }

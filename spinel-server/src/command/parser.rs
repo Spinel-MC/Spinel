@@ -32,13 +32,10 @@ impl CommandParser {
         let (command_name, command_arguments) = trimmed_command_line
             .split_once(char::is_whitespace)
             .unwrap_or((trimmed_command_line, ""));
-        let Some(root_command) = commands
-            .iter()
-            .find(|command| {
-                command.name_matches(command_name)
-                    && command_is_visible_to_source(command, condition_context, trimmed_command_line)
-            })
-        else {
+        let Some(root_command) = commands.iter().find(|command| {
+            command.name_matches(command_name)
+                && command_is_visible_to_source(command, condition_context, trimmed_command_line)
+        }) else {
             return CommandParseResult::Unknown;
         };
         let (command, command_arguments, command_cursor) = Self::parse_subcommand(
@@ -344,14 +341,10 @@ fn parse_subcommand_from_cursor<'a, 'b>(
     if next_word.is_empty() {
         return (command, command_arguments, command_cursor);
     }
-    let Some(subcommand) = command
-        .subcommands()
-        .iter()
-        .find(|subcommand| {
-            subcommand.name_matches(next_word)
-                && command_is_visible_to_source(subcommand, condition_context, command_input)
-        })
-    else {
+    let Some(subcommand) = command.subcommands().iter().find(|subcommand| {
+        subcommand.name_matches(next_word)
+            && command_is_visible_to_source(subcommand, condition_context, command_input)
+    }) else {
         return (command, command_arguments, command_cursor);
     };
     let remaining_command_arguments = remaining_input.trim_start();

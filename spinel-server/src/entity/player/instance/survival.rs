@@ -1,13 +1,13 @@
 use crate::entity::metadata::definitions;
 use crate::entity::player::position::PlayerPosition;
-use crate::entity::{Damage, EntityPosition, PlayerSpawnPoint};
+use crate::entity::{Damage, EntityPose, EntityPosition, PlayerSpawnPoint};
 use crate::events::player_death::PlayerDeathEvent;
 use crate::events::player_respawn::PlayerRespawnEvent;
 use crate::network::client::instance::Client;
+use spinel_core::network::clientbound::play::entity_status::EntityStatusPacket;
 use spinel_core::network::clientbound::play::game_event::{
     GameEvent, GameEventPacket, RespawnScreenState,
 };
-use spinel_core::network::clientbound::play::entity_status::EntityStatusPacket;
 use spinel_core::network::clientbound::play::player_combat_kill::PlayerCombatKillPacket;
 use spinel_core::network::clientbound::play::respawn::RespawnPacket;
 use spinel_core::network::clientbound::play::server_difficulty::ServerDifficultyPacket;
@@ -202,6 +202,7 @@ impl Player {
             return Ok(());
         }
         self.living.kill();
+        self.set_pose(EntityPose::Dying);
         self.velocity = Velocity(Vector3d {
             x: 0.0,
             y: 0.0,

@@ -44,7 +44,7 @@ pub use error::Error;
 pub use experience_orb::ExperienceOrb;
 pub use generic_entity::{EntityAerodynamics, EntityPosition, GenericEntity};
 pub use identity::{EntityId, EntityIdentity, EntityPointers};
-pub use item::{ItemEntity, ItemEntityMeta};
+pub use item::{ItemEntity, ItemEntityMeta, ItemEntityPhysics};
 pub(crate) use leash::EntityLeash;
 pub use living::{
     EntityAttributeState, LivingAttributes, LivingEntity, LivingState, TimedPotionEffect,

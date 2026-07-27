@@ -1,6 +1,6 @@
-use crate::entity::{EntityPosition, GenericEntity, LivingEntity};
-use spinel_nbt::{Nbt, NbtCompound};
-use spinel_registry::EntityType;
+use crate::entity::{EntityPosition, EquipmentSlot, GenericEntity, LivingEntity};
+use spinel_nbt::{nbt_to_json, Nbt, NbtCompound};
+use spinel_registry::{EntityType, ItemStack};
 use spinel_utils::component::text::TextComponent;
 
 impl GenericEntity {
@@ -40,12 +40,8 @@ impl GenericEntity {
         apply_boolean(nbt, "CustomNameVisible", |value| {
             self.set_custom_name_visible(value)
         });
-        let custom_name = nbt
-            .get("CustomName")
-            .and_then(nbt_string)
-            .and_then(|custom_name| serde_json::from_str::<TextComponent>(custom_name).ok());
-        if custom_name.is_some() {
-            self.set_custom_name(custom_name);
+        if let Some(custom_name) = nbt.get("CustomName").and_then(text_component_from_nbt) {
+            self.set_custom_name(Some(custom_name));
         }
     }
 }
@@ -67,6 +63,7 @@ impl LivingEntity {
         if let Some(health) = nbt.get("Health").and_then(nbt_number) {
             self.set_health(health as f32);
         }
+        self.apply_summon_equipment(nbt);
     }
 
     fn apply_summon_type_state(&mut self, nbt: &NbtCompound) {
@@ -82,6 +79,21 @@ impl LivingEntity {
             }
             _ => {}
         }
+    }
+
+    fn apply_summon_equipment(&mut self, nbt: &NbtCompound) {
+        let Some(Nbt::Compound(equipment)) = nbt.get("equipment") else {
+            return;
+        };
+        equipment
+            .0
+            .iter()
+            .filter_map(|(equipment_slot_name, item_nbt)| {
+                summon_equipment_item(equipment_slot_name, item_nbt)
+            })
+            .for_each(|(equipment_slot, item_stack)| {
+                self.set_equipment_state(equipment_slot, item_stack);
+            });
     }
 
     fn apply_armor_stand_summon_state(&mut self, nbt: &NbtCompound) {
@@ -125,11 +137,23 @@ fn nbt_boolean(nbt: &Nbt) -> Option<bool> {
     }
 }
 
-fn nbt_string(nbt: &Nbt) -> Option<&str> {
+fn text_component_from_nbt(nbt: &Nbt) -> Option<TextComponent> {
     match nbt {
-        Nbt::String(value) => Some(value),
-        _ => None,
+        Nbt::String(custom_name) => serde_json::from_str(custom_name).ok(),
+        _ => serde_json::from_value(nbt_to_json(nbt.clone())).ok(),
     }
+}
+
+fn summon_equipment_item(
+    equipment_slot_name: &str,
+    item_nbt: &Nbt,
+) -> Option<(EquipmentSlot, ItemStack)> {
+    let equipment_slot = EquipmentSlot::from_nbt_name(equipment_slot_name)?;
+    let Nbt::Compound(item_compound) = item_nbt else {
+        return None;
+    };
+    let item_stack = ItemStack::from_item_nbt(item_compound.clone())?;
+    Some((equipment_slot, item_stack))
 }
 
 fn nbt_number(nbt: &Nbt) -> Option<f64> {

@@ -74,6 +74,20 @@ impl EquipmentSlot {
         }
     }
 
+    pub fn from_nbt_name(nbt_name: &str) -> Option<Self> {
+        match nbt_name {
+            "mainhand" => Some(Self::MainHand),
+            "offhand" => Some(Self::OffHand),
+            "feet" => Some(Self::Boots),
+            "legs" => Some(Self::Leggings),
+            "chest" => Some(Self::Chestplate),
+            "head" => Some(Self::Helmet),
+            "body" => Some(Self::Body),
+            "saddle" => Some(Self::Saddle),
+            _ => None,
+        }
+    }
+
     pub fn is_hand(&self) -> bool {
         matches!(self, Self::MainHand | Self::OffHand)
     }

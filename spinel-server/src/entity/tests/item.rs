@@ -1,4 +1,4 @@
-use crate::entity::ItemEntity;
+use crate::entity::{ItemEntity, ItemEntityPhysics};
 use crate::world::{Block, BlockPosition, World};
 use spinel_network::types::entity_metadata::MetadataValue;
 use spinel_network::types::{Identifier, Vector3d, Velocity};
@@ -39,6 +39,64 @@ fn item_entity_owns_stack_metadata_and_pickup_delay() {
     item_entity.set_pickable(false);
     item_entity.set_pickup_delay(Duration::ZERO);
     assert!(!item_entity.is_pickable());
+}
+
+#[test]
+fn item_entity_physics_defaults_to_generic_and_can_select_vanilla() {
+    let mut item_entity = ItemEntity::new(spinel_registry::ItemStack::of(Material::DIAMOND));
+
+    assert_eq!(item_entity.get_physics(), ItemEntityPhysics::GenericPhysics);
+
+    item_entity.set_physics(ItemEntityPhysics::VanillaPhysics);
+
+    assert_eq!(item_entity.get_physics(), ItemEntityPhysics::VanillaPhysics);
+}
+
+#[test]
+fn vanilla_item_physics_applies_gravity_before_movement_and_drag_after_movement() {
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
+    world
+        .set_block(BlockPosition::new(0, 0, 0), Block::STONE)
+        .unwrap();
+    let snapshot = world.update_snapshot();
+    let mut item_entity = ItemEntity::new(spinel_registry::ItemStack::of(Material::DIAMOND));
+    item_entity.set_physics(ItemEntityPhysics::VanillaPhysics);
+    item_entity.set_position(crate::entity::EntityPosition::new(0.5, 64.0, 0.5, 0.0, 0.0));
+
+    item_entity.movement_tick(&snapshot);
+
+    assert!((item_entity.get_position().get_y() - 63.96).abs() < 0.000001);
+    assert!((item_entity.get_velocity().0.y - -0.784).abs() < 0.000001);
+}
+
+#[test]
+fn vanilla_item_physics_uses_collision_adjusted_vertical_velocity_on_landing() {
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
+    world
+        .set_block(BlockPosition::new(0, 63, 0), Block::STONE)
+        .unwrap();
+    let snapshot = world.update_snapshot();
+    let mut item_entity = ItemEntity::new(spinel_registry::ItemStack::of(Material::DIAMOND));
+    item_entity.set_physics(ItemEntityPhysics::VanillaPhysics);
+    item_entity.set_position(crate::entity::EntityPosition::new(0.5, 64.1, 0.5, 0.0, 0.0));
+    item_entity.set_velocity(Velocity(Vector3d {
+        x: 0.0,
+        y: -6.0,
+        z: 0.0,
+    }));
+
+    item_entity.movement_tick(&snapshot);
+
+    assert!(item_entity.is_on_ground());
+    assert_eq!(item_entity.get_velocity().0.y, 0.0);
 }
 
 #[test]

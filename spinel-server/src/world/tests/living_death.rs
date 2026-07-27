@@ -1,5 +1,5 @@
 use crate::entity::player::{Player, PlayerChunk};
-use crate::entity::{Entity, EntityId, EntityPose, EntityPosition, LivingEntity};
+use crate::entity::{Entity, EntityCreature, EntityId, EntityPose, EntityPosition, LivingEntity};
 use crate::events::entity_death::EntityDeathEvent;
 use crate::network::client::instance::Client;
 use crate::server::MinecraftServer;
@@ -7,12 +7,12 @@ use crate::world::World;
 use spinel_core::network::clientbound::play::entity_status::EntityStatusPacket;
 use spinel_core::network::clientbound::play::set_passengers::SetPassengersPacket;
 use spinel_macros::fn_event_listener;
-use spinel_network::ConnectionState;
 use spinel_network::types::{Identifier, Vector3d, Velocity};
+use spinel_network::ConnectionState;
 use spinel_registry::EntityType;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr, TcpListener};
-use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Mutex;
 use uuid::Uuid;
 
 static LIVING_DEATH_TEST_LOCK: Mutex<()> = Mutex::new(());
@@ -98,6 +98,53 @@ fn world_kill_entity_dispatches_entity_death_event_after_living_state_changes() 
     assert!(LIVING_DEATH_EVENT_ENTITY_ACCESSOR_MATCHED.load(Ordering::SeqCst));
     assert!(tracked_living_entity(&server).is_dead());
     reset_living_death_test_state();
+}
+
+#[test]
+fn world_kill_entity_removes_creature_after_entity_owned_removal_delay() {
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
+    let mut creature = EntityCreature::new(EntityType::ZOMBIE);
+    creature.set_position(EntityPosition::new(1.0, 64.0, 1.0, 0.0, 0.0));
+    let creature_id = creature.get_entity_id();
+    world.add_entity(Entity::Creature(creature));
+
+    assert!(world.kill_entity(creature_id).unwrap());
+    let Some(Entity::Creature(creature)) = world.get_entity(creature_id) else {
+        panic!("creature must remain in world during death animation");
+    };
+    assert!(creature.is_dead());
+    assert_eq!(creature.is_removed(), false);
+
+    (0..19).for_each(|_| world.tick());
+    assert!(world.get_entity(creature_id).is_some());
+
+    world.tick();
+    assert!(world.get_entity(creature_id).is_none());
+}
+
+#[test]
+fn world_kill_entity_removes_living_mob_after_entity_owned_removal_delay() {
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("entity_new_mob"),
+    );
+    let mut entity = Entity::Living(positioned_living_entity());
+    entity.set_position(EntityPosition::new(1.0, 64.0, 1.0, 0.0, 0.0));
+    let entity_id = entity.get_entity_id();
+    assert!(matches!(entity, Entity::Living(_)));
+    world.add_entity(entity);
+
+    assert!(world.kill_entity(entity_id).unwrap());
+    assert!(world.get_entity(entity_id).is_some());
+
+    (0..20).for_each(|_| world.tick());
+
+    assert!(world.get_entity(entity_id).is_none());
 }
 
 #[test]

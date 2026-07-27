@@ -217,27 +217,41 @@ impl World {
     }
 
     pub fn kill_entity(&mut self, entity_id: EntityId) -> Result<bool> {
-        if self.entity_should_be_removed_when_killed(entity_id) {
-            return Ok(self.remove_entity(entity_id).is_some());
-        }
-        if self.entity_is_dead(entity_id) {
+        let Some(entity) = self.entity_by_id(entity_id) else {
             return Ok(false);
+        };
+        let entity_has_living_kill_side_effects = entity_has_living_kill_side_effects(entity);
+        let passenger_ids = entity.get_passengers().iter().copied().collect::<Vec<_>>();
+        let entity_is_removed_after_kill = {
+            let Some(entity) = self.entity_by_id_mut(entity_id) else {
+                return Ok(false);
+            };
+            if !entity.kill()? {
+                return Ok(false);
+            }
+            entity.is_removed()
+        };
+        if entity_has_living_kill_side_effects {
+            self.send_packet_to_player_viewers_and_self(
+                entity_id,
+                EntityStatusPacket {
+                    entity_id: entity_id.get_value(),
+                    status: 3,
+                },
+            )?;
         }
-        if self
-            .entity_by_id(entity_id)
-            .is_some_and(|entity| matches!(entity, Entity::Player(_)))
-        {
-            self.apply_player_death_before_living_death(entity_id)?;
+        passenger_ids.into_iter().try_for_each(|passenger_id| {
+            self
+                .remove_passenger(entity_id, passenger_id)
+                .map(|_| ())
+                .map_err(|passenger_error| std::io::Error::other(passenger_error.to_string()))
+        })?;
+        if entity_has_living_kill_side_effects {
+            self.dispatch_entity_death_event(entity_id);
         }
-        self.send_packet_to_player_viewers_and_self(
-            entity_id,
-            EntityStatusPacket {
-                entity_id: entity_id.get_value(),
-                status: 3,
-            },
-        )?;
-        self.apply_living_death_state(entity_id)?;
-        self.dispatch_entity_death_event(entity_id);
+        if entity_is_removed_after_kill {
+            self.remove_entity(entity_id);
+        }
         Ok(true)
     }
 
@@ -250,6 +264,7 @@ impl World {
     }
 
     fn process_living_item_pickups(&mut self) {
+        self.process_player_vanilla_item_pickups();
         let living_entity_ids = self
             .entities
             .iter()
@@ -263,6 +278,58 @@ impl World {
         living_entity_ids
             .into_iter()
             .for_each(|entity_id| self.process_living_entity_item_pickups(entity_id));
+    }
+
+    fn process_player_vanilla_item_pickups(&mut self) {
+        let player_ids = self
+            .entities
+            .iter()
+            .filter_map(|entity| match entity {
+                Entity::Player(player)
+                    if player.can_pickup_item()
+                        && !player.is_dead()
+                        && player.get_game_mode() != GameMode::Spectator =>
+                {
+                    Some(player.get_entity_id())
+                }
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+        player_ids
+            .into_iter()
+            .for_each(|player_id| self.process_player_vanilla_item_pickup(player_id));
+    }
+
+    fn process_player_vanilla_item_pickup(&mut self, player_id: EntityId) {
+        let Some((player_position, player_uuid, pickup_box)) =
+            self.entity_by_id(player_id).and_then(|entity| match entity {
+                Entity::Player(player) => Some((
+                    player.get_position(),
+                    player.get_uuid(),
+                    player.get_bounding_box().inflate(1.0, 0.5, 1.0),
+                )),
+                _ => None,
+            })
+        else {
+            return;
+        };
+        let item_entity_ids = self.entity_tracker.nearby_entities_by_chunk_range(
+            player_position,
+            1,
+            EntityTrackerTarget::Items,
+        );
+        item_entity_ids.into_iter().for_each(|item_entity_id| {
+            if !self.vanilla_item_entity_can_be_picked_up_by(
+                player_id,
+                item_entity_id,
+                player_uuid,
+                player_position,
+                pickup_box,
+            ) {
+                return;
+            }
+            self.collect_item_entity_for_living(player_id, item_entity_id);
+        });
     }
 
     fn tick_experience_orb(&mut self, experience_orb_id: EntityId) {
@@ -452,25 +519,7 @@ impl World {
             ) {
                 return;
             }
-            if self.dispatch_pickup_item_event(living_entity_id, item_entity_id) {
-                return;
-            }
-            let Some(pickup_item_count) = self
-                .entity_by_id(item_entity_id)
-                .and_then(item_entity)
-                .map(|item_entity| item_entity.get_item_stack().amount())
-            else {
-                return;
-            };
-            let _ = self.send_packet_to_player_viewers_and_self(
-                living_entity_id,
-                TakeItemEntityPacket {
-                    collected_entity_id: item_entity_id.get_value(),
-                    collector_entity_id: living_entity_id.get_value(),
-                    pickup_item_count,
-                },
-            );
-            self.remove_entity(item_entity_id);
+            self.collect_item_entity_for_living(living_entity_id, item_entity_id);
         });
     }
 
@@ -501,6 +550,9 @@ impl World {
         let Some(item_entity) = self.entity_by_id(item_entity_id).and_then(item_entity) else {
             return false;
         };
+        if item_entity.get_physics() == ItemEntityPhysics::VanillaPhysics {
+            return false;
+        }
         if !item_entity.is_pickable() {
             return false;
         }
@@ -512,6 +564,57 @@ impl World {
             return false;
         }
         item_entity.get_intersects_box_at(living_position.as_vector(), expanded_bounding_box)
+    }
+
+    fn vanilla_item_entity_can_be_picked_up_by(
+        &self,
+        player_id: EntityId,
+        item_entity_id: EntityId,
+        player_uuid: Uuid,
+        player_position: EntityPosition,
+        pickup_box: EntityBoundingBox,
+    ) -> bool {
+        let Some(item_entity) = self.entity_by_id(item_entity_id).and_then(item_entity) else {
+            return false;
+        };
+        if item_entity.get_physics() != ItemEntityPhysics::VanillaPhysics {
+            return false;
+        }
+        if !item_entity.is_pickable() {
+            return false;
+        }
+        if item_entity
+            .get_target()
+            .is_some_and(|target_uuid| target_uuid != player_uuid)
+        {
+            return false;
+        }
+        if !item_entity.is_viewer(player_id) {
+            return false;
+        }
+        item_entity.get_intersects_box_at(player_position.as_vector(), pickup_box)
+    }
+
+    fn collect_item_entity_for_living(&mut self, living_entity_id: EntityId, item_entity_id: EntityId) {
+        if self.dispatch_pickup_item_event(living_entity_id, item_entity_id) {
+            return;
+        }
+        let Some(pickup_item_count) = self
+            .entity_by_id(item_entity_id)
+            .and_then(item_entity)
+            .map(|item_entity| item_entity.get_item_stack().amount())
+        else {
+            return;
+        };
+        let _ = self.send_packet_to_player_viewers_and_self(
+            living_entity_id,
+            TakeItemEntityPacket {
+                collected_entity_id: item_entity_id.get_value(),
+                collector_entity_id: living_entity_id.get_value(),
+                pickup_item_count,
+            },
+        );
+        self.remove_entity(item_entity_id);
     }
 
     fn dispatch_pickup_item_event(
@@ -529,13 +632,23 @@ impl World {
     }
 
     fn merge_item_entity(&mut self, source_item_entity_id: EntityId) {
-        let Some((source_position, merge_range)) = self
+        let Some((source_position, merge_range, physics)) = self
             .entity_by_id(source_item_entity_id)
             .and_then(item_entity)
-            .map(|item_entity| (item_entity.get_position(), item_entity.get_merge_range()))
+            .map(|item_entity| {
+                (
+                    item_entity.get_position(),
+                    item_entity.get_merge_range(),
+                    item_entity.get_physics(),
+                )
+            })
         else {
             return;
         };
+        if physics == ItemEntityPhysics::VanillaPhysics {
+            self.merge_vanilla_item_entity(source_item_entity_id, source_position);
+            return;
+        }
         let nearby_item_entity_ids = self.entity_tracker.nearby_entities(
             source_position,
             f64::from(merge_range),
@@ -557,7 +670,11 @@ impl World {
         let Some(source_item_stack) = self
             .entity_by_id(source_item_entity_id)
             .and_then(item_entity)
-            .filter(|item_entity| item_entity.is_pickable() && item_entity.is_mergeable())
+            .filter(|item_entity| {
+                item_entity.get_physics() == ItemEntityPhysics::GenericPhysics
+                    && item_entity.is_pickable()
+                    && item_entity.is_mergeable()
+            })
             .map(|item_entity| item_entity.get_item_stack().clone())
         else {
             return;
@@ -565,7 +682,94 @@ impl World {
         let Some(merged_item_stack) = self
             .entity_by_id(merged_item_entity_id)
             .and_then(item_entity)
-            .filter(|item_entity| item_entity.is_pickable() && item_entity.is_mergeable())
+            .filter(|item_entity| {
+                item_entity.get_physics() == ItemEntityPhysics::GenericPhysics
+                    && item_entity.is_pickable()
+                    && item_entity.is_mergeable()
+            })
+            .map(|item_entity| item_entity.get_item_stack().clone())
+        else {
+            return;
+        };
+        if !source_item_stack.is_similar(&merged_item_stack) {
+            return;
+        }
+        let total_amount = source_item_stack.amount() + merged_item_stack.amount();
+        if total_amount < 0 || total_amount > source_item_stack.max_stack_size() {
+            return;
+        }
+        let result = source_item_stack.with_amount(total_amount);
+        let Some(result) = self.dispatch_entity_item_merge_event(
+            source_item_entity_id,
+            merged_item_entity_id,
+            result,
+        ) else {
+            return;
+        };
+        let Some(source_item_entity) =
+            self.entity_by_id_mut(source_item_entity_id)
+                .and_then(|entity| match entity {
+                    Entity::Item(item_entity) => Some(item_entity),
+                    _ => None,
+                })
+        else {
+            return;
+        };
+        source_item_entity.set_item_metadata(result);
+        self.remove_entity(merged_item_entity_id);
+    }
+
+    fn merge_vanilla_item_entity(
+        &mut self,
+        source_item_entity_id: EntityId,
+        source_position: EntityPosition,
+    ) {
+        let nearby_item_entity_ids = self.entity_tracker.nearby_entities_by_chunk_range(
+            source_position,
+            1,
+            EntityTrackerTarget::Items,
+        );
+        nearby_item_entity_ids
+            .into_iter()
+            .filter(|merged_item_entity_id| *merged_item_entity_id != source_item_entity_id)
+            .for_each(|merged_item_entity_id| {
+                self.merge_vanilla_item_entity_pair(source_item_entity_id, merged_item_entity_id);
+            });
+    }
+
+    fn merge_vanilla_item_entity_pair(
+        &mut self,
+        source_item_entity_id: EntityId,
+        merged_item_entity_id: EntityId,
+    ) {
+        let Some((source_position, source_bounding_box, source_target, source_item_stack)) = self
+            .entity_by_id(source_item_entity_id)
+            .and_then(item_entity)
+            .filter(|item_entity| {
+                item_entity.get_physics() == ItemEntityPhysics::VanillaPhysics
+                    && item_entity.is_vanilla_mergeable()
+            })
+            .map(|item_entity| {
+                (
+                    item_entity.get_position(),
+                    item_entity.get_bounding_box().inflate(0.5, 0.0, 0.5),
+                    item_entity.get_target(),
+                    item_entity.get_item_stack().clone(),
+                )
+            })
+        else {
+            return;
+        };
+        let Some(merged_item_stack) = self
+            .entity_by_id(merged_item_entity_id)
+            .and_then(item_entity)
+            .filter(|item_entity| {
+                item_entity.get_physics() == ItemEntityPhysics::VanillaPhysics
+                    && item_entity.is_vanilla_mergeable()
+                    && item_entity.get_target() == source_target
+                    && item_entity
+                        .get_intersects_box_at(source_position.as_vector(), source_bounding_box)
+            })
             .map(|item_entity| item_entity.get_item_stack().clone())
         else {
             return;
@@ -651,6 +855,10 @@ impl World {
     )> {
         let entity = self.entity_by_id_mut(entity_id)?;
         match entity {
+            Entity::Creature(entity) => {
+                entity.set_equipment_state(equipment_slot, item_stack);
+                Some((entity.update_attributes_packet(), false))
+            }
             Entity::Living(entity) => {
                 entity.set_equipment_state(equipment_slot, item_stack);
                 Some((entity.update_attributes_packet(), false))
@@ -768,79 +976,9 @@ impl World {
         Ok(())
     }
 
-    fn entity_is_dead(&self, entity_id: EntityId) -> bool {
-        self.entity_by_id(entity_id)
-            .is_none_or(|entity| match entity {
-                Entity::Creature(entity) => entity.is_dead(),
-                Entity::ExperienceOrb(_) => false,
-                Entity::Generic(_) => false,
-                Entity::Living(entity) => entity.is_dead(),
-                Entity::Item(_) => false,
-                Entity::Player(player) => player.is_dead(),
-                Entity::Projectile(_) => false,
-            })
-    }
-
-    fn entity_should_be_removed_when_killed(&self, entity_id: EntityId) -> bool {
-        self.entity_by_id(entity_id).is_some_and(|entity| {
-            matches!(
-                entity,
-                Entity::ExperienceOrb(_) | Entity::Generic(_) | Entity::Item(_) | Entity::Projectile(_)
-            )
-        })
-    }
-
     fn entity_is_player(&self, entity_id: EntityId) -> bool {
         self.entity_by_id(entity_id)
             .is_some_and(|entity| matches!(entity, Entity::Player(_)))
-    }
-
-    fn apply_player_death_before_living_death(&mut self, entity_id: EntityId) -> Result<()> {
-        let Some(Entity::Player(player)) = self.entity_by_id_mut(entity_id) else {
-            return Ok(());
-        };
-        player.kill()
-    }
-
-    fn apply_living_death_state(&mut self, entity_id: EntityId) -> Result<()> {
-        let passenger_ids = self
-            .entity_by_id(entity_id)
-            .map(|entity| entity.get_passengers().iter().copied().collect::<Vec<_>>())
-            .unwrap_or_default();
-        let Some(entity) = self.entity_by_id_mut(entity_id) else {
-            return Ok(());
-        };
-        match entity {
-            Entity::Creature(entity) => {
-                entity.kill();
-                entity.set_velocity(Velocity(Vector3d {
-                    x: 0.0,
-                    y: 0.0,
-                    z: 0.0,
-                }));
-            }
-            Entity::ExperienceOrb(_) | Entity::Generic(_) => {}
-            Entity::Living(entity) => {
-                entity.kill();
-                entity.set_velocity(Velocity(Vector3d {
-                    x: 0.0,
-                    y: 0.0,
-                    z: 0.0,
-                }));
-            }
-            Entity::Item(_) => {}
-            Entity::Player(player) => {
-                player.set_pose(EntityPose::Dying);
-            }
-            Entity::Projectile(_) => {}
-        }
-        passenger_ids.into_iter().try_for_each(|passenger_id| {
-            self
-                .remove_passenger(entity_id, passenger_id)
-                .map(|_| ())
-                .map_err(|passenger_error| std::io::Error::other(passenger_error.to_string()))
-        })?;
-        Ok(())
     }
 
     fn dispatch_entity_death_event(&mut self, entity_id: EntityId) {
@@ -1051,4 +1189,11 @@ fn damage_sound_source_id(entity_id: EntityId, world: &World) -> i32 {
         Some(Entity::Player(_)) => 1,
         _ => 5,
     }
+}
+
+fn entity_has_living_kill_side_effects(entity: &Entity) -> bool {
+    matches!(
+        entity,
+        Entity::Creature(_) | Entity::Living(_) | Entity::Player(_)
+    )
 }

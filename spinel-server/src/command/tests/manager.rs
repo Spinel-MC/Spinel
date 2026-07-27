@@ -198,7 +198,9 @@ fn command_manager_filters_declared_commands_by_source_condition() {
 fn chat_command_execution_keeps_registered_commands_available_during_refresh() {
     let (mut client, mut peer_stream) = test_client_pair();
     let mut server = MinecraftServer::new();
-    let world_uuid = server.world_manager.create_world(spinel_registry::dimension_type::DimensionType::OVERWORLD);
+    let world_uuid = server
+        .world_manager
+        .create_world(spinel_registry::dimension_type::DimensionType::OVERWORLD);
     server.command_manager.register(
         Command::new("kill")
             .with_condition(requires_admin)
@@ -397,7 +399,10 @@ fn test_client_pair() -> (crate::network::client::instance::Client, TcpStream) {
     let addr = listener.local_addr().unwrap();
     let client_stream = TcpStream::connect(addr).unwrap();
     let (peer_stream, _) = listener.accept().unwrap();
-    (crate::network::client::instance::Client::new(client_stream, addr), peer_stream)
+    (
+        crate::network::client::instance::Client::new(client_stream, addr),
+        peer_stream,
+    )
 }
 
 fn read_available_packet_frames(peer_stream: &mut TcpStream) -> Vec<(i32, Vec<u8>)> {

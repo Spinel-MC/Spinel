@@ -1,5 +1,5 @@
 use crate::entity::player::{Player, PlayerChunk};
-use crate::entity::{Entity, EntityPosition, ItemEntity, LivingEntity};
+use crate::entity::{Entity, EntityPosition, ItemEntity, ItemEntityPhysics, LivingEntity};
 use crate::events::pickup_item::PickupItemEvent;
 use crate::network::client::instance::Client;
 use crate::server::MinecraftServer;
@@ -131,6 +131,30 @@ fn player_pickup_sends_collect_packet_and_removes_visible_item() {
     assert!(world.get_entity(item_entity_id).is_none());
 }
 
+#[test]
+fn vanilla_player_pickup_uses_player_box_inflated_by_vanilla_pickup_vector() {
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
+    let mut viewer_client = queued_client();
+    let mut player = positioned_player(viewer_client.addr.port());
+    player.set_client(&mut viewer_client);
+    player.mark_entered_world();
+    player.mark_chunk_sent_to_client(PlayerChunk::new(0, 0));
+    let player_id = player.get_entity_id();
+    let mut item_entity = positioned_vanilla_item_entity_at(2.4);
+    let item_entity_id = item_entity.get_entity_id();
+    item_entity.get_view_mut().manual_add(player_id);
+    world.add_entity(Entity::Player(player));
+    world.add_entity(Entity::Item(item_entity));
+
+    world.tick_with_registries(&Registries::new_vanilla());
+
+    assert!(world.get_entity(item_entity_id).is_none());
+}
+
 fn positioned_living_entity() -> LivingEntity {
     let mut entity = LivingEntity::new(EntityType::ZOMBIE);
     entity.set_position(EntityPosition::new(1.0, 64.0, 1.0, 0.0, 0.0));
@@ -141,6 +165,14 @@ fn positioned_item_entity() -> ItemEntity {
     let mut entity = ItemEntity::new(ItemStack::of(Material::DIAMOND).with_amount(3));
     entity.spawn();
     entity.set_position(EntityPosition::new(1.0, 64.0, 1.0, 0.0, 0.0));
+    entity
+}
+
+fn positioned_vanilla_item_entity_at(x: f64) -> ItemEntity {
+    let mut entity = positioned_item_entity();
+    entity.set_no_gravity(true);
+    entity.set_physics(ItemEntityPhysics::VanillaPhysics);
+    entity.set_position(EntityPosition::new(x, 64.0, 1.0, 0.0, 0.0));
     entity
 }
 

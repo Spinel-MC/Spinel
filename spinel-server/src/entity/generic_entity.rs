@@ -5198,7 +5198,6 @@ impl GenericEntity {
     pub fn tick(&mut self) {
         self.tick_before_event();
         self.tick_after_event();
-        self.remove_when_scheduled_tick_has_elapsed();
     }
 
     pub(crate) fn tick_before_event(&mut self) {
@@ -5214,6 +5213,7 @@ impl GenericEntity {
             return;
         }
         self.process_scheduler_tick_end();
+        self.remove_when_scheduled_tick_has_elapsed();
     }
 
     fn remove_when_scheduled_tick_has_elapsed(&mut self) {
