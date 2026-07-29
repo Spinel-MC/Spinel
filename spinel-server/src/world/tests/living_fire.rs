@@ -154,6 +154,31 @@ fn world_player_living_tick_dispatches_reference_natural_fire_extinguish_event()
     reset_living_fire_test_state();
 }
 
+#[test]
+fn player_visual_fire_survives_ordinary_fire_tick_clearing() {
+    let mut player = new_fire_player();
+
+    player.set_visual_fire(true);
+    player.set_fire_ticks(1);
+    player.tick_fire_ticks();
+
+    assert_eq!(player.get_fire_ticks(), 0);
+    assert!(player.has_visual_fire());
+    assert!(player.is_on_fire());
+}
+
+#[test]
+fn player_ordinary_fire_clears_when_visual_fire_is_absent() {
+    let mut player = new_fire_player();
+
+    player.set_fire_ticks(1);
+    player.tick_fire_ticks();
+
+    assert_eq!(player.get_fire_ticks(), 0);
+    assert!(!player.has_visual_fire());
+    assert!(!player.is_on_fire());
+}
+
 fn server_with_living_entity() -> MinecraftServer {
     let mut server = MinecraftServer::new();
     let world_uuid = server
@@ -176,13 +201,17 @@ fn server_with_player() -> MinecraftServer {
         .world_manager
         .world_mut(world_uuid)
         .unwrap()
-        .add_entity(Entity::Player(Player::new(
-            uuid::Uuid::new_v4(),
-            "FirePlayer".to_string(),
-            0,
-            SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 25565),
-        )));
+        .add_entity(Entity::Player(new_fire_player()));
     server
+}
+
+fn new_fire_player() -> Player {
+    Player::new(
+        uuid::Uuid::new_v4(),
+        "FirePlayer".to_string(),
+        0,
+        SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 25565),
+    )
 }
 
 fn positioned_living_entity() -> LivingEntity {

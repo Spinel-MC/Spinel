@@ -336,6 +336,8 @@ impl LivingEntity {
 
     pub(crate) fn tick_living_state(&mut self) -> Vec<TimedPotionEffect> {
         self.living_state.tick_fire_ticks();
+        self.entity
+            .set_on_fire(self.living_state.get_fire_ticks() > 0);
         self.living_state.tick_item_pickup_cooldown();
         self.living_state.expire_effects_at(self.entity.get_ticks())
     }

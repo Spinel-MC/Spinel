@@ -1,5 +1,6 @@
 use crate::component::color::{NamedTextColor, TextColor};
 use crate::component::events::{ClickEvent, HoverEntity, HoverEvent, HoverItem};
+use crate::component::style::ShadowColor;
 use crate::component::text::TextComponent;
 use serde_json::json;
 use spinel_nbt::{Nbt, NbtCompound};
@@ -18,6 +19,7 @@ fn text_component_accepts_string_and_str() {
 fn component_serializes_rich_json() {
     let component = TextComponent::text("click")
         .color(TextColor::from_named(NamedTextColor::Aqua))
+        .shadow_color(ShadowColor::new(-43691))
         .click_event(ClickEvent::RunCommand("/help".to_owned()))
         .hover_event(HoverEvent::ShowText(Box::new(TextComponent::from("hover"))))
         .insertion("inserted")
@@ -27,12 +29,47 @@ fn component_serializes_rich_json() {
 
     assert_eq!(value["text"], json!("click"));
     assert_eq!(value["color"], json!("aqua"));
+    assert_eq!(value["shadow_color"], json!(-43691));
     assert_eq!(value["click_event"]["action"], json!("run_command"));
     assert_eq!(value["click_event"]["command"], json!("/help"));
     assert_eq!(value["hover_event"]["action"], json!("show_text"));
     assert_eq!(value["hover_event"]["value"]["text"], json!("hover"));
     assert_eq!(value["insertion"], json!("inserted"));
     assert_eq!(value["extra"][0]["keybind"], json!("key.jump"));
+}
+
+#[test]
+fn component_preserves_shadow_color_through_json_and_nbt() {
+    let component: TextComponent = serde_json::from_value(json!({
+        "text": "mud",
+        "color": "gold",
+        "shadow_color": -43691
+    }))
+    .unwrap();
+    let json_value = serde_json::to_value(component.clone()).unwrap();
+    let nbt_value = spinel_nbt::nbt_to_json(Nbt::Compound(component.to_nbt_compound()));
+
+    assert_eq!(json_value["shadow_color"], json!(-43691));
+    assert_eq!(nbt_value["shadow_color"], json!(-43691));
+}
+
+#[test]
+fn component_preserves_unmodeled_fields_through_json_and_nbt() {
+    let component: TextComponent = serde_json::from_value(json!({
+        "type": "text",
+        "text": "future",
+        "future_style": {
+            "enabled": true
+        }
+    }))
+    .unwrap();
+    let json_value = serde_json::to_value(component.clone()).unwrap();
+    let nbt_value = spinel_nbt::nbt_to_json(Nbt::Compound(component.to_nbt_compound()));
+
+    assert_eq!(json_value["type"], json!("text"));
+    assert_eq!(json_value["future_style"]["enabled"], json!(true));
+    assert_eq!(nbt_value["type"], json!("text"));
+    assert_eq!(nbt_value["future_style"]["enabled"], json!(true));
 }
 
 #[test]

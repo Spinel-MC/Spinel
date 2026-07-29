@@ -2,11 +2,29 @@ use crate::component::color::TextColor;
 use crate::component::events::{ClickEvent, HoverEvent};
 use crate::component::text::TextComponent;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
+use std::collections::BTreeMap;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct ShadowColor(i32);
+
+impl ShadowColor {
+    pub const fn new(value: i32) -> Self {
+        Self(value)
+    }
+
+    pub const fn get_value(self) -> i32 {
+        self.0
+    }
+}
 
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct Style {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub color: Option<TextColor>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub shadow_color: Option<ShadowColor>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub bold: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -33,12 +51,15 @@ pub struct Style {
     pub insertion: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub font: Option<String>,
+    #[serde(flatten)]
+    pub unmodeled_fields: BTreeMap<String, Value>,
 }
 
 impl Style {
     pub const fn empty() -> Self {
         Style {
             color: None,
+            shadow_color: None,
             bold: None,
             italic: None,
             underlined: None,
@@ -48,12 +69,14 @@ impl Style {
             hover_event: None,
             insertion: None,
             font: None,
+            unmodeled_fields: BTreeMap::new(),
         }
     }
 
     pub const fn const_with_color(color: TextColor) -> Self {
         Style {
             color: Some(color),
+            shadow_color: None,
             bold: None,
             italic: None,
             underlined: None,
@@ -63,6 +86,7 @@ impl Style {
             hover_event: None,
             insertion: None,
             font: None,
+            unmodeled_fields: BTreeMap::new(),
         }
     }
 
@@ -94,8 +118,11 @@ impl Style {
     }
 
     pub fn merge_with_parent(&self, child: &TextComponent) -> Style {
+        let mut unmodeled_fields = self.unmodeled_fields.clone();
+        unmodeled_fields.extend(child.style.unmodeled_fields.clone());
         Style {
             color: child.style.color.clone().or_else(|| self.color.clone()),
+            shadow_color: child.style.shadow_color.or(self.shadow_color),
             bold: child.style.bold.or(self.bold),
             italic: child.style.italic.or(self.italic),
             underlined: child.style.underlined.or(self.underlined),
@@ -115,6 +142,7 @@ impl Style {
                 .clone()
                 .or_else(|| self.insertion.clone()),
             font: child.style.font.clone().or_else(|| self.font.clone()),
+            unmodeled_fields,
         }
     }
 

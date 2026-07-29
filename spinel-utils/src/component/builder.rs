@@ -1,6 +1,6 @@
 use crate::component::color::TextColor;
 use crate::component::events::{ClickEvent, HoverEvent};
-use crate::component::style::Style;
+use crate::component::style::{ShadowColor, Style};
 use crate::component::text::TextComponent;
 use crate::component::variant::ComponentType;
 
@@ -26,6 +26,11 @@ impl ComponentBuilder {
 
     pub fn color(mut self, color: TextColor) -> Self {
         self.style.color = Some(color);
+        self
+    }
+
+    pub fn shadow_color(mut self, shadow_color: ShadowColor) -> Self {
+        self.style.shadow_color = Some(shadow_color);
         self
     }
 

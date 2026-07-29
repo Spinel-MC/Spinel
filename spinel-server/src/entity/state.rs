@@ -21,6 +21,8 @@ pub(crate) struct EntityState {
     removed: bool,
     ticks: u64,
     metadata: MetadataHolder,
+    is_ordinary_on_fire: bool,
+    has_visual_fire: bool,
     falling_block_state: i32,
     fishing_hook_owner_entity_id: Option<EntityId>,
 }
@@ -47,6 +49,8 @@ impl EntityState {
             removed: false,
             ticks: 0,
             metadata: MetadataHolder::default(),
+            is_ordinary_on_fire: false,
+            has_visual_fire: false,
             falling_block_state: spinel_registry::vanilla_world_blocks::Block::STONE.state_id(),
             fishing_hook_owner_entity_id: None,
         }
@@ -183,5 +187,29 @@ impl EntityState {
 
     pub(crate) fn get_metadata_mut(&mut self) -> &mut MetadataHolder {
         &mut self.metadata
+    }
+
+    pub(crate) const fn is_ordinary_on_fire(&self) -> bool {
+        self.is_ordinary_on_fire
+    }
+
+    pub(crate) fn set_ordinary_on_fire(&mut self, is_ordinary_on_fire: bool) -> bool {
+        if self.is_ordinary_on_fire == is_ordinary_on_fire {
+            return false;
+        }
+        self.is_ordinary_on_fire = is_ordinary_on_fire;
+        true
+    }
+
+    pub(crate) const fn has_visual_fire(&self) -> bool {
+        self.has_visual_fire
+    }
+
+    pub(crate) fn set_visual_fire(&mut self, has_visual_fire: bool) -> bool {
+        if self.has_visual_fire == has_visual_fire {
+            return false;
+        }
+        self.has_visual_fire = has_visual_fire;
+        true
     }
 }

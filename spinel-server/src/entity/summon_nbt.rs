@@ -1,5 +1,5 @@
 use crate::entity::{EntityPosition, EquipmentSlot, GenericEntity, LivingEntity};
-use spinel_nbt::{nbt_to_json, Nbt, NbtCompound};
+use spinel_nbt::{Nbt, NbtCompound, nbt_to_json};
 use spinel_registry::{EntityType, ItemStack};
 use spinel_utils::component::text::TextComponent;
 
@@ -32,7 +32,7 @@ impl GenericEntity {
 
     fn apply_summon_base_state(&mut self, nbt: &NbtCompound) {
         apply_boolean(nbt, "OnGround", |value| self.set_on_ground(value));
-        apply_boolean(nbt, "HasVisualFire", |value| self.set_on_fire(value));
+        apply_boolean(nbt, "HasVisualFire", |value| self.set_visual_fire(value));
         apply_boolean(nbt, "Invisible", |value| self.set_invisible(value));
         apply_boolean(nbt, "Glowing", |value| self.set_glowing(value));
         apply_boolean(nbt, "Silent", |value| self.set_silent(value));

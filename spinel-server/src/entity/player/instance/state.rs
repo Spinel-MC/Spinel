@@ -92,6 +92,8 @@ pub struct Player {
     pub(super) tag_handler: TagHandler,
     pub(super) has_entered_world: bool,
     pub(super) on_ground: bool,
+    pub(super) is_ordinary_on_fire: bool,
+    pub(super) has_visual_fire: bool,
     pub(super) aerodynamics: EntityAerodynamics,
     pub(super) gravity_tick_count: u64,
     pub(super) previous_physics_result: Option<EntityPhysicsResult>,
@@ -210,6 +212,8 @@ impl Player {
             tag_handler: TagHandler::new_handler(),
             has_entered_world: false,
             on_ground: false,
+            is_ordinary_on_fire: false,
+            has_visual_fire: false,
             aerodynamics: EntityAerodynamics::new(
                 EntityType::PLAYER.horizontal_air_resistance(),
                 EntityType::PLAYER.vertical_air_resistance(),

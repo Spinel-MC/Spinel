@@ -781,9 +781,29 @@ impl GenericEntity {
     }
 
     pub fn set_on_fire(&mut self, on_fire: bool) {
+        if self.state.set_ordinary_on_fire(on_fire) {
+            self.refresh_on_fire_metadata();
+        }
+    }
+
+    pub fn has_visual_fire(&self) -> bool {
+        self.state.has_visual_fire()
+    }
+
+    pub fn set_visual_fire(&mut self, has_visual_fire: bool) {
+        if self.state.set_visual_fire(has_visual_fire) {
+            self.refresh_on_fire_metadata();
+        }
+    }
+
+    fn refresh_on_fire_metadata(&mut self) {
+        let is_visibly_on_fire = self.state.is_ordinary_on_fire() || self.state.has_visual_fire();
+        if self.is_on_fire() == is_visibly_on_fire {
+            return;
+        }
         self.state
             .get_metadata_mut()
-            .set_flag(&definitions::is_on_fire(), on_fire);
+            .set_flag(&definitions::is_on_fire(), is_visibly_on_fire);
     }
 
     pub fn is_sneaking(&self) -> bool {
