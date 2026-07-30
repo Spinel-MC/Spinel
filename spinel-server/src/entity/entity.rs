@@ -1,3 +1,8 @@
+use crate::entity::EntityPosition;
+use crate::entity::EntityView;
+use crate::entity::ExperienceOrb;
+use crate::entity::LivingEntity;
+use crate::entity::TimedPotionEffect;
 use crate::entity::entity_creature::EntityCreature;
 use crate::entity::generic_entity::GenericEntity;
 use crate::entity::identity::{EntityId, EntityPointers};
@@ -5,16 +10,12 @@ use crate::entity::item::ItemEntity;
 use crate::entity::physics::EntityPhysicsResult;
 use crate::entity::player::Player;
 use crate::entity::projectile::ProjectileEntity;
-use crate::entity::EntityPosition;
-use crate::entity::EntityView;
-use crate::entity::ExperienceOrb;
-use crate::entity::LivingEntity;
-use crate::entity::TimedPotionEffect;
 use crate::permission::{PermissionHandler, PermissionSet};
 use crate::scheduler::{ContextScheduler, Task, TaskSchedule};
 use crate::world::World;
 use spinel_core::network::clientbound::play::attach_entity::AttachEntityPacket;
 use spinel_core::network::clientbound::play::entity_effect::EntityEffectPacket;
+use spinel_core::network::clientbound::play::entity_head_look::EntityHeadLookPacket;
 use spinel_core::network::clientbound::play::entity_position_sync::EntityPositionSyncPacket;
 use spinel_core::network::clientbound::play::entity_velocity::EntityVelocityPacket;
 use spinel_core::network::clientbound::play::remove_entity_effect::RemoveEntityEffectPacket;
@@ -589,6 +590,18 @@ impl Entity {
             Self::Item(entity) => entity.synchronize_position_packet(),
             Self::Player(player) => player.synchronize_entity_position_packet(),
             Self::Projectile(entity) => entity.synchronize_position_packet(),
+        }
+    }
+
+    pub(crate) fn get_head_look_packet(&self) -> EntityHeadLookPacket {
+        match self {
+            Self::Creature(entity) => entity.get_head_look_packet(),
+            Self::ExperienceOrb(entity) => entity.get_head_look_packet(),
+            Self::Generic(entity) => entity.get_head_look_packet(),
+            Self::Living(entity) => entity.get_head_look_packet(),
+            Self::Item(entity) => entity.get_head_look_packet(),
+            Self::Player(player) => player.get_head_look_packet(),
+            Self::Projectile(entity) => entity.get_head_look_packet(),
         }
     }
 

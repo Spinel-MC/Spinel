@@ -64,11 +64,7 @@ impl World {
             .move_entity(entity_id, teleport.get_position());
         self.refresh_passenger_positions(entity_id);
         self.schedule_entity_visibility_refresh(entity_id);
-        let synchronization_packet = self
-            .entity_by_id_mut(entity_id)
-            .map(Entity::synchronize_position_packet)
-            .ok_or_else(|| Error::new(ErrorKind::NotFound, "Entity was removed after teleport"))?;
-        self.send_packet_to_entity_viewers(entity_id, synchronization_packet)?;
+        self.synchronize_entity_teleport_position_and_head_yaw(entity_id, previous_position)?;
         Ok(Some(teleport))
     }
 
@@ -194,6 +190,7 @@ impl World {
                 "Entity was removed before teleport completion",
             )
         })?;
+        let previous_position = entity.get_position();
         match entity {
             Entity::Player(player) => {
                 player
@@ -209,11 +206,7 @@ impl World {
             .move_entity(entity_id, teleport.get_position());
         self.refresh_passenger_positions(entity_id);
         self.schedule_entity_visibility_refresh(entity_id);
-        let synchronization_packet = self
-            .entity_by_id_mut(entity_id)
-            .map(Entity::synchronize_position_packet)
-            .ok_or_else(|| Error::new(ErrorKind::NotFound, "Entity was removed after teleport"))?;
-        self.send_packet_to_entity_viewers(entity_id, synchronization_packet)?;
+        self.synchronize_entity_teleport_position_and_head_yaw(entity_id, previous_position)?;
         ticket.completed = true;
         Ok(Some(teleport))
     }
@@ -589,6 +582,29 @@ impl World {
         let server = unsafe { &mut *(server_ptr as *mut crate::server::MinecraftServer) };
         EntityTeleportEvent::new(entity, teleport_position, new_position, relative_flags)
             .dispatch(server);
+    }
+
+    fn synchronize_entity_teleport_position_and_head_yaw(
+        &mut self,
+        entity_id: EntityId,
+        previous_position: EntityPosition,
+    ) -> Result<()> {
+        let (position_synchronization_packet, head_look_packet) = self
+            .entity_by_id_mut(entity_id)
+            .map(|entity| {
+                let current_position = entity.get_position();
+                let position_synchronization_packet = entity.synchronize_position_packet();
+                let head_yaw_changed =
+                    current_position.get_head_yaw() != previous_position.get_head_yaw();
+                let head_look_packet = head_yaw_changed.then(|| entity.get_head_look_packet());
+                (position_synchronization_packet, head_look_packet)
+            })
+            .ok_or_else(|| Error::new(ErrorKind::NotFound, "Entity was removed after teleport"))?;
+        self.send_packet_to_entity_viewers(entity_id, position_synchronization_packet)?;
+        if let Some(head_look_packet) = head_look_packet {
+            self.send_packet_to_entity_viewers(entity_id, head_look_packet)?;
+        }
+        Ok(())
     }
 
     fn dispatch_entity_velocity_event(

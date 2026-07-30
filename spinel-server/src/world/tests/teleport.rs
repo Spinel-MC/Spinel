@@ -3,6 +3,7 @@ use crate::events::entity_teleport::EntityTeleportEvent;
 use crate::network::client::instance::Client;
 use crate::server::MinecraftServer;
 use crate::world::{Chunk, ChunkLoader, ChunkPosition, World};
+use spinel_core::network::clientbound::play::entity_head_look::EntityHeadLookPacket;
 use spinel_core::network::clientbound::play::entity_position_sync::EntityPositionSyncPacket;
 use spinel_macros::fn_event_listener;
 use spinel_network::ConnectionState;
@@ -217,7 +218,10 @@ fn world_generic_entity_teleport_updates_viewers_after_event_and_state_change() 
     );
     assert_eq!(
         viewer_client.queued_outbound_packet_ids(),
-        vec![EntityPositionSyncPacket::get_id()]
+        vec![
+            EntityPositionSyncPacket::get_id(),
+            EntityHeadLookPacket::get_id()
+        ]
     );
 }
 
