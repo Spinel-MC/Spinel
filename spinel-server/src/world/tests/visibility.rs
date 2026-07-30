@@ -18,9 +18,12 @@ use spinel_core::network::clientbound::play::set_equipment::SetEquipmentPacket;
 use spinel_core::network::clientbound::play::set_passengers::SetPassengersPacket;
 use spinel_core::network::clientbound::play::spawn_entity::SpawnEntityPacket;
 use spinel_core::network::clientbound::play::update_attributes::UpdateAttributesPacket;
+use spinel_nbt::parse_snbt_compound;
+use spinel_network::types::entity_metadata::MetadataValue;
 use spinel_network::types::{Identifier, Vector3d, Velocity};
 use spinel_network::{ConnectionState, DataType};
 use spinel_registry::{Attribute, EntityType, MobEffect, Registries};
+use spinel_utils::component::color::{NamedTextColor, TextColor};
 use std::net::{IpAddr, Ipv4Addr, SocketAddr, TcpListener};
 use uuid::Uuid;
 
@@ -466,6 +469,75 @@ fn joining_player_receives_existing_generic_entity_replay_packets() {
 }
 
 #[test]
+fn joining_player_receives_summon_nbt_visual_and_name_metadata_snapshot() {
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
+    let nbt = parse_snbt_compound(
+        r#"{HasVisualFire:1b,Glowing:1b,CustomName:{color:"gold",shadow_color:-43691,text:"mud"}}"#,
+    )
+    .unwrap();
+    let target_id = world
+        .spawn_entity(
+            EntityType::ZOMBIE,
+            EntityPosition::new(1.0, 64.0, 1.0, 0.0, 0.0),
+            Some(&nbt),
+        )
+        .unwrap();
+    let mut viewer_client = queued_client();
+    let viewer = entered_player(&mut viewer_client, "Viewer");
+    world.add_entity(Entity::Player(viewer));
+
+    world.process_pending_entity_visibility_refreshes().unwrap();
+
+    let metadata_packet = first_metadata_packet_for_entity(&viewer_client, target_id.get_value());
+    let entity_flags = entity_flags_from_metadata_packet(&metadata_packet);
+    assert_eq!(entity_flags & 0x01, 0x01);
+    assert_eq!(entity_flags & 0x40, 0x40);
+    let custom_name = custom_name_from_metadata_packet(&metadata_packet);
+    assert_eq!(custom_name.to_plain_string(), "mud");
+    assert_eq!(
+        custom_name.style.color,
+        Some(TextColor::Named(NamedTextColor::Gold))
+    );
+    assert_eq!(
+        custom_name
+            .style
+            .shadow_color
+            .map(|shadow_color| shadow_color.get_value()),
+        Some(-43691)
+    );
+}
+
+#[test]
+fn joining_player_receives_visible_custom_name_metadata_snapshot() {
+    let mut world = World::new_with_dimension_name(
+        uuid::Uuid::new_v4(),
+        spinel_registry::dimension_type::DimensionType::OVERWORLD,
+        Identifier::minecraft("overworld"),
+    );
+    let nbt = parse_snbt_compound(r#"{CustomNameVisible:1b,CustomName:{color:"gold",text:"mud"}}"#)
+        .unwrap();
+    let target_id = world
+        .spawn_entity(
+            EntityType::ZOMBIE,
+            EntityPosition::new(1.0, 64.0, 1.0, 0.0, 0.0),
+            Some(&nbt),
+        )
+        .unwrap();
+    let mut viewer_client = queued_client();
+    let viewer = entered_player(&mut viewer_client, "Viewer");
+    world.add_entity(Entity::Player(viewer));
+
+    world.process_pending_entity_visibility_refreshes().unwrap();
+
+    let metadata_packet = first_metadata_packet_for_entity(&viewer_client, target_id.get_value());
+    assert!(custom_name_visible_from_metadata_packet(&metadata_packet));
+}
+
+#[test]
 fn second_player_receives_first_player_relative_movement_packet() {
     let mut world = World::new_with_dimension_name(
         uuid::Uuid::new_v4(),
@@ -618,4 +690,48 @@ fn queued_client() -> Client {
     client.state = ConnectionState::Play;
     client.enable_outbound_packet_queue();
     client
+}
+
+fn first_metadata_packet_for_entity(client: &Client, entity_id: i32) -> SetEntityDataPacket {
+    client
+        .queued_outbound_packet_payloads()
+        .into_iter()
+        .filter(|(packet_id, _payload)| *packet_id == SetEntityDataPacket::get_id())
+        .map(|(_packet_id, payload)| SetEntityDataPacket::decode(&mut payload.as_slice()).unwrap())
+        .find(|packet| packet.entity_id == entity_id)
+        .unwrap()
+}
+
+fn metadata_value_from_packet(packet: &SetEntityDataPacket, metadata_index: u8) -> &MetadataValue {
+    packet
+        .entries
+        .0
+        .iter()
+        .find(|entry| entry.index == metadata_index)
+        .map(|entry| &entry.value)
+        .unwrap()
+}
+
+fn entity_flags_from_metadata_packet(packet: &SetEntityDataPacket) -> i8 {
+    let MetadataValue::Byte(entity_flags) = metadata_value_from_packet(packet, 0) else {
+        panic!("entity flags metadata must be byte");
+    };
+    *entity_flags
+}
+
+fn custom_name_from_metadata_packet(
+    packet: &SetEntityDataPacket,
+) -> spinel_utils::component::text::TextComponent {
+    let MetadataValue::OptionalText(Some(custom_name)) = metadata_value_from_packet(packet, 2)
+    else {
+        panic!("custom name metadata must be populated optional text");
+    };
+    custom_name.clone()
+}
+
+fn custom_name_visible_from_metadata_packet(packet: &SetEntityDataPacket) -> bool {
+    let MetadataValue::Boolean(custom_name_visible) = metadata_value_from_packet(packet, 3) else {
+        panic!("custom name visible metadata must be boolean");
+    };
+    *custom_name_visible
 }
